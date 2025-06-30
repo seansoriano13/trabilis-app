@@ -1,0 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap');
+
+:root {
+    --ff-figtree: 'Figtree';
+    --fw-figtree-regular: 400;
+    --fw-figtree-bold: 700;
+    --fw-figtree-bolder: 800;
+    --fs-figtree-h3: 1.5rem;
+
+    --ff-amaranth: 'Amaranth';
+    --fw-amaranth-regular: 400;
+    --fw-amaranth-bold: 700;
+
+    --fs-h1: 2.5rem;
+    --fs-h2: 2rem;
+    --fs-p-small: .875rem;
+    --fs-amaranth-small: 1.1rem;
+
+    --fw-h1: 900;
+    --fw-h2: 800;
+    --color-yellow: #f7d100;
+
+    --ff-poppins: 'Poppins', serif;
+    --ff-dm-sans: 'DM Sans', sans-serif;
+
+    --opacity-80: opacity(80%);
+
+    --padding-section: 3rem 0 4rem 0;
+}
