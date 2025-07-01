@@ -5,6 +5,10 @@
     scrollbar-width: thin;
 }
 
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
 h1 {
     font-size: var(--fs-h1);
     font-weight: var(--fw-h1);
@@ -89,18 +93,18 @@ a {
     text-decoration: none;
 }
 
-[type="text"],
-[type="email"],
-[type="url"],
-[type="password"],
-[type="number"],
-[type="date"],
-[type="datetime-local"],
-[type="month"],
-[type="search"],
-[type="tel"],
-[type="time"],
-[type="week"],
+[type='text'],
+[type='email'],
+[type='url'],
+[type='password'],
+[type='number'],
+[type='date'],
+[type='datetime-local'],
+[type='month'],
+[type='search'],
+[type='tel'],
+[type='time'],
+[type='week'],
 [multiple],
 textarea,
 select {
@@ -108,7 +112,7 @@ select {
     border-radius: 0;
     background-color: #fff;
     border-width: 1px;
-    padding: .5rem .75rem;
+    padding: 0.5rem 0.75rem;
     font-size: 1rem;
     line-height: 1.5rem;
 }
@@ -122,9 +126,9 @@ label {
 select {
     background-image: url("data:image/svg+xml,%3csvg aria-hidden='true' xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 10 6'%3e %3cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m1 1 4 4 4-4'/%3e %3c/svg%3e");
     background-repeat: no-repeat;
-    background-position: right .75rem center;
-    background-size: .75em .75em;
-    padding: .5rem 1rem .5rem 1rem;
+    background-position: right 0.75rem center;
+    background-size: 0.75em 0.75em;
+    padding: 0.5rem 1rem 0.5rem 1rem;
     print-color-adjust: exact;
     font-size: 1rem;
     line-height: 1.5rem;
@@ -134,4 +138,12 @@ select {
     border-color: rgb(149 149 150 / 1);
     border-radius: 0;
     width: 100%;
+}
+
+input,
+textarea,
+button,
+select,
+a {
+    -webkit-tap-highlight-color: transparent;
 }

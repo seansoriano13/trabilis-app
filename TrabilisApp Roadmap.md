@@ -34,11 +34,11 @@
     - [x] **In `server.js`:**
         - [x] Require `express`, `cors`, and `dotenv`.
         - [x] Initialize your Express app: `const app = express();`.
-        - [ ] Apply middleware: `app.use(cors());` and `app.use(express.json());`.
-        - [ ] Create a basic "hello world" route: `app.get('/', (req, res) => res.send('Backend is running!'));`.
-        - [ ] Make the app listen on the port from your `.env` file.
-    - [ ] Add a `start` script to your `/backend/package.json`: `"start": "nodemon server.js"`.
-    - [ ] **Test:** Run `npm start` in the `/backend` terminal. Go to `http://localhost:3001` in your browser. You should see "Backend is running!".
+        - [x] Apply middleware: `app.use(cors());` and `app.use(express.json());`.
+        - [x] Create a basic "hello world" route: `app.get('/', (req, res) => res.send('Backend is running!'));`.
+        - [x] Make the app listen on the port from your `.env` file.
+    - [x] Add a `start` script to your `/backend/package.json`: `"start": "nodemon server.js"`.
+    - [x] **Test:** Run `npm start` in the `/backend` terminal. Go to `http://localhost:3001` in your browser. You should see "Backend is running!".
 
 ---
 
@@ -46,21 +46,21 @@
 
 *Objective: Get the frontend talking to the backend to fetch real data from AviationStack. Master the full-stack JS request cycle.*
 
-- [ ] **Backend - Database Connection Module:**
-    - [ ] Create a file like `/backend/src/config/db.js`.
-    - [ ] Use the `mysql2/promise` library to create and export a **connection pool**. Read credentials from `process.env`.
-- [ ] **Backend API Endpoint: Flight Search (`GET /api/v1/flights/search`)**
-    - [ ] Create a router file: `/backend/src/routes/flightRoutes.js`. Define the `/search` route here.
-    - [ ] Create a controller file: `/backend/src/controllers/flightController.js`.
-    - [ ] In the `searchFlights` controller function:
-        - [ ] Use `async/await`.
-        - [ ] Validate query parameters from `req.query`.
-        - [ ] `try/catch` block for error handling.
-        - [ ] Use `axios` to call the AviationStack API.
-        - [ ] Process the response and send it back with `res.status(200).json({ flights: formattedData });`.
-    - [ ] In `server.js`, import and use your flight router: `app.use('/api/v1/flights', flightRoutes);`.
-- [ ] **API Testing:**
-    - [ ] Use Postman to test `GET http://localhost:3001/api/v1/flights/search`.
+- [x] **Backend - Database Connection Module:**
+    - [x] Create a file like `/backend/src/config/db.js`.
+    - [x] Use the `mysql2/promise` library to create and export a **connection pool**. Read credentials from `process.env`.
+- [x] **Backend API Endpoint: Flight Search (`GET /api/v1/flights/search`)**
+    - [x] Create a router file: `/backend/src/routes/flightRoutes.js`. Define the `/search` route here.
+    - [x] Create a controller file: `/backend/src/controllers/flightController.js`.
+    - [x] In the `searchFlights` controller function:
+        - [x] Use `async/await`.
+        - [x] Validate query parameters from `req.query`.
+        - [x] `try/catch` block for error handling.
+        - [x] Use `axios` to call the AviationStack API.
+        - [x] Process the response and send it back with `res.status(200).json({ flights: formattedData });`.
+    - [x] In `server.js`, import and use your flight router: `app.use('/api/v1/flights', flightRoutes);`.
+- [x] **API Testing:**
+    - [x] Use Postman to test `GET http://localhost:3001/api/v1/flights/search`.
 - [ ] **React Frontend Integration:**
     - [ ] Create `react-frontend/src/api/flightApi.js` and a `searchFlights` function using `axios`.
     - [ ] In `FlightsSearchPage.jsx`, call this function on form submit and manage state (`loading`, `error`, `data`).

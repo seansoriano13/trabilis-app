@@ -1,75 +1,88 @@
 .nav__bar {
-	top: 0;
-	background: rgb(0, 0, 0, 0);
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 1rem;
-	padding: 1rem;
-	position: fixed;
-	width: 100%;
-	z-index: 999;
-	transition: 0.2s ease;
+    top: 0;
+    background: rgb(0, 0, 0, 0);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem;
+    position: fixed;
+    width: 100%;
+    z-index: 999;
+    transition: 0.2s ease;
 }
 
 .nav__bar.scrolled {
-	background: rgb(24 24 26);
+    background: rgb(24 24 26);
 }
 
 .nav__links-ul {
     background: #18181ae6;
     width: 100%;
     position: absolute;
-    left: 0;
+    left: -30rem;
     top: 3.95rem;
     padding: 2rem;
-	display: none;
-	gap: 2rem;
-	list-style: none;
-	justify-content: center;
-	color: aliceblue;
-	text-align: center;
+    display: grid;
+    gap: 2rem;
+    list-style: none;
+    justify-content: center;
+    color: aliceblue;
+    text-align: center;
+    opacity: 0;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(5px);
+    transition: 0.1s ease;
 }
 
 .nav__links-ul.clicked {
+    left: 0;
     display: grid;
+    opacity: 1;
 }
 
 .nav__links {
-	gap: 1rem;
-	display: flex;
+    gap: 1rem;
+    display: flex;
 }
 
 .nav__links li:hover {
-	color: rgb(255, 227, 71);
+    color: rgb(255, 227, 71);
 }
 
 .nav__logo {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .nav__cta-btn {
-	background: rgb(247 209 0);
-	border: none;
-	border-radius: 0.5rem;
-	padding: 0.5rem 1rem 0.5rem 1rem;
-	transition: 0.1s;
-	cursor: pointer;
+    background: rgb(247 209 0);
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem 0.5rem 1rem;
+    transition: 0.1s;
+    cursor: pointer;
 }
 
 .nav__cta-btn:hover {
-	background: rgb(255, 227, 71);
-	transition: 0.1s;
+    background: rgb(255, 227, 71);
+    transition: 0.1s;
+}
+
+.nav__logo-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }
 
 .logoShake {
-	height: 3rem;
+    height: 3rem;
 }
 
 .rxHamburgerMenu {
-	color: white;
+    color: white;
+    cursor: pointer;
 }
 
 @media (min-width: 768px) {

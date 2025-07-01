@@ -2,12 +2,9 @@
 @import url(variables.css);
 
 html {
-    font-family: var(--ff-figtree);
+  font-family: var(--ff-figtree);
 }
 
 main {
-    /* margin-top: 75px; */
-    margin-top: 2000px;
-    padding: 1.25rem;
-    background-color: aqua;
+  margin-top: 75px;
 }
