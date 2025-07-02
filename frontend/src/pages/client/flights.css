@@ -10,6 +10,7 @@
     top: 0;
     left: 0;
     z-index: -1;
+    filter: brightness(50%);
 }
 
 .flights__form {
@@ -31,16 +32,17 @@
 }
 
 .flights__form-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 1rem;
 }
 
-.flights__form-row--swap {
-}
 
-.flights__swap-btn {
-}
+
 
 .flights__route {
+    display: grid;
+    gap: 2rem;
 }
 
 .flights__submit-btn {
@@ -59,6 +61,31 @@
 }
 
 .flights__text--highlight {
+}
+
+.flights__swap-btn {
+  position: absolute;
+  top: 12.5rem;
+  left: calc(50% - 19px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(6px);
+  color: white;
+  font-size: 1.3rem;
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.flights__swap-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
 }
 
 @keyframes fadeSlideIn {

@@ -2,9 +2,9 @@ import axios from 'axios'
 import flightsData from '../mock/flightsData.js'
 
 export const searchFlights = async (req, res) => {
-    const { from, to, date } = req.query
+    const { tripType, date, from, to } = req.query
     
-    if (!from || !to || !date) {
+    if (!tripType, !from || !to || !date) {
         return res.status(400).json({
             error: 'Missing required query parameters: from, to, date',
         })

@@ -56,20 +56,6 @@
     gap: 0.5rem;
 }
 
-.nav__cta-btn {
-    background: rgb(247 209 0);
-    border: none;
-    border-radius: 0.5rem;
-    padding: 0.5rem 1rem 0.5rem 1rem;
-    transition: 0.1s;
-    cursor: pointer;
-}
-
-.nav__cta-btn:hover {
-    background: rgb(255, 227, 71);
-    transition: 0.1s;
-}
-
 .nav__logo-container {
     display: flex;
     align-items: center;
