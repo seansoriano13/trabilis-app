@@ -4,15 +4,15 @@ import { BsFillAirplaneFill } from 'react-icons/bs'
 import { AiOutlineSwap } from 'react-icons/ai'
 import Select from 'react-select'
 import './Flights.css'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import Flatpickr from 'react-flatpickr'
 import PrimaryButton from '../../components/client/PrimaryButton'
-import {reactSelectStyles} from '../../styles/client/reactSelectStyles'
+import { reactSelectStyles } from '../../styles/client/reactSelectStyles'
+import { useAirports } from '../../context/AirportContext'
+import AsyncSelect from 'react-select/async'
 
 export default function Flights() {
 	// Constants
-	const AIRPORTS_URL =
-		'https://raw.githubusercontent.com/mwgg/Airports/master/airports.json'
 
 	const tripTypeOptions = [
 		{ value: 'round-trip', label: 'Round-trip' },
@@ -20,7 +20,6 @@ export default function Flights() {
 	]
 
 	// States
-	const [options, setOptions] = useState([])
 	const [date, setDate] = useState([])
 	const [origin, setOrigin] = useState(null)
 	const [destination, setDestination] = useState(null)
@@ -35,21 +34,18 @@ export default function Flights() {
 		setDestination(origin)
 	}
 
-	useEffect(() => {
-		fetch(AIRPORTS_URL)
-			.then(res => res.json())
-			.then(data => {
-				const filteredOptions = Object.entries(data)
-					.filter(([, airport]) => airport.iata && airport.name && airport.city && airport.country)
-					.map(([code, airport]) => ({
-						value: code,
-						label: `${airport.name} (${airport.iata}) - ${airport.city}, ${airport.country}`
-					}))
-					.sort((a, b) => a.label.localeCompare(b.label))
-				setOptions(filteredOptions)
-			})
-			.catch(err => console.error('Failed to fetch airports: ', err))
-	},[] )
+	const { airports: options, loading } = useAirports()
+
+	const filterOptions = (inputValue) =>
+		options.filter((a) =>
+			a.label.toLowerCase().includes(inputValue.toLowerCase())
+		)
+
+	const loadOptions = (inputValue, callback) => {
+		setTimeout(() => {
+			callback(filterOptions(inputValue))
+		}, 200)
+	}
 
 	return (
 		<section className="flights">
@@ -106,13 +102,15 @@ export default function Flights() {
 				<div className="">
 					<div>
 						<div className="flights__route">
-							<Select
-								value={origin}
+							<AsyncSelect
+								cacheOptions
+								defaultOptions={options.slice(0, 20)} // or []
+								loadOptions={loadOptions}
 								onChange={setOrigin}
-								options={options}
-								placeholder="Select Origin"
-								isSearchable={true}
+								value={origin}
+								placeholder={loading ? 'Loading...' : 'Select Origin'}
 								styles={selectStyles()}
+								isSearchable
 							/>
 							<button
 								onClick={handleSwapOrigin}
@@ -121,12 +119,15 @@ export default function Flights() {
 							>
 								<AiOutlineSwap />
 							</button>
-							<Select
-								value={destination}
+							<AsyncSelect
+								cacheOptions
+								defaultOptions={options.slice(0, 20)} // or []
+								loadOptions={loadOptions}
 								onChange={setDestination}
-								options={options}
-								placeholder="Select Destination"
+								value={destination}
+								placeholder={loading ? 'Loading...' : 'Select Destination'}
 								styles={selectStyles()}
+								isSearchable
 							/>
 						</div>
 					</div>
