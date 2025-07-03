@@ -41,6 +41,7 @@
 
 
 .flights__route {
+    position: relative;
     display: grid;
     gap: 2rem;
 }
@@ -65,7 +66,7 @@
 
 .flights__swap-btn {
   position: absolute;
-  top: 12.5rem;
+  top: calc(50% - 20px);
   left: calc(50% - 19px);
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);

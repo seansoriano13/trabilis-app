@@ -4,97 +4,52 @@ import { BsFillAirplaneFill } from 'react-icons/bs'
 import { AiOutlineSwap } from 'react-icons/ai'
 import Select from 'react-select'
 import './Flights.css'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Flatpickr from 'react-flatpickr'
 import PrimaryButton from '../../components/client/PrimaryButton'
+import {reactSelectStyles} from '../../styles/client/reactSelectStyles'
 
 export default function Flights() {
 	// Constants
-	const datepickerRef = useRef()
-
-	const primary = getComputedStyle(document.documentElement)
-		.getPropertyValue('--color-yellow')
-		.trim()
+	const AIRPORTS_URL =
+		'https://raw.githubusercontent.com/mwgg/Airports/master/airports.json'
 
 	const tripTypeOptions = [
 		{ value: 'round-trip', label: 'Round-trip' },
 		{ value: 'one-way', label: 'One-way' },
 	]
 
-	const airportOptions = [
-		{ value: 'MNL', label: 'Manila - MNL' },
-		{ value: 'CEB', label: 'Cebu - CEB' },
-		{ value: 'DVO', label: 'Davao - DVO' },
-		{ value: 'HKG', label: 'Hong Kong - HKG' },
-		{ value: 'SIN', label: 'Singapore - SIN' },
-		{ value: 'KUL', label: 'Kuala Lumpur - KUL' },
-	]
-
-	const selectStyles = () => ({
-		input: (provided) => ({
-			...provided,
-			color: '#ffffff', 
-		}),
-		control: (base) => ({
-			...base,
-			border: 'none',
-			boxShadow: 'none',
-			background: 'none',
-		}),
-		placeholder: (base) => ({
-			...base,
-			color: '#FFFFFF80',
-		}),
-		singleValue: (base) => ({
-			...base,
-			color: 'white',
-			opacity: '.9',
-		}),
-		menu: (base) => ({
-			...base,
-			position: 'absolute',
-			top: '30px',
-			borderRadius: '10px',
-			background: 'rgba(190, 190, 190, 0.1)',
-			backdropFilter: 'blur(4px)',
-			border: 'none',
-			opacity: 0,
-			transform: 'translateY(-5px)',
-			animation: 'fadeSlideIn 0.2s ease forwards',
-		}),
-		option: (base, state) => ({
-			...base,
-			borderRadius: '10px',
-			backgroundColor: state.isSelected
-				? primary
-				: state.isFocused
-				? '#2a2a2a40'
-				: 'transparent',
-			color: state.isSelected ? '#000' : '#fff',
-			cursor: 'pointer',
-			':active': {
-				backgroundColor: state.isSelected ? primary : '#2a2a2a',
-			},
-		}),
-		menuList: (base) => ({
-			...base,
-			padding: '0',
-		}),
-		indicatorSeparator: () => ({
-			opacity: '1',
-		}),
-	})
-
 	// States
+	const [options, setOptions] = useState([])
 	const [date, setDate] = useState([])
 	const [origin, setOrigin] = useState(null)
 	const [destination, setDestination] = useState(null)
 	const [tripType, setTripType] = useState(tripTypeOptions[0])
 
+	const datepickerRef = useRef()
+
+	const selectStyles = reactSelectStyles
+
 	const handleSwapOrigin = () => {
 		setOrigin(destination)
 		setDestination(origin)
 	}
+
+	useEffect(() => {
+		fetch(AIRPORTS_URL)
+			.then(res => res.json())
+			.then(data => {
+				const filteredOptions = Object.entries(data)
+					.filter(([, airport]) => airport.iata && airport.name && airport.city && airport.country)
+					.map(([code, airport]) => ({
+						value: code,
+						label: `${airport.name} (${airport.iata}) - ${airport.city}, ${airport.country}`
+					}))
+					.sort((a, b) => a.label.localeCompare(b.label))
+				setOptions(filteredOptions)
+			})
+			.catch(err => console.error('Failed to fetch airports: ', err))
+	},[] )
 
 	return (
 		<section className="flights">
@@ -154,7 +109,7 @@ export default function Flights() {
 							<Select
 								value={origin}
 								onChange={setOrigin}
-								options={airportOptions}
+								options={options}
 								placeholder="Select Origin"
 								isSearchable={true}
 								styles={selectStyles()}
@@ -169,7 +124,7 @@ export default function Flights() {
 							<Select
 								value={destination}
 								onChange={setDestination}
-								options={airportOptions}
+								options={options}
 								placeholder="Select Destination"
 								styles={selectStyles()}
 							/>

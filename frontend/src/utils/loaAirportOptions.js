@@ -1,16 +1,20 @@
-export async function loadAirportOptions() {
-  const airportsRes = await fetch('/airports.json')
-  const airports = await airportsRes.json()
 
-  return Object.values(airports)
-    .filter(ap => ap.iata && ap.country)
-    .map(ap => ({
-      label: `${ap.city} – ${ap.name} (${ap.iata})`,
-      value: ap.iata,
-      country: ap.country,
-    }))
-    .sort((a, b) => a.label.localeCompare(b.label))
-}
+
+
+
+// export async function loadAirportOptions() {
+//   const airportsRes = await fetch('/airports.json')
+//   const airports = await airportsRes.json()
+
+//   return Object.values(airports)
+//     .filter(ap => ap.iata && ap.country)
+//     .map(ap => ({
+//       label: `${ap.city} – ${ap.name} (${ap.iata})`,
+//       value: ap.iata,
+//       country: ap.country,
+//     }))
+//     .sort((a, b) => a.label.localeCompare(b.label))
+// }
 
 /*
 import { AirportProvider } from './context/AirportContext'
