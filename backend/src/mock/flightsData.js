@@ -7,7 +7,7 @@ const flightsData = {
   },
   "data": [
     {
-      "flight_date": "2025-07-01",
+      "flight_date": "2025-07-04",
       "flight_status": "scheduled",
       "departure": {
         "airport": "Melbourne - Tullamarine Airport",

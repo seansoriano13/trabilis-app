@@ -15,7 +15,7 @@ export const AirportProvider = ({ children }) => {
         const res = await fetch(AIRPORTS_URL)
         const data = await res.json()
         const filtered = Object.entries(data)
-          .filter(([_, a]) => a.iata && a.name && a.city && a.country)
+          .filter(([, a]) => a.iata && a.name && a.city && a.country)
           .map(([code, a]) => ({
             value: code,
             label: `${a.name} (${a.iata}) - ${a.city}, ${a.country}`,
@@ -28,7 +28,6 @@ export const AirportProvider = ({ children }) => {
         setLoading(false)
       }
     }
-
     loadAirports()
   }, [])
 
