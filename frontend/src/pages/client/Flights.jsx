@@ -55,7 +55,6 @@ export default function Flights() {
 	}
 
 	// Default Values of AsyncSelect
-
 	const defaultOptions = options.filter((option) =>
 		defaultAirportOptionsData.includes(option.value)
 	)
@@ -67,7 +66,7 @@ export default function Flights() {
 		const yyyy = d.getFullYear()
 		const mm = String(d.getMonth() + 1).padStart(2, '0')
 		const dd = String(d.getDate()).padStart(2, '0')
-		return `${yyyy}-${mm}-${dd}`
+		return `${yyyy}-${dd}-${mm}`
 	}
 
 	//Handle submission

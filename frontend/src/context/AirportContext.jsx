@@ -16,8 +16,8 @@ export const AirportProvider = ({ children }) => {
         const data = await res.json()
         const filtered = Object.entries(data)
           .filter(([, a]) => a.iata && a.name && a.city && a.country)
-          .map(([code, a]) => ({
-            value: code,
+          .map(([, a]) => ({
+            value: a.iata,
             label: `${a.name} (${a.iata}) - ${a.city}, ${a.country}`,
           }))
           .sort((a, b) => a.label.localeCompare(b.label))

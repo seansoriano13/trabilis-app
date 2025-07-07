@@ -4,10 +4,6 @@ import flightsData from '../mock/flightsData.js'
 export const searchFlights = async (req, res) => {
 	const { tripType, date, origin, destination } = req.body
 
-      console.log('🔥 req.body:', req.body)
-  console.log('🔥 req.query:', req.query)
-
-
 	if (!tripType || !date || !origin || !destination) {
 		return res.status(400).json({
 			error: 'Missing required query parameters: from, to, date',
@@ -15,27 +11,20 @@ export const searchFlights = async (req, res) => {
 	}
 
 	try {
-		if (tripType === 'round-trip') {
-		} else if (tripType === 'one-way') {
-			try {
-				const filteredFlights = flightsData.filter((flight) => {
-					return (
-						flight.tripType === tripType &&
-						flight.flight_date === date &&
-						flight.origin === origin &&
-						flight.destination === destination
-					)
-				})
-				res.status(200).json({ filteredFlights })
-			} catch (error) {
-				res.status(500).send('Error Filtering flights')
-			}
+		if (tripType.value === 'round-trip') {
+		} else if (tripType.value === 'one-way') {
+			const filteredFlights = flightsData.data.filter((flight) => {
+				return (
+					flight.flight_date === date &&
+					flight.departure.iata === origin.value &&
+					flight.arrival.iata === destination.value
+				)
+			})
+			console.log('Filtered flights:', filteredFlights)
+			return res.status(200).json({ flights: filteredFlights })
 		} else {
 			console.log('Trip-type selection error')
 		}
-
-		console.log('Filtered flights: ', filteredFlights)
-		res.status(200).json({ flights: filteredFlights })
 	} catch (error) {
 		console.error('Error using mock flights: ', error.message)
 		res.status(500).json({ error: 'Failed to fetch flight data (mock)' })
