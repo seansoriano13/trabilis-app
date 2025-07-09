@@ -59,20 +59,30 @@ export default function Flights() {
 		defaultAirportOptionsData.includes(option.value)
 	)
 
-	// format date to YEAR-MM-DD
 	const formatToYMD = (date) => {
-		const d = Array.isArray(date) ? date[0] : date
-		if (!d || !(d instanceof Date)) return ''
-		const yyyy = d.getFullYear()
-		const mm = String(d.getMonth() + 1).padStart(2, '0')
-		const dd = String(d.getDate()).padStart(2, '0')
-		return `${yyyy}-${dd}-${mm}`
+		const [start, end] = Array.isArray(date) ? date : [date]
+		if (!start || !(start instanceof Date)) return ''
+
+		const toYMD = (d) => {
+			const yyyy = d.getFullYear()
+			const mm = String(d.getMonth() + 1).padStart(2, '0')
+			const dd = String(d.getDate()).padStart(2, '0')
+			return `${yyyy}-${mm}-${dd}` // fixed MM-DD order
+		}
+
+		return end ? [toYMD(start), toYMD(end)] : toYMD(start)
 	}
 
-	//Handle submission
 	const handleSubmit = (e) => {
 		e.preventDefault()
-		searchFlights(tripType, formatToYMD(date), origin, destination)
+		const formattedDate = formatToYMD(date)
+
+		searchFlights(
+			tripType,
+			formattedDate, // single or [start, end]
+			origin,
+			destination
+		)
 	}
 
 	const searchFlights = async (tripType, date, origin, destination) => {
@@ -108,7 +118,10 @@ export default function Flights() {
 						defaultValue={tripType}
 						isSearchable={false}
 						options={tripTypeOptions}
-						onChange={(tripType) => setTripType(tripType)}
+						onChange={(tripType) => {
+							setTripType(tripType)
+							setDate(null)
+						}}
 						styles={selectStyles()}
 					/>
 

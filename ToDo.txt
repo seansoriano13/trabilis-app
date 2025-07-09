@@ -1,10 +1,2 @@
 
 Pagahanahin search function, JSON response muna, then after success, diretso frontend
-
-BACKEND:
-    - Add logic in flightController where you check the flight_status
-    - check if tripType, date, origin, and destination are not null or empty before submitting
-    - make sure to use .value for tripType, origin, and destination
-    - for round-trip, date should be an array with 2 dates
-    - convert dates to 'YYYY-MM-DD' before sending 
-    - log and test req.body to confirm correct values are sent

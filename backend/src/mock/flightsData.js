@@ -7,7 +7,7 @@ const flightsData = {
   },
   "data": [
     {
-      "flight_date": "2025-08-07",
+      "flight_date": "2025-07-09",
       "flight_status": "scheduled",
       "departure": {
         "airport": "Melbourne - Tullamarine Airport",
@@ -53,7 +53,53 @@ const flightsData = {
       "live": null
     },
     {
-      "flight_date": "2025-08-07",
+      "flight_date": "2025-07-10",
+      "flight_status": "scheduled",
+      "arrival": {
+        "airport": "Melbourne - Tullamarine Airport",
+        "timezone": "Australia/Melbourne",
+        "iata": "MEL",
+        "icao": "YMML",
+        "terminal": null,
+        "gate": null,
+        "delay": null,
+        "scheduled": "2025-07-01T01:00:00+00:00",
+        "estimated": "2025-07-01T01:00:00+00:00",
+        "actual": null,
+        "estimated_runway": null,
+        "actual_runway": null
+      },
+      "departure": {
+        "airport": "Soekarno-Hatta International",
+        "timezone": "Asia/Jakarta",
+        "iata": "CGK",
+        "icao": "WIII",
+        "terminal": null,
+        "gate": null,
+        "baggage": null,
+        "scheduled": "2025-07-01T05:02:00+00:00",
+        "delay": null,
+        "estimated": null,
+        "actual": null,
+        "estimated_runway": null,
+        "actual_runway": null
+      },
+      "airline": {
+        "name": "Redstar Aviation",
+        "iata": null,
+        "icao": "RHH"
+      },
+      "flight": {
+        "number": "179",
+        "iata": null,
+        "icao": "RHH179",
+        "codeshared": null
+      },
+      "aircraft": null,
+      "live": null
+    },
+    {
+      "flight_date": "2025-09-07",
       "flight_status": "scheduled",
       "departure": {
         "airport": "Melbourne - Tullamarine Airport",
