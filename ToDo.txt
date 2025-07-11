@@ -1,2 +1,0 @@
-
-Pagahanahin search function, JSON response muna, then after success, diretso frontend

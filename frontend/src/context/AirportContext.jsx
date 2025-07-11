@@ -3,6 +3,7 @@ import { AIRPORTS_URL } from './airportConstants'
 
 const AirportContext = createContext()
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAirports = () => useContext(AirportContext)
 
 export const AirportProvider = ({ children }) => {
