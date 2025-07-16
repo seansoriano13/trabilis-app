@@ -13,7 +13,7 @@
 
     --fs-h1: 2.5rem;
     --fs-h2: 2rem;
-    --fs-p-small: .875rem;
+    --fs-p-small: 0.875rem;
     --fs-amaranth-small: 1.1rem;
 
     --fw-h1: 900;
@@ -24,6 +24,9 @@
     --ff-dm-sans: 'DM Sans', sans-serif;
 
     --opacity-80: opacity(80%);
+    --opacity-60: opacity(60%);
 
     --padding-section: 3rem 0 4rem 0;
+
+    --default-padding-top: 75px;
 }

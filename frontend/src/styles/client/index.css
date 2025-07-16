@@ -2,9 +2,17 @@
 @import url(variables.css);
 
 html {
-  font-family: var(--ff-figtree);
+    font-family: var(--ff-figtree);
+}
+
+nav {
+    position: fixed;
 }
 
 main {
-  margin-top: 75px;
+}
+
+footer {
+    position: absolute;
+    bottom: 0;
 }

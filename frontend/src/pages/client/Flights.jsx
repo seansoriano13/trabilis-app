@@ -80,7 +80,7 @@ export default function Flights() {
 
         const flights = await searchFlights(
             tripType,
-            formattedDate, // single or [start, end]
+            formattedDate, 
             origin,
             destination
         )
