@@ -8,6 +8,7 @@
     padding: 0.5rem 1rem 0.5rem 1rem;
     transition: 0.1s;
     cursor: pointer;
+    justify-content: center;
 }
 
 .button:hover {

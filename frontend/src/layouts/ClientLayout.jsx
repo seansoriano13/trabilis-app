@@ -5,9 +5,7 @@ import '../styles/client/index.css'
 export default function ClientLayout() {
     return (
         <>
-            <nav>
-                <ClientNavbar />
-            </nav>
+            <ClientNavbar />
             <main>
                 <Outlet />
             </main>

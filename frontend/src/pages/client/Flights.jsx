@@ -13,20 +13,25 @@ import AsyncSelect from 'react-select/async'
 import { defaultAirportOptionsData } from '../../utils/defaultAirportOptions'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
+import { IoPeopleSharp } from 'react-icons/io5'
+import { FaChild, FaPeopleArrows } from 'react-icons/fa6'
+import { FaBabyCarriage } from 'react-icons/fa'
 
 export default function Flights() {
     // Constants
 
     const tripTypeOptions = [
-        { value: 'round-trip', label: 'Round-trip' },
         { value: 'one-way', label: 'One-way' },
+        { value: 'round-trip', label: 'Round-trip' },
     ]
 
     // States
     const [tripType, setTripType] = useState(tripTypeOptions[0])
-    const [date, setDate] = useState([])
+    const [date, setDate] = useState(new Date())
     const [origin, setOrigin] = useState(null)
     const [destination, setDestination] = useState(null)
+    const [adultCount, setAdultCount] = useState(1)
+    const [childCount, setChildCount] = useState(0)
 
     const datepickerRef = useRef()
     const navigate = useNavigate()
@@ -76,25 +81,37 @@ export default function Flights() {
 
     const handleSubmit = async (e) => {
         e.preventDefault()
+
         const formattedDate = formatToYMD(date)
 
         const flights = await searchFlights(
             tripType,
-            formattedDate, 
+            formattedDate,
             origin,
-            destination
+            destination,
+            adultCount,
+            childCount
         )
 
         navigate('search-result', { state: flights })
     }
 
-    const searchFlights = async (tripType, date, origin, destination) => {
+    const searchFlights = async (
+        tripType,
+        date,
+        origin,
+        destination,
+        adultCount,
+        childCount
+    ) => {
         try {
             const res = await axios.post('/api/v1/flights/search', {
                 tripType,
                 date,
                 origin,
                 destination,
+                adultCount,
+                childCount,
             })
             console.log(res)
             return res.data
@@ -137,6 +154,7 @@ export default function Flights() {
 
                     <Flatpickr
                         required
+                        defaultValue={date}
                         name='flightDate'
                         ref={datepickerRef}
                         placeholder='Dates'
@@ -164,7 +182,7 @@ export default function Flights() {
                         }}
                     />
                 </div>
-                <div className=''>
+                <div className='flights__form-row'>
                     <div>
                         <div className='flights__route'>
                             <AsyncSelect
@@ -207,10 +225,50 @@ export default function Flights() {
                         </div>
                     </div>
                 </div>
+                <div className='flights__form-row flights__form-row--flex'>
+                    <div className='flights__input-group'>
+                        <label
+                            htmlFor='adultCount'
+                            className='flights__label'
+                        >
+                            <IoPeopleSharp />
+                        </label>
+                        <input
+                            id='adultCount'
+                            value={adultCount}
+                            min={1}
+                            className='flights__input'
+                            type='number'
+                            name='adultCount'
+                            onChange={(event) =>
+                                setAdultCount(Number(event.target.value))
+                            }
+                        />
+                    </div>
 
+                    <div className='flights__input-group'>
+                        <label
+                            htmlFor='childCount'
+                            className='flights__label'
+                        >
+                            <FaBabyCarriage />
+                        </label>
+                        <input
+                            id='childCount'
+                            value={childCount}
+                            min={0}
+                            className='flights__input'
+                            type='number'
+                            name='childCount'
+                            onChange={(event) =>
+                                setChildCount(Number(event.target.value))
+                            }
+                        />
+                    </div>
+                </div>
                 <PrimaryButton
                     buttonText='Search Flights'
-                    isBold={false}
+                    isBold={true}
                     style={{ padding: '1rem 2rem' }}
                 />
             </form>

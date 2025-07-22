@@ -171,6 +171,7 @@
 }
 
 .flight-result__favorite {
+    cursor: pointer;
     background-color: transparent;
     border: 0;
     font-size: 1.3rem;
@@ -244,5 +245,4 @@
 }
 
 .flight-result__select-btn {
- 
 }

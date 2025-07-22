@@ -1,40 +1,9 @@
-After clicking Book now (From flights-result)
+Amadeus Node Reference: https://github.com/amadeus4dev/amadeus-node
 
-set loading state after clicking search
+After clicking Book now (From flights-result) set loading state after clicking search
 
-install axios and dotenv in backend
+use Amadeus to search for flight (Reference: https://developers.amadeus.com/blog/flight-booking-app-angular-1)
 
-create .env file with AMADEUS_CLIENT_ID and AMADEUS_CLIENT_SECRET
-
-create getAccessToken() function to request token from Amadeus
-
-store token in memory and reuse until it expires (~30 minutes)
-
-create Express route /flights that:
-
-    calls getAccessToken()
-
-    sends GET request to Amadeus flight-offers API
-
-    returns flight data to frontend
-
-enable CORS in Express using cors()
-
-in React, install axios
-
-use axios.get('http://localhost:5000/flights') to call backend
-
-display flights from res.data.data
-
-handle loading and error states
-
-never expose client ID or secret to frontend
-
-use params like originLocationCode, destinationLocationCode, departureDate, adults, maxPrice, currencyCode, travelClass, nonStop in API call
-
-keep all Amadeus requests on backend only
-
-refresh token manually if expired or on 401 response
 
 
 
