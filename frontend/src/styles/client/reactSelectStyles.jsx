@@ -59,3 +59,40 @@ export const reactSelectStyles = () => {
         }),
     }
 }
+
+export const flightNavInputStyles = {
+    control: (base) => ({
+        ...base,
+        padding: '0 2rem',
+        backgroundColor: 'transparent',
+        border: 'none',
+        boxShadow: 'none',
+        cursor: 'pointer',
+        color: 'var(--color-yellow)',
+        textAlign: 'center',
+    }),
+    valueContainer: (base) => ({
+        ...base,
+        justifyContent: 'center',
+        padding: 0,
+    }),
+    singleValue: (base) => ({
+        ...base,
+        color: 'var(--color-yellow)',
+        textAlign: 'center',
+        whiteSpace: 'normal',
+    }),
+    placeholder: (base) => ({
+        ...base,
+        color: 'var(--color-yellow)',
+        textAlign: 'center',
+    }),
+    input: (base) => ({
+        ...base,
+        color: 'var(--color-yellow)',
+        textAlign: 'center',
+    }),
+    indicatorsContainer: () => ({
+        display: 'none',
+    }),
+}

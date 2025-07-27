@@ -11,10 +11,12 @@
 
 .flight-nav__tabs {
     display: flex;
+    gap: 1rem;
     justify-content: space-between;
 }
 
 .flight-nav__tab {
+    width: 100%;
     font-size: 0.875rem;
 }
 
@@ -27,21 +29,21 @@
 .flight-nav__location {
     position: relative;
     margin: 0 auto;
-    width: 100%;
     display: flex;
-    justify-content: center;
+    align-items: center;
+    width: 100%;
     border: 1px solid var(--color-yellow);
     border-radius: 0.5rem;
 }
 
 .flight-nav__back-icon {
     position: absolute;
-    top: 12px;
     left: 10px;
     color: var(--color-yellow);
 }
 
 .flight-nav__input {
+    padding: 0.5rem 2rem;
     color: var(--color-yellow);
     border: none;
     text-align: center;
@@ -75,12 +77,18 @@
     gap: 0.5rem;
 }
 
+.flight-results__panel {
+    display: grid;
+    gap: 0.5rem;
+}
+
 .flight-results__header {
     display: flex;
     justify-content: space-between;
 }
 
 .flight-results__title {
+    /* empty block – add styles or remove */
 }
 
 .flight-results__title p {
@@ -139,6 +147,7 @@
 }
 
 .flight-results__price {
+    /* empty block – optional */
 }
 
 .flight-results__duration {
@@ -147,102 +156,7 @@
 }
 
 .flight-results__list {
-}
-
-.flight-result {
+    margin-top: 1rem;
     display: grid;
-    gap: 1rem;
-    border-bottom: 1px solid #22222230;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
-    padding: 1rem;
-    background-color: white;
-}
-
-.flight-result__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.flight-result__airport {
-    font-size: 0.75rem;
-    filter: var(--opacity-60);
-}
-
-.flight-result__favorite {
-    cursor: pointer;
-    background-color: transparent;
-    border: 0;
-    font-size: 1.3rem;
-}
-
-.flight-result__timeline {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-}
-
-.flight-result__leg {
-    display: grid;
-}
-
-.flight-result__time {
-    font-size: 0.875rem;
-}
-
-.flight-result__iata {
-    text-align: center;
-    font-size: 0.875rem;
-    filter: var(--opacity-60);
-}
-
-.flight-result__duration {
-    width: 100%;
-    max-width: 130px;
-}
-
-.flight-result__duration-text {
-    font-size: 0.75rem;
-    filter: var(--opacity-80);
-    text-align: center;
-}
-
-.flight-result__airline {
-    display: flex;
-    gap: 10px;
-}
-
-.flight-result__line {
-    height: 1px;
-    width: 100%;
-    background-color: #ccc;
-    border: none;
-}
-
-.flight-result__icon {
-}
-
-.flight-result__footer {
-    display: flex;
-    gap: 8px;
-    border-top: 1px solid #22222230;
-    justify-content: end;
-    padding-top: 1rem;
-}
-
-.flight-result__deal {
-}
-
-.flight-result__deal-label {
-    font-size: 0.65rem;
-    filter: var(--opacity-60);
-}
-
-.flight-result__deal-price {
-    font-size: var(--fs-figtree-h3);
-}
-
-.flight-result__select-btn {
+    gap: 0.7rem;
 }

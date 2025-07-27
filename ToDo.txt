@@ -1,10 +1,14 @@
 Amadeus Node Reference: https://github.com/amadeus4dev/amadeus-node
 
-After clicking Book now (From flights-result) set loading state after clicking search
+---------HIGH PRIO----------------
+-implement modal function when clicking origin and destination buttons
+ as well as adult and child count, finally date button (datepickr?)
+-add function to filter, sort and notification button
+-favorite system
 
-use Amadeus to search for flight (Reference: https://developers.amadeus.com/blog/flight-booking-app-angular-1)
 
+---------MEDIUM PRIO----------------
+-Make comments for whole code base to make it more readable
 
-
-
-
+---------LOW PRIO----------------
+-in flights/search-result, yung date naka YYYY-MM-DD, make it more readable like Thu, 31 Jul

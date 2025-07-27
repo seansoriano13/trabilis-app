@@ -1,21 +1,31 @@
-import 'flatpickr/dist/themes/airbnb.css'
-import flightsHeroMobile from '../../assets/flights-hero-mobile.jpeg'
-import { BsFillAirplaneFill } from 'react-icons/bs'
-import { AiOutlineSwap } from 'react-icons/ai'
-import Select from 'react-select'
-import './Flights.css'
+// 🧱 Core & Framework
 import { useState, useRef } from 'react'
-import Flatpickr from 'react-flatpickr'
-import PrimaryButton from '../../components/client/PrimaryButton'
-import { reactSelectStyles } from '../../styles/client/reactSelectStyles'
-import { useAirports } from '../../context/AirportContext'
-import AsyncSelect from 'react-select/async'
-import { defaultAirportOptionsData } from '../../utils/defaultAirportOptions'
-import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
-import { IoPeopleSharp } from 'react-icons/io5'
-import { FaChild, FaPeopleArrows } from 'react-icons/fa6'
+
+// 📦 External Libraries
+import axios from 'axios'
+import Flatpickr from 'react-flatpickr'
+import Select from 'react-select'
+import AsyncSelect from 'react-select/async'
+import 'flatpickr/dist/themes/airbnb.css'
+
+// 🎨 Styles & Assets
+import './Flights.css'
+import flightsHeroMobile from '../../assets/flights-hero-mobile.jpeg'
+import { reactSelectStyles } from '../../styles/client/reactSelectStyles'
+
+// 🧠 Context & Utils
+import { useAirports } from '../../context/AirportContext'
+import { defaultAirportOptionsData } from '../../utils/defaultAirportOptions'
+
+// 🧩 Components
+import PrimaryButton from '../../components/client/PrimaryButton'
+
+// 🎯 Icons
+import { AiOutlineSwap } from 'react-icons/ai'
+import { BsFillAirplaneFill } from 'react-icons/bs'
 import { FaBabyCarriage } from 'react-icons/fa'
+import { IoPeopleSharp } from 'react-icons/io5'
 
 export default function Flights() {
     // Constants
@@ -79,21 +89,37 @@ export default function Flights() {
         return end ? [toYMD(start), toYMD(end)] : toYMD(start)
     }
 
+    // Search Flight
     const handleSubmit = async (e) => {
         e.preventDefault()
 
         const formattedDate = formatToYMD(date)
 
-        const flights = await searchFlights(
-            tripType,
-            formattedDate,
-            origin,
-            destination,
-            adultCount,
-            childCount
-        )
+        try {
+            const flights = await searchFlights(
+                tripType,
+                formattedDate,
+                origin,
+                destination,
+                adultCount,
+                childCount
+            )
 
-        navigate('search-result', { state: flights })
+            if (flights) {
+                navigate('search-result', {
+                    state: {
+                        flights,
+                        origin,
+                        destination,
+                        formattedDate,
+                        adultCount,
+                        childCount,
+                    },
+                })
+            }
+        } catch (err) {
+            console.error('Flight search failed:', err)
+        }
     }
 
     const searchFlights = async (
@@ -154,7 +180,6 @@ export default function Flights() {
 
                     <Flatpickr
                         required
-                        defaultValue={date}
                         name='flightDate'
                         ref={datepickerRef}
                         placeholder='Dates'
