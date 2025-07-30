@@ -1,3 +1,16 @@
+.flight-results__empty {
+    text-align: center;
+    padding: 1rem;
+    height: 50vh;
+}
+
+.flight-result__spinner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 40vh;
+}
+
 .flight-results {
     padding-top: var(--default-padding-top);
     background-color: rgb(24 24 26);
@@ -16,6 +29,7 @@
 }
 
 .flight-nav__tab {
+    padding: 0.5rem 0.5rem 0.5rem 0.5rem;
     width: 100%;
     font-size: 0.875rem;
 }
@@ -34,9 +48,11 @@
     width: 100%;
     border: 1px solid var(--color-yellow);
     border-radius: 0.5rem;
+    justify-content: center;
 }
 
 .flight-nav__back-icon {
+    cursor: pointer;
     position: absolute;
     left: 10px;
     color: var(--color-yellow);
@@ -123,7 +139,7 @@
 
 .flight-results__card {
     width: 100%;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+    box-shadow: var(--box-shadow);
     padding: 8px;
     cursor: pointer;
     background-color: #fff;
@@ -159,4 +175,44 @@
     margin-top: 1rem;
     display: grid;
     gap: 0.7rem;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin: 20px 0;
+    padding: 0;
+    width: 80vw;
+    justify-self: center;
+}
+
+.pagination li {
+    height: 2.5rem;
+    width: 2.5rem;
+    list-style: none;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    background-color: white;
+    color: black;
+    box-shadow: var(--box-shadow);
+}
+
+.pagination li.active {
+    background-color: #f7d100;
+    color: #000;
+}
+
+.hotel-main-header,
+.car-hire-main-header {
+    text-align: center;
+    height: 100vh;
+    padding-top: 10rem;
+    display: grid;
+    justify-content: center;
 }

@@ -61,15 +61,35 @@ export const reactSelectStyles = () => {
 }
 
 export const flightNavInputStyles = {
+    option: (base, state) => ({
+        ...base,
+        backgroundColor: state.isSelected
+            ? 'var(--color-yellow)'
+            : 'transparent',
+        color: state.isSelected ? 'black' : 'inherit',
+        textAlign: 'center',
+    }),
     control: (base) => ({
         ...base,
         padding: '0 2rem',
-        backgroundColor: 'transparent',
+        backgroundColor: 'var(--color-yellow)',
         border: 'none',
-        boxShadow: 'none',
         cursor: 'pointer',
-        color: 'var(--color-yellow)',
+        color: 'black',
         textAlign: 'center',
+        boxShadow: 'var(--box-shadow)',
+    }),
+    menu: (base) => ({
+        ...base,
+        position: 'absolute',
+        top: '40px',
+        borderRadius: '10px',
+        background: 'rgba(190, 190, 190, 0.1)',
+        backdropFilter: 'blur(4px)',
+        border: 'none',
+        opacity: 0,
+        transform: 'translateY(-5px)',
+        animation: 'fadeSlideIn 0.2s ease forwards',
     }),
     valueContainer: (base) => ({
         ...base,
@@ -78,18 +98,18 @@ export const flightNavInputStyles = {
     }),
     singleValue: (base) => ({
         ...base,
-        color: 'var(--color-yellow)',
+        color: 'black',
         textAlign: 'center',
         whiteSpace: 'normal',
     }),
     placeholder: (base) => ({
         ...base,
-        color: 'var(--color-yellow)',
+        color: 'black',
         textAlign: 'center',
     }),
     input: (base) => ({
         ...base,
-        color: 'var(--color-yellow)',
+        color: 'black',
         textAlign: 'center',
     }),
     indicatorsContainer: () => ({

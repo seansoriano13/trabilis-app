@@ -4,20 +4,32 @@ function PrimaryButton({
     buttonText,
     isBold = false,
     className = '',
-    icon = null, 
-    iconPosition = 'left', // 'left' or 'right'
+    icon = null,
+    iconPosition = 'left',
+    loading = false,
     ...rest
 }) {
     return (
         <button
             className={`${styles.button} ${className}`}
+            disabled={loading}
             {...rest}
         >
             {icon && iconPosition === 'left' && (
                 <span className={styles.icon}>{icon}</span>
             )}
 
-            {isBold ? <b>{buttonText}</b> : buttonText}
+            {loading ? (
+                isBold ? (
+                    <b>Searching...</b>
+                ) : (
+                    'Searching...'
+                )
+            ) : isBold ? (
+                <b>{buttonText}</b>
+            ) : (
+                buttonText
+            )}
 
             {icon && iconPosition === 'right' && (
                 <span className={styles.icon}>{icon}</span>

@@ -1,14 +1,27 @@
 Amadeus Node Reference: https://github.com/amadeus4dev/amadeus-node
 
----------HIGH PRIO----------------
--implement modal function when clicking origin and destination buttons
- as well as adult and child count, finally date button (datepickr?)
--add function to filter, sort and notification button
--favorite system
+AFK
+-get the request api logic from flights and use for flightResult(filter)
 
+
+---------HIGH PRIO---------------
+-after styling, add backend process for filter 
+
+
+-footer
 
 ---------MEDIUM PRIO----------------
--Make comments for whole code base to make it more readable
+-conditional rendering for sortBy
+-import footer
+-Make comments for whole code base to make it more readable (future)
 
 ---------LOW PRIO----------------
--in flights/search-result, yung date naka YYYY-MM-DD, make it more readable like Thu, 31 Jul
+
+FE
+-favorite system for flight cards (pwedeng wag na to)
+-in flights/search-result, yung date naka YYYY-MM-DD, make it more readable like Thu, 31 Jul`
+- add stops visualization sa flight-result__line 
+
+Amadeus Concerns 
+- LALA KASSAMA PALA INFANTS, BUKOD PA YUN SA CHILDREN
+- check the durations if its accurate, like what if may stop yung flight

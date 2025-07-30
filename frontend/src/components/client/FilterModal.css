@@ -1,0 +1,208 @@
+.filter-modal {
+    position: absolute;
+    top: 0;
+    width: 100vw;
+    height: 100%;
+    padding: 1.5rem;
+    background-color: #eff3f8;
+    z-index: 9999;
+}
+
+.filter-modal__back-btn {
+    position: absolute;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+}
+.filter-modal__back-icon {
+    font-size: 1.5rem;
+}
+
+.flight-nav__section {
+    display: grid;
+    gap: 2rem;
+}
+
+.flight-nav__heading {
+    text-align: center;
+}
+
+.flight-nav__cabin {
+    display: grid;
+    gap: 10px;
+}
+
+.flight-nav__group {
+    display: flex;
+    justify-content: space-between;
+}
+
+.flight-nav__label {
+}
+
+.flight-nav__subtext {
+    filter: var(--opacity-60);
+}
+
+.flight-nav__controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.flight-nav__button {
+    height: 2rem;
+    width: 2rem;
+    font-size: 1.5rem;
+    border: 0;
+    border-radius: 0.5rem;
+    background-color: var(--color-yellow);
+    box-shadow: var(--box-shadow);
+}
+
+.flight-nav__count {
+}
+
+.flight-nav__note {
+    display: grid;
+    gap: 10px;
+    font-size: var(--fs-p-small);
+    filter: var(--opacity-60);
+}
+
+.flight-nav__apply {
+    padding: 0.725rem;
+    position: absolute;
+    bottom: 10px;
+    width: 90vw;
+}
+
+.flight-nav__route {
+}
+
+.flight-nav__empty {
+}
+
+.filter-modal-flatpickr {
+    display: grid;
+    justify-content: center;
+}
+
+.sort-modal__title {
+    text-align: center;
+}
+
+.sort-modal__options {
+    margin-top: 1rem;
+}
+
+.sort-modal__option {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 55px;
+    width: 100%;
+    padding-left: 3.5rem;
+    cursor: pointer;
+    border-radius: 10px;
+    overflow: hidden;
+    color: #fff;
+    background-color: #eff3f8;
+    transition: background-color 0.2s ease;
+}
+
+.sort-modal__option input[type='radio'] {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    appearance: none;
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    background-color: #eff3f8;
+    border: 2px solid #555;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border 0.2s ease, background-color 0.2s ease;
+}
+
+.sort-modal__option input[type='radio']::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #f7d100;
+    transform: scale(0);
+    transition: transform 0.15s ease;
+}
+
+.sort-modal__option input[type='radio']:checked {
+    border-color: #f7d100;
+    background-color: #202020;
+}
+
+.sort-modal__option input[type='radio']:checked::before {
+    transform: scale(1);
+}
+
+/* Highlight selected option background */
+.sort-modal__option.checked::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background-color: var(--color-yellow);
+    border: 2px solid #f7d100;
+    z-index: 0;
+    transition: all 0.3s ease;
+    border-radius: 10px;
+}
+
+/* Hover state */
+.sort-modal__option:hover::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background-color: #1a1a1a;
+    z-index: -1;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.sort-modal__option-title {
+    z-index: 1;
+    font-weight: 600;
+    color: black;
+}
+
+.sort-modal__option-sub {
+    position: absolute;
+    bottom: 0;
+    font-size: 0.85rem;
+    color: #202020;
+    filter: var(--opacity-60);
+    font-size: 0.68rem;
+}
+
+.sort-modal__done-btn {
+    position: absolute;
+    bottom: 10px;
+    width: 90vw;
+    padding: 0.725rem;
+}
+
+.custom-filter-modal {
+    height: 100vh;
+    padding-top: 10rem;
+    display: grid;
+    justify-content: center;
+}

@@ -1,21 +1,17 @@
 import { FaArrowRight } from 'react-icons/fa'
 import { MdFavorite, MdFavoriteBorder } from 'react-icons/md'
-import { IoAirplane } from 'react-icons/io5'
 import PrimaryButton from '../../components/client/PrimaryButton'
+import FlightLeg from '../client/FlightLeg'
 
 import './FlightResultCard.css'
 
 export default function FlightResultCard({
     index,
     flight,
-    availableSeats,
     handleFavoriteClick,
     flightIsFavorite,
-    departureTime,
-    departureIata,
-    durationStr,
-    arrivalTime,
-    arrivalIata,
+    outboundData,
+    inboundData,
     price,
 }) {
     return (
@@ -24,9 +20,7 @@ export default function FlightResultCard({
             key={index}
         >
             <header className='flight-result__header'>
-                <p className='flight-result__airport'>
-                    Available Seats: {availableSeats}
-                </p>
+                <p className='flight-result__airport'>Airline Name</p>
                 <button
                     className='flight-result__favorite'
                     onClick={() => {
@@ -41,31 +35,9 @@ export default function FlightResultCard({
                 </button>
             </header>
 
-            <div className='flight-result__timeline'>
-                <div className='flight-result__leg'>
-                    <time className='flight-result__time'>
-                        <b>{departureTime}</b>
-                    </time>
-                    <span className='flight-result__iata'>{departureIata}</span>
-                </div>
+            <FlightLeg {...outboundData} />
+            {inboundData && <FlightLeg {...inboundData} />}
 
-                <div className='flight-result__duration'>
-                    <p className='flight-result__duration-text'>
-                        {durationStr}
-                    </p>
-                    <div className='flight-result__airline'>
-                        <hr className='flight-result__line' />
-                        <IoAirplane className='flight-result__icon' />
-                    </div>
-                </div>
-
-                <div className='flight-result__leg'>
-                    <time className='flight-result__time'>
-                        <b>{arrivalTime}</b>
-                    </time>
-                    <span className='flight-result__iata'>{arrivalIata}</span>
-                </div>
-            </div>
             <div className='flight-result__footer'>
                 <div className='flight-result__deal'>
                     <p className='flight-result__deal-price'>

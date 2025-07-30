@@ -1,6 +1,7 @@
 // 🧱 Core & Framework
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 
 // 📦 External Libraries
 import axios from 'axios'
@@ -26,74 +27,103 @@ import { AiOutlineSwap } from 'react-icons/ai'
 import { BsFillAirplaneFill } from 'react-icons/bs'
 import { FaBabyCarriage } from 'react-icons/fa'
 import { IoPeopleSharp } from 'react-icons/io5'
+import { loadOptions } from '../../utils/airportOptionsLoader'
+import { CABIN_CLASSES, TRIP_TYPES } from '../../utils/options'
+import { useEffect } from 'react'
+import { formatToYMD } from '../../utils/flightUtils'
 
 export default function Flights() {
-    // Constants
-
-    const tripTypeOptions = [
-        { value: 'one-way', label: 'One-way' },
-        { value: 'round-trip', label: 'Round-trip' },
-    ]
-
-    // States
-    const [tripType, setTripType] = useState(tripTypeOptions[0])
-    const [date, setDate] = useState(new Date())
-    const [origin, setOrigin] = useState(null)
-    const [destination, setDestination] = useState(null)
-    const [adultCount, setAdultCount] = useState(1)
-    const [childCount, setChildCount] = useState(0)
-
+    // Hooks
     const datepickerRef = useRef()
+    const { airports: options, loading } = useAirports()
     const navigate = useNavigate()
+    const { state } = useLocation()
+
+    // Constants
     const selectStyles = reactSelectStyles
+
+    const dateFromFlightResult = state?.formattedDate
+    
+    // States
+    const [isFlightSearchErr, setIsFlightSearchErr] = useState(false)
+    const [isLoading, setIsLoading] = useState(false)
+    const [cabinClass] = useState(CABIN_CLASSES[0])
+    const [tripType, setTripType] = useState(TRIP_TYPES[0])
+    const [date, setDate] = useState(() => {
+        if (Array.isArray(dateFromFlightResult)) {
+            return dateFromFlightResult.map((d) => new Date(d))
+        }
+        return dateFromFlightResult
+            ? new Date(dateFromFlightResult)
+            : new Date()
+    })
+    const [origin, setOrigin] = useState(state?.origin)
+    const [destination, setDestination] = useState(state?.destination)
+    const [travelerCount, setTravelerCount] = useState(
+        state?.travelerCount
+            ? state?.travelerCount
+            : {
+                  adults: 1,
+                  children: 0,
+              }
+    )
+
+    useEffect(() => {
+        if (isFlightSearchErr) {
+            const timer = setTimeout(() => {
+                setIsFlightSearchErr(false)
+                setTripType(TRIP_TYPES[0])
+                setDate(new Date())
+                setOrigin(null)
+                setDestination(null)
+                setTravelerCount({ adults: 1, children: 0 })
+                setIsLoading(false)
+            }, 3000)
+            return () => clearTimeout(timer)
+        }
+    }, [isFlightSearchErr])
+
+    const updateTravelerCount = (type, value) => {
+        setTravelerCount((prev) => {
+            const newCount = { ...prev, [type]: Math.max(0, value) }
+            const totalSeated = newCount.adults + newCount.children
+            if (totalSeated > 9) {
+                return prev
+            }
+            if (type === 'children' && newCount.children > newCount.adults) {
+                newCount.children = newCount.adults
+            }
+            return newCount
+        })
+    }
 
     const handleSwapOrigin = () => {
         setOrigin(destination)
         setDestination(origin)
     }
 
-    const { airports: options, loading } = useAirports()
-
-    const filterOptions = (inputValue) =>
-        options.filter((a) =>
-            a.label.toLowerCase().includes(inputValue.toLowerCase())
-        )
-
-    const loadOptions = (inputValue, callback) => {
-        if (inputValue.length < 3) {
-            callback([])
-            return
-        }
-
-        setTimeout(() => {
-            callback(filterOptions(inputValue))
-        }, 1000)
-    }
-
-    // Default Values of AsyncSelect
-    const defaultOptions = options.filter((option) =>
-        defaultAirportOptionsData.includes(option.value)
+    const { asyncLoader, defaultOptions } = loadOptions(
+        options,
+        defaultAirportOptionsData
     )
 
-    const formatToYMD = (date) => {
-        const [start, end] = Array.isArray(date) ? date : [date]
-        if (!start || !(start instanceof Date)) return ''
-
-        const toYMD = (d) => {
-            const yyyy = d.getFullYear()
-            const mm = String(d.getMonth() + 1).padStart(2, '0')
-            const dd = String(d.getDate()).padStart(2, '0')
-            return `${yyyy}-${mm}-${dd}` // fixed MM-DD order
+    const getFormattedDate = () => {
+        if (tripType.value === 'round-trip' && Array.isArray(date)) {
+            return date.map(formatToYMD)
         }
-
-        return end ? [toYMD(start), toYMD(end)] : toYMD(start)
+        return formatToYMD(date)
     }
-
     // Search Flight
     const handleSubmit = async (e) => {
         e.preventDefault()
+        setIsLoading(true)
 
-        const formattedDate = formatToYMD(date)
+        const formattedDate = getFormattedDate()
+
+        if (!tripType?.value || !formattedDate) {
+            setIsFlightSearchErr(true)
+            return
+        }
 
         try {
             const flights = await searchFlights(
@@ -101,9 +131,10 @@ export default function Flights() {
                 formattedDate,
                 origin,
                 destination,
-                adultCount,
-                childCount
+                travelerCount,
+                cabinClass
             )
+            setIsLoading(false)
 
             if (flights) {
                 navigate('search-result', {
@@ -111,24 +142,25 @@ export default function Flights() {
                         flights,
                         origin,
                         destination,
-                        formattedDate,
-                        adultCount,
-                        childCount,
+                        date,
+                        travelerCount,
+                        tripType,
+                        cabinClass,
                     },
                 })
             }
         } catch (err) {
             console.error('Flight search failed:', err)
+            setIsFlightSearchErr(true)
         }
     }
-
     const searchFlights = async (
         tripType,
         date,
         origin,
         destination,
-        adultCount,
-        childCount
+        travelerCount,
+        cabinClass
     ) => {
         try {
             const res = await axios.post('/api/v1/flights/search', {
@@ -136,8 +168,8 @@ export default function Flights() {
                 date,
                 origin,
                 destination,
-                adultCount,
-                childCount,
+                travelerCount,
+                cabinClass,
             })
             console.log(res)
             return res.data
@@ -170,10 +202,10 @@ export default function Flights() {
                         name='tripType'
                         defaultValue={tripType}
                         isSearchable={false}
-                        options={tripTypeOptions}
+                        options={TRIP_TYPES}
                         onChange={(tripType) => {
                             setTripType(tripType)
-                            setDate(null)
+                            setDate('')
                         }}
                         styles={selectStyles()}
                     />
@@ -215,7 +247,7 @@ export default function Flights() {
                                 name='origin'
                                 cacheOptions
                                 defaultOptions={defaultOptions}
-                                loadOptions={loadOptions}
+                                loadOptions={asyncLoader}
                                 onChange={setOrigin}
                                 value={origin}
                                 placeholder={
@@ -236,7 +268,7 @@ export default function Flights() {
                                 name='destination'
                                 cacheOptions
                                 defaultOptions={defaultOptions} // or []
-                                loadOptions={loadOptions}
+                                loadOptions={asyncLoader}
                                 onChange={setDestination}
                                 value={destination}
                                 placeholder={
@@ -260,13 +292,17 @@ export default function Flights() {
                         </label>
                         <input
                             id='adultCount'
-                            value={adultCount}
+                            value={travelerCount.adults}
                             min={1}
+                            max={9}
                             className='flights__input'
                             type='number'
                             name='adultCount'
                             onChange={(event) =>
-                                setAdultCount(Number(event.target.value))
+                                updateTravelerCount(
+                                    'adults',
+                                    Number(event.target.value)
+                                )
                             }
                         />
                     </div>
@@ -280,22 +316,33 @@ export default function Flights() {
                         </label>
                         <input
                             id='childCount'
-                            value={childCount}
+                            value={travelerCount.children}
                             min={0}
+                            max={9}
                             className='flights__input'
                             type='number'
                             name='childCount'
                             onChange={(event) =>
-                                setChildCount(Number(event.target.value))
+                                updateTravelerCount(
+                                    'children',
+                                    Number(event.target.value)
+                                )
                             }
                         />
                     </div>
                 </div>
+
                 <PrimaryButton
                     buttonText='Search Flights'
                     isBold={true}
                     style={{ padding: '1rem 2rem' }}
+                    loading={isLoading}
                 />
+                {isFlightSearchErr && (
+                    <p className='flights__search-error'>
+                        <b>Error Searching Flights.</b>
+                    </p>
+                )}
             </form>
 
             <div className='flights__description'>

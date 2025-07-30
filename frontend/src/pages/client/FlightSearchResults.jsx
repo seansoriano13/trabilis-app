@@ -1,19 +1,21 @@
 // 🔗 React & Router
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 
 // 🎨 Styles
 import './FlightSearchResults.css'
 
 // 🧠 Utils
-import { formatIso } from '../../utils/flightTimeUtils'
+import { formatIso, formatToLongDate } from '../../utils/flightUtils'
 import { Duration } from 'luxon'
-import { useAirports } from '../../context/AirportContext'
-import { defaultAirportOptionsData } from '../../utils/defaultAirportOptions'
+// import { useAirports } from '../../context/AirportContext'
+// import { defaultAirportOptionsData } from '../../utils/defaultAirportOptions'
 
 // 🧩 Components
 import PrimaryButton from '../../components/client/PrimaryButton'
 import FlightResultCard from '../../components/client/FlightResultCard'
+import { SyncLoader } from 'react-spinners'
+import ReactPaginate from 'react-paginate'
 
 // 🎯 Icons
 import {
@@ -24,45 +26,99 @@ import {
     FaAngleDown,
     FaArrowRight,
 } from 'react-icons/fa'
-import { IoAirplane, IoChevronBack } from 'react-icons/io5'
+import { IoAirplane, IoChevronBack, IoChevronForward } from 'react-icons/io5'
 import { MdFavorite, MdFavoriteBorder } from 'react-icons/md'
 
 // 🧰 Utils
 import clsx from 'clsx'
+import { useNavigate } from 'react-router-dom'
+import FilterModal from '../../components/client/FilterModal'
 
 function FlightSearchResults() {
-    const { state } = useLocation()
-    const {
-        flights: allFlights,
-        origin,
-        destination,
-        formattedDate,
-        adultCount,
-        childCount,
-    } = state || {}
-    const flights = allFlights?.outbound ?? []
+    // Context
+    // const { airports: options } = useAirports()
 
-    // States
+    // Navigation State
+    const navigate = useNavigate()
+    const { state } = useLocation()
+    const [allFlights, setAllFlights] = useState(state?.flights.flights ?? [])
+
+    const [activeTab, setActiveTab] = useState('flights')
+
+    const getInitialFilters = () => {
+        const saved = localStorage.getItem('savedFilters')
+        const parsed = saved ? JSON.parse(saved) : {}
+
+        // Always prioritize new state on first load
+        return {
+            origin: state?.origin ?? parsed.origin ?? null,
+            destination: state?.destination ?? parsed.destination ?? null,
+            date: state?.date ?? parsed.date ?? null,
+            travelerCount: state?.travelerCount ?? parsed.travelerCount ?? 1,
+            tripType: state?.tripType ?? parsed.tripType ?? 'one-way',
+            cabinClass: state?.cabinClass ?? parsed.cabinClass ?? null,
+            activeTab: parsed.activeTab ?? 'flights',
+        }
+    }
+
+    const [filters, setFilters] = useState(getInitialFilters)
+
+    useEffect(() => {
+        localStorage.setItem('savedFilters', JSON.stringify(filters))
+    }, [filters])
+
+    const { origin, destination, date, travelerCount, cabinClass } = filters
+
+    // Derived Data
+    const outboundFlights = allFlights.outbound ?? [0]
+    const itemsPerPage = 10
+
+    // UI States
+    const [currentPage, setCurrentPage] = useState(0)
+    const [isLoading, setIsLoading] = useState(false)
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [selectedFilter, setSelectedFilter] = useState(null)
     const [sortBy, setSortBy] = useState('best')
-    const [activeTab, setActiveTab] = useState('Flights')
     const [flightIsFavorite, setflightIsFavorite] = useState({})
     const [isDisabled, setIsDisabled] = useState(false)
-    const [selectedOrigin, setSelectedOrigin] = useState(
-        origin.label.split(' - ')[0] || null
-    )
-    const [selectedDestination, setSelectedDestination] = useState(
-        destination || null
-    )
-    const [selectedDate, setSelectedDate] = useState(formattedDate || null)
-    const [selectedAdultCount, setSelectedAdultCount] = useState(
-        adultCount || 1
-    )
-    const [selectedChildCount, setselectedChildCount] = useState(
-        childCount || 1
-    )
-    const [selectedCabinClass, setSelectedCabinClass] = useState('ECONOMY')
+
+    useEffect(() => {
+        setIsLoading(true)
+
+        const timer = setTimeout(() => setIsLoading(false), 500)
+
+        return () => clearTimeout(timer)
+    }, [sortBy, activeTab])
+
+    useEffect(() => {
+        const html = document.documentElement
+        const body = document.body
+
+        if (isModalOpen) {
+            html.style.overflow = 'hidden'
+            body.style.overflow = 'hidden'
+        } else {
+            html.style.overflow = ''
+            body.style.overflow = ''
+        }
+
+        return () => {
+            html.style.overflow = ''
+            body.style.overflow = ''
+        }
+    }, [isModalOpen])
 
     // Utils
+    const handlePageClick = ({ selected }) => {
+        setIsLoading(true)
+        setCurrentPage(selected)
+
+        setTimeout(() => {
+            setIsLoading(false)
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+        }, 1000)
+    }
+
     const formatPrice = (price) =>
         parseFloat(price).toLocaleString('en-US', {
             maximumFractionDigits: 2,
@@ -86,44 +142,109 @@ function FlightSearchResults() {
     const formatMinutes = (min) =>
         Duration.fromObject({ minutes: min }).toFormat("h'h' mm'm'")
 
-    // Cheapest
-    const cheapestFlightObj = flights.reduce((min, flight) =>
-        parseFloat(flight.price.total) < parseFloat(min.price.total)
-            ? flight
-            : min
-    )
-    const cheapestFlightPrice = formatPrice(cheapestFlightObj.price.total)
-    const cheapestFlightDuration = formatMinutes(
-        getTotalMinutes(cheapestFlightObj)
-    )
-
-    // Fastest
-    const fastestFlightObj = flights.reduce((fastest, flight) =>
-        getTotalMinutes(flight) < getTotalMinutes(fastest) ? flight : fastest
-    )
-    const fastestFlightPrice = formatPrice(fastestFlightObj.price.total)
-    const fastestFlightDuration = formatMinutes(
-        getTotalMinutes(fastestFlightObj)
-    )
-
-    // Best (lowest price + shortest duration combined score)
-    const bestFlightObj = flights.reduce((best, flight) => {
-        const price = parseFloat(flight.price.total)
-        const duration = getTotalMinutes(flight)
-
-        const bestPrice = parseFloat(best.price.total)
-        const bestDuration = getTotalMinutes(best)
-
-        const currentScore = price * 0.7 + duration * 0.3
-        const bestScore = bestPrice * 0.7 + bestDuration * 0.3
-
-        return currentScore < bestScore ? flight : best
+    const getFlightMetrics = (flight) => ({
+        price: parseFloat(flight?.price?.total ?? Infinity),
+        duration: flight?.itineraries?.[0]?.segments?.[0]?.duration
+            ? Duration.fromISO(flight.itineraries[0].segments[0].duration).as(
+                  'minutes'
+              )
+            : Infinity,
+        score: (flight) => {
+            const price = parseFloat(flight?.price?.total ?? Infinity)
+            const duration = flight?.itineraries?.[0]?.segments?.[0]?.duration
+                ? Duration.fromISO(
+                      flight.itineraries[0].segments[0].duration
+                  ).as('minutes')
+                : Infinity
+            return isFinite(price) && isFinite(duration)
+                ? price * 0.7 + duration * 0.3
+                : Infinity
+        },
     })
-    const bestFlightPrice = formatPrice(bestFlightObj.price.total)
-    const bestFlightDuration = formatMinutes(getTotalMinutes(bestFlightObj))
+
+    const findOptimalFlights = (flights) => {
+        if (!flights?.length) {
+            return {
+                cheapest: null,
+                fastest: null,
+                best: null,
+            }
+        }
+
+        return flights.reduce(
+            (acc, flight) => {
+                const metrics = getFlightMetrics(flight)
+
+                // Cheapest
+                if (
+                    metrics.price < getFlightMetrics(acc.cheapest ?? {}).price
+                ) {
+                    acc.cheapest = flight
+                }
+
+                // Fastest
+                if (
+                    metrics.duration <
+                    getFlightMetrics(acc.fastest ?? {}).duration
+                ) {
+                    acc.fastest = flight
+                }
+
+                // Best
+                if (
+                    metrics.score(flight) <
+                    getFlightMetrics(acc.best ?? {}).score(acc.best ?? {})
+                ) {
+                    acc.best = flight
+                }
+
+                return acc
+            },
+            {
+                cheapest: flights[0],
+                fastest: flights[0],
+                best: flights[0],
+            }
+        )
+    }
+
+    const formatFlightDetails = (flight, formatPrice, formatMinutes) => {
+        if (!flight) {
+            return { price: '-', duration: '-' }
+        }
+        return {
+            price: flight?.price?.total ? formatPrice(flight.price.total) : '-',
+            duration: formatMinutes(getFlightMetrics(flight).duration),
+        }
+    }
+
+    const { cheapest, fastest, best } = findOptimalFlights(outboundFlights)
+
+    const cheapestFlightDetails = formatFlightDetails(
+        cheapest,
+        formatPrice,
+        formatMinutes
+    )
+    const fastestFlightDetails = formatFlightDetails(
+        fastest,
+        formatPrice,
+        formatMinutes
+    )
+    const bestFlightDetails = formatFlightDetails(
+        best,
+        formatPrice,
+        formatMinutes
+    )
+
+    const cheapestFlightPrice = cheapestFlightDetails.price
+    const cheapestFlightDuration = cheapestFlightDetails.duration
+    const fastestFlightPrice = fastestFlightDetails.price
+    const fastestFlightDuration = fastestFlightDetails.duration
+    const bestFlightPrice = bestFlightDetails.price
+    const bestFlightDuration = bestFlightDetails.duration
 
     // Sort Flight Cards
-    const sortedFlights = [...flights].sort((a, b) => {
+    const sortedFlights = [...outboundFlights].sort((a, b) => {
         if (sortBy === 'cheapest') {
             return parseFloat(a.price.total) - parseFloat(b.price.total)
         }
@@ -136,41 +257,38 @@ function FlightSearchResults() {
         return 0
     })
 
-    // Context
-    const { airports: options } = useAirports()
+    const totalPages = Math.ceil(sortedFlights.length / itemsPerPage)
+    const startIndex = currentPage * itemsPerPage
+    const lastIndex = startIndex + itemsPerPage
 
-    // Select Logics
-    const filterOptions = (inputValue) =>
-        options.filter((a) =>
-            a.label.toLowerCase().includes(inputValue.toLowerCase())
-        )
-    const loadOptions = (inputValue, callback) => {
-        if (inputValue.length < 3) {
-            callback([])
-            return
-        }
+    const paginatedFlights = sortedFlights.slice(startIndex, lastIndex)
 
-        setTimeout(() => {
-            callback(filterOptions(inputValue))
-        }, 1000)
-    }
-    // Default Values of AsyncSelect
-    const defaultOptions = options.filter((option) =>
-        defaultAirportOptionsData.includes(option.value)
-    )
-
-    // Flight Card Component
-    const flightsResult = sortedFlights.map((flight, index) => {
-        const segments = flight.itineraries[0].segments
+    const extractFlightLeg = (itinerary) => {
+        const segments = itinerary.segments
         const departureTime = formatIso(segments[0].departure.at)
         const arrivalTime = formatIso(segments.at(-1).arrival.at)
         const departureIata = segments[0].departure.iataCode
         const arrivalIata = segments.at(-1).arrival.iataCode
-        const price = flight.price.total
         const durationStr = Duration.fromISO(segments[0].duration).toFormat(
             "h'h' mm'm'"
         )
-        const availableSeats = flight.numberOfBookableSeats
+        return {
+            segments,
+            departureTime,
+            arrivalTime,
+            departureIata,
+            arrivalIata,
+            durationStr,
+        }
+    }
+
+    const flightsResult = paginatedFlights.map((flight, index) => {
+        const outboundData = extractFlightLeg(flight.itineraries[0])
+        const inboundData = flight.itineraries[1]
+            ? extractFlightLeg(flight.itineraries[1])
+            : null
+
+        const price = formatPrice(flight.price.total)
 
         const handleFavoriteClick = (id) => {
             if (isDisabled) return
@@ -191,15 +309,11 @@ function FlightSearchResults() {
                 key={flight.id}
                 index={index}
                 flight={flight}
-                availableSeats={availableSeats}
+                price={price}
                 handleFavoriteClick={() => handleFavoriteClick(flight.id)}
                 flightIsFavorite={flightIsFavorite}
-                departureTime={departureTime}
-                departureIata={departureIata}
-                durationStr={durationStr}
-                arrivalTime={arrivalTime}
-                arrivalIata={arrivalIata}
-                price={price}
+                outboundData={outboundData}
+                inboundData={inboundData}
             />
         )
     })
@@ -210,165 +324,323 @@ function FlightSearchResults() {
 
     const handleSelectFlightCard = (selectedCard) => {
         setSortBy(selectedCard)
+        setCurrentPage(0)
+    }
+
+    const handleBackClick = () => {
+        navigate('/flights', {
+            state: {
+                origin,
+                destination,
+                date,
+                travelerCount,
+                cabinClass,
+            },
+        })
     }
 
     return (
         <div className='flight-results'>
+            <FilterModal
+                filters={filters}
+                setFilters={setFilters}
+                selectedFilter={selectedFilter}
+                setSelectedFilter={setSelectedFilter}
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                setAllFlights={setAllFlights}
+                setIsLoading={setIsLoading}
+            />
             <div className='flight-nav'>
                 <div className='flight-nav__tabs'>
                     {/* Flights Button */}
                     <PrimaryButton
                         className={`flight-nav__tab ${
-                            activeTab === 'Flights'
+                            activeTab === 'flights'
                                 ? ''
                                 : 'flight-nav__tab--disabled'
                         }`}
                         isBold={true}
                         icon={<FaPlane />}
                         buttonText={'Flights'}
-                        onClick={() => handleClick('Flights')}
+                        onClick={() => handleClick('flights')}
                     />
                     {/* Hotels Button */}
                     <PrimaryButton
                         className={`flight-nav__tab ${
-                            activeTab === 'Hotels'
+                            activeTab === 'hotels'
                                 ? ''
                                 : 'flight-nav__tab--disabled'
                         }`}
                         isBold={true}
                         icon={<FaHotel />}
                         buttonText={'Hotels'}
-                        onClick={() => handleClick('Hotels')}
+                        onClick={() => handleClick('hotels')}
                     />
                     {/* Car Hire Button */}
                     <PrimaryButton
                         className={`flight-nav__tab ${
-                            activeTab === 'Car Hire'
+                            activeTab === 'carHire'
                                 ? ''
                                 : 'flight-nav__tab--disabled'
                         }`}
                         isBold={true}
                         icon={<FaCarSide />}
                         buttonText={'Car Hire'}
-                        onClick={() => handleClick('Car Hire')}
+                        onClick={() => handleClick('carHire')}
                     />
                 </div>
 
                 <div className='flight-nav__location'>
-                    <IoChevronBack className='flight-nav__back-icon' />
-                    <button className='flight-nav__input'>
+                    <IoChevronBack
+                        className='flight-nav__back-icon'
+                        onClick={handleBackClick}
+                    />
+                    <button
+                        onClick={() => {
+                            setSelectedFilter('destination')
+                            setIsModalOpen(true)
+                        }}
+                        className='flight-nav__input'
+                    >
                         {/* Destination */}
-                        {selectedDestination.label}
+                        {
+                            (filters.destination ?? destination)?.label?.split(
+                                ' - '
+                            )[0]
+                        }
                     </button>
                 </div>
 
                 <div className='flight-nav__filters'>
-                    <button className='flight-nav__filter'>
+                    <button
+                        onClick={() => {
+                            setSelectedFilter('origin')
+                            setIsModalOpen(true)
+                        }}
+                        className='flight-nav__filter'
+                    >
                         {/* Origin */}
-                        From {selectedOrigin} <FaAngleDown />
-                    </button>
-                    <button className='flight-nav__filter'>
-                        {/* Adult Count */}
-                        {selectedAdultCount}{' '}
-                        {selectedAdultCount > 1 ? 'Adults' : 'Adult'}
+                        From{' '}
+                        {
+                            (filters.origin ?? destination)?.label?.split(
+                                ' - '
+                            )[0]
+                        }
                         <FaAngleDown />
                     </button>
-                    <button className='flight-nav__filter'>
-                        {/* Child Count */}
-                        {selectedChildCount}{' '}
-                        {selectedChildCount > 1 ? 'Children' : 'Child'}
+                    <button
+                        onClick={() => {
+                            setSelectedFilter('cabinAndtravellers')
+                            setIsModalOpen(true)
+                        }}
+                        className='flight-nav__filter'
+                    >
+                        {/* Passenger Count */}
+                        {travelerCount.adults + travelerCount.children}{' '}
+                        Travellers
                         <FaAngleDown />
                     </button>
-                    <button className='flight-nav__filter'>
+                    <button
+                        onClick={() => {
+                            setSelectedFilter('date')
+                            setIsModalOpen(true)
+                        }}
+                        className='flight-nav__filter'
+                    >
                         {/* Date */}
-                        {selectedDate}
+                        {Array.isArray(date) && date.length === 2
+                            ? `${formatToLongDate(
+                                  date[0]
+                              )} to ${formatToLongDate(date[1])}`
+                            : formatToLongDate(date) || 'Select Date'}
                         <FaAngleDown />
                     </button>
-                    <button className='flight-nav__filter'>
-                        {selectedCabinClass.toLowerCase()} <FaAngleDown />
+                    <button
+                        onClick={() => {
+                            setSelectedFilter('cabinAndtravellers')
+                            setIsModalOpen(true)
+                        }}
+                        className='flight-nav__filter'
+                    >
+                        {/* Cabin Class */}
+                        {cabinClass.label} <FaAngleDown />
                     </button>
                 </div>
             </div>
 
             <div className='flight-results__main'>
-                <div className='flight-results__panel'>
-                    <div className='flight-results__header'>
-                        <div className='flight-results__title'>
-                            <h2>Flights</h2>
-                            <p>Results: {flights.length}</p>
+                {activeTab === 'flights' && (
+                    <>
+                        <div className='flight-results__panel'>
+                            <div className='flight-results__header'>
+                                <div className='flight-results__title'>
+                                    <h2>Flights</h2>
+                                    <p>Results: {allFlights.length}</p>
+                                </div>
+                                <div className='flight-results__actions'>
+                                    <button
+                                        onClick={() => {
+                                            setSelectedFilter('filter')
+                                            setIsModalOpen(true)
+                                        }}
+                                        className='flight-results__btn'
+                                    >
+                                        Filter
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setSelectedFilter('sort')
+                                            setIsModalOpen(true)
+                                        }}
+                                        className='flight-results__btn'
+                                    >
+                                        Sort
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setSelectedFilter('notif')
+                                            setIsModalOpen(true)
+                                        }}
+                                        className='flight-results__btn'
+                                    >
+                                        <FaBell />
+                                    </button>
+                                </div>
+                            </div>
+                            <div className='flight-results__summary'>
+                                <div
+                                    className={clsx(
+                                        'flight-results__card',
+                                        sortBy === 'best' &&
+                                            'flight-results__card--selected'
+                                    )}
+                                    onClick={() => {
+                                        handleSelectFlightCard('best')
+                                    }}
+                                >
+                                    <p className='flight-results__label'>
+                                        Best
+                                    </p>
+                                    <p className='flight-results__price'>
+                                        <b>P {bestFlightPrice}</b>
+                                    </p>
+                                    <p className='flight-results__duration'>
+                                        {bestFlightDuration}
+                                    </p>
+                                </div>
+                                <div
+                                    className={clsx(
+                                        'flight-results__card',
+                                        sortBy === 'cheapest' &&
+                                            'flight-results__card--selected'
+                                    )}
+                                    onClick={() => {
+                                        handleSelectFlightCard('cheapest')
+                                    }}
+                                >
+                                    <p className='flight-results__label'>
+                                        Cheapest
+                                    </p>
+                                    <p className='flight-results__price'>
+                                        <b>P {cheapestFlightPrice}</b>
+                                    </p>
+                                    <p className='flight-results__duration'>
+                                        {cheapestFlightDuration}
+                                    </p>
+                                </div>
+                                <div
+                                    className={clsx(
+                                        'flight-results__card',
+                                        sortBy === 'fastest' &&
+                                            'flight-results__card--selected'
+                                    )}
+                                    onClick={() => {
+                                        handleSelectFlightCard('fastest')
+                                    }}
+                                >
+                                    <p className='flight-results__label'>
+                                        Fastest
+                                    </p>
+                                    <p className='flight-results__price'>
+                                        <b>P {fastestFlightPrice}</b>
+                                    </p>
+                                    <p className='flight-results__duration'>
+                                        {fastestFlightDuration}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                        <div className='flight-results__actions'>
-                            <button className='flight-results__btn'>
-                                Filter
-                            </button>
-                            <button className='flight-results__btn'>
-                                Sort
-                            </button>
-                            <button className='flight-results__btn'>
-                                <FaBell />
-                            </button>
-                        </div>
-                    </div>
-                    <div className='flight-results__summary'>
-                        <div
-                            className={clsx(
-                                'flight-results__card',
-                                sortBy === 'best' &&
-                                    'flight-results__card--selected'
+                        <section className='flight-results__list'>
+                            {allFlights.length === 0 && (
+                                <>
+                                    <h2 className='flight-results__empty'>
+                                        No Flights Found {':('}
+                                    </h2>
+                                </>
                             )}
-                            onClick={() => {
-                                handleSelectFlightCard('best')
-                            }}
-                        >
-                            <p className='flight-results__label'>Best</p>
-                            <p className='flight-results__price'>
-                                <b>P {bestFlightPrice}</b>
-                            </p>
-                            <p className='flight-results__duration'>
-                                {bestFlightDuration}
-                            </p>
-                        </div>
-                        <div
-                            className={clsx(
-                                'flight-results__card',
-                                sortBy === 'cheapest' &&
-                                    'flight-results__card--selected'
+                            {isLoading ? (
+                                <div className='flight-result__spinner'>
+                                    <SyncLoader
+                                        color='#f7d100'
+                                        size={10}
+                                    />
+                                </div>
+                            ) : (
+                                flightsResult
                             )}
-                            onClick={() => {
-                                handleSelectFlightCard('cheapest')
-                            }}
-                        >
-                            <p className='flight-results__label'>Cheapest</p>
-                            <p className='flight-results__price'>
-                                <b>P {cheapestFlightPrice}</b>
-                            </p>
-                            <p className='flight-results__duration'>
-                                {cheapestFlightDuration}
-                            </p>
-                        </div>
-                        <div
-                            className={clsx(
-                                'flight-results__card',
-                                sortBy === 'fastest' &&
-                                    'flight-results__card--selected'
+
+                            {!isLoading && totalPages > 1 && (
+                                <ReactPaginate
+                                    previousLabel={<IoChevronBack />}
+                                    nextLabel={<IoChevronForward />}
+                                    breakLabel={'...'}
+                                    pageCount={totalPages}
+                                    marginPagesDisplayed={1}
+                                    pageRangeDisplayed={3}
+                                    onPageChange={handlePageClick}
+                                    forcePage={currentPage}
+                                    containerClassName={'pagination'}
+                                    activeClassName={'active'}
+                                />
                             )}
-                            onClick={() => {
-                                handleSelectFlightCard('fastest')
-                            }}
-                        >
-                            <p className='flight-results__label'>Fastest</p>
-                            <p className='flight-results__price'>
-                                <b>P {fastestFlightPrice}</b>
-                            </p>
-                            <p className='flight-results__duration'>
-                                {fastestFlightDuration}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                <section className='flight-results__list'>
-                    {flightsResult}
-                </section>
+                        </section>
+                    </>
+                )}
+
+                {activeTab === 'hotels' && (
+                    <>
+                        {isLoading ? (
+                            <div className='flight-result__spinner'>
+                                <SyncLoader
+                                    color='#f7d100'
+                                    size={10}
+                                />
+                            </div>
+                        ) : (
+                            <h1 className='hotel-main-header'>
+                                Hotels Coming Soon!
+                            </h1>
+                        )}
+                    </>
+                )}
+
+                {activeTab === 'carHire' && (
+                    <>
+                        {isLoading ? (
+                            <div className='flight-result__spinner'>
+                                <SyncLoader
+                                    color='#f7d100'
+                                    size={10}
+                                />
+                            </div>
+                        ) : (
+                            <h1 className='car-hire-main-header'>
+                                Car Hire Coming Soon!
+                            </h1>
+                        )}
+                    </>
+                )}
             </div>
         </div>
     )
