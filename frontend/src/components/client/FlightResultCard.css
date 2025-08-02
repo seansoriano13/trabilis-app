@@ -1,3 +1,9 @@
+.flight-result__logo {
+    height: 1.5rem;
+    width: 1.5rem;
+    border-radius: 0.25rem;
+}
+
 .flight-result {
     display: grid;
     gap: 1rem;
@@ -12,6 +18,12 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.flight-result__info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .flight-result__airport {

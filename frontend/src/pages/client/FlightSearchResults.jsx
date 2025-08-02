@@ -272,6 +272,7 @@ function FlightSearchResults() {
         const durationStr = Duration.fromISO(segments[0].duration).toFormat(
             "h'h' mm'm'"
         )
+        const airlineCode = segments[0].carrierCode
         return {
             segments,
             departureTime,
@@ -279,6 +280,7 @@ function FlightSearchResults() {
             departureIata,
             arrivalIata,
             durationStr,
+            airlineCode,
         }
     }
 

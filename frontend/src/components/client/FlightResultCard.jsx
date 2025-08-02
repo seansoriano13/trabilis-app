@@ -4,6 +4,7 @@ import PrimaryButton from '../../components/client/PrimaryButton'
 import FlightLeg from '../client/FlightLeg'
 
 import './FlightResultCard.css'
+import { getAirlineInfo } from '../../utils/airlinesUtils'
 
 export default function FlightResultCard({
     index,
@@ -14,18 +15,25 @@ export default function FlightResultCard({
     inboundData,
     price,
 }) {
+    const { name, logo } = getAirlineInfo(outboundData.airlineCode)
+
     return (
         <article
             className='flight-result'
             key={index}
         >
             <header className='flight-result__header'>
-                <p className='flight-result__airport'>Airline Name</p>
+                <div className='flight-result__info'>
+                    <img
+                        className='flight-result__logo'
+                        src={logo || ''}
+                        alt={name}
+                    />
+                    <p className='flight-result__airport'>{name}</p>
+                </div>
                 <button
                     className='flight-result__favorite'
-                    onClick={() => {
-                        handleFavoriteClick(flight.id)
-                    }}
+                    onClick={() => handleFavoriteClick(flight.id)}
                 >
                     {flightIsFavorite[flight.id] ? (
                         <MdFavorite />
