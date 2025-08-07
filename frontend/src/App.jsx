@@ -12,6 +12,12 @@ import Users from './pages/admin/Users'
 import NotFound from './pages/NotFound'
 import { AirportProvider } from './context/AirportContext'
 import FlightSearchResults from './pages/client/FlightSearchResults'
+import FlightBooking from './pages/client/FlightBooking'
+import Modal from 'react-modal'
+import PassengerDetails from './pages/client/PassengerDetails'
+import FlightBookingSuccess from './pages/client/FlightBookingSuccess'
+
+Modal.setAppElement('#root')
 
 function App() {
     return (
@@ -36,15 +42,23 @@ function App() {
                     />
                     <Route
                         path='flights'
-                        element={
-                            <AirportProvider>
-                                <Flights />
-                            </AirportProvider>
-                        }
+                        element={<Flights />}
                     />
                     <Route
                         path='flights/search-result'
                         element={<FlightSearchResults />}
+                    />
+                    <Route
+                        path='flights/booking/:id'
+                        element={<FlightBooking />}
+                    />
+                    <Route
+                        path='flights/passenger-details/:id'
+                        element={<PassengerDetails />}
+                    />
+                    <Route
+                        path='/flight-booking/success'
+                        element={<FlightBookingSuccess />}
                     />
                     <Route
                         path='about-us'

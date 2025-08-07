@@ -6,7 +6,7 @@ import { useLocation } from 'react-router-dom'
 import './FlightSearchResults.css'
 
 // 🧠 Utils
-import { formatIso, formatToLongDate } from '../../utils/flightUtils'
+import { extractFlightLeg, formatToLongDate } from '../../utils/flightUtils'
 import { Duration } from 'luxon'
 // import { useAirports } from '../../context/AirportContext'
 // import { defaultAirportOptionsData } from '../../utils/defaultAirportOptions'
@@ -72,6 +72,7 @@ function FlightSearchResults() {
     // Derived Data
     const outboundFlights = allFlights.outbound ?? [0]
     const itemsPerPage = 10
+    const currency = outboundFlights[0].price.currency
 
     // UI States
     const [currentPage, setCurrentPage] = useState(0)
@@ -263,33 +264,13 @@ function FlightSearchResults() {
 
     const paginatedFlights = sortedFlights.slice(startIndex, lastIndex)
 
-    const extractFlightLeg = (itinerary) => {
-        const segments = itinerary.segments
-        const departureTime = formatIso(segments[0].departure.at)
-        const arrivalTime = formatIso(segments.at(-1).arrival.at)
-        const departureIata = segments[0].departure.iataCode
-        const arrivalIata = segments.at(-1).arrival.iataCode
-        const durationStr = Duration.fromISO(segments[0].duration).toFormat(
-            "h'h' mm'm'"
-        )
-        const airlineCode = segments[0].carrierCode
-        return {
-            segments,
-            departureTime,
-            arrivalTime,
-            departureIata,
-            arrivalIata,
-            durationStr,
-            airlineCode,
-        }
-    }
-
     const flightsResult = paginatedFlights.map((flight, index) => {
         const outboundData = extractFlightLeg(flight.itineraries[0])
         const inboundData = flight.itineraries[1]
             ? extractFlightLeg(flight.itineraries[1])
             : null
 
+        const currency = flight.price.currency
         const price = formatPrice(flight.price.total)
 
         const handleFavoriteClick = (id) => {
@@ -311,11 +292,13 @@ function FlightSearchResults() {
                 key={flight.id}
                 index={index}
                 flight={flight}
+                currency={currency}
                 price={price}
                 handleFavoriteClick={() => handleFavoriteClick(flight.id)}
                 flightIsFavorite={flightIsFavorite}
                 outboundData={outboundData}
                 inboundData={inboundData}
+                travelerCount={filters.travelerCount}
             />
         )
     })
@@ -478,7 +461,7 @@ function FlightSearchResults() {
                             <div className='flight-results__header'>
                                 <div className='flight-results__title'>
                                     <h2>Flights</h2>
-                                    <p>Results: {allFlights.length}</p>
+                                    <p>Results: {sortedFlights.length}</p>
                                 </div>
                                 <div className='flight-results__actions'>
                                     <button
@@ -525,7 +508,9 @@ function FlightSearchResults() {
                                         Best
                                     </p>
                                     <p className='flight-results__price'>
-                                        <b>P {bestFlightPrice}</b>
+                                        <b>
+                                            {currency} {bestFlightPrice}
+                                        </b>
                                     </p>
                                     <p className='flight-results__duration'>
                                         {bestFlightDuration}
@@ -545,7 +530,9 @@ function FlightSearchResults() {
                                         Cheapest
                                     </p>
                                     <p className='flight-results__price'>
-                                        <b>P {cheapestFlightPrice}</b>
+                                        <b>
+                                            {currency} {cheapestFlightPrice}
+                                        </b>
                                     </p>
                                     <p className='flight-results__duration'>
                                         {cheapestFlightDuration}
@@ -565,7 +552,9 @@ function FlightSearchResults() {
                                         Fastest
                                     </p>
                                     <p className='flight-results__price'>
-                                        <b>P {fastestFlightPrice}</b>
+                                        <b>
+                                            {currency} {fastestFlightPrice}
+                                        </b>
                                     </p>
                                     <p className='flight-results__duration'>
                                         {fastestFlightDuration}

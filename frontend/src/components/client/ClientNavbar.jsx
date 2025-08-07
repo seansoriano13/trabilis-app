@@ -24,7 +24,7 @@ function ClientNavbar() {
 
     function handleClick() {
         setMenuClicked(!isMenuClicked)
-        setIsScrolled(!isScrolled) // Toggle isScrolled when menu is clicked
+        setIsScrolled(true) // Toggle isScrolled when menu is clicked
     }
 
     function handleLinkClick() {

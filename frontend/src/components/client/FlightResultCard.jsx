@@ -2,7 +2,7 @@ import { FaArrowRight } from 'react-icons/fa'
 import { MdFavorite, MdFavoriteBorder } from 'react-icons/md'
 import PrimaryButton from '../../components/client/PrimaryButton'
 import FlightLeg from '../client/FlightLeg'
-
+import { useNavigate } from 'react-router-dom'
 import './FlightResultCard.css'
 import { getAirlineInfo } from '../../utils/airlinesUtils'
 
@@ -14,8 +14,25 @@ export default function FlightResultCard({
     outboundData,
     inboundData,
     price,
+    currency,
+    travelerCount,
 }) {
+    const navigate = useNavigate()
     const { name, logo } = getAirlineInfo(outboundData.airlineCode)
+
+    const handleBookNow = (flight) => {
+        navigate(`/flights/booking/${flight.id}`, {
+            state: {
+                id: flight.id,
+                flight: flight,
+                outboundData: outboundData,
+                inboundData: inboundData,
+                price: price,
+                currency: currency,
+                travelerCount: travelerCount,
+            },
+        })
+    }
 
     return (
         <article
@@ -49,10 +66,13 @@ export default function FlightResultCard({
             <div className='flight-result__footer'>
                 <div className='flight-result__deal'>
                     <p className='flight-result__deal-price'>
-                        <b>P {price}</b>
+                        <b>
+                            {currency} {price}
+                        </b>
                     </p>
                 </div>
                 <PrimaryButton
+                    onClick={() => handleBookNow(flight)}
                     className='flight-result__select-btn'
                     buttonText={'Book Now'}
                     icon={<FaArrowRight />}

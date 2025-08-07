@@ -3,37 +3,59 @@ import { amadeus } from '../config/amadeus.js'
 export const searchFlights = async (req, res) => {
     const { tripType, date, origin, destination, travelerCount, cabinClass } =
         req.body
+
     const tripTypeValue =
         typeof tripType === 'string' ? tripType : tripType?.value
+    const cabinClassValue =
+        typeof cabinClass === 'string' ? cabinClass : cabinClass?.value
+    const originCode = origin?.value
+    const destinationCode = destination?.value
 
-    if (!tripTypeValue) {
-        return res.status(400).json({ error: 'Invalid trip type' })
+    // Validate required fields
+    if (!tripTypeValue || !['one-way', 'round-trip'].includes(tripTypeValue)) {
+        return res.status(400).json({ error: 'Invalid or missing trip type' })
+    }
+
+    if (!originCode || !destinationCode) {
+        return res
+            .status(400)
+            .json({ error: 'Origin and destination are required' })
+    }
+
+    if (!travelerCount?.adults || travelerCount.adults < 1) {
+        return res
+            .status(400)
+            .json({ error: 'At least one adult traveler is required' })
+    }
+
+    if (!cabinClassValue) {
+        return res.status(400).json({ error: 'Cabin class is required' })
     }
 
     try {
         if (tripTypeValue === 'one-way') {
             console.log('🔍 Search Params(oneway):', {
-                originLocationCode: origin.value,
-                destinationLocationCode: destination.value,
+                originLocationCode: originCode,
+                destinationLocationCode: destinationCode,
                 departureDate: date,
                 adults: travelerCount.adults,
                 children: travelerCount.children,
-                travelClass: cabinClass.value,
+                travelClass: cabinClassValue,
                 currencyCode: 'PHP',
             })
+
             const flightResponse =
                 await amadeus.shopping.flightOffersSearch.get({
-                    originLocationCode: origin.value,
-                    destinationLocationCode: destination.value,
+                    originLocationCode: originCode,
+                    destinationLocationCode: destinationCode,
                     departureDate: date,
                     adults: travelerCount.adults,
                     children: travelerCount.children,
-                    travelClass: cabinClass.value,
+                    travelClass: cabinClassValue,
                     currencyCode: 'PHP',
                 })
-            console.log(
-                '✅ Amadeus success response (one-way):'
-            )
+
+            console.log('✅ Amadeus success response (one-way):')
             res.status(200).json({
                 flights: {
                     outbound: flightResponse.data,
@@ -41,27 +63,28 @@ export const searchFlights = async (req, res) => {
             })
         } else {
             console.log('🔍 Search Params(roundtrip):', {
-                tripType: tripType.value,
-                originLocationCode: origin.value,
-                destinationLocationCode: destination.value,
+                originLocationCode: originCode,
+                destinationLocationCode: destinationCode,
                 departureDate: date[0],
                 returnDate: date[1],
                 adults: travelerCount.adults,
                 children: travelerCount.children,
-                travelClass: cabinClass.value,
+                travelClass: cabinClassValue,
                 currencyCode: 'PHP',
             })
+
             const flightResponse =
                 await amadeus.shopping.flightOffersSearch.get({
-                    originLocationCode: origin.value,
-                    destinationLocationCode: destination.value,
+                    originLocationCode: originCode,
+                    destinationLocationCode: destinationCode,
                     departureDate: date[0],
                     returnDate: date[1],
                     adults: travelerCount.adults,
                     children: travelerCount.children,
-                    travelClass: cabinClass.value,
+                    travelClass: cabinClassValue,
                     currencyCode: 'PHP',
                 })
+
             console.log('✅ Amadeus success response(round-trip):')
             res.status(200).json({
                 flights: {

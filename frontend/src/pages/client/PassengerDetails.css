@@ -1,0 +1,182 @@
+.passenger-details {
+    display: grid;
+    gap: 1rem;
+    background-color: rgb(24, 25, 26);
+    padding-top: var(--default-padding-top);
+}
+
+.passenger-form__notice {
+    font-size: var(--fs-p-small);
+    filter: var(--opacity-80);
+    padding-left: 1.3rem;
+}
+
+.passenger-details__travel-info {
+    margin: 1rem;
+    background-color: white;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    display: grid;
+    gap: 0.5rem;
+}
+
+.passenger-details__route {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3rem;
+}
+
+.passenger-details__origin {
+}
+
+.passenger-details__destination {
+}
+
+.passenger-details__arrow {
+}
+
+.passenger-details__count-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.passenger-details__dates-group {
+    display: grid;
+    align-items: center;
+}
+
+.passenger-details__meta {
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #ccc;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+}
+
+.passenger-details__dates {
+}
+
+.passenger-details__separator {
+    font-size: 1.5rem;
+}
+
+.passenger-details__icon {
+}
+
+.passenger-details__count {
+}
+
+.passenger-details__form-wrapper {
+    background-color: white;
+    padding: 1rem;
+    border-radius: 0.5rem;
+}
+
+.passenger-details__form-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+}
+
+.passenger-form {
+}
+
+.passenger-form__item {
+}
+
+.passenger-form__details {
+}
+
+.passenger-form__summary {
+    cursor: pointer;
+    border-bottom: 1px solid #ccc;
+    padding: 1rem;
+    font-size: 1.1rem;
+}
+
+.passenger-form__summary::marker {
+}
+
+.passenger-form__fields {
+    padding: 1rem;
+    display: grid;
+    gap: 1rem;
+}
+
+.passenger-form__field {
+}
+
+.passenger-form__label {
+}
+
+.passenger-form__input {
+    color: black;
+    background-color: white;
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid #d1d5db;
+    padding: 0.75rem 1rem;
+    outline: none;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.passenger-form__gender-options {
+    position: relative;
+    display: flex;
+    border-radius: 0.5rem;
+    border: 1px solid #d1d5db;
+    align-items: center;
+    justify-content: center;
+}
+
+.passenger-form__gender-option:first-child {
+    border-top-left-radius: 0.5rem;
+    border-bottom-left-radius: 0.5rem;
+    border-right: 1px solid #ccc;
+}
+
+.passenger-form__gender-option:last-child {
+    border-top-right-radius: 0.5rem;
+    border-bottom-right-radius: 0.5rem;
+}
+
+.passenger-form__gender-option {
+    cursor: pointer;
+    text-align: center;
+    width: 100%;
+    padding: 0.75rem 1rem;
+}
+
+.passenger-form__gender-option.active {
+    color: white;
+    background-color: rgb(24, 25, 26);
+}
+
+.passenger-form__divider {
+    position: absolute;
+    color: #d1d5db;
+    width: 1px;
+    height: 2rem;
+    background-color: #d1d5db;
+    border: none;
+}
+
+.passenger-form__input:focus {
+    box-shadow: 0 0 0 1px black, 0 0 0 1px black;
+    border-color: black;
+}
+
+.passenger-form__select {
+}
+
+.passenger-details__btn {
+    justify-self: center;
+    width: 90%;
+    margin-bottom: 1rem;
+    padding: 1rem 1rem;
+}

@@ -1,4 +1,39 @@
 import { Duration } from 'luxon'
+import { getAirlineInfo } from './airlinesUtils'
+
+export const createFlightDetails = (flight) => {
+    const { airlineCode, segments } = flight
+    const flightNumber = segments[0].number
+    const { name, logo } = getAirlineInfo(airlineCode)
+
+    return {
+        airlineCode: airlineCode,
+        flightNumber: flightNumber,
+        airlineName: name,
+        airlineLogo: logo,
+    }
+}
+
+export const extractFlightLeg = (itinerary) => {
+    const segments = itinerary.segments
+    const departureTime = formatIso(segments[0].departure.at)
+    const arrivalTime = formatIso(segments.at(-1).arrival.at)
+    const departureIata = segments[0].departure.iataCode
+    const arrivalIata = segments.at(-1).arrival.iataCode
+    const durationStr = Duration.fromISO(segments[0].duration).toFormat(
+        "h'h' mm'm'"
+    )
+    const airlineCode = segments[0].carrierCode
+    return {
+        segments,
+        departureTime,
+        arrivalTime,
+        departureIata,
+        arrivalIata,
+        durationStr,
+        airlineCode,
+    }
+}
 
 export function formatIso(isoString) {
     if (!isoString) return 'Invalid Time'
@@ -27,7 +62,14 @@ export function getDuration(start, end) {
 
 export const formatToLongDate = (date) => {
     const [start, end] = Array.isArray(date) ? date : [date]
-    if (!start || !(start instanceof Date)) return ''
+
+    const toDate = (d) => (d instanceof Date ? d : new Date(d))
+    const isValid = (d) => d instanceof Date && !isNaN(d)
+
+    const startDate = toDate(start)
+    const endDate = end ? toDate(end) : null
+
+    if (!isValid(startDate)) return ''
 
     const toFormatted = (d) =>
         d.toLocaleDateString('en-US', {
@@ -37,7 +79,9 @@ export const formatToLongDate = (date) => {
             year: 'numeric',
         })
 
-    return end ? [toFormatted(start), toFormatted(end)] : toFormatted(start)
+    return endDate && isValid(endDate)
+        ? [toFormatted(startDate), toFormatted(endDate)]
+        : toFormatted(startDate)
 }
 
 export const formatToYMD = (date) => {
@@ -67,4 +111,3 @@ export const getScore = (flight) => {
     const duration = getTotalMinutes(flight)
     return price * 0.7 + duration * 0.3
 }
-

@@ -116,3 +116,60 @@ export const flightNavInputStyles = {
         display: 'none',
     }),
 }
+
+export const formSelectStyles = {
+    option: (base, state) => ({
+        ...base,
+        backgroundColor: state.isSelected
+            ? 'var(--color-yellow)'
+            : 'transparent',
+        color: state.isSelected ? 'black' : 'inherit',
+        textAlign: 'left',
+    }),
+    control: (base, state) => ({
+        ...base,
+        padding: '.8rem 1rem',
+        backgroundColor: 'white',
+        border: state.isFocused ? '1px solid black' : '1px solid #d1d5db',
+        cursor: 'pointer',
+        color: 'black',
+        textAlign: 'left',
+        borderRadius: '0.5rem',
+        boxShadow: state.isFocused ? '0 0 0 1px black, 0 0 0 1px black' : '',
+    }),
+    menu: (base) => ({
+        ...base,
+        position: 'absolute',
+        top: '40px',
+        borderRadius: '10px',
+        background: 'rgba(190, 190, 190, 0.1)',
+        backdropFilter: 'blur(4px)',
+        border: 'none',
+        opacity: 0,
+        transform: 'translateY(-5px)',
+        animation: 'fadeSlideIn 0.2s ease forwards',
+    }),
+    valueContainer: (base) => ({
+        ...base,
+        padding: 0,
+    }),
+    singleValue: (base) => ({
+        ...base,
+        color: 'black',
+        textAlign: 'left',
+        whiteSpace: 'normal',
+    }),
+    placeholder: (base) => ({
+        ...base,
+        color: 'black',
+        textAlign: 'center',
+    }),
+    input: (base) => ({
+        ...base,
+        color: 'black',
+        textAlign: 'center',
+    }),
+    indicatorsContainer: () => ({
+        display: 'none',
+    }),
+}

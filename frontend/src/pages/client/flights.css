@@ -165,8 +165,7 @@
     cursor: pointer;
 }
 
-.flatpickr-input:focus,
-.flatpickr-input:hover {
+.flatpickr-input:focus {
     color: #fff;
     border-bottom: 1px solid #fff;
     opacity: 1;

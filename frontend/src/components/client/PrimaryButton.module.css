@@ -9,6 +9,7 @@
     transition: 0.1s;
     cursor: pointer;
     justify-content: center;
+    text-align: center;
 }
 
 .button:hover {

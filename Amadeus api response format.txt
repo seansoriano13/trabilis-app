@@ -9719,7 +9719,7 @@
       "type": "flight-offer",
       "id": "22",
       "source": "GDS",
-      "instantTicketingRequired": false,
+      "T": false,
       "nonHomogeneous": false,
       "oneWay": false,
       "isUpsellOffer": false,

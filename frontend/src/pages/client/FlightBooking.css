@@ -1,0 +1,77 @@
+.flight-booking {
+    background-color: rgb(24 24 26);
+    padding-top: var(--default-padding-top);
+}
+
+
+.flight-booking__main {
+    background-color: var(--color-background-light);
+    padding: 1.5rem 1rem;
+    border-radius: var(--border-radius-top);
+    box-shadow: var(--box-shadow);
+    display: grid;
+    gap: 2rem;
+}
+.flight-booking__loading {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.flight-booking__heading {
+}
+.flight-booking__price {
+    display: flex;
+    align-items: baseline;
+    justify-content: end;
+    gap: 8px;
+}
+.flight-booking__note {
+}
+.flight-booking__policies {
+    display: grid;
+    justify-content: start;
+}
+.flight-booking__passenger-btn {
+}
+
+.flight-booking__price-summary {
+    text-align: end;
+    padding: 0.5rem;
+}
+.flight-booking__price-label {
+    text-align: end;
+    font-size: 1.3rem;
+}
+.flight-booking__price-value {
+    font-size: 1.8rem;
+}
+.flight-booking__note {
+    font-weight: normal;
+    font-size: 1rem;
+    filter: var(--opacity-80);
+}
+
+.flight-booking__policies {
+    width: 60%;
+}
+.flight-booking__policy-btn {
+    display: block;
+    text-align: left;
+    background: none;
+    text-decoration: underline;
+}
+
+.flight-booking__passenger-btn {
+    padding: 1rem;
+    font-size: 1.1rem;
+}
+
+.flight-booking__summary-wrapper {
+    border-top: 1px solid #b8b8b8c0;
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+}

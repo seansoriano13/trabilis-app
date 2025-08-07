@@ -1,0 +1,40 @@
+{
+  "flightOffer": {
+    "type": "flight-offer",
+    "id": "1",
+    "source": "GDS",
+    "instantTicketingRequired": false,
+    "nonHomogeneous": false,
+    "oneWay": false,
+    "lastTicketingDate": "2025-12-31",
+    "price": {
+      "currency": "PHP",
+      "total": "12450.00"
+    },
+    "itineraries": [
+      {
+        "segments": [
+          {
+            "departure": {
+              "iataCode": "MNL",
+              "at": "2025-12-20T08:00:00"
+            },
+            "arrival": {
+              "iataCode": "CEB",
+              "at": "2025-12-20T09:30:00"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "passengers": [
+    {
+      "firstName": "Juan",
+      "lastName": "Dela Cruz",
+      "gender": "Male",
+      "birthDate": "2000-01-01",
+      "email": "juan@example.com"
+    }
+  ]
+}

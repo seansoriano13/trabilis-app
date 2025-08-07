@@ -16,8 +16,6 @@ import PrimaryButton from './PrimaryButton'
 import axios from 'axios'
 import { formatToYMD } from '../../utils/flightUtils'
 
-Modal.setAppElement('#root')
-
 export default function FilterModal({
     isOpen,
     onClose,

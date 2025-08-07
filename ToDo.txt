@@ -1,27 +1,24 @@
+stripe listen --forward-to http://localhost:3001/api/v1/webhooks/stripe
+
 Amadeus Node Reference: https://github.com/amadeus4dev/amadeus-node
 
-AFK
--get the request api logic from flights and use for flightResult(filter)
-
-
 ---------HIGH PRIO---------------
--after styling, add backend process for filter 
 
+--Refactor all logics to cater both roundtrip and oneway
+--in success url, just put a booking confirmed, please wait for response (smth like that, ask ai what to compose on that part)
 
--footer
 
 ---------MEDIUM PRIO----------------
--conditional rendering for sortBy
 -import footer
--Make comments for whole code base to make it more readable (future)
+- add stops visualization sa flight-result__line, pati rin sa flights/booking
 
 ---------LOW PRIO----------------
-
-FE
+-Make comments for whole code base to make it more readable (future)
 -favorite system for flight cards (pwedeng wag na to)
--in flights/search-result, yung date naka YYYY-MM-DD, make it more readable like Thu, 31 Jul`
-- add stops visualization sa flight-result__line 
 
-Amadeus Concerns 
-- LALA KASSAMA PALA INFANTS, BUKOD PA YUN SA CHILDREN
+
+---------AMADEUS SPECIFIC----------------
+- Add options para sa infants, only adults and children are currently available
+- Integrate Airports and City search by amadeus, naka local data lang tayo for now (github)
+- Implement Calling Code Option (e.g +63) sa PassengerForm
 - check the durations if its accurate, like what if may stop yung flight

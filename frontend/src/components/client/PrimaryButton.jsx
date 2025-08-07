@@ -21,9 +21,9 @@ function PrimaryButton({
 
             {loading ? (
                 isBold ? (
-                    <b>Searching...</b>
+                    <b>Please Wait...</b>
                 ) : (
-                    'Searching...'
+                    'Please Wait...'
                 )
             ) : isBold ? (
                 <b>{buttonText}</b>

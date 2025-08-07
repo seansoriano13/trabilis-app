@@ -87,7 +87,7 @@
 }
 
 .flight-results__main {
-    background-color: #eff3f8;
+    background-color: var(--color-background-light);
     padding: 0.5rem;
     display: grid;
     gap: 0.5rem;
