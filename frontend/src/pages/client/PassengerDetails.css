@@ -5,6 +5,30 @@
     padding-top: var(--default-padding-top);
 }
 
+.error-message {
+    color: white;
+    background-color: red;
+    padding: 0.2rem;
+    text-align: center;
+    border-radius: 0.5rem;
+    animation: fadeOut 5s forwards;
+}
+
+@keyframes fadeOut {
+    0% {
+        opacity: 1;
+        visibility: visible;
+    }
+    80% {
+        opacity: 1;
+        visibility: visible;
+    }
+    100% {
+        opacity: 0;
+        visibility: hidden;
+    }
+}
+
 .passenger-form__notice {
     font-size: var(--fs-p-small);
     filter: var(--opacity-80);

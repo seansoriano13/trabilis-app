@@ -30,3 +30,47 @@ export const formatPhoneForAmadeus = (phone, countryCallingCode = '63') => {
         number,
     }
 }
+
+export const calculateAge = (birthDateString) => {
+    // Input validation
+    if (!birthDateString || typeof birthDateString !== 'string') {
+        throw new Error('Invalid or missing birth date')
+    }
+
+    const birthDate = new Date(birthDateString)
+    if (isNaN(birthDate.getTime())) {
+        throw new Error('Invalid date format. Expected YYYY-MM-DD')
+    }
+
+    const today = new Date()
+
+    // Ensure dates are in UTC to avoid time zone issues
+    const todayUTC = new Date(
+        Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
+    )
+    const birthDateUTC = new Date(
+        Date.UTC(
+            birthDate.getFullYear(),
+            birthDate.getMonth(),
+            birthDate.getDate()
+        )
+    )
+
+    let age = todayUTC.getFullYear() - birthDateUTC.getFullYear()
+    const monthDiff = todayUTC.getMonth() - birthDateUTC.getMonth()
+
+    // Adjust if birthday hasn't occurred yet this year
+    if (
+        monthDiff < 0 ||
+        (monthDiff === 0 && todayUTC.getDate() < birthDateUTC.getDate())
+    ) {
+        age--
+    }
+
+    // Ensure age is non-negative
+    if (age < 0) {
+        throw new Error('Birth date cannot be in the future')
+    }
+
+    return age
+}

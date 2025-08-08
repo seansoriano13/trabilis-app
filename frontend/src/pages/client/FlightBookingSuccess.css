@@ -1,0 +1,29 @@
+.success-container {
+    max-width: 600px;
+    margin: 50px auto;
+    padding: 20px;
+    text-align: center;
+    font-family: Arial, sans-serif;
+}
+
+.success-title {
+    color: #333;
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+
+.success-message {
+    color: #666;
+    font-size: 16px;
+    line-height: 1.5;
+    margin-bottom: 15px;
+}
+
+.success-page a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.success-page a:hover {
+    text-decoration: underline;
+}

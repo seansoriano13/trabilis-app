@@ -1,273 +1,208 @@
-import { amadeus } from '../config/amadeus.js'
 import pool from '../config/db.js'
+import { amadeus } from '../config/amadeus.js'
 import stripe from '../config/stripe.js'
-import { sendConfirmationEmail, sendFailureEmail } from './emailService.js'
+import { sendFailureEmail, sendConfirmationEmail } from './emailService.js'
 
-export const finalizeFlightBooking = async (bookingReference) => {
-    console.log(`Starting finalization for booking: ${bookingReference}`)
+export async function finalizeFlightBooking(
+    bookingReference,
+    stripeCheckoutId
+) {
     let connection
-    let booking // Declare booking at the top
-
     try {
-        // Get a connection from the pool
         connection = await pool.getConnection()
+        console.log(`Starting finalization for booking: ${bookingReference}`)
 
-        // Query booking details
         const [rows] = await connection.execute(
-            'SELECT amadeus_flight_offer, passenger_details, stripe_checkout_id FROM flight_bookings WHERE booking_reference = ?',
+            'SELECT amadeus_order_id, status, passenger_details, search_criteria FROM flight_bookings WHERE booking_reference = ?',
             [bookingReference]
         )
+        if (rows.length === 0) {
+            throw new Error(`Booking ${bookingReference} not found`)
+        }
+        const booking = rows[0]
+        const { amadeus_order_id, status } = booking
 
-        if (!rows.length) {
-            console.error(
-                `Finalization Error: Booking not found with reference ${bookingReference}`
+        if (status !== 'PAID_PENDING_TICKETING') {
+            throw new Error(
+                `Booking ${bookingReference} is not in PAID_PENDING_TICKETING status, current status: ${status}`
             )
-            throw new Error(`Booking not found: ${bookingReference}`)
+        }
+        if (!amadeus_order_id) {
+            throw new Error(
+                `No Amadeus order ID found for booking ${bookingReference}`
+            )
         }
 
-        booking = rows[0] // Assign booking here
-        let parsedFlightOffer, passengerDetails
-
-        // Parse JSON data
+        let order
         try {
-            parsedFlightOffer = JSON.parse(booking.amadeus_flight_offer)
-            passengerDetails = JSON.parse(booking.passenger_details)
-        } catch (parseError) {
+            const response = await amadeus.booking
+                .flightOrder(amadeus_order_id)
+                .get()
+            order = response.data
+            console.log(
+                `✅ Retrieved Amadeus order ${amadeus_order_id} for ${bookingReference}`
+            )
+        } catch (amadeusError) {
             console.error(
-                `Error parsing booking data for ${bookingReference}:`,
-                parseError
+                `Failed to retrieve Amadeus order ${amadeus_order_id} for ${bookingReference}:`,
+                {
+                    message: amadeusError.message,
+                    response: amadeusError.response?.data,
+                    status: amadeusError.response?.status,
+                    code: amadeusError.code,
+                }
             )
             throw new Error(
-                `Invalid booking data format: ${parseError.message}`
+                `Amadeus order retrieval failed: ${
+                    amadeusError.message || 'Unknown error'
+                }`
             )
         }
 
-        // Validate passenger details
-        if (
-            !passengerDetails.travelers ||
-            !Array.isArray(passengerDetails.travelers) ||
-            !passengerDetails.travelers.length
-        ) {
-            console.error(
-                `Invalid traveler data for ${bookingReference}: No travelers provided`
-            )
-            throw new Error('At least one traveler is required')
-        }
-
-        for (const [index, traveler] of passengerDetails.travelers.entries()) {
-            if (
-                !traveler.id ||
-                !traveler.dateOfBirth ||
-                !traveler.name?.firstName ||
-                !traveler.name?.lastName
-            ) {
-                console.error(
-                    `Invalid traveler data for ${bookingReference}: Missing required fields for traveler ${
-                        index + 1
-                    }`
-                )
-                throw new Error(
-                    `Missing required fields for traveler ${
-                        traveler.id || index + 1
-                    }`
-                )
-            }
-            if (
-                !traveler.contact?.emailAddress &&
-                (!traveler.contact?.phones?.length ||
-                    !traveler.contact.phones[0]?.number)
-            ) {
-                console.error(
-                    `Invalid traveler data for ${bookingReference}: No contact method for traveler ${
-                        index + 1
-                    }`
-                )
-                throw new Error(
-                    `At least one contact method is required for traveler ${
-                        traveler.id || index + 1
-                    }`
-                )
-            }
-            if (
-                !traveler.contact?.phones[0]?.countryCallingCode ||
-                !/^\d+$/.test(traveler.contact.phones[0].countryCallingCode)
-            ) {
-                console.error(
-                    `Invalid traveler data for ${bookingReference}: Invalid countryCallingCode for traveler ${
-                        index + 1
-                    }`
-                )
-                throw new Error(
-                    `Country calling code must be digits only for traveler ${
-                        traveler.id || index + 1
-                    }`
-                )
-            }
-            if (
-                traveler.documents?.[0]?.documentType === 'PASSPORT' &&
-                traveler.documents[0].holder !== true
-            ) {
-                console.error(
-                    `Invalid traveler data for ${bookingReference}: Passport holder field missing or invalid for traveler ${
-                        index + 1
-                    }`
-                )
-                throw new Error(
-                    `Passport holder field must be true for traveler ${
-                        traveler.id || index + 1
-                    }`
-                )
-            }
-        }
-
-        console.log(
-            `Attempting to create Amadeus order for ${bookingReference}...`
-        )
-
-        // Construct Amadeus API request
-        const orderResponse = await amadeus.booking.flightOrders.post({
-            data: {
-                type: 'flight-order',
-                flightOffers: [parsedFlightOffer],
-                travelers: passengerDetails.travelers,
-                remarks: passengerDetails.remarks || undefined,
-                ticketingAgreement:
-                    passengerDetails.ticketingAgreement || undefined,
-                contacts: passengerDetails.contacts || undefined,
-            },
-        })
-
-        console.log(
-            `✅ Amadeus order created successfully for ${bookingReference}!`
-        )
-
-        const pnr = orderResponse.data?.associatedRecords?.[0]?.reference
-        if (!pnr) {
-            console.error(
-                `Amadeus order succeeded but did not return a PNR for ${bookingReference}`
-            )
-            throw new Error('Amadeus order succeeded but did not return a PNR.')
-        }
-
-        // Extract e-ticket numbers (if available)
         const eTicketNumbers =
-            orderResponse.data?.ticketingDetails?.tickets?.map(
-                (ticket) => ticket.ticketNumber
-            ) || null
-        console.log(
-            `E-ticket numbers: ${
-                eTicketNumbers ? eTicketNumbers.join(', ') : 'None'
-            }`
-        )
+            order.associatedRecords?.map((record) => record.reference) || []
+        const pnr =
+            order.associatedRecords?.find(
+                (record) => record.originSystemCode === 'GDS'
+            )?.reference || null
 
-        // Update database with confirmed status, PNR, and e-ticket numbers
-        await connection.execute(
-            'UPDATE flight_bookings SET status = ?, pnr = ?, e_ticket_numbers = ? WHERE booking_reference = ?',
-            [
-                'CONFIRMED_TICKETED',
-                pnr,
-                eTicketNumbers ? JSON.stringify(eTicketNumbers) : null,
-                bookingReference,
-            ]
-        )
-        console.log(
-            `✅ Database updated for ${bookingReference}. Status: CONFIRMED_TICKETED, PNR: ${pnr}, E-tickets: ${
-                eTicketNumbers ? eTicketNumbers.join(', ') : 'None'
-            }`
-        )
+        try {
+            await connection.execute(
+                'UPDATE flight_bookings SET status = ?, e_ticket_numbers = ?, pnr = ? WHERE booking_reference = ?',
+                [
+                    'TICKETED',
+                    JSON.stringify(eTicketNumbers),
+                    pnr,
+                    bookingReference,
+                ]
+            )
+            console.log(
+                `✅ Booking ${bookingReference} finalized with status TICKETED, PNR: ${pnr}`
+            )
+        } catch (dbError) {
+            console.error(
+                `Failed to update booking ${bookingReference}:`,
+                dbError
+            )
+            throw new Error(`Database error: ${dbError.message}`)
+        }
 
-        await connection.commit()
-
-        // Send confirmation email
+        // Send confirmation email after successful ticketing
         try {
             await sendConfirmationEmail(bookingReference)
             console.log(`✅ Confirmation email sent for ${bookingReference}`)
         } catch (emailError) {
             console.error(
-                `Warning: Failed to send confirmation email for ${bookingReference}:`,
+                `Failed to send confirmation email for ${bookingReference}:`,
                 emailError
             )
-            // Continue despite email failure
         }
 
-        return { pnr, eTicketNumbers, status: 'CONFIRMED_TICKETED' }
+        await connection.commit()
+        return { status: 'TICKETED', eTicketNumbers, pnr }
     } catch (error) {
-        // Log detailed Amadeus errors if available
-        if (error.response?.data?.errors) {
-            console.error(
-                `Amadeus API errors for ${bookingReference}:`,
-                JSON.stringify(error.response.data.errors, null, 2)
-            )
-        }
-
         console.error(
-            `❌ CRITICAL FAILURE during finalization for ${bookingReference}:`,
-            error.message || error.description
+            `❌ CRITICAL FAILURE during finalization for ${bookingReference}: ${error.message}`
         )
-
         try {
-            // Update database with failed status
             await connection.execute(
-                "UPDATE flight_bookings SET status = 'TICKETING_FAILED' WHERE booking_reference = ?",
-                [bookingReference]
+                'UPDATE flight_bookings SET status = ? WHERE booking_reference = ?',
+                [`TICKETING_FAILED: ${error.message}`, bookingReference]
             )
             console.log(
-                `Database updated for ${bookingReference}. Status: TICKETING_FAILED`
+                `Database updated for ${bookingReference}. Status: TICKETING_FAILED: ${error.message}`
             )
 
-            // Attempt refund if stripe_checkout_id exists
-            if (booking && booking.stripe_checkout_id) {
-                const session = await stripe.checkout.sessions.retrieve(
-                    booking.stripe_checkout_id
-                )
-                const paymentIntentId = session.payment_intent
-
-                if (paymentIntentId && session.payment_status === 'paid') {
+            const [bookingRows] = await connection.execute(
+                'SELECT total_amount, currency, stripe_checkout_id, passenger_details, search_criteria FROM flight_bookings WHERE booking_reference = ?',
+                [bookingReference]
+            )
+            const booking = bookingRows[0]
+            if (booking.stripe_checkout_id) {
+                try {
                     await stripe.refunds.create({
-                        payment_intent: paymentIntentId,
+                        checkout_session: booking.stripe_checkout_id,
+                        amount: Math.round(booking.total_amount * 100),
                     })
                     console.log(
                         `✅ Stripe refund issued for failed booking ${bookingReference}`
                     )
-                } else {
-                    console.log(
-                        `No refund needed for ${bookingReference}: Payment not completed`
+                } catch (stripeError) {
+                    console.error(
+                        `Failed to issue refund for ${bookingReference}:`,
+                        stripeError
                     )
+                    throw new Error(`Refund failed: ${stripeError.message}`)
                 }
             }
 
-            // Send failure email
+            const passengerDetails = JSON.parse(booking.passenger_details)
+            const searchCriteria = JSON.parse(booking.search_criteria)
+            const primaryTraveler = passengerDetails.travelers[0]
             try {
-                await sendFailureEmail(bookingReference)
+                await sendFailureEmail({
+                    email: primaryTraveler.contact.emailAddress,
+                    firstName: primaryTraveler.name.firstName,
+                    lastName: primaryTraveler.name.lastName,
+                    bookingReference,
+                    searchCriteria,
+                })
                 console.log(`✅ Failure email sent for ${bookingReference}`)
             } catch (emailError) {
                 console.error(
-                    `Warning: Failed to send failure email for ${bookingReference}:`,
+                    `Failed to send failure email for ${bookingReference}:`,
                     emailError
                 )
             }
-        } catch (refundOrDbError) {
+
+            await connection.commit()
+        } catch (rollbackError) {
             console.error(
-                `❌ CRITICAL: AUTOMATED REFUND OR DB UPDATE FAILED for ${bookingReference}:`,
-                refundOrDbError
+                `Rollback failed for ${bookingReference}:`,
+                rollbackError
             )
         }
-
-        throw new Error(
-            `Failed to finalize booking: ${
-                error.response?.data?.errors
-                    ? JSON.stringify(error.response.data.errors)
-                    : error.message || 'Unknown error'
-            }`
-        )
+        throw new Error(`Failed to finalize booking: ${error.message}`)
     } finally {
-        // Release connection
         if (connection) {
             try {
                 await connection.release()
                 console.log(
                     `Database connection released for ${bookingReference}`
                 )
+            } catch (releaseError) {
+                console.error(
+                    `Error releasing database connection for ${bookingReference}:`,
+                    releaseError
+                )
+            }
+        }
+    }
+}
+
+export async function checkBookingStatus(bookingReference) {
+    let connection
+    try {
+        connection = await pool.getConnection()
+        const [rows] = await connection.execute(
+            'SELECT status, search_criteria, pnr FROM flight_bookings WHERE booking_reference = ?',
+            [bookingReference]
+        )
+        if (rows.length === 0) {
+            throw new Error(`Booking ${bookingReference} not found`)
+        }
+        return {
+            status: rows[0].status,
+            searchCriteria: JSON.parse(rows[0].search_criteria),
+            pnr: rows[0].pnr,
+        }
+    } catch (error) {
+        console.error(`Failed to check status for ${bookingReference}:`, error)
+        throw new Error(`Failed to check booking status: ${error.message}`)
+    } finally {
+        if (connection) {
+            try {
+                await connection.release()
             } catch (releaseError) {
                 console.error(
                     `Error releasing database connection for ${bookingReference}:`,

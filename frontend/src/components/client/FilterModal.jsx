@@ -97,7 +97,6 @@ export default function FilterModal({
             setAllFlights(data.flights || [])
             prevFiltersRef.current = filters
             console.log('Flights fetched successfully')
-            console.log(data)
         } catch (error) {
             console.error('Failed to fetch flights:', error)
         } finally {

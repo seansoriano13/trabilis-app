@@ -7,6 +7,7 @@
     right: 0;
     bottom: 0;
     z-index: 9;
+    overflow-y: auto;
 }
 
 .flight-details__modal-content {
@@ -57,4 +58,16 @@
 .flight-details__baggage-desc {
     font-size: var(--fs-p-small);
     filter: var(--opacity-80);
+}
+
+.flight-details__passenger-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.flight-details__passenger {
+    border-top: 1px solid #ccc;
+    padding: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 0.5rem;
 }

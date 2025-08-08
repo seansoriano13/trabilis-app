@@ -14,6 +14,7 @@ function FlightBooking() {
     const { state } = useLocation()
     const flight = state
 
+    console.log(flight.flight)
     const navigate = useNavigate()
 
     // Derived Data

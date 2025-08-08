@@ -1,7 +1,7 @@
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { FaArrowsAltH } from 'react-icons/fa'
 import { IoContractSharp, IoPersonSharp } from 'react-icons/io5'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Flatpickr from 'react-flatpickr'
 import 'flatpickr/dist/themes/airbnb.css'
 import './PassengerDetails.css'
@@ -11,9 +11,14 @@ import { formSelectStyles } from '../../styles/client/reactSelectStyles'
 import PrimaryButton from '../../components/client/PrimaryButton'
 import { formatToYMD } from '../../utils/flightUtils.js'
 import axios from 'axios'
-import { formatPhoneForAmadeus } from '../../utils/stringUtils.js'
+import { calculateAge, formatPhoneForAmadeus } from '../../utils/stringUtils.js'
 
-function PassengerForm({ passengers, handleChange }) {
+function PassengerForm({
+    passengers,
+    handleChange,
+    validationErrors,
+    setValidationErrors,
+}) {
     const [selectGender, setSelectGender] = useState('')
 
     function handleGenderSelection(gender) {
@@ -28,6 +33,58 @@ function PassengerForm({ passengers, handleChange }) {
         { value: 'miss', label: 'Miss' },
     ]
 
+    useEffect(() => {
+        if (validationErrors.length > 0) {
+            const errorIndices = [
+                ...new Set(validationErrors.map((error) => error.index)),
+            ]
+
+            const firstErrorIndex = errorIndices[0]
+            const detailsElement = document.querySelector(
+                `.passenger-form__item:nth-child(${
+                    firstErrorIndex + 1
+                }) details`
+            )
+            if (detailsElement) {
+                detailsElement.open = true
+                setTimeout(() => {
+                    detailsElement.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start',
+                    })
+                }, 100)
+            }
+
+            errorIndices.slice(1).forEach((index) => {
+                const element = document.querySelector(
+                    `.passenger-form__item:nth-child(${index + 1}) details`
+                )
+                if (element) {
+                    element.open = true
+                }
+            })
+
+            const timers = validationErrors.map((error) =>
+                setTimeout(() => {
+                    setValidationErrors((prevErrors) =>
+                        prevErrors.filter(
+                            (e) =>
+                                !(
+                                    e.index === error.index &&
+                                    e.field === error.field &&
+                                    e.message === error.message
+                                )
+                        )
+                    )
+                }, 5000)
+            )
+
+            return () => {
+                timers.forEach((timer) => clearTimeout(timer))
+            }
+        }
+    }, [validationErrors, setValidationErrors])
+
     return (
         <div className='passenger-form'>
             {passengers.map((passenger, index) => (
@@ -37,7 +94,10 @@ function PassengerForm({ passengers, handleChange }) {
                 >
                     <details className='passenger-form__details'>
                         <summary className='passenger-form__summary'>
-                            <b> Passenger {index + 1}</b>
+                            <b>
+                                {' '}
+                                Passenger {index + 1} {`(${passenger.type})`}
+                            </b>
                             <p className='passenger-form__notice'>
                                 Please fill personal information as shown in the
                                 passport
@@ -71,6 +131,22 @@ function PassengerForm({ passengers, handleChange }) {
                                     isSearchable={false}
                                     styles={formSelectStyles}
                                 />
+                                {validationErrors
+                                    .filter(
+                                        (e) =>
+                                            e.index === index &&
+                                            e.field === 'title'
+                                    )
+                                    .map((e) => (
+                                        <p
+                                            key={`${e.index}-${e.field}-${
+                                                e.message
+                                            }-${Date.now()}`}
+                                            className='error-message'
+                                        >
+                                            {e.message}
+                                        </p>
+                                    ))}
                             </div>
 
                             <div className='passenger-form__field'>
@@ -90,6 +166,22 @@ function PassengerForm({ passengers, handleChange }) {
                                     }
                                     required
                                 />
+                                {validationErrors
+                                    .filter(
+                                        (e) =>
+                                            e.index === index &&
+                                            e.field === 'name.firstName'
+                                    )
+                                    .map((e) => (
+                                        <p
+                                            key={`${e.index}-${e.field}-${
+                                                e.message
+                                            }-${Date.now()}`}
+                                            className='error-message'
+                                        >
+                                            {e.message}
+                                        </p>
+                                    ))}
                             </div>
                             <div className='passenger-form__field'>
                                 <label className='passenger-form__label'>
@@ -108,6 +200,22 @@ function PassengerForm({ passengers, handleChange }) {
                                     }
                                     required
                                 />
+                                {validationErrors
+                                    .filter(
+                                        (e) =>
+                                            e.index === index &&
+                                            e.field === 'name.lastName'
+                                    )
+                                    .map((e) => (
+                                        <p
+                                            key={`${e.index}-${e.field}-${
+                                                e.message
+                                            }-${Date.now()}`}
+                                            className='error-message'
+                                        >
+                                            {e.message}
+                                        </p>
+                                    ))}
                             </div>
                             <div className='passenger-form__field'>
                                 <label className='passenger-form__label'>
@@ -149,6 +257,22 @@ function PassengerForm({ passengers, handleChange }) {
                                         Female
                                     </p>
                                 </div>
+                                {validationErrors
+                                    .filter(
+                                        (e) =>
+                                            e.index === index &&
+                                            e.field === 'gender'
+                                    )
+                                    .map((e) => (
+                                        <p
+                                            key={`${e.index}-${e.field}-${
+                                                e.message
+                                            }-${Date.now()}`}
+                                            className='error-message'
+                                        >
+                                            {e.message}
+                                        </p>
+                                    ))}
                             </div>
                             <div className='passenger-form__field'>
                                 <label className='passenger-form__label'>
@@ -176,6 +300,22 @@ function PassengerForm({ passengers, handleChange }) {
                                     }}
                                     required
                                 />
+                                {validationErrors
+                                    .filter(
+                                        (e) =>
+                                            e.index === index &&
+                                            e.field === 'dateOfBirth'
+                                    )
+                                    .map((e) => (
+                                        <p
+                                            key={`${e.index}-${e.field}-${
+                                                e.message
+                                            }-${Date.now()}`}
+                                            className='error-message'
+                                        >
+                                            {e.message}
+                                        </p>
+                                    ))}
                             </div>
                             <div className='passenger-form__field'>
                                 <label className='passenger-form__label'>
@@ -194,6 +334,22 @@ function PassengerForm({ passengers, handleChange }) {
                                     }
                                     required
                                 />
+                                {validationErrors
+                                    .filter(
+                                        (e) =>
+                                            e.index === index &&
+                                            e.field === 'contact.emailAddress'
+                                    )
+                                    .map((e) => (
+                                        <p
+                                            key={`${e.index}-${e.field}-${
+                                                e.message
+                                            }-${Date.now()}`}
+                                            className='error-message'
+                                        >
+                                            {e.message}
+                                        </p>
+                                    ))}
                             </div>
                             <div className='passenger-form__field'>
                                 <label className='passenger-form__label'>
@@ -219,6 +375,22 @@ function PassengerForm({ passengers, handleChange }) {
                                     }
                                     required
                                 />
+                                {validationErrors
+                                    .filter(
+                                        (e) =>
+                                            e.index === index &&
+                                            e.field === 'contact.phones[0]'
+                                    )
+                                    .map((e) => (
+                                        <p
+                                            key={`${e.index}-${e.field}-${
+                                                e.message
+                                            }-${Date.now()}`}
+                                            className='error-message'
+                                        >
+                                            {e.message}
+                                        </p>
+                                    ))}
                             </div>
                             <div className='passenger-form__field'>
                                 <label className='passenger-form__label'>
@@ -235,11 +407,28 @@ function PassengerForm({ passengers, handleChange }) {
                                         handleChange(
                                             index,
                                             'contact.phones[0].countryCallingCode',
-                                            e.target.value.replace(/^\+/, '') // Remove leading +
+                                            e.target.value.replace(/^\+/, '')
                                         )
                                     }
                                     required
                                 />
+                                {validationErrors
+                                    .filter(
+                                        (e) =>
+                                            e.index === index &&
+                                            e.field ===
+                                                'contact.phones[0].countryCallingCode'
+                                    )
+                                    .map((e) => (
+                                        <p
+                                            key={`${e.index}-${e.field}-${
+                                                e.message
+                                            }-${Date.now()}`}
+                                            className='error-message'
+                                        >
+                                            {e.message}
+                                        </p>
+                                    ))}
                             </div>
                             <h2 className='passenger-form__header'>
                                 Passport Information
@@ -260,6 +449,22 @@ function PassengerForm({ passengers, handleChange }) {
                                         )
                                     }
                                 />
+                                {validationErrors
+                                    .filter(
+                                        (e) =>
+                                            e.index === index &&
+                                            e.field === 'documents[0].number'
+                                    )
+                                    .map((e) => (
+                                        <p
+                                            key={`${e.index}-${e.field}-${
+                                                e.message
+                                            }-${Date.now()}`}
+                                            className='error-message'
+                                        >
+                                            {e.message}
+                                        </p>
+                                    ))}
                             </div>
                             <div className='passenger-form__field'>
                                 <label className='passenger-form__label'>
@@ -280,6 +485,23 @@ function PassengerForm({ passengers, handleChange }) {
                                         )
                                     }
                                 />
+                                {validationErrors
+                                    .filter(
+                                        (e) =>
+                                            e.index === index &&
+                                            e.field ===
+                                                'documents[0].nationality'
+                                    )
+                                    .map((e) => (
+                                        <p
+                                            key={`${e.index}-${e.field}-${
+                                                e.message
+                                            }-${Date.now()}`}
+                                            className='error-message'
+                                        >
+                                            {e.message}
+                                        </p>
+                                    ))}
                             </div>
                             <div className='passenger-form__field'>
                                 <label className='passenger-form__label'>
@@ -300,6 +522,23 @@ function PassengerForm({ passengers, handleChange }) {
                                         )
                                     }
                                 />
+                                {validationErrors
+                                    .filter(
+                                        (e) =>
+                                            e.index === index &&
+                                            e.field ===
+                                                'documents[0].issuanceCountry'
+                                    )
+                                    .map((e) => (
+                                        <p
+                                            key={`${e.index}-${e.field}-${
+                                                e.message
+                                            }-${Date.now()}`}
+                                            className='error-message'
+                                        >
+                                            {e.message}
+                                        </p>
+                                    ))}
                             </div>
                             <div className='passenger-form__field'>
                                 <label className='passenger-form__label'>
@@ -328,6 +567,23 @@ function PassengerForm({ passengers, handleChange }) {
                                         closeOnSelect: true,
                                     }}
                                 />
+                                {validationErrors
+                                    .filter(
+                                        (e) =>
+                                            e.index === index &&
+                                            e.field ===
+                                                'documents[0].expiryDate'
+                                    )
+                                    .map((e) => (
+                                        <p
+                                            key={`${e.index}-${e.field}-${
+                                                e.message
+                                            }-${Date.now()}`}
+                                            className='error-message'
+                                        >
+                                            {e.message}
+                                        </p>
+                                    ))}
                             </div>
                         </div>
                     </details>
@@ -339,15 +595,17 @@ function PassengerForm({ passengers, handleChange }) {
 
 function PassengerDetails() {
     const { state } = useLocation()
+    const navigate = useNavigate()
 
-    const passengerCount =
-        state.travelerCount.adults + state.travelerCount.children
+    const { adults, children } = state.travelerCount
+    const totalPassengers = adults + children
 
     const flightOffer = state.flight.flight || []
 
     const [passengers, setPassengers] = useState(
-        Array.from({ length: passengerCount }, (_, i) => ({
+        Array.from({ length: totalPassengers }, (_, i) => ({
             id: `${i + 1}`,
+            type: i < adults ? 'Adult' : 'Child',
             title: 'mr',
             name: {
                 firstName: 'Sean',
@@ -369,12 +627,12 @@ function PassengerDetails() {
                 {
                     documentType: 'PASSPORT',
                     number: 'AB1234567',
-                    nationality: 'ES',
-                    issuanceCountry: 'ES',
+                    nationality: 'PH',
+                    issuanceCountry: 'PH',
                     expiryDate: '2032-08-07',
                     issuanceDate: '2024-08-07',
-                    validityCountry: 'ES',
-                    placeOfBirth: 'Madrid',
+                    validityCountry: 'PH',
+                    placeOfBirth: 'Manila',
                     holder: true,
                 },
             ],
@@ -398,51 +656,112 @@ function PassengerDetails() {
     const outboundDeparture = state.outboundDeparture
 
     const [isLoading, setIsLoading] = useState(false)
+    const [validationErrors, setValidationErrors] = useState([])
 
     const handleSubmit = async () => {
+        const errors = []
         setIsLoading(true)
+
         try {
-            // Validate required fields
             for (const [index, passenger] of passengers.entries()) {
-                if (!passenger.name.firstName || !passenger.name.lastName) {
-                    throw new Error(
-                        `Passenger ${
-                            index + 1
-                        }: First and last name are required`
-                    )
+                try {
+                    const age = calculateAge(passenger.dateOfBirth)
+
+                    if (!passenger.title) {
+                        errors.push({
+                            index,
+                            field: 'title',
+                            message: 'Title is required',
+                        })
+                    }
+
+                    if (!passenger.name.firstName) {
+                        errors.push({
+                            index,
+                            field: 'name.firstName',
+                            message: 'First name is required',
+                        })
+                    }
+
+                    if (!passenger.name.lastName) {
+                        errors.push({
+                            index,
+                            field: 'name.lastName',
+                            message: 'Last name is required',
+                        })
+                    }
+
+                    if (!passenger.gender) {
+                        errors.push({
+                            index,
+                            field: 'gender',
+                            message: 'Gender is required',
+                        })
+                    }
+
+                    if (!passenger.dateOfBirth) {
+                        errors.push({
+                            index,
+                            field: 'dateOfBirth',
+                            message: 'Date of birth is required',
+                        })
+                    }
+
+                    if (passenger.type === 'child' && age >= 12) {
+                        errors.push({
+                            index,
+                            field: 'dateOfBirth',
+                            message: 'Child must be under 12 years old',
+                        })
+                    }
+
+                    if (
+                        !passenger.contact.emailAddress &&
+                        !passenger.contact.phones[0]?.number
+                    ) {
+                        errors.push({
+                            index,
+                            field: 'contact.emailAddress',
+                            message: 'At least email or phone is required',
+                        })
+                        errors.push({
+                            index,
+                            field: 'contact.phones[0]',
+                            message: 'At least email or phone is required',
+                        })
+                    }
+
+                    if (!passenger.contact.phones[0]?.countryCallingCode) {
+                        errors.push({
+                            index,
+                            field: 'contact.phones[0].countryCallingCode',
+                            message: 'Country calling code is required',
+                        })
+                    }
+
+                    if (
+                        passenger.documents[0]?.documentType === 'PASSPORT' &&
+                        !passenger.documents[0]?.holder
+                    ) {
+                        errors.push({
+                            index,
+                            field: 'documents[0].holder',
+                            message: 'Passport holder field is required',
+                        })
+                    }
+                } catch (error) {
+                    errors.push({
+                        index,
+                        field: 'dateOfBirth',
+                        message: error.message || 'Invalid date of birth',
+                    })
                 }
-                if (!passenger.dateOfBirth) {
-                    throw new Error(
-                        `Passenger ${index + 1}: Date of birth is required`
-                    )
-                }
-                if (
-                    !passenger.contact.emailAddress &&
-                    !passenger.contact.phones[0]?.number
-                ) {
-                    throw new Error(
-                        `Passenger ${
-                            index + 1
-                        }: At least one contact method is required`
-                    )
-                }
-                if (!passenger.contact.phones[0]?.countryCallingCode) {
-                    throw new Error(
-                        `Passenger ${
-                            index + 1
-                        }: Country calling code is required`
-                    )
-                }
-                if (
-                    passenger.documents[0]?.documentType === 'PASSPORT' &&
-                    !passenger.documents[0]?.holder
-                ) {
-                    throw new Error(
-                        `Passenger ${
-                            index + 1
-                        }: Passport holder field is required`
-                    )
-                }
+            }
+
+            if (errors.length > 0) {
+                setValidationErrors(errors)
+                setIsLoading(false)
+                return
             }
 
             const passengerData = {
@@ -470,12 +789,12 @@ function PassengerDetails() {
                         phones: [
                             {
                                 deviceType: 'LANDLINE',
-                                countryCallingCode: '34', // Fixed format
+                                countryCallingCode: '34',
                                 number: '480080071',
                             },
                             {
                                 deviceType: 'MOBILE',
-                                countryCallingCode: '33', // Fixed format
+                                countryCallingCode: '33',
                                 number: '480080072',
                             },
                         ],
@@ -490,22 +809,46 @@ function PassengerDetails() {
                 ],
             }
 
+            const searchCriteria = {
+                origin,
+                destination,
+                inboundDeparture,
+                outboundDeparture,
+                travelerCount: { adults, children },
+            }
+
             const response = await axios.post('/api/v1/bookings/flights', {
                 flightOffer: flightOffer,
                 passengerDetails: passengerData,
+                searchCriteria,
             })
+
             const { checkoutUrl } = response.data
             if (!checkoutUrl) throw new Error('Checkout URL missing')
+
             setIsLoading(false)
             window.location.href = checkoutUrl
         } catch (error) {
             console.error('Booking submission failed:', error)
+            console.log(
+                'Error response:',
+                JSON.stringify(error.response?.data, null, 2)
+            )
+            console.log('Error status:', error.response?.status)
+            setIsLoading(false)
             alert(
-                error.message ||
-                    error.response?.data?.message ||
+                error.response?.data?.error ||
                     'Booking failed. Please try again.'
             )
-            setIsLoading(false)
+            navigate('/flights', {
+                state: {
+                    origin,
+                    destination,
+                    inboundDeparture,
+                    outboundDeparture,
+                    travelerCount: { adults, children },
+                },
+            })
         }
     }
 
@@ -530,8 +873,8 @@ function PassengerDetails() {
                 <div className='passenger-details__count-group'>
                     <IoPersonSharp className='passenger-details__icon' />
                     <p className='passenger-details__count'>
-                        {passengerCount} Passenger
-                        {passengerCount > 1 ? 's' : ''}
+                        {totalPassengers} Passenger
+                        {totalPassengers > 1 ? 's' : ''}
                     </p>
                 </div>
             </div>
@@ -541,9 +884,10 @@ function PassengerDetails() {
                     Passenger Information
                 </h2>
                 <PassengerForm
-                    passengerCount={passengerCount}
                     passengers={passengers}
                     handleChange={handleChange}
+                    validationErrors={validationErrors}
+                    setValidationErrors={setValidationErrors}
                 />
             </div>
 
