@@ -1,28 +1,40 @@
 {
-  "dependencies": {
-    "amadeus": "^11.0.0",
-    "axios": "^1.10.0",
-    "cors": "^2.8.5",
-    "dotenv": "^17.0.0",
-    "express": "^5.1.0",
-    "mysql2": "^3.14.1",
-    "node-file-router": "^0.8.0",
-    "stripe": "^18.4.0",
-    "uuid": "^11.1.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.10"
-  },
-  "name": "backend",
-  "version": "1.0.0",
-  "description": "",
-  "main": "server.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon server.js"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module"
+    "dependencies": {
+        "amadeus": "^11.0.0",
+        "axios": "^1.10.0",
+        "cors": "^2.8.5",
+        "dotenv": "^17.0.0",
+        "express": "^5.1.0",
+        "get-stream": "^9.0.1",
+        "mysql2": "^3.14.1",
+        "node-file-router": "^0.8.0",
+        "nodemailer": "^7.0.5",
+        "pdfkit": "^0.17.1",
+        "puppeteer": "^24.16.0",
+        "sendpulse-api": "^1.1.7",
+        "stripe": "^18.4.0",
+        "uuid": "^11.1.0"
+    },
+    "devDependencies": {
+        "@babel/cli": "^7.28.0",
+        "@babel/core": "^7.28.0",
+        "@babel/preset-env": "^7.28.0",
+        "@babel/preset-react": "^7.27.1",
+        "@babel/register": "^7.27.1",
+        "nodemon": "^3.1.10"
+    },
+    "name": "backend",
+    "version": "1.0.0",
+    "description": "",
+    "main": "server.js",
+    "scripts": {
+        "build": "babel . --out-dir dist --extensions \".js,.jsx\" --copy-files --ignore \"node_modules,dist,babel.config.json,testSendEmail.js,package.json,package-lock.json\"",
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "nodemon server.js",
+        "test:email": "npm run build && node testSendEmail.js"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "type": "module"
 }

@@ -1,4 +1,4 @@
-import aircraftMap from '../data/aircraftTypes.json'
+import aircraftMap from '../data/aircraftTypes'
 
 export const getAircraftName = (code) =>
     aircraftMap[code] || `Aircraft Code: ${code}`

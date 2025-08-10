@@ -1,5 +1,5 @@
 import { Duration } from 'luxon'
-import { getAirlineInfo } from './airlinesUtils'
+import { getAirlineInfo } from './airlinesUtils.js'
 
 export const createFlightDetails = (flight) => {
     const { airlineCode, segments } = flight

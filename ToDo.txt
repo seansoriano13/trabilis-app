@@ -4,10 +4,6 @@ Amadeus Node Reference: https://github.com/amadeus4dev/amadeus-node
 
 ---------HIGH PRIO---------------
 
---Refactor all logics to cater both roundtrip and oneway
---in success url, just put a booking confirmed, please wait for response (smth like that, ask ai what to compose on that part)
-
-
 ---------MEDIUM PRIO----------------
 -import footer
 - add stops visualization sa flight-result__line, pati rin sa flights/booking
@@ -22,3 +18,4 @@ Amadeus Node Reference: https://github.com/amadeus4dev/amadeus-node
 - Integrate Airports and City search by amadeus, naka local data lang tayo for now (github)
 - Implement Calling Code Option (e.g +63) sa PassengerForm
 - check the durations if its accurate, like what if may stop yung flight
+- if hindi nakapag bayad yung client after booking the flight throught initateBooking, dapat i dedelete yung nabook na flight

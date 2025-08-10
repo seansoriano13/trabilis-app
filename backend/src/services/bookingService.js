@@ -1,12 +1,9 @@
 import pool from '../config/db.js'
 import { amadeus } from '../config/amadeus.js'
 import stripe from '../config/stripe.js'
-import { sendFailureEmail, sendConfirmationEmail } from './emailService.js'
+import { sendConfirmationEmail } from './emailService.js'
 
-export async function finalizeFlightBooking(
-    bookingReference,
-    stripeCheckoutId
-) {
+export async function finalizeFlightBooking(bookingReference) {
     let connection
     try {
         connection = await pool.getConnection()

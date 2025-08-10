@@ -416,7 +416,7 @@ export const cancelFlightBooking = async (req, res) => {
     } finally {
         if (connection) {
             try {
-                await connection.release()
+                connection.release()
             } catch (releaseError) {
                 console.error('Error releasing connection:', releaseError)
             }

@@ -1,174 +1,315 @@
 import pool from '../config/db.js'
+import nodemailer from 'nodemailer'
+import fs from 'fs/promises'
+import { fileURLToPath } from 'url'
+import path from 'path'
+import puppeteer from 'puppeteer'
+import sendpulse from 'sendpulse-api'
 
-/**
- * Simulates sending a final booking confirmation email to the customer.
- * For now, it logs to the console.
- * In the future, this is where Nodemailer and PDFKit logic will go.
- * @param {string} bookingReference - The reference of the booking to confirm.
- * @throws {Error} If the booking is not found or required data is missing.
- */
-export const sendConfirmationEmail = async (bookingReference) => {
-    console.log(
-        `--- Preparing to send CONFIRMATION email for ${bookingReference}... ---`
+export function getDuration(start, end) {
+    if (!start || !end) return 'N/A'
+
+    if (start > end) return 'Invalid Duration'
+
+    const startDate = new Date(start)
+    const endDate = new Date(end)
+    const diffMs = endDate - startDate
+    const minutes = Math.floor(diffMs / 1000 / 60)
+    const hours = Math.floor(minutes / 60)
+    const remainingMinutes = minutes % 60
+
+    return `${hours}h ${remainingMinutes}m`
+}
+
+export const formatToLongDate = (date) => {
+    const [start, end] = Array.isArray(date) ? date : [date]
+
+    const toDate = (d) => (d instanceof Date ? d : new Date(d))
+    const isValid = (d) => d instanceof Date && !isNaN(d)
+
+    const startDate = toDate(start)
+    const endDate = end ? toDate(end) : null
+
+    if (!isValid(startDate)) return ''
+
+    const toFormatted = (d) =>
+        d.toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+        })
+
+    return endDate && isValid(endDate)
+        ? [toFormatted(startDate), toFormatted(endDate)]
+        : toFormatted(startDate)
+}
+
+// The new Puppeteer-based PDF generator
+export const generateFlightItineraryPDF = async (bookingDetails) => {
+    const __dirname = path.dirname(fileURLToPath(import.meta.url))
+    const templatePath = path.join(
+        __dirname,
+        'templates',
+        'flight-itinerary-template.html'
     )
 
-    let connection
-    try {
-        connection = await pool.getConnection()
+    let html = await fs.readFile(templatePath, 'utf-8')
 
-        // Fetch booking details including flight offer, PNR, and e-ticket numbers
-        const [rows] = await connection.execute(
-            'SELECT passenger_details, pnr, e_ticket_numbers, amadeus_flight_offer FROM flight_bookings WHERE booking_reference = ?',
-            [bookingReference]
-        )
-
-        if (rows.length === 0) {
-            console.error(
-                `EMAIL_SERVICE_ERROR: Could not find booking ${bookingReference} to send confirmation.`
-            )
-            throw new Error(`Booking ${bookingReference} not found`)
+    const formatDateTime = (isoString) => {
+        const options = {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
         }
+        return new Date(isoString).toLocaleString('en-US', options)
+    }
 
-        const booking = rows[0]
-        let passengerDetails, flightOffer
-        try {
-            passengerDetails = JSON.parse(booking.passenger_details)
-            flightOffer = JSON.parse(booking.amadeus_flight_offer)
-        } catch (parseError) {
-            console.error(
-                `Error parsing booking data for ${bookingReference}:`,
-                parseError
-            )
-            throw new Error(
-                `Invalid booking data format: ${parseError.message}`
-            )
-        }
-
-        const travelers = passengerDetails.travelers || []
-        if (!travelers.length) {
-            console.error(
-                `No travelers found in passenger_details for ${bookingReference}`
-            )
-            throw new Error(`No travelers found for ${bookingReference}`)
-        }
-
-        const leadPassenger = travelers[0] // Assume first traveler is lead
-        const pnr = booking.pnr || 'Pending'
-        const eTicketNumbers = booking.e_ticket_numbers
-            ? JSON.parse(booking.e_ticket_numbers)
-            : null
-
-        // Construct flight itinerary summary
-        const itinerarySummary =
-            flightOffer.itineraries
-                ?.map((itinerary, index) => {
-                    const segments = itinerary.segments
-                        .map((segment) => {
-                            return `${segment.departure.iataCode} to ${segment.arrival.iataCode} on ${segment.departure.at} (${segment.carrierCode} ${segment.number})`
-                        })
-                        .join(', ')
-                    return `Flight ${index + 1}: ${segments}`
+    // 1. Itineraries
+    const itinerariesHtml = bookingDetails.amadeus_flight_offer.itineraries
+        .map((itinerary, index) => {
+            const headerClass = index === 0 ? '' : 'return'
+            const headerTitle = index === 0 ? 'Onward' : 'Return'
+            const segmentsHtml = itinerary.segments
+                .map((segment) => {
+                    // In a real app, you might map 'PR' to a logo URL.
+                    // const airlineLogoUrl = getLogoForCarrier(segment.carrierCode);
+                    return `
+                <div class="flight-details-row">
+                    <div class="flight-col airline">
+                        <div>
+                            <strong>${segment.carrierCode}</strong><br>
+                            ${segment.number}
+                        </div>
+                    </div>
+                    <div class="flight-col departing">
+                        <h4>${segment.departure.iataCode}</h4>
+                        <p>${formatToLongDate(segment.departure.at)}</p>
+                        <p>Terminal ${segment.departure.terminal || 'N/A'}</p>
+                    </div>
+                    <div class="flight-col arriving">
+                        <h4>${segment.arrival.iataCode}</h4>
+                        <p>${formatToLongDate(segment.arrival.at)}</p>
+                        <p>Terminal ${segment.arrival.terminal || 'N/A'}</p>
+                    </div>
+                    <div class="flight-col duration">
+                        Non Stop<br>
+                        ${getDuration(segment.duration)}
+                    </div>
+                </div>
+            `
                 })
-                .join('\n') || 'Flight details unavailable'
+                .join('')
 
-        // Simulated email content
-        console.log(`
-            ==================================================
-            EMAIL TO: ${leadPassenger.contact.emailAddress}
-            SUBJECT: ✅ Your Flight Booking is Confirmed! (Ref: ${bookingReference})
-            --------------------------------------------------
-            Hello ${leadPassenger.name.firstName} ${
-            leadPassenger.name.lastName
-        },
+            return `
+            <div class="itinerary-section">
+                <div class="itinerary-header ${headerClass}">
+                    <span><svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M6.428 1.151C6.708.591 7.213 0 7.86 0h.28c.646 0 1.151.59 1.43 1.151l.445 1.039L14.73 4c.626.284.829.986.545 1.591l-2.155 4.223L13 14.85c.165.632-.22 1.252-.88 1.252h-.28c-.66 0-1.045-.62-1.21-1.252L10 11.691 7.918 7.073 5.5 11.691l-.21 1.252c-.165.632-.54 1.252-1.21 1.252h-.28c-.66 0-1.045-.62-.88-1.252l.21-1.252 2.155-4.223L1.724 5.591c-.284-.605-.081-1.307.545-1.591L6 2.19l.428-1.039z"/></svg> ${headerTitle}</span>
+                    <span class="non-refundable">Non-Refundable</span>
+                </div>
+                ${segmentsHtml}
+            </div>
+        `
+        })
+        .join('')
 
-            Great news! Your flight booking with Lindela Travel and Tours is confirmed.
-
-            **Booking Reference**: ${bookingReference}
-            **Passenger Name Record (PNR)**: ${pnr}
-            **E-Ticket Numbers**: ${
-                eTicketNumbers ? eTicketNumbers.join(', ') : 'Pending issuance'
-            }
-
-            **Travelers**:
-            ${travelers
-                .map((t, i) => `- ${t.name.firstName} ${t.name.lastName}`)
-                .join('\n')}
-
-            **Itinerary**:
-            ${itinerarySummary}
-
-            You can use the PNR to manage your booking directly on the airline's website.
-
-            Your official e-ticket and itinerary PDF will be attached to this email once available.
-            (PDF generation will be implemented soon!)
-
-            Thank you for booking with us!
-
-            Sincerely,
-            The Lindela Team
-            ==================================================
-        `)
-    } catch (error) {
-        console.error(
-            `❌ FAILED to send confirmation email for ${bookingReference}:`,
-            error
+    // 2. Passengers
+    const eTickets = JSON.parse(bookingDetails.e_ticket_numbers || '[]')
+    const passengersHtml = bookingDetails.passenger_details.travelers
+        .map(
+            (pax, index) => `
+        <tr>
+            <td>${index + 1}</td>
+            <td><strong>${pax.title.toUpperCase()} ${pax.name.firstName} ${
+                pax.name.lastName
+            }</strong><br>Adult (${formatToLongDate(pax.dateOfBirth)})</td>
+            <td>${pax.documents[0]?.number || 'N/A'}<br>${formatToLongDate(
+                pax.documents[0]?.expiryDate
+            )}, ${pax.documents[0]?.nationality || ''}</td>
+            <td>${bookingDetails.pnr}</td>
+            <td>${eTickets[index] || 'N/A'}</td>
+            <td>${
+                bookingDetails.status === 'TICKETED'
+                    ? 'Confirmed'
+                    : bookingDetails.status
+            }</td>
+        </tr>
+    `
         )
-        throw error // Propagate error to caller
+        .join('')
+    // Price Summary
+    // 3. Payment Details
+    const price = bookingDetails.amadeus_flight_offer.price
+    const taxesAndFees = parseFloat(price.total) - parseFloat(price.base)
+    const paymentDetailsHtml = `
+        <table>
+            <tr>
+                <td>Base Fare</td>
+                <td align="right">${parseFloat(price.base).toLocaleString(
+                    'en-PH',
+                    { style: 'currency', currency: 'PHP' }
+                )}</td>
+            </tr>
+            <tr>
+                <td>Taxes & Fees</td>
+                <td align="right">${taxesAndFees.toLocaleString('en-PH', {
+                    style: 'currency',
+                    currency: 'PHP',
+                })}</td>
+            </tr>
+            <tr class="total">
+                <td>Total Fare</td>
+                <td align="right">${parseFloat(price.grandTotal).toLocaleString(
+                    'en-PH',
+                    { style: 'currency', currency: 'PHP' }
+                )}</td>
+            </tr>
+        </table>
+    `
+
+    // 4. Flight Inclusions
+    const baggageInfo =
+        bookingDetails.amadeus_flight_offer.travelerPricings[0]
+            .fareDetailsBySegment[0].includedCheckedBags
+    const flightInclusionsHtml = `
+        <h5>Cabin Baggage (Pre Included)</h5>
+        <p>Adult: 7 Kg Included</p>
+        <br>
+        <h5>Check-in Baggage (Pre Included)</h5>
+        <p>Adult: ${baggageInfo?.weight || 0} ${
+        baggageInfo?.weightUnit || 'KG'
+    } Included</p>
+    `
+
+    // --- Replace all placeholders ---
+    html = html
+        .replace(/{{companyName}}/g, 'Lindela Travel And Tours') // Replace with your actual company name
+        .replace(/{{companyEmail}}/g, 'lindelatravelandtours@gmail.com') // Replace with your actual email
+        .replace(
+            /{{companyAddress}}/g,
+            'Unit 2215 Cityland 10 Tower II, H. V. Dela Costa Street, Makati, Metro Manila'
+        ) // Replace with your actual address
+        .replace('{{bookingReference}}', bookingDetails.booking_reference)
+        .replace(
+            '{{bookingDate}}',
+            new Date().toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+            })
+        )
+        .replace('{{itineraries}}', itinerariesHtml)
+        .replace('{{passengers}}', passengersHtml)
+        .replace('{{paymentDetails}}', paymentDetailsHtml)
+        .replace('{{flightInclusions}}', flightInclusionsHtml)
+
+    // --- Puppeteer logic ---
+    let browser
+    try {
+        browser = await puppeteer.launch({
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        })
+
+        const page = await browser.newPage()
+        await page.setContent(html, { waitUntil: 'networkidle0' })
+
+        const pdfBuffer = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+        })
+
+        return pdfBuffer
+    } catch (error) {
+        console.error('Error generating PDF with Puppeteer:', error)
+        throw new Error('Could not generate the itinerary PDF.')
     } finally {
-        if (connection) {
-            try {
-                await connection.release()
-            } catch (releaseError) {
-                console.error(
-                    `Error releasing database connection for ${bookingReference}:`,
-                    releaseError
-                )
-            }
-        }
+        if (browser) await browser.close()
     }
 }
 
-/**
- * Simulates sending a booking failure and refund notification email.
- * @param {object} params - Email parameters including email, firstName, lastName, bookingReference, and searchCriteria.
- * @throws {Error} If required data is missing.
- */
-export const sendFailureEmail = async ({
-    email,
-    firstName,
-    lastName,
-    bookingReference,
-    searchCriteria,
-}) => {
-    console.log(
-        `--- Preparing to send FAILURE email for ${bookingReference}... ---`
+export const getBookingByBookingReference = async (bookingReference) => {
+    // This is your database logic, which should be correct.
+    const [rows] = await pool.query(
+        `SELECT * FROM flight_bookings WHERE booking_reference = ?`,
+        [bookingReference]
     )
 
-    try {
-        // Simulated email content
-        console.log(`
-            ==================================================
-            EMAIL TO: ${email}
-            SUBJECT: ❗ Important Update Regarding Your Flight Booking (Ref: ${bookingReference})
-            --------------------------------------------------
-            Hello ${firstName} ${lastName},
-
-            We are writing to inform you that there was an issue processing your flight booking (Ref: ${bookingReference}).
-            Unfortunately, we were unable to confirm your ticket with the airline at this time. This can sometimes happen due to last-second availability changes.
-
-            Please be assured that a FULL REFUND for your payment has already been processed via Stripe. You should see it reflected on your statement within 5-10 business days.
-
-            We sincerely apologize for this inconvenience. Please feel free to try booking again or contact our support team at support@lindelatravel.com for assistance.
-
-            Sincerely,
-            The Lindela Team
-            ==================================================
-        `)
-    } catch (error) {
-        console.error(
-            `❌ FAILED to send failure email for ${bookingReference}:`,
-            error
-        )
-        throw error // Propagate error to caller
+    if (!rows.length) {
+        throw new Error(`No booking found with reference ${bookingReference}`)
     }
+
+    const booking = rows[0]
+
+    // Safely parse JSON fields
+    booking.passenger_details = booking.passenger_details
+        ? JSON.parse(booking.passenger_details)
+        : []
+    booking.amadeus_flight_offer = booking.amadeus_flight_offer
+        ? JSON.parse(booking.amadeus_flight_offer)
+        : null
+
+    return booking
+}
+
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.GMAIL_SMTP_USER,
+        pass: process.env.GMAIL_SMTP_PASS,
+    },
+})
+
+export default transporter
+
+export const sendConfirmationEmail = async (bookingReference) => {
+    const bookingDetails = await getBookingByBookingReference(bookingReference)
+    const customerEmail =
+        bookingDetails.passenger_details?.travelers[0]?.contact?.emailAddress
+
+    if (!customerEmail) {
+        throw new Error('Customer email not found in booking details.')
+    }
+
+    // Call the new Puppeteer function
+    const pdfBuffer = await generateFlightItineraryPDF(bookingDetails)
+
+    const mailOptions = {
+        from: process.env.GMAIL_SMTP_FROM,
+        to: customerEmail,
+        subject: 'Your Flight Booking Confirmation',
+        html: `
+        <html>
+            <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f7fa; margin:0; padding:0;">
+                <div style="max-width: 600px; margin: 30px auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px;">
+                    <h1 style="color: #0078D4; text-align: center; margin-bottom: 10px;">
+                        ✈️ Thank you for booking with <span style="font-weight: 700;">Trabilis</span>!
+                    </h1>
+                    <p style="font-size: 16px; color: #333; line-height: 1.5; text-align: center; margin-bottom: 30px;">
+                        Your flight itinerary is attached to this email.<br/>
+                        We wish you a safe and pleasant journey!
+                    </p>
+                    <p style="font-size: 14px; color: #888; margin-top: 40px; text-align: center;">
+                        If you have any questions, feel free to 
+                        <a href="mailto:${process.env.GMAIL_SMTP_FROM}" style="color: #0078D4; text-decoration: none;">
+                            contact our support team
+                        </a>.
+                    </p>
+                </div>
+            </body>
+        </html>
+    `,
+        attachments: [
+            {
+                filename: `Itinerary-${bookingDetails.booking_reference}.pdf`,
+                content: pdfBuffer,
+                contentType: 'application/pdf',
+            },
+        ],
+    }
+    const info = transporter.sendMail(mailOptions)
+    console.log('Email sent! Preview URL:', nodemailer.getTestMessageUrl(info))
 }
