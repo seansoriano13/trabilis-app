@@ -24,9 +24,14 @@ function FlightBookingSuccess() {
             }
 
             try {
-                const response = await axios.get('/api/v1/bookings/status', {
-                    params: { booking_reference: bookingReference },
-                })
+                const response = await axios.get(
+                    `${
+                        import.meta.env.VITE_BACKEND_URL
+                    }/api/v1/bookings/status`,
+                    {
+                        params: { booking_reference: bookingReference },
+                    }
+                )
                 const { status, searchCriteria } = response.data
                 setBookingDetails({ status, searchCriteria })
 

@@ -25,7 +25,6 @@ export default function FilterModal({
     setAllFlights,
     setIsLoading,
 }) {
-    const API_ENDPOINT = '/api/v1/flights/search'
     const prevFiltersRef = useRef(filters)
 
     const areFiltersEqual = (prev, curr) => {
@@ -60,14 +59,17 @@ export default function FilterModal({
         travelerCount,
         cabinClass
     ) => {
-        const response = await axios.post(API_ENDPOINT, {
-            tripType,
-            date,
-            origin,
-            destination,
-            travelerCount,
-            cabinClass,
-        })
+        const response = await axios.post(
+            `${import.meta.env.VITE_BACKEND_URL}/api/v1/flights`,
+            {
+                tripType,
+                date,
+                origin,
+                destination,
+                travelerCount,
+                cabinClass,
+            }
+        )
         return response.data
     }
 
