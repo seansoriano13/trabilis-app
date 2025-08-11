@@ -9,7 +9,19 @@ const app = express()
 const port = process.env.PORT
 app.use('/api/v1/webhooks', webhookRoutes)
 
-app.use(cors())
+const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',')
+
+app.use(
+    cors({
+        origin: (origin, callback) => {
+            if (!origin || allowedOrigins.includes(origin)) {
+                return callback(null, true)
+            }
+            return callback(new Error('Not allowed by CORS'))
+        },
+        credentials: true,
+    })
+)
 app.use(express.json())
 
 app.use('/api/v1/flights', flightRoutes)
