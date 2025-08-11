@@ -121,8 +121,9 @@ export default function Flights() {
 
         const formattedDate = getFormattedDate()
 
-        if (!tripType?.value || !formattedDate || !origin || destination) {
+        if (!tripType?.value || !formattedDate || !origin || !destination) {
             setIsFlightSearchErr(true)
+            setIsLoading(false)
             return
         }
 
@@ -135,26 +136,34 @@ export default function Flights() {
                 travelerCount,
                 cabinClass
             )
+
             setIsLoading(false)
 
             if (flights) {
-                navigate('search-result', {
-                    state: {
-                        flights,
-                        origin,
-                        destination,
-                        date,
-                        travelerCount,
-                        tripType,
-                        cabinClass,
-                    },
-                })
+                const searchData = {
+                    flights,
+                    origin,
+                    destination,
+                    date,
+                    travelerCount,
+                    tripType,
+                    cabinClass,
+                }
+
+                sessionStorage.setItem(
+                    'searchResults',
+                    JSON.stringify(searchData)
+                )
+
+                navigate('search-result', { state: searchData })
             }
         } catch (err) {
             console.error('Flight search failed:', err)
             setIsFlightSearchErr(true)
+            setIsLoading(false)
         }
     }
+
     const searchFlights = async (
         tripType,
         date,

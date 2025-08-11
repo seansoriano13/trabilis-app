@@ -44,6 +44,16 @@ function FlightSearchResults() {
     const [allFlights, setAllFlights] = useState(state?.flights.flights ?? [])
 
     const [activeTab, setActiveTab] = useState('flights')
+    const [searchData, setSearchData] = useState(state)
+
+    useEffect(() => {
+        if (!state) {
+            const stored = sessionStorage.getItem('searchResults')
+            if (stored) setSearchData(JSON.parse(stored))
+        }
+    }, [state])
+
+    if (!searchData) console.log('No Flight search results')
 
     const getInitialFilters = () => {
         const saved = localStorage.getItem('savedFilters')
@@ -313,15 +323,17 @@ function FlightSearchResults() {
     }
 
     const handleBackClick = () => {
-        navigate('/flights', {
-            state: {
-                origin,
-                destination,
-                date,
-                travelerCount,
-                cabinClass,
-            },
-        })
+        const searchFormData = {
+            origin,
+            destination,
+            date,
+            travelerCount,
+            cabinClass,
+        }
+
+        sessionStorage.setItem('searchForm', JSON.stringify(searchFormData))
+
+        navigate('/flights', { state: searchFormData })
     }
 
     return (

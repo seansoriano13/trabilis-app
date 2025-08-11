@@ -4,7 +4,7 @@ import { SyncLoader } from 'react-spinners'
 import FlightDetailsCard from '../../components/client/FlightDetailsCard'
 import './FlightBooking.css'
 import PrimaryButton from '../../components/client/PrimaryButton'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import BaggagePolicyModal from '../../components/client/BaggagePolicyModal'
 import { getAirportInfoByIata } from '../../utils/getAirportInfoByIata'
 import { formatToLongDate } from '../../utils/flightUtils'
@@ -13,7 +13,7 @@ function FlightBooking() {
     const { airports: options, loading } = useAirports()
     const { state } = useLocation()
     const flight = state
-    
+
     const navigate = useNavigate()
 
     // Derived Data
@@ -23,6 +23,14 @@ function FlightBooking() {
     const price = flight.price
 
     const [isBaggageModalOpen, setIsBaggageModalOpen] = useState(false)
+    const [, setBookingData] = useState(state)
+
+    useEffect(() => {
+        if (!state) {
+            const stored = sessionStorage.getItem('bookingData')
+            if (stored) setBookingData(JSON.parse(stored))
+        }
+    }, [state])
 
     // Format baggage utility
     const formatBaggage = (bag) => {
@@ -171,23 +179,29 @@ function FlightBooking() {
     }
 
     const handleClick = () => {
-        navigate(`/flights/passenger-details/${flight.id}`, {
-            state: {
-                flight: flight,
-                id: flight.id,
-                travelerCount: flight.travelerCount,
-                origin: flight.outboundData.departureIata,
-                destination: flight.outboundData.arrivalIata,
-                outboundDeparture: formatToLongDate(
-                    flight.outboundData.segments[0].departure.at
+        const passengerData = {
+            flight,
+            id: flight.id,
+            travelerCount: flight.travelerCount,
+            origin: flight.outboundData.departureIata,
+            destination: flight.outboundData.arrivalIata,
+            outboundDeparture: formatToLongDate(
+                flight.outboundData.segments[0].departure.at
+            ),
+            ...(flight.inboundData && {
+                inboundDeparture: formatToLongDate(
+                    flight.inboundData.segments[0].departure.at
                 ),
-                ...(flight.inboundData && {
-                    inboundDeparture: formatToLongDate(
-                        flight.inboundData.segments[0].departure.at
-                    ),
-                }),
-            },
+            }),
+        }
+
+        // Keep your existing in-memory navigation
+        navigate(`/flights/passenger-details/${flight.id}`, {
+            state: passengerData,
         })
+
+        // Add reload persistence
+        sessionStorage.setItem('passengerData', JSON.stringify(passengerData))
     }
 
     return (

@@ -21,17 +21,21 @@ export default function FlightResultCard({
     const { name, logo } = getAirlineInfo(outboundData.airlineCode)
 
     const handleBookNow = (flight) => {
-        navigate(`/flights/booking/${flight.id}`, {
-            state: {
-                id: flight.id,
-                flight: flight,
-                outboundData: outboundData,
-                inboundData: inboundData,
-                price: price,
-                currency: currency,
-                travelerCount: travelerCount,
-            },
-        })
+        const bookingData = {
+            id: flight.id,
+            flight,
+            outboundData,
+            inboundData,
+            price,
+            currency,
+            travelerCount,
+        }
+
+        // Save in-memory navigation
+        navigate(`/flights/booking/${flight.id}`, { state: bookingData })
+
+        // Save for reload persistence
+        sessionStorage.setItem('bookingData', JSON.stringify(bookingData))
     }
 
     return (

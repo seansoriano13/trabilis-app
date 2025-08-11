@@ -595,6 +595,16 @@ function PassengerForm({
 
 function PassengerDetails() {
     const { state } = useLocation()
+
+    const [, setPassengerData] = useState(state)
+
+    useEffect(() => {
+        if (!state) {
+            const stored = sessionStorage.getItem('passengerData')
+            if (stored) setPassengerData(JSON.parse(stored))
+        }
+    }, [state])
+
     const navigate = useNavigate()
 
     const { adults, children } = state.travelerCount
@@ -817,11 +827,14 @@ function PassengerDetails() {
                 travelerCount: { adults, children },
             }
 
-            const response = await axios.post('/api/v1/bookings/flights', {
-                flightOffer: flightOffer,
-                passengerDetails: passengerData,
-                searchCriteria,
-            })
+            const response = await axios.post(
+                `${import.meta.env.VITE_BACKEND_URL}/api/v1/bookings/flights`,
+                {
+                    flightOffer: flightOffer,
+                    passengerDetails: passengerData,
+                    searchCriteria,
+                }
+            )
 
             const { checkoutUrl } = response.data
             if (!checkoutUrl) throw new Error('Checkout URL missing')
