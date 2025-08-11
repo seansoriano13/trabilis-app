@@ -25,5 +25,5 @@ app.get('/', async (req, res) => {
 })
 
 app.listen(port, () => {
-    console.log(`Trabilis App running at http://localhost:${port}`)
+    console.log(`Trabilis App running at https://trabilis.onrender.com/`)
 })
