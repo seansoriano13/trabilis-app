@@ -113,6 +113,7 @@ export default function Flights() {
         }
         return formatToYMD(date)
     }
+
     // Search Flight
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -120,7 +121,7 @@ export default function Flights() {
 
         const formattedDate = getFormattedDate()
 
-        if (!tripType?.value || !formattedDate) {
+        if (!tripType?.value || !formattedDate || !origin || destination) {
             setIsFlightSearchErr(true)
             return
         }
@@ -163,14 +164,17 @@ export default function Flights() {
         cabinClass
     ) => {
         try {
-            const res = await axios.post('/api/v1/flights/search', {
-                tripType,
-                date,
-                origin,
-                destination,
-                travelerCount,
-                cabinClass,
-            })
+            const res = await axios.post(
+                `${import.meta.env.VITE_BACKEND_URL}/api/v1/flights/search`,
+                {
+                    tripType,
+                    date,
+                    origin,
+                    destination,
+                    travelerCount,
+                    cabinClass,
+                }
+            )
             console.log(res)
             return res.data
         } catch (err) {
