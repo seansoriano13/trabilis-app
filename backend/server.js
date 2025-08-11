@@ -5,9 +5,10 @@ import flightRoutes from './src/routes/flightRoutes.js'
 import bookingRoutes from './src/routes/bookingRoutes.js'
 import webhookRoutes from './src/routes/webhookRoutes.js'
 
+app.use('/api/v1/webhooks', webhookRoutes)
+
 const app = express()
 const port = process.env.PORT
-app.use('/api/v1/webhooks', webhookRoutes)
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',')
 
