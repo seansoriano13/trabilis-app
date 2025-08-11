@@ -1,22 +1,30 @@
-import pool from '../config/db.js'
+import { query } from '../config/db.js'
 import { amadeus } from '../config/amadeus.js'
 import stripe from '../config/stripe.js'
-import { sendConfirmationEmail } from './emailService.js'
+import { sendConfirmationEmail, sendFailureEmail } from './emailService.js'
 
 export async function finalizeFlightBooking(bookingReference) {
-    let connection
+    function safeParseJson(data, fallback = null) {
+        if (!data) return fallback
+        try {
+            return JSON.parse(data)
+        } catch {
+            return fallback
+        }
+    }
     try {
-        connection = await pool.getConnection()
         console.log(`Starting finalization for booking: ${bookingReference}`)
 
-        const [rows] = await connection.execute(
+        const result = await query(
             'SELECT amadeus_order_id, status, passenger_details, search_criteria FROM flight_bookings WHERE booking_reference = ?',
             [bookingReference]
         )
-        if (rows.length === 0) {
+
+        if (result.rows.length === 0) {
             throw new Error(`Booking ${bookingReference} not found`)
         }
-        const booking = rows[0]
+
+        const booking = result.rows[0]
         const { amadeus_order_id, status } = booking
 
         if (status !== 'PAID_PENDING_TICKETING') {
@@ -64,7 +72,7 @@ export async function finalizeFlightBooking(bookingReference) {
             )?.reference || null
 
         try {
-            await connection.execute(
+            await query(
                 'UPDATE flight_bookings SET status = ?, e_ticket_numbers = ?, pnr = ? WHERE booking_reference = ?',
                 [
                     'TICKETED',
@@ -94,27 +102,25 @@ export async function finalizeFlightBooking(bookingReference) {
                 emailError
             )
         }
-
-        await connection.commit()
         return { status: 'TICKETED', eTicketNumbers, pnr }
     } catch (error) {
         console.error(
             `❌ CRITICAL FAILURE during finalization for ${bookingReference}: ${error.message}`
         )
         try {
-            await connection.execute(
+            await query(
                 'UPDATE flight_bookings SET status = ? WHERE booking_reference = ?',
-                [`TICKETING_FAILED: ${error.message}`, bookingReference]
+                [`TICKETING_FAILED`, bookingReference]
             )
             console.log(
                 `Database updated for ${bookingReference}. Status: TICKETING_FAILED: ${error.message}`
             )
 
-            const [bookingRows] = await connection.execute(
+            const result = await query(
                 'SELECT total_amount, currency, stripe_checkout_id, passenger_details, search_criteria FROM flight_bookings WHERE booking_reference = ?',
                 [bookingReference]
             )
-            const booking = bookingRows[0]
+            const booking = result.rows[0]
             if (booking.stripe_checkout_id) {
                 try {
                     await stripe.refunds.create({
@@ -129,12 +135,11 @@ export async function finalizeFlightBooking(bookingReference) {
                         `Failed to issue refund for ${bookingReference}:`,
                         stripeError
                     )
-                    throw new Error(`Refund failed: ${stripeError.message}`)
                 }
             }
 
-            const passengerDetails = JSON.parse(booking.passenger_details)
-            const searchCriteria = JSON.parse(booking.search_criteria)
+            const passengerDetails = safeParseJson(booking.passenger_details)
+            const searchCriteria = safeParseJson(booking.search_criteria)
             const primaryTraveler = passengerDetails.travelers[0]
             try {
                 await sendFailureEmail({
@@ -151,8 +156,6 @@ export async function finalizeFlightBooking(bookingReference) {
                     emailError
                 )
             }
-
-            await connection.commit()
         } catch (rollbackError) {
             console.error(
                 `Rollback failed for ${bookingReference}:`,
@@ -160,52 +163,28 @@ export async function finalizeFlightBooking(bookingReference) {
             )
         }
         throw new Error(`Failed to finalize booking: ${error.message}`)
-    } finally {
-        if (connection) {
-            try {
-                await connection.release()
-                console.log(
-                    `Database connection released for ${bookingReference}`
-                )
-            } catch (releaseError) {
-                console.error(
-                    `Error releasing database connection for ${bookingReference}:`,
-                    releaseError
-                )
-            }
-        }
     }
 }
 
 export async function checkBookingStatus(bookingReference) {
-    let connection
     try {
-        connection = await pool.getConnection()
-        const [rows] = await connection.execute(
+        const result = await query(
             'SELECT status, search_criteria, pnr FROM flight_bookings WHERE booking_reference = ?',
             [bookingReference]
         )
-        if (rows.length === 0) {
+
+        const { status, search_criteria, pnr } = result.rows[0]
+        
+        if (!result.rows.length) {
             throw new Error(`Booking ${bookingReference} not found`)
         }
         return {
-            status: rows[0].status,
-            searchCriteria: JSON.parse(rows[0].search_criteria),
-            pnr: rows[0].pnr,
+            status: status,
+            searchCriteria: search_criteria,
+            pnr: pnr,
         }
     } catch (error) {
         console.error(`Failed to check status for ${bookingReference}:`, error)
         throw new Error(`Failed to check booking status: ${error.message}`)
-    } finally {
-        if (connection) {
-            try {
-                await connection.release()
-            } catch (releaseError) {
-                console.error(
-                    `Error releasing database connection for ${bookingReference}:`,
-                    releaseError
-                )
-            }
-        }
     }
 }

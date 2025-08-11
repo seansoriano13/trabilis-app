@@ -1,4 +1,4 @@
-import pool from '../config/db.js'
+import { query } from '../config/db.js'
 import nodemailer from 'nodemailer'
 import fs from 'fs/promises'
 import { fileURLToPath } from 'url'
@@ -56,18 +56,6 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
 
     let html = await fs.readFile(templatePath, 'utf-8')
 
-    const formatDateTime = (isoString) => {
-        const options = {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true,
-        }
-        return new Date(isoString).toLocaleString('en-US', options)
-    }
-
     // 1. Itineraries
     const itinerariesHtml = bookingDetails.amadeus_flight_offer.itineraries
         .map((itinerary, index) => {
@@ -117,7 +105,15 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
         .join('')
 
     // 2. Passengers
-    const eTickets = JSON.parse(bookingDetails.e_ticket_numbers || '[]')
+    let eTickets = bookingDetails.e_ticket_numbers || []
+    if (typeof eTickets === 'string') {
+        try {
+            eTickets = JSON.parse(eTickets)
+        } catch (err) {
+            console.error('Invalid e_ticket_numbers JSON:', eTickets)
+            eTickets = []
+        }
+    }
     const passengersHtml = bookingDetails.passenger_details.travelers
         .map(
             (pax, index) => `
@@ -233,24 +229,16 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
 
 export const getBookingByBookingReference = async (bookingReference) => {
     // This is your database logic, which should be correct.
-    const [rows] = await pool.query(
+    const result = await query(
         `SELECT * FROM flight_bookings WHERE booking_reference = ?`,
         [bookingReference]
     )
 
-    if (!rows.length) {
+    if (!result.rows.length) {
         throw new Error(`No booking found with reference ${bookingReference}`)
     }
 
-    const booking = rows[0]
-
-    // Safely parse JSON fields
-    booking.passenger_details = booking.passenger_details
-        ? JSON.parse(booking.passenger_details)
-        : []
-    booking.amadeus_flight_offer = booking.amadeus_flight_offer
-        ? JSON.parse(booking.amadeus_flight_offer)
-        : null
+    const booking = result.rows[0]
 
     return booking
 }
@@ -310,6 +298,52 @@ export const sendConfirmationEmail = async (bookingReference) => {
             },
         ],
     }
-    const info = transporter.sendMail(mailOptions)
+    const info = await transporter.sendMail(mailOptions)
     console.log('Email sent! Preview URL:', nodemailer.getTestMessageUrl(info))
+}
+
+export const sendFailureEmail = async ({
+    email,
+    firstName,
+    lastName,
+    bookingReference,
+    searchCriteria,
+}) => {
+    if (!email) throw new Error('Recipient email is required.')
+
+    const mailOptions = {
+        from: process.env.GMAIL_SMTP_FROM,
+        to: email,
+        subject: 'Booking Failure Notification',
+        html: `
+      <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px;">
+          <div style="max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+            <h2 style="color: #d9534f;">Booking Failed</h2>
+            <p>Dear ${firstName} ${lastName},</p>
+            <p>We regret to inform you that your booking with reference <strong>${bookingReference}</strong> has failed.</p>
+            <p>Please review your search criteria and try again:</p>
+            <pre style="background:#eee; padding:10px; border-radius:4px;">${JSON.stringify(
+                searchCriteria,
+                null,
+                2
+            )}</pre>
+            <p>If you have any questions, please contact our support team at 
+              <a href="mailto:${process.env.GMAIL_SMTP_FROM}">${
+            process.env.GMAIL_SMTP_FROM
+        }</a>.
+            </p>
+            <p>Thank you for your understanding.</p>
+            <p>Best regards,<br/>Trabilis Team</p>
+          </div>
+        </body>
+      </html>
+    `,
+    }
+
+    const info = await transporter.sendMail(mailOptions)
+    console.log(
+        'Failure email sent! Preview URL:',
+        nodemailer.getTestMessageUrl(info)
+    )
 }

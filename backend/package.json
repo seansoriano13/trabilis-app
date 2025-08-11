@@ -1,5 +1,6 @@
 {
     "dependencies": {
+        "@supabase/supabase-js": "^2.54.0",
         "amadeus": "^11.0.0",
         "axios": "^1.10.0",
         "cors": "^2.8.5",
@@ -10,6 +11,7 @@
         "node-file-router": "^0.8.0",
         "nodemailer": "^7.0.5",
         "pdfkit": "^0.17.1",
+        "pg": "^8.16.3",
         "puppeteer": "^24.16.0",
         "sendpulse-api": "^1.1.7",
         "stripe": "^18.4.0",

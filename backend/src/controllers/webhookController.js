@@ -1,5 +1,5 @@
 import stripe from '../config/stripe.js'
-import pool from '../config/db.js'
+import { query } from '../config/db.js'
 import { finalizeFlightBooking } from '../services/bookingService.js'
 
 export const handleStripeWebhook = async (req, res) => {
@@ -11,7 +11,7 @@ export const handleStripeWebhook = async (req, res) => {
     try {
         event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret)
     } catch (error) {
-        console.log(`❌ Webhook signature verification failed:`, err.message)
+        console.log(`❌ Webhook signature verification failed:`, error.message)
         return res.sendStatus(400)
     }
 
@@ -21,12 +21,12 @@ export const handleStripeWebhook = async (req, res) => {
         const bookingReference = session.metadata.booking_reference
 
         try {
-            const [updateResult] = await pool.execute(
+            const updateResult = await query(
                 "UPDATE flight_bookings SET status = ? WHERE booking_reference = ? AND status = 'PENDING_PAYMENT'",
                 ['PAID_PENDING_TICKETING', bookingReference]
             )
 
-            if (updateResult.affectedRows > 0) {
+            if (updateResult.rowCount > 0) {
                 console.log(
                     `✅ Database updated for booking: ${bookingReference}. Status is now PAID_PENDING_TICKETING.`
                 )

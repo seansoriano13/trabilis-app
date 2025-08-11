@@ -1,11 +1,10 @@
-import pool from '../config/db.js'
+import { query } from '../config/db.js'
 import { v4 as uuidv4 } from 'uuid'
 import stripe from '../config/stripe.js'
 import { amadeus } from '../config/amadeus.js'
 import { checkBookingStatus } from '../services/bookingService.js'
 
 export const initiateFlightBooking = async (req, res) => {
-    let connection
     try {
         const { flightOffer, passengerDetails, searchCriteria } = req.body
 
@@ -250,15 +249,12 @@ export const initiateFlightBooking = async (req, res) => {
             throw new Error('Invalid currency code')
         }
 
-        // Get a connection from the pool
-        connection = await pool.getConnection()
-
         // Generate booking reference
         const bookingReference = `TRB-FLT-${uuidv4()}`
 
         // Insert booking into database with order ID and search criteria
         try {
-            await connection.execute(
+            await query(
                 `INSERT INTO flight_bookings (
                     booking_reference, 
                     status, 
@@ -324,7 +320,7 @@ export const initiateFlightBooking = async (req, res) => {
 
         // Update booking with Stripe session ID
         try {
-            await connection.execute(
+            await query(
                 'UPDATE flight_bookings SET stripe_checkout_id = ? WHERE booking_reference = ?',
                 [session.id, bookingReference]
             )
@@ -332,8 +328,6 @@ export const initiateFlightBooking = async (req, res) => {
             console.error('Database update failed:', dbError)
             throw new Error(`Database error: ${dbError.message}`)
         }
-
-        await connection.commit()
 
         console.log(`✅ Booking initiated successfully for ${bookingReference}`)
         res.status(200).json({ checkoutUrl: session.url })
@@ -344,28 +338,9 @@ export const initiateFlightBooking = async (req, res) => {
             }:`,
             error.message || error
         )
-        if (connection) {
-            try {
-                await connection.rollback()
-            } catch (rollbackError) {
-                console.error('Rollback failed:', rollbackError)
-            }
-        }
         return res.status(400).json({
             error: `Booking failed: ${error.message || 'Unknown error'}`,
         })
-    } finally {
-        if (connection) {
-            try {
-                await connection.release()
-                console.log(`Database connection released`)
-            } catch (releaseError) {
-                console.error(
-                    'Error releasing database connection:',
-                    releaseError
-                )
-            }
-        }
     }
 }
 
@@ -375,19 +350,17 @@ export const cancelFlightBooking = async (req, res) => {
         return res.status(400).json({ error: 'Booking reference is required' })
     }
 
-    let connection
     try {
-        connection = await pool.getConnection()
-        const [rows] = await connection.execute(
+        const result = await query(
             'SELECT stripe_checkout_id, total_amount, status FROM flight_bookings WHERE booking_reference = ?',
             [booking_reference]
         )
-        if (rows.length === 0) {
+        if (!result.rows.length) {
             return res
                 .status(404)
                 .json({ error: `Booking ${booking_reference} not found` })
         }
-        const { stripe_checkout_id, total_amount, status } = rows[0]
+        const { stripe_checkout_id, total_amount, status } = result.rows[0]
         if (status === 'CANCELLED' || status.includes('TICKETING_FAILED')) {
             return res.status(400).json({
                 error: `Booking ${booking_reference} is already cancelled or failed`,
@@ -400,27 +373,17 @@ export const cancelFlightBooking = async (req, res) => {
             })
             console.log(`Refund issued for ${booking_reference}`)
         }
-        await connection.execute(
+        await query(
             'UPDATE flight_bookings SET status = ? WHERE booking_reference = ?',
             ['CANCELLED', booking_reference]
         )
-        await connection.commit()
         console.log(`Booking ${booking_reference} cancelled successfully`)
         res.status(200).json({ message: 'Booking cancelled successfully' })
     } catch (error) {
         console.error(`Cancellation failed for ${booking_reference}:`, error)
-        if (connection) await connection.rollback()
         res.status(400).json({
             error: `Failed to cancel booking: ${error.message}`,
         })
-    } finally {
-        if (connection) {
-            try {
-                connection.release()
-            } catch (releaseError) {
-                console.error('Error releasing connection:', releaseError)
-            }
-        }
     }
 }
 
