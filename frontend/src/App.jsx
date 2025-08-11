@@ -57,7 +57,7 @@ function App() {
                         element={<PassengerDetails />}
                     />
                     <Route
-                        path='/flight-booking/success'
+                        path='flight-booking/success'
                         element={<FlightBookingSuccess />}
                     />
                     <Route
