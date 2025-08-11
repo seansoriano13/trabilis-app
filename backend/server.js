@@ -6,10 +6,11 @@ import bookingRoutes from './src/routes/bookingRoutes.js'
 import webhookRoutes from './src/routes/webhookRoutes.js'
 
 const app = express()
-const port = process.env.PORT
-app.use('/api/v1/webhooks', webhookRoutes)
+const port = process.env.PORT || 5000
 
-const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',')
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((o) => o.trim())
 
 app.use(
     cors({
@@ -24,6 +25,7 @@ app.use(
 )
 app.use(express.json())
 
+app.use('/api/v1/webhooks', webhookRoutes)
 app.use('/api/v1/flights', flightRoutes)
 app.use('/api/v1/bookings', bookingRoutes)
 
