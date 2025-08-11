@@ -23,9 +23,11 @@ app.use(
         credentials: true,
     })
 )
-app.use(express.json())
 
 app.use('/api/v1/webhooks', webhookRoutes)
+
+app.use(express.json())
+
 app.use('/api/v1/flights', flightRoutes)
 app.use('/api/v1/bookings', bookingRoutes)
 
