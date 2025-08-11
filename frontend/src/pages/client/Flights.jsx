@@ -43,7 +43,7 @@ export default function Flights() {
     const selectStyles = reactSelectStyles
 
     const dateFromFlightResult = state?.formattedDate
-    
+
     // States
     const [isFlightSearchErr, setIsFlightSearchErr] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
