@@ -3,8 +3,7 @@ import nodemailer from 'nodemailer'
 import fs from 'fs/promises'
 import { fileURLToPath } from 'url'
 import path from 'path'
-import puppeteer from 'puppeteer'
-import sendpulse from 'sendpulse-api'
+import fetch from 'node-fetch'
 
 export function getDuration(start, end) {
     if (!start || !end) return 'N/A'
@@ -202,28 +201,38 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
         .replace('{{paymentDetails}}', paymentDetailsHtml)
         .replace('{{flightInclusions}}', flightInclusionsHtml)
 
-    // --- Puppeteer logic ---
-    let browser
     try {
-        browser = await puppeteer.launch({
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        const response = await fetch('https://api.pdfshift.io/v3/convert/pdf', {
+            method: 'POST',
+            headers: {
+                Authorization:
+                    'Basic ' +
+                    Buffer.from(process.env.PDFSHIFT_API_KEY + ':').toString(
+                        'base64'
+                    ),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                source: html,
+                format: 'A4',
+                landscape: false,
+                use_print: true,
+            }),
         })
 
-        const page = await browser.newPage()
-        await page.setContent(html, { waitUntil: 'networkidle0' })
+        if (!response.ok) {
+            throw new Error(
+                `PDFShift API error: ${
+                    response.status
+                } ${await response.text()}`
+            )
+        }
 
-        const pdfBuffer = await page.pdf({
-            format: 'A4',
-            printBackground: true,
-        })
-
-        return pdfBuffer
+        const arrayBuffer = await response.arrayBuffer()
+        return Buffer.from(arrayBuffer)
     } catch (error) {
-        console.error('Error generating PDF with Puppeteer:', error)
+        console.error('Error generating PDF via PDFShift:', error)
         throw new Error('Could not generate the itinerary PDF.')
-    } finally {
-        if (browser) await browser.close()
     }
 }
 
