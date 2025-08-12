@@ -4,6 +4,7 @@ import cors from 'cors'
 import flightRoutes from './src/routes/flightRoutes.js'
 import bookingRoutes from './src/routes/bookingRoutes.js'
 import webhookRoutes from './src/routes/webhookRoutes.js'
+import testRoutes from './src/routes/testRoutes.js'
 
 const app = express()
 const port = process.env.PORT || 5000
@@ -30,6 +31,7 @@ app.use(express.json())
 
 app.use('/api/v1/flights', flightRoutes)
 app.use('/api/v1/bookings', bookingRoutes)
+app.use('/api/v1/test', testRoutes)
 
 app.get('/', async (req, res) => {
     try {

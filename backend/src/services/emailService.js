@@ -205,12 +205,8 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
         const response = await fetch('https://api.pdfshift.io/v3/convert/pdf', {
             method: 'POST',
             headers: {
-                Authorization:
-                    'Basic ' +
-                    Buffer.from(process.env.PDFSHIFT_API_KEY + ':').toString(
-                        'base64'
-                    ),
-                'Content-Type': 'application/json',
+                'X-API-Key': process.env.PDFSHIFT_API_KEY,
+                'Content-type': 'application/json',
             },
             body: JSON.stringify({
                 source: html,
