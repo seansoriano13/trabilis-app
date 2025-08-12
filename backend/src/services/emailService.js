@@ -44,7 +44,6 @@ export const formatToLongDate = (date) => {
         : toFormatted(startDate)
 }
 
-// The new Puppeteer-based PDF generator
 export const generateFlightItineraryPDF = async (bookingDetails) => {
     const __dirname = path.dirname(fileURLToPath(import.meta.url))
     const templatePath = path.join(
@@ -267,7 +266,6 @@ export const sendConfirmationEmail = async (bookingReference) => {
         throw new Error('Customer email not found in booking details.')
     }
 
-    // Call the new Puppeteer function
     const pdfBuffer = await generateFlightItineraryPDF(bookingDetails)
 
     const mailOptions = {
