@@ -1,0 +1,26 @@
+.button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgb(0, 0, 0);
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem 0.5rem 1rem;
+    transition: 0.1s;
+    cursor: pointer;
+    justify-content: center;
+    text-align: center;
+    filter: var(--opacity-80);
+}
+
+.button:hover {
+    background: rgb(255, 227, 71);
+    transition: 0.1s;
+}
+
+.icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

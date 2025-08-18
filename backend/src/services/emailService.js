@@ -1,9 +1,25 @@
 import { query } from '../config/db.js'
-import nodemailer from 'nodemailer'
-import fs from 'fs/promises'
-import { fileURLToPath } from 'url'
+import fs from 'fs'
 import path from 'path'
+import { fileURLToPath } from 'url'
 import fetch from 'node-fetch'
+import nodemailer from 'nodemailer'
+import { supabase } from '../config/supabaseClient.js'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+const formatDate = (date) => {
+    if (!date) return 'N/A'
+    const d = new Date(date)
+    return isNaN(d)
+        ? 'N/A'
+        : d.toLocaleDateString('en-US', {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+          })
+}
 
 export function getDuration(start, end) {
     if (!start || !end) return 'N/A'
@@ -43,6 +59,14 @@ export const formatToLongDate = (date) => {
         ? [toFormatted(startDate), toFormatted(endDate)]
         : toFormatted(startDate)
 }
+
+export const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.GMAIL_SMTP_USER,
+        pass: process.env.GMAIL_SMTP_PASS,
+    },
+})
 
 export const generateFlightItineraryPDF = async (bookingDetails) => {
     const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -231,6 +255,91 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
     }
 }
 
+export const generateTourSummaryPDF = async (bookingDetails) => {
+    const templatePath = path.join(
+        __dirname,
+        'templates',
+        'tour-confirmation-template.html'
+    )
+
+    let html
+    try {
+        html = fs.readFileSync(templatePath, 'utf-8')
+    } catch (err) {
+        throw new Error(`Template not found: ${templatePath}`)
+    }
+
+    // Safely extract values with fallback
+    const {
+        bookingReference = 'N/A',
+        tourTitle = 'N/A',
+        startDate,
+        endDate,
+        passengerCount = 1,
+        paymentType = 'FULL',
+        amount = 'N/A',
+        firstName = 'Guest',
+        lastName = '',
+        email = 'N/A',
+        phone = 'N/A',
+        status = 'CONFIRMED',
+        inclusions = 'As per package',
+        notes = '-',
+        itinerary = '',
+    } = bookingDetails
+
+    html = html
+        .replace(/{{bookingReference}}/g, bookingReference)
+        .replace(/{{companyName}}/g, 'Trabilis')
+        .replace(/{{companyEmail}}/g, 'support@trabilis.com')
+        .replace(/{{companyAddress}}/g, 'Manila, Philippines')
+        .replace(/{{bookingDate}}/g, formatDate(new Date()))
+        .replace(/{{tourTitle}}/g, tourTitle)
+        .replace(/{{startDate}}/g, formatDate(startDate))
+        .replace(/{{endDate}}/g, formatDate(endDate))
+        .replace(/{{passengerCount}}/g, passengerCount)
+        .replace(/{{paymentType}}/g, paymentType)
+        .replace(/{{amount}}/g, amount)
+        .replace(/{{leadFirstName}}/g, firstName)
+        .replace(/{{leadLastName}}/g, lastName)
+        .replace(/{{leadEmail}}/g, email)
+        .replace(/{{leadPhone}}/g, phone)
+        .replace(/{{status}}/g, status)
+        .replace(/{{inclusions}}/g, inclusions)
+        .replace(/{{notes}}/g, notes)
+        .replace(/{{itineraryDetails}}/g, itinerary)
+
+    try {
+        const response = await fetch('https://api.pdfshift.io/v3/convert/pdf', {
+            method: 'POST',
+            headers: {
+                'X-API-Key': process.env.PDFSHIFT_API_KEY,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                source: html,
+                format: 'A4',
+                landscape: false,
+                use_print: true,
+            }),
+        })
+
+        if (!response.ok) {
+            throw new Error(
+                `PDFShift API error: ${
+                    response.status
+                } ${await response.text()}`
+            )
+        }
+
+        const arrayBuffer = await response.arrayBuffer()
+        return Buffer.from(arrayBuffer)
+    } catch (err) {
+        console.error('Error generating Tour PDF:', err)
+        throw new Error('Could not generate the tour summary PDF.')
+    }
+}
+
 export const getBookingByBookingReference = async (bookingReference) => {
     // This is your database logic, which should be correct.
     const result = await query(
@@ -247,16 +356,35 @@ export const getBookingByBookingReference = async (bookingReference) => {
     return booking
 }
 
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.GMAIL_SMTP_USER,
-        pass: process.env.GMAIL_SMTP_PASS,
-    },
-})
+export const getTourBookingByReference = async (bookingReference) => {
+    const { data, error } = await supabase
+        .from('tour_bookings')
+        .select('*')
+        .eq('booking_reference', bookingReference)
+        .single() // get just one record
 
-export default transporter
+    if (error) {
+        throw new Error(`Error fetching tour booking: ${error.message}`)
+    }
 
+    if (!data) {
+        throw new Error(
+            `No tour booking found with reference ${bookingReference}`
+        )
+    }
+
+    // If your table stores JSON fields (e.g., itinerary), parse them here
+    if (typeof data.itinerary === 'string') {
+        try {
+            data.itinerary = JSON.parse(data.itinerary)
+        } catch (err) {
+            console.warn('Invalid JSON for itinerary:', data.itinerary)
+            data.itinerary = ''
+        }
+    }
+
+    return data
+}
 export const sendConfirmationEmail = async (bookingReference) => {
     const bookingDetails = await getBookingByBookingReference(bookingReference)
     const customerEmail =
@@ -305,6 +433,50 @@ export const sendConfirmationEmail = async (bookingReference) => {
     console.log('Email sent! Preview URL:', nodemailer.getTestMessageUrl(info))
 }
 
+export const sendTourConfirmationEmail = async (bookingDetails) => {
+    try {
+        const pdfBuffer = await generateTourSummaryPDF(bookingDetails)
+        const {
+            email,
+            firstName = 'Guest',
+            bookingReference = 'N/A',
+            tourTitle = 'Tour',
+        } = bookingDetails
+
+        if (!email) throw new Error('Recipient email not found.')
+
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: `Tour Confirmation - ${tourTitle}`,
+            html: `
+                <p>Hi ${firstName},</p>
+                <p>Thank you for booking <strong>${tourTitle}</strong>.</p>
+                <p>Please find attached your booking summary (Ref: ${bookingReference}).</p>
+                <p>We look forward to your adventure!</p>
+                <br/>
+                <p>— The Trabilis Team</p>
+            `,
+            attachments: [
+                {
+                    filename: `Tour-Summary-${bookingReference}.pdf`,
+                    content: pdfBuffer,
+                    contentType: 'application/pdf',
+                },
+            ],
+        }
+
+        const info = await transporter.sendMail(mailOptions)
+        console.log(
+            `✅ Tour confirmation email sent to ${email} (BookingRef: ${bookingReference})`
+        )
+        console.log('Preview URL:', nodemailer.getTestMessageUrl(info))
+    } catch (err) {
+        console.error('❌ Error sending tour confirmation email:', err)
+        throw err
+    }
+}
+
 export const sendFailureEmail = async ({
     email,
     firstName,
@@ -347,6 +519,45 @@ export const sendFailureEmail = async ({
     const info = await transporter.sendMail(mailOptions)
     console.log(
         'Failure email sent! Preview URL:',
+        nodemailer.getTestMessageUrl(info)
+    )
+}
+
+export const sendTourFailureEmail = async ({
+    email,
+    firstName,
+    lastName,
+    bookingReference,
+}) => {
+    if (!email) throw new Error('Recipient email is required.')
+
+    const mailOptions = {
+        from: process.env.GMAIL_SMTP_FROM,
+        to: email,
+        subject: 'Tour Booking Failed',
+        html: `
+      <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px;">
+          <div style="max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+            <h2 style="color: #d9534f;">Tour Booking Failed</h2>
+            <p>Dear ${firstName} ${lastName},</p>
+            <p>Unfortunately, your tour booking with reference 
+              <strong>${bookingReference}</strong> could not be completed.</p>
+            <p>Please try again later or contact our support team for assistance.</p>
+            <p>If you need help, reach us at 
+              <a href="mailto:${process.env.GMAIL_SMTP_FROM}">${process.env.GMAIL_SMTP_FROM}</a>.
+            </p>
+            <p>We apologize for the inconvenience and thank you for choosing us.</p>
+            <p>Best regards,<br/>Trabilis Team</p>
+          </div>
+        </body>
+      </html>
+    `,
+    }
+
+    const info = await transporter.sendMail(mailOptions)
+    console.log(
+        'Tour failure email sent! Preview URL:',
         nodemailer.getTestMessageUrl(info)
     )
 }

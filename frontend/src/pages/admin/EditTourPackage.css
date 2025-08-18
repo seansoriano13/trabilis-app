@@ -1,0 +1,138 @@
+.tour-edit {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.tour-edit__button-save {
+    width: 100%;
+    margin-top: 1rem;
+    padding: 0.7rem 0;
+}
+
+.tour-edit__header {
+    margin-bottom: 20px;
+}
+
+.tour-edit__header-back-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    color: #000000;
+    filter: opacity(80%);
+}
+
+.tour-edit__header-back-button:hover {
+    filter: opacity(100%);
+}
+
+.tour-edit__header-back-text {
+    font-size: 16px;
+    margin: 0;
+}
+
+.tour-edit__title {
+    font-size: 24px;
+    color: #000000;
+    filter: opacity(80%);
+    margin-bottom: 20px;
+}
+
+.tour-edit__form-container {
+    background: #ffffff;
+    border: 1px solid #ccc;
+    filter: opacity(80%);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.tour-edit__form-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.tour-edit__form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tour-edit__label {
+    font-size: 16px;
+    color: #000000;
+    filter: opacity(80%);
+}
+
+.tour-edit__input,
+.tour-edit__textarea,
+.tour-edit__select {
+    padding: 10px;
+    border: 1px solid #ccc;
+    filter: opacity(80%);
+    border-radius: 4px;
+    font-size: 14px;
+    color: #000000;
+}
+
+.tour-edit__textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.tour-edit__select {
+    background: #ffffff;
+}
+
+.tour-edit__image-preview {
+    max-width: 200px;
+    margin-top: 10px;
+    border-radius: 4px;
+}
+
+.tour-edit__itinerary-day,
+.tour-edit__inclusions-item,
+.tour-edit__exclusions-item,
+.tour-edit__payment-terms-item,
+.tour-edit__requirements-item,
+.tour-edit__notes-item {
+    border: 1px solid #ccc;
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    background: #ffffff;
+    filter: opacity(80%);
+}
+
+.tour-edit__button-link {
+    background: none;
+    border: none;
+    color: #000000;
+    filter: opacity(80%);
+    cursor: pointer;
+    font-size: 14px;
+    text-decoration: underline;
+}
+
+.tour-edit__button-link:hover {
+    filter: opacity(100%);
+}
+
+.tour-edit__button-link--remove {
+    color: #000000;
+    filter: opacity(80%);
+}
+
+.tour-edit__button-link--remove:hover {
+    filter: opacity(100%);
+}
+
+.tour-edit__loading,
+.tour-edit__error {
+    text-align: center;
+    font-size: 18px;
+    color: #000000;
+    filter: opacity(80%);
+}

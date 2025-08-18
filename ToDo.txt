@@ -1,17 +1,24 @@
 stripe listen --forward-to http://localhost:3001/api/v1/webhooks/stripe
 
-Amadeus Node Reference: https://github.com/amadeus4dev/amadeus-node
+---------ADMIN-------------------------ADMIN-------------------------ADMIN----------------
+- add profile pic 
+- pagka specify ng date, dapat kung ilang days yun, ganun din karami (programatically) yung days, and required
+- if naka draft pa yung tour package, show a button na publish with confirmation
 
+
+
+
+---------CLIENT-------------------------CLIENT-------------------------CLIENT----------------
 ---------HIGH PRIO---------------
+--payment_terms for tour packages, need i-implement
 
 ---------MEDIUM PRIO----------------
 -import footer
 - add stops visualization sa flight-result__line, pati rin sa flights/booking
 
 ---------LOW PRIO----------------
+-favorite system for flight cards (pwedeng wag na to kasi accouynt based yan, or pwede rin localStorage pero nonsense)
 -Make comments for whole code base to make it more readable (future)
--favorite system for flight cards (pwedeng wag na to)
-
 
 ---------AMADEUS SPECIFIC----------------
 - Add options para sa infants, only adults and children are currently available
@@ -19,3 +26,6 @@ Amadeus Node Reference: https://github.com/amadeus4dev/amadeus-node
 - Implement Calling Code Option (e.g +63) sa PassengerForm
 - check the durations if its accurate, like what if may stop yung flight
 - if hindi nakapag bayad yung client after booking the flight throught initateBooking, dapat i dedelete yung nabook na flight
+
+
+

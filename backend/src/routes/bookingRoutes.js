@@ -3,7 +3,7 @@ import {
     initiateFlightBooking,
     cancelFlightBooking,
     getBookingStatus,
-} from '../controllers/bookingController.js'
+} from '../controllers/flightBookingController.js'
 
 const router = express.Router()
 

@@ -166,6 +166,136 @@ export async function finalizeFlightBooking(bookingReference) {
     }
 }
 
+export async function finalizeTourBooking(bookingReference) {
+    try {
+        console.log(
+            `Starting tour finalization for tour booking: ${bookingReference}`
+        )
+
+        const { data: booking, error } = await supabase
+            .from('tour_bookings')
+            .select(
+                `
+        *,
+        package_dates (
+          start_date,
+          end_date,
+          tour_packages (title)
+        )
+      `
+            )
+            .eq('booking_reference', bookingReference)
+            .single()
+
+        if (error || !booking) {
+            throw new Error(`Tour booking ${bookingReference} not found`)
+        }
+
+        if (booking.status !== 'CONFIRMED') {
+            throw new Error(
+                `Tour booking ${bookingReference} is not in CONFIRMED status, current status: ${booking.status}`
+            )
+        }
+
+        // Send confirmation email
+        try {
+            await sendTourConfirmationEmail({
+                bookingReference,
+                email: booking.lead_email,
+                firstName: booking.lead_first_name,
+                lastName: booking.lead_last_name,
+                tourTitle: booking.package_dates.tour_packages.title,
+                startDate: booking.package_dates.start_date,
+                endDate: booking.package_dates.end_date,
+                passengerCount: booking.passenger_count,
+                amount:
+                    booking.payment_type === 'RESERVATION'
+                        ? booking.reservation_amount
+                        : booking.total_amount,
+            })
+            console.log(
+                `✅ Tour confirmation email sent for ${bookingReference}`
+            )
+        } catch (emailError) {
+            console.error(
+                `Failed to send tour confirmation email for ${bookingReference}:`,
+                emailError
+            )
+        }
+
+        return { status: 'CONFIRMED' }
+    } catch (error) {
+        console.error(
+            `❌ CRITICAL FAILURE during tour finalization for ${bookingReference}: ${error.message}`
+        )
+        try {
+            await supabase
+                .from('tour_bookings')
+                .update({
+                    status: 'FAILED',
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('booking_reference', bookingReference)
+
+            console.log(
+                `Database updated for ${bookingReference}. Status: FAILED`
+            )
+
+            const { data: booking } = await supabase
+                .from('tour_bookings')
+                .select(
+                    'lead_email, lead_first_name, lead_last_name, stripe_checkout_id, reservation_amount, total_amount, payment_type'
+                )
+                .eq('booking_reference', bookingReference)
+                .single()
+
+            if (booking.stripe_checkout_id) {
+                try {
+                    await stripe.refunds.create({
+                        checkout_session: booking.stripe_checkout_id,
+                        amount: Math.round(
+                            (booking.payment_type === 'RESERVATION'
+                                ? booking.reservation_amount
+                                : booking.total_amount) * 100
+                        ),
+                    })
+                    console.log(
+                        `✅ Stripe refund issued for failed tour booking ${bookingReference}`
+                    )
+                } catch (stripeError) {
+                    console.error(
+                        `Failed to issue refund for ${bookingReference}:`,
+                        stripeError
+                    )
+                }
+            }
+
+            try {
+                await sendTourFailureEmail({
+                    email: booking.lead_email,
+                    firstName: booking.lead_first_name,
+                    lastName: booking.lead_last_name,
+                    bookingReference,
+                })
+                console.log(
+                    `✅ Tour failure email sent for ${bookingReference}`
+                )
+            } catch (emailError) {
+                console.error(
+                    `Failed to send tour failure email for ${bookingReference}:`,
+                    emailError
+                )
+            }
+        } catch (rollbackError) {
+            console.error(
+                `Rollback failed for ${bookingReference}:`,
+                rollbackError
+            )
+        }
+        throw new Error(`Failed to finalize tour booking: ${error.message}`)
+    }
+}
+
 export async function checkBookingStatus(bookingReference) {
     try {
         const result = await query(
@@ -174,7 +304,7 @@ export async function checkBookingStatus(bookingReference) {
         )
 
         const { status, search_criteria, pnr } = result.rows[0]
-        
+
         if (!result.rows.length) {
             throw new Error(`Booking ${bookingReference} not found`)
         }

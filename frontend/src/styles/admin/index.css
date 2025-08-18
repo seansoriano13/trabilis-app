@@ -1,2 +1,11 @@
 @import url(reset.css);
 @import url(variables.css);
+
+html {
+    font-family: var(--ff-figtree);
+}
+
+nav {
+    position: fixed;
+}
+

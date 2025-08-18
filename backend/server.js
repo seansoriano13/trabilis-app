@@ -5,6 +5,8 @@ import flightRoutes from './src/routes/flightRoutes.js'
 import bookingRoutes from './src/routes/bookingRoutes.js'
 import webhookRoutes from './src/routes/webhookRoutes.js'
 import testRoutes from './src/routes/testRoutes.js'
+import adminRoutes from './src/routes/adminRoutes.js'
+import tourRoutes from './src/routes/tourRoutes.js'
 
 const app = express()
 const port = process.env.PORT || 5000
@@ -31,7 +33,11 @@ app.use(express.json())
 
 app.use('/api/v1/flights', flightRoutes)
 app.use('/api/v1/bookings', bookingRoutes)
+app.use('/api/v1/destinations', tourRoutes)
 app.use('/api/v1/test', testRoutes)
+
+// Admin
+app.use('/api/v1/admin', adminRoutes)
 
 app.get('/', async (req, res) => {
     try {
@@ -43,5 +49,11 @@ app.get('/', async (req, res) => {
 })
 
 app.listen(port, () => {
-    console.log(`Trabilis App running at https://trabilis.onrender.com/`)
+    if (process.env.NODE_ENV === 'production') {
+        console.log(`Trabilis App running at https://trabilis.onrender.com/`)
+    } else {
+        console.log(
+            `Trabilis App running at http://localhost:${process.env.PORT}`
+        )
+    }
 })

@@ -1,13 +1,15 @@
 import AdminNavbar from '../components/admin/AdminNavbar'
 import { Outlet } from 'react-router-dom'
+import '../styles/client/index.css'
+import './AdminLayout.css'
 
-export default function AdminLayout() {
-	return (
-		<>
-			<AdminNavbar />
-			<main>
-				<Outlet />
-			</main>
-		</>
-	)
+export default function AdminProtectedLayout() {
+    return (
+        <>
+            <AdminNavbar />
+            <main className='admin-layout'>
+                <Outlet />
+            </main>
+        </>
+    )
 }

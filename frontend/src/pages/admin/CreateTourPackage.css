@@ -1,0 +1,153 @@
+/* --- Blocks --- */
+
+.admin-primary-button {
+    background-color: black;
+    opacity: 0.8;
+    color: white;
+    padding: 1rem 1rem; /* 8px 16px */
+    border-radius: 0.5rem; /* 8px */
+    border: none;
+    cursor: pointer;
+    width: 80%;
+    margin-top: 1rem;
+    transform: translateX(12%);
+}
+
+.admin-primary-button:disabled {
+    background-color: #9ca3af; /* A shade of gray */
+    cursor: not-allowed;
+}
+
+.accordion-section {
+    border-bottom: 1px solid #e5e7eb; /* A light gray */
+}
+
+.accordion-section__button {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem; /* 16px */
+    text-align: left;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.accordion-section__title {
+    font-size: 1.125rem; /* 18px */
+    font-weight: 600;
+}
+
+.accordion-section__content {
+    padding: 0 1rem 1rem; /* 0 16px 16px */
+}
+
+.date-group {
+    border-top: 1px solid #e5e7eb;
+    padding-top: 1rem;
+    margin-top: 1rem;
+}
+
+.date-group__title {
+    font-size: 1rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+}
+
+.date-group__form-field {
+    margin-bottom: 1rem;
+}
+
+.itinerary {
+    border-top: 1px solid #e5e7eb;
+    padding-top: 1rem;
+    margin-top: 1rem;
+}
+
+.itinerary__title {
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.itinerary__day {
+    margin-top: 1rem;
+    padding-top: 1rem;
+}
+
+/* --- Elements --- */
+
+.form-label {
+    display: block;
+    font-size: 0.875rem; /* 14px */
+    margin-bottom: 0.25rem; /* 4px */
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.5rem; /* 8px */
+    border: 1px solid #e5e7eb;
+    border-radius: 0.25rem; /* 4px */
+}
+
+.form-textarea {
+    width: 100%;
+    padding: 0.5rem; /* 8px */
+    border: 1px solid #e5e7eb;
+    border-radius: 0.25rem; /* 4px */
+}
+
+.form-select {
+    width: 100%;
+    padding: 0.5rem; /* 8px */
+    border: 1px solid #e5e7eb;
+    border-radius: 0.25rem; /* 4px */
+}
+
+.image-preview {
+    margin-top: 0.5rem;
+    width: 100%;
+    height: 10rem; /* 160px */
+    object-fit: cover;
+    border-radius: 0.25rem;
+}
+
+.button-link {
+    color: #3b82f6; /* A shade of blue */
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 0.875rem; /* 14px */
+    margin-top: 1rem;
+}
+
+.button-link--remove {
+    color: #ef4444; /* A shade of red */
+}
+
+/* --- Utilities & Layout --- */
+
+.container {
+    min-height: 100vh;
+    margin-top: var(--default-padding-top);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem; /* 16px */
+    background-color: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.header__back-button {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem; /* 8px */
+}
+
+.header__back-text {
+    font-size: 1.125rem; /* 18px */
+}

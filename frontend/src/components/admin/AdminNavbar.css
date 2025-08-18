@@ -1,0 +1,136 @@
+.admin-nav {
+}
+.admin-nav__bar {
+    position: relative;
+    top: 0;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem;
+    position: fixed;
+    width: 100%;
+    z-index: 2;
+    transition: 0.2s ease;
+    border-bottom: 1px solid #ccc;
+}
+
+.admin-nav__btn {
+    background-color: red;
+}
+
+.admin-nav__btn:hover {
+    background-color: red;
+    filter: opacity(100%);
+}
+
+.admin-nav__profile-details {
+    position: absolute;
+    top: var(--default-padding-top);
+    filter: var(--opacity-80);
+    right: 1rem;
+    padding: 1rem;
+    color: white;
+    background-color: black;
+    box-shadow: var(--box-shadow);
+    border-radius: var(--border-radius-bot);
+    display: none;
+    z-index: 1;
+}
+.admin-nav__profile-details.clicked {
+    display: grid;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.admin-nav__details {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.admin-nav__profile {
+    cursor: pointer;
+    width: 2.5rem;
+    border-radius: 1.5rem;
+}
+
+.admin-nav__email {
+    filter: var(--opacity-80);
+    font-size: 0.925rem;
+}
+
+.admin-nav__logo-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.admin-nav__hamburger {
+    color: black;
+    cursor: pointer;
+}
+
+.admin-nav__logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.admin-nav__logo-image {
+    height: 3rem;
+}
+
+.admin-nav__links {
+    gap: 1rem;
+    display: flex;
+}
+
+.admin-nav__links-list {
+    background: white;
+    width: 100%;
+    position: absolute;
+    left: -30rem;
+    top: 3.95rem;
+    padding: 2rem;
+    display: grid;
+    gap: 2rem;
+    list-style: none;
+    justify-content: center;
+    color: black;
+    text-align: center;
+    opacity: 0;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(5px);
+    transition: 0.1s ease;
+}
+
+.admin-nav__links-list--clicked {
+    left: 0;
+    display: grid;
+    opacity: 1;
+}
+
+.admin-nav__links-list li:hover {
+    color: rgb(255, 227, 71);
+}
+
+.admin-nav__button-container {
+}
+
+/* Responsive adjustments */
+@media (min-width: 768px) {
+    .admin-nav__links-list {
+        position: inherit;
+        display: flex;
+        background-color: transparent;
+        text-align: center;
+        gap: 2rem;
+    }
+
+    .admin-nav__hamburger {
+        display: none;
+    }
+}
