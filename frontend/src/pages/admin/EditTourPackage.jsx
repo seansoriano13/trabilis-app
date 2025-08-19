@@ -81,6 +81,7 @@ function EditTourPackage() {
                     requirements: tour.dates[0]?.requirements || [''],
                     notes: tour.dates[0]?.notes || [''],
                 })
+
                 setMainImagePreview(tour.main_image_url || null)
                 setPanellumImagePreview(tour.panellum_url || null)
                 setIsLoading(false)
@@ -95,6 +96,7 @@ function EditTourPackage() {
         fetchTour()
     }, [id])
 
+    console.log(formData)
     const toggleSection = (section) => {
         setOpenSections((prev) => ({
             ...prev,

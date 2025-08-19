@@ -184,12 +184,16 @@
                         <p>{{startDate}} - {{endDate}}</p>
                     </div>
                     <div class="itinerary-col">
-                        <h4>Passengers</h4>
-                        <p>{{passengerCount}}</p>
-                    </div>
-                    <div class="itinerary-col">
                         <h4>Payment Type</h4>
                         <p>{{paymentType}}</p>
+                    </div>
+                    <div class="itinerary-col">
+                        <h4>Rate per Pax</h4>
+                        <p>PHP {{ratePerPax}}</p>
+                    </div>
+                    <div class="itinerary-col">
+                        <h4>Available Slots</h4>
+                        <p>{{availableSlots}}</p>
                     </div>
                 </div>
             </div>
@@ -200,7 +204,7 @@
                 {{itineraryDetails}}
             </div>
 
-            <!-- Passenger Details -->
+            <!-- Passenger Details Table -->
             <div class="passenger-details">
                 <table>
                     <thead>
@@ -224,6 +228,7 @@
 
             <!-- Bottom Details Section -->
             <div class="bottom-section">
+                <!-- Payment Details -->
                 <div class="details-box">
                     <div class="details-box-header">
                         <svg
@@ -254,6 +259,8 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- Tour Inclusions / Notes -->
                 <div class="details-box">
                     <div class="details-box-header">
                         <svg
@@ -267,15 +274,27 @@
                                 d="M2.5 12.5a.5.5 0 0 1 0-1h11a.5.5 0 0 1 0 1h-11zm11-5.5a.5.5 0 0 0 0-1h-11a.5.5 0 0 0 0 1h11zM2 3a1 1 0 0 0-1 1v1h14V4a1 1 0 0 0-1-1H2zM1 7v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7H1z"
                             />
                         </svg>
-                        Tour Inclusions
+                        Tour Details
                     </div>
                     <div class="details-box-content inclusions-details">
                         <h5>Inclusions</h5>
                         <p>{{inclusions}}</p>
+                        <h5>Exclusions</h5>
+                        <p>{{exclusions}}</p>
                         <h5>Notes</h5>
                         <p>{{notes}}</p>
+                        <h5>Requirements</h5>
+                        <p>{{requirements}}</p>
+                        <h5>Payment Terms</h5>
+                        <p>{{paymentTerms}}</p>
                     </div>
                 </div>
+            </div>
+
+            <!-- Tour Description -->
+            <div class="itinerary-section">
+                <div class="itinerary-header">Tour Description</div>
+                <p>{{tourDescription}}</p>
             </div>
 
             <!-- Important Information -->

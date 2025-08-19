@@ -170,7 +170,7 @@ const TourBookingController = {
     )
   `
                 )
-                .eq('booking_reference', String(booking_reference)) 
+                .eq('booking_reference', String(booking_reference))
                 .single()
 
             if (error || !data) {

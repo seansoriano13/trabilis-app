@@ -34,6 +34,8 @@ export const createTour = async (req, res) => {
                 ...dateData
             } = d
 
+            console.log(dateData)
+
             const { data: date, error: dateError } = await supabase
                 .from('package_dates')
                 .insert([

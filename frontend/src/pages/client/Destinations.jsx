@@ -14,8 +14,8 @@ export default function Destinations() {
     const [isLoading, setIsLoading] = useState(false)
     const [isTourSearchErr, setIsTourSearchErr] = useState(false)
     const [selectedTour, setSelectedTour] = useState(null)
-    const [searchQuery, setSearchQuery] = useState('')
-    const [priceRange, setPriceRange] = useState(null)
+    const [searchQuery] = useState('')
+    const [priceRange] = useState(null)
     const [currentPage, setCurrentPage] = useState(0)
 
     const toursPerPage = 6

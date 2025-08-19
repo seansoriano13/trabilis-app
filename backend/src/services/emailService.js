@@ -204,8 +204,8 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
 
     // --- Replace all placeholders ---
     html = html
-        .replace(/{{companyName}}/g, 'Lindela Travel And Tours') // Replace with your actual company name
-        .replace(/{{companyEmail}}/g, 'lindelatravelandtours@gmail.com') // Replace with your actual email
+        .replace(/{{companyName}}/g, 'Lindela Travel And Tours - Trabilis')
+        .replace(/{{companyEmail}}/g, 'lindelatravelctws@gmail.com')
         .replace(
             /{{companyAddress}}/g,
             'Unit 2215 Cityland 10 Tower II, H. V. Dela Costa Street, Makati, Metro Manila'
@@ -284,15 +284,27 @@ export const generateTourSummaryPDF = async (bookingDetails) => {
         phone = 'N/A',
         status = 'CONFIRMED',
         inclusions = 'As per package',
+        exclusions = '-',
         notes = '-',
         itinerary = '',
+        ratePerPax = 'N/A',
+        availableSlots = 'N/A',
+        totalSlots = 'N/A',
+        requirements = '-',
+        paymentTerms = '-',
+        tourDescription = '-',
+        mainImageUrl = '',
+        panellumUrl = '',
     } = bookingDetails
 
     html = html
         .replace(/{{bookingReference}}/g, bookingReference)
-        .replace(/{{companyName}}/g, 'Trabilis')
-        .replace(/{{companyEmail}}/g, 'support@trabilis.com')
-        .replace(/{{companyAddress}}/g, 'Manila, Philippines')
+        .replace(/{{companyName}}/g, 'Lindela Travel And Tours - Trabilis')
+        .replace(/{{companyEmail}}/g, 'lindelatravelctws@gmail.com')
+        .replace(
+            /{{companyAddress}}/g,
+            'Unit 2215 Cityland 10 Tower II, H. V. Dela Costa Street, Makati, Metro Manila'
+        )
         .replace(/{{bookingDate}}/g, formatDate(new Date()))
         .replace(/{{tourTitle}}/g, tourTitle)
         .replace(/{{startDate}}/g, formatDate(startDate))
@@ -306,8 +318,17 @@ export const generateTourSummaryPDF = async (bookingDetails) => {
         .replace(/{{leadPhone}}/g, phone)
         .replace(/{{status}}/g, status)
         .replace(/{{inclusions}}/g, inclusions)
+        .replace(/{{exclusions}}/g, exclusions)
         .replace(/{{notes}}/g, notes)
         .replace(/{{itineraryDetails}}/g, itinerary)
+        .replace(/{{ratePerPax}}/g, ratePerPax)
+        .replace(/{{availableSlots}}/g, availableSlots)
+        .replace(/{{totalSlots}}/g, totalSlots)
+        .replace(/{{requirements}}/g, requirements)
+        .replace(/{{paymentTerms}}/g, paymentTerms)
+        .replace(/{{tourDescription}}/g, tourDescription)
+        .replace(/{{mainImageUrl}}/g, mainImageUrl)
+        .replace(/{{panellumUrl}}/g, panellumUrl)
 
     try {
         const response = await fetch('https://api.pdfshift.io/v3/convert/pdf', {
@@ -339,7 +360,6 @@ export const generateTourSummaryPDF = async (bookingDetails) => {
         throw new Error('Could not generate the tour summary PDF.')
     }
 }
-
 export const getBookingByBookingReference = async (bookingReference) => {
     // This is your database logic, which should be correct.
     const result = await query(

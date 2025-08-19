@@ -33,26 +33,62 @@ export const handleStripeWebhook = async (req, res) => {
                 .from('tour_bookings')
                 .select(
                     `
-                    *,
-                    package_dates (
-                        start_date,
-                        end_date,
-                        available_slots,
-                        tour_packages (
-                            title
-                        )
-                    )
-                `
+                *,
+                package_dates (*, tour_packages (*))
+            `
                 )
                 .eq('booking_reference', booking_reference)
                 .eq('status', 'PENDING_PAYMENT')
-                .single()
+                .maybeSingle()
 
             if (bookingError || !bookingData) {
                 console.log(
                     `⚠️ Webhook received for booking ${booking_reference}, but no booking found or already processed.`
                 )
                 return res.status(200).send()
+            }
+
+            // Construct bookingDetails for PDF/email
+            const bookingDetails = {
+                bookingReference: bookingData.booking_reference,
+                email: bookingData.lead_email,
+                firstName: bookingData.lead_first_name,
+                lastName: bookingData.lead_last_name,
+                phone: bookingData.lead_phone,
+                passengerCount: bookingData.passenger_count,
+                paymentType: bookingData.payment_type,
+                amount:
+                    bookingData.payment_type === 'RESERVATION'
+                        ? bookingData.reservation_amount
+                        : bookingData.total_amount,
+                status: bookingData.status,
+                tourTitle: bookingData.package_dates.tour_packages.title,
+                startDate: bookingData.package_dates.start_date,
+                endDate: bookingData.package_dates.end_date,
+                inclusions:
+                    bookingData.package_dates.inclusions?.join('<br/>') ||
+                    'As per package',
+                exclusions:
+                    bookingData.package_dates.exclusions?.join('<br/>') || '-',
+                notes: bookingData.package_dates.notes?.join('<br/>') || '-',
+                itinerary: bookingData.itinerary || '',
+                ratePerPax: bookingData.package_dates.rate_per_pax || 'N/A',
+                availableSlots:
+                    bookingData.package_dates.available_slots || 'N/A',
+                totalSlots: bookingData.package_dates.total_slots || 'N/A',
+                requirements:
+                    bookingData.package_dates.requirements?.join('<br/>') ||
+                    '-',
+                paymentTerms:
+                    bookingData.package_dates.payment_terms?.join('<br/>') ||
+                    '-',
+                tourDescription:
+                    bookingData.package_dates.tour_packages.description || '-',
+                mainImageUrl:
+                    bookingData.package_dates.tour_packages.main_image_url ||
+                    '',
+                panellumUrl:
+                    bookingData.package_dates.tour_packages.panellum_url || '',
             }
 
             // Calculate new available slots
@@ -80,7 +116,7 @@ export const handleStripeWebhook = async (req, res) => {
                 return res.status(500).send()
             }
 
-            // Update booking status and package slots in a single step if possible
+            // Update booking status and package slots
             const { error: updateBookingError } = await supabase
                 .from('tour_bookings')
                 .update({
@@ -99,21 +135,8 @@ export const handleStripeWebhook = async (req, res) => {
 
             if (updateSlotsError) throw updateSlotsError
 
-            // Send confirmation email
-            await sendTourConfirmationEmail({
-                bookingReference: booking_reference,
-                email: bookingData.lead_email,
-                firstName: bookingData.lead_first_name,
-                lastName: bookingData.lead_last_name,
-                tourTitle: bookingData.package_dates.tour_packages.title,
-                startDate: bookingData.package_dates.start_date,
-                endDate: bookingData.package_dates.end_date,
-                passengerCount: bookingData.passenger_count,
-                amount:
-                    bookingData.payment_type === 'RESERVATION'
-                        ? bookingData.reservation_amount
-                        : bookingData.total_amount,
-            })
+            // Send confirmation email using the correct email field
+            await sendTourConfirmationEmail(bookingDetails)
 
             // Notify admin
             await supabase.from('admin_notifications').insert({
@@ -124,27 +147,6 @@ export const handleStripeWebhook = async (req, res) => {
             console.log(
                 `✅ Tour booking ${booking_reference} confirmed. Slots updated, email sent.`
             )
-        } else if (product_type === 'FLIGHT') {
-            const { error: updateFlightError } = await supabase
-                .from('flight_bookings')
-                .update({ status: 'PAID_PENDING_TICKETING' })
-                .eq('booking_reference', booking_reference)
-                .eq('status', 'PENDING_PAYMENT')
-
-            if (updateFlightError) throw updateFlightError
-
-            console.log(
-                `✅ Database updated for flight booking ${booking_reference}.`
-            )
-            // async finalization
-            finalizeFlightBooking(booking_reference).catch((err) =>
-                console.error(
-                    `❌ CRITICAL ERROR during async finalization for ${booking_reference}:`,
-                    err
-                )
-            )
-        } else {
-            console.log(`Received unhandled product type: ${product_type}`)
         }
     } catch (err) {
         console.error(

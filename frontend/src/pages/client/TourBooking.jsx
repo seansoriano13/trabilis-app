@@ -16,6 +16,7 @@ function TourBooking() {
     })
     const [error, setError] = useState(null)
     const [loading, setLoading] = useState(false)
+    const reservation_per_pax = state.dates[0].reservation_fee_per_pax
 
     const validateForm = () => {
         if (!formData.firstName.trim()) return 'First name is required'
@@ -36,7 +37,7 @@ function TourBooking() {
     const handleInputChange = (e) => {
         const { name, value } = e.target
         setFormData((prev) => ({ ...prev, [name]: value }))
-        setError(null) // Clear error on input change
+        setError(null)
     }
 
     const handleSubmit = async (e) => {
@@ -201,9 +202,25 @@ function TourBooking() {
                         disabled={loading}
                     >
                         <option value='FULL'>Full Payment</option>
-                        {/* <option value='RESERVATION'>Reservation Fee</option> */}
+                        <option value='RESERVATION'>Reservation</option>
                     </select>
                 </div>
+                {formData.payment_type === 'RESERVATION' && (
+                    <div className='booking-form__group'>
+                        <label
+                            className='booking-form__label'
+                            htmlFor='payment_type'
+                        >
+                            Reservation Fee Per Pax
+                        </label>
+                        <input
+                            className='booking-form__input'
+                            type='text'
+                            disabled
+                            defaultValue={`PHP ${reservation_per_pax}`}
+                        />
+                    </div>
+                )}
                 {error && <p className='booking-form__error'>{error}</p>}
                 <button
                     type='submit'

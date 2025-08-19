@@ -32,9 +32,6 @@ function TourBookingSuccess() {
                     { params: { booking_reference: bookingReference } }
                 )
 
-                console.log('API response status:', response.status)
-                console.log('Full API response data:', response.data)
-
                 if (!response.data) {
                     console.warn('No booking data returned from API')
                     setError('Booking data not found')

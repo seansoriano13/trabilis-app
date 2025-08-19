@@ -80,6 +80,25 @@ export const DateGroup = ({
                 />
             </div>
             <div className='date-group__form-field'>
+                <label className='form-label'>
+                    Rate per Pax - Reservation (PHP) *
+                </label>
+                <input
+                    type='number'
+                    value={dateGroup.reservation_fee_per_pax}
+                    onChange={(e) =>
+                        updateDateGroup(
+                            index,
+                            'reservation_fee_per_pax',
+                            Number(e.target.value)
+                        )
+                    }
+                    className='form-input'
+                    min='0'
+                    required
+                />
+            </div>
+            <div className='date-group__form-field'>
                 <label className='form-label'>Total Slots *</label>
                 <input
                     type='number'
@@ -126,6 +145,7 @@ function CreateTourPackage() {
                 start_date: '',
                 end_date: '',
                 rate_per_pax: 0,
+                reservation_fee_per_pax: 0,
                 total_slots: 0,
                 available_slots: 0,
             },
@@ -138,6 +158,8 @@ function CreateTourPackage() {
         notes: [''],
     })
 
+    console.log(formData)
+
     const [openSections, setOpenSections] = useState({
         general: true,
         dates: false,
@@ -148,6 +170,7 @@ function CreateTourPackage() {
         requirements: false,
         notes: false,
     })
+
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [mainImagePreview, setMainImagePreview] = useState(null)
     const [panellumImagePreview, setPanellumImagePreview] = useState(null)
