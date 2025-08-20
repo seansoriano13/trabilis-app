@@ -1,0 +1,10 @@
+.theme-toggle {
+    background: var(--color-primary);
+    border: none;
+    padding: 0.5rem;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

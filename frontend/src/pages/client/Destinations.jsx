@@ -7,6 +7,7 @@ import ReactPaginate from 'react-paginate'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import './Destinations.css'
+import Panorama from '../../components/client/Panorama'
 
 export default function Destinations() {
     const [tours, setTours] = useState([])
@@ -155,13 +156,10 @@ export default function Destinations() {
                             key={tour.id}
                             className='tour-card'
                         >
-                            {tour.main_image_url && (
-                                <img
-                                    className='tour-card__image'
-                                    src={tour.main_image_url}
-                                    alt={tour.title || 'Tour Image'}
-                                />
-                            )}
+                            <Panorama
+                                image={tour.panellum_url}
+                                preview={tour.main_image_url}
+                            />
                             <div className='tour-card__content'>
                                 <h3 className='tour-card__title'>
                                     {tour.title || 'Tour Title'}

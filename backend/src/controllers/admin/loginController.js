@@ -20,18 +20,18 @@ export const adminLogin = async (req, res) => {
         .eq('email', email)
         .single()
 
-    if (roleError || adminData.role !== 'admin') {
-        return res.status(403).json({ error: 'Access denied: Admins only' })
+    if (roleError || !['admin', 'accounting'].includes(adminData.role)) {
+        return res.status(403).json({ error: 'Access denied: Invalid role' })
     }
 
-    // Issue JWT for your backend
+    // Issue JWT
     const token = jwt.sign(
-        { id: data.user.id, email, role: 'admin' },
+        { id: data.user.id, email, role: adminData.role },
         process.env.JWT_SECRET,
         {
             expiresIn: process.env.NODE_ENV === 'development' ? '100y' : '8h',
         }
     )
 
-    res.json({ token })
+    res.json({ token, email, role: adminData.role })
 }

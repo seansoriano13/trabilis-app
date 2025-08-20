@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { BsFillAirplaneFill } from 'react-icons/bs'
+import { FiMap } from 'react-icons/fi'
 import ReactPaginate from 'react-paginate'
-import './AdminFlights.css'
+import './AdminTour.css'
 import { supabase } from '../../api/supabaseClient'
 
-const AdminFlights = () => {
-    const [flightBookings, setFlightBookings] = useState([])
-    const [flightStats, setFlightStats] = useState({})
+const AdminTours = () => {
+    const [tourBookings, setTourBookings] = useState([])
+    const [tourStats, setTourStats] = useState({})
     const [page, setPage] = useState(0)
     const [total, setTotal] = useState(0)
     const [loading, setLoading] = useState(true)
@@ -16,57 +16,65 @@ const AdminFlights = () => {
         key: 'booking_reference',
         direction: 'asc',
     })
-    const [filters, setFilters] = useState({ status: 'All', destination: '' })
+    const [filters, setFilters] = useState({ status: 'All', package_name: '' })
 
     const pageSize = 5
-    const jwt = localStorage.getItem('adminToken') // From your login flow
+    const jwt = localStorage.getItem('adminToken')
 
-    // Set Supabase auth session
     useEffect(() => {
         if (jwt) {
             supabase.auth.setSession({ access_token: jwt })
         }
     }, [jwt])
 
-    // Fetch data
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true)
             try {
                 let query = supabase
-                    .from('flight_bookings')
-                    .select('*', { count: 'exact' }) // Just fetch JSON column
+                    .from('tour_bookings')
+                    .select(
+                        `
+            *,
+            package_dates (
+              id,
+              start_date,
+              end_date,
+              total_slots,
+              tour_package_id,
+              tour_packages (title)
+            )
+          `,
+                        { count: 'exact' }
+                    )
                     .range(page * pageSize, (page + 1) * pageSize - 1)
-                    .order('search_criteria->>outboundDeparture', {
-                        ascending: true,
-                    })
+                    .order('created_at', { ascending: true })
 
                 if (filters.status && filters.status !== 'All') {
                     query = query.eq('status', filters.status)
                 }
-                if (filters.destination) {
+                if (filters.package_name) {
                     query = query.ilike(
-                        'search_criteria->>destination',
-                        `%${filters.destination}%`
+                        'package_dates.tour_packages.title',
+                        `%${filters.package_name}%`
                     )
                 }
 
                 const [bookingsRes, statsRes] = await Promise.all([
                     query,
-                    supabase.rpc('get_flight_stats'),
+                    supabase.rpc('get_tour_stats'),
                 ])
 
                 if (bookingsRes.error || statsRes.error) {
                     throw new Error('Failed to fetch data')
                 }
 
-                setFlightBookings(bookingsRes.data)
-                setFlightStats(statsRes.data[0] || {})
+                setTourBookings(bookingsRes.data)
+                setTourStats(statsRes.data[0] || {})
                 setTotal(bookingsRes.count)
                 setLoading(false)
             } catch (err) {
-                console.error(err)
-                setError('Failed to load flights. Please try again.')
+                setError('Failed to load tours. Please try again.')
                 setLoading(false)
             }
         }
@@ -74,7 +82,6 @@ const AdminFlights = () => {
         fetchData()
     }, [page, filters, jwt])
 
-    // Sorting logic
     const sortData = (data, sort) => {
         return [...data].sort((a, b) => {
             const valA = sort.key.includes('.')
@@ -104,24 +111,24 @@ const AdminFlights = () => {
     const handleFilterChange = (e) => {
         const { name, value } = e.target
         setFilters((prev) => ({ ...prev, [name]: value }))
-        setPage(0) // Reset to first page on filter change
+        setPage(0)
     }
 
     const clearFilters = () => {
-        setFilters({ status: 'All', destination: '' })
+        setFilters({ status: 'All', package_name: '' })
         setPage(0)
     }
 
     if (loading) {
-        return <div className='flights__loading'>Loading...</div>
+        return <div className='tours__loading'>Loading...</div>
     }
 
     if (error) {
         return (
-            <div className='flights__error'>
+            <div className='tours__error'>
                 <p>{error}</p>
                 <button
-                    className='flights__retry'
+                    className='tours__retry'
                     onClick={() => window.location.reload()}
                 >
                     Retry
@@ -131,69 +138,64 @@ const AdminFlights = () => {
     }
 
     return (
-        <div className='flights'>
-            <div className='flights__header'>
-                <BsFillAirplaneFill
+        <div className='tours'>
+            <div className='tours__header'>
+                <FiMap
                     size={32}
                     color='#f7d100'
                 />
-                <h1>Flights Management</h1>
+                <h1>Tours Management</h1>
             </div>
 
-            {/* Summary Card */}
-            <div className='flights__summary'>
-                <div className='flights__summary-card'>
+            <div className='tours__summary'>
+                <div className='tours__summary-card'>
                     <h3>Total Bookings</h3>
-                    <p>{flightStats.total_bookings || 0}</p>
+                    <p>{tourStats.total_bookings || 0}</p>
                 </div>
-                <div className='flights__summary-card'>
+                <div className='tours__summary-card'>
                     <h3>Total Revenue</h3>
-                    <p>₱{(flightStats.total_revenue || 0).toLocaleString()}</p>
+                    <p>₱{(tourStats.total_revenue || 0).toLocaleString()}</p>
                 </div>
-                <div className='flights__summary-card'>
-                    <h3>Avg. Ticket Price</h3>
-                    <p>
-                        ₱{(flightStats.avg_ticket_price || 0).toLocaleString()}
-                    </p>
+                <div className='tours__summary-card'>
+                    <h3>Avg. Booking Cost</h3>
+                    <p>₱{(tourStats.avg_booking_cost || 0).toLocaleString()}</p>
                 </div>
-                <div className='flights__summary-card'>
-                    <h3>Top Destination</h3>
-                    <p>{flightStats.popular_destination || '-'}</p>
+                <div className='tours__summary-card'>
+                    <h3>Top Package</h3>
+                    <p>{tourStats.popular_package || '-'}</p>
                 </div>
             </div>
 
-            {/* Filter Bar */}
-            <div className='flights__filter'>
+            <div className='tours__filter'>
                 <select
                     name='status'
                     value={filters.status}
                     onChange={handleFilterChange}
                 >
                     <option value='All'>All Statuses</option>
-                    <option value='TICKETED'>Ticketed</option>
-                    <option value='PENDING'>Pending</option>
+                    <option value='CONFIRMED'>Confirmed</option>
+                    <option value='PENDING_PAYMENT'>Pending Payment</option>
                     <option value='CANCELLED'>Cancelled</option>
                 </select>
                 <input
                     type='text'
-                    name='destination'
-                    value={filters.destination}
+                    name='package_name'
+                    value={filters.package_name}
                     onChange={handleFilterChange}
-                    placeholder='Search Destination (e.g., CEB)'
+                    placeholder='Search Package (e.g., Boracay Tour)'
                 />
                 <button
-                    className='flights__filter-clear'
+                    className='tours__filter-clear'
                     onClick={clearFilters}
                 >
                     Clear Filters
                 </button>
             </div>
 
-            {/* Flight Bookings Table */}
-            <div className='flights__section'>
-                <h2>Flight Bookings</h2>
-                <div className='flights__table-container'>
-                    <table className='flights__table'>
+            <div className='tours__section'>
+                <h2>Tour Bookings</h2>
+                <div className='tours__table-container'>
+                    <table className='tours__table'>
                         <thead>
                             <tr>
                                 <th
@@ -206,88 +208,59 @@ const AdminFlights = () => {
                                 <th onClick={() => handleSort('status')}>
                                     Status
                                 </th>
+                                <th>Package</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Slots</th>
                                 <th
                                     onClick={() =>
-                                        handleSort(
-                                            'search_criteria.destination'
-                                        )
+                                        handleSort('passenger_count')
                                     }
                                 >
-                                    Destination
+                                    Passengers
                                 </th>
-                                <th
-                                    onClick={() =>
-                                        handleSort(
-                                            'search_criteria.outboundDeparture'
-                                        )
-                                    }
-                                >
-                                    Date
-                                </th>
-                                <th>Departure</th>
-                                <th>Arrival</th>
-                                <th>Passenger</th>
-                                <th>Airline</th>
+                                <th>Lead</th>
                                 <th onClick={() => handleSort('total_amount')}>
                                     Amount
                                 </th>
-                                <th>PNR</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {sortData(flightBookings, sort).map((booking) => (
+                            {sortData(tourBookings, sort).map((booking) => (
                                 <tr key={booking.id}>
                                     <td>
-                                        <Link
-                                            to={`/admin/flights/${booking.id}`}
-                                        >
+                                        <Link to={`/admin/tours/${booking.id}`}>
                                             {booking.booking_reference}
                                         </Link>
                                     </td>
                                     <td
-                                        className={`flights__status flights__status--${booking.status.toLowerCase()}`}
+                                        className={`tours__status tours__status--${booking.status.toLowerCase()}`}
                                     >
                                         {booking.status}
                                     </td>
                                     <td>
-                                        {booking.search_criteria?.destination ||
+                                        {booking.package_dates?.tour_packages
+                                            ?.title || 'Unknown'}
+                                    </td>
+                                    <td>
+                                        {booking.package_dates?.start_date ||
                                             '-'}
                                     </td>
                                     <td>
-                                        {booking.search_criteria
-                                            ?.outboundDeparture || '-'}
+                                        {booking.package_dates?.end_date || '-'}
                                     </td>
                                     <td>
-                                        {booking.amadeus_flight_offer
-                                            ?.itineraries[0]?.segments[0]
-                                            ?.departure?.at || '-'}
+                                        {booking.package_dates?.total_slots ||
+                                            '-'}
                                     </td>
-                                    <td>
-                                        {booking.amadeus_flight_offer
-                                            ?.itineraries[0]?.segments[0]
-                                            ?.arrival?.at || '-'}
-                                    </td>
-                                    <td>
-                                        {
-                                            booking.passenger_details
-                                                ?.travelers[0]?.name?.firstName
-                                        }{' '}
-                                        {
-                                            booking.passenger_details
-                                                ?.travelers[0]?.name?.lastName
-                                        }
-                                    </td>
-                                    <td>
-                                        {booking.amadeus_flight_offer
-                                            ?.validatingAirlineCodes[0] || '-'}
-                                    </td>
+                                    <td>{booking.passenger_count}</td>
+                                    <td>{`${booking.lead_first_name} ${booking.lead_last_name}`}</td>
                                     <td>
                                         ₱
                                         {(
                                             booking.total_amount || 0
                                         ).toLocaleString()}
                                     </td>
-                                    <td>{booking.pnr || '-'}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -298,12 +271,12 @@ const AdminFlights = () => {
                     nextLabel={'→'}
                     pageCount={Math.ceil(total / pageSize)}
                     onPageChange={({ selected }) => setPage(selected)}
-                    containerClassName={'flights__pagination'}
-                    activeClassName={'flights__pagination--active'}
+                    containerClassName={'tours__pagination'}
+                    activeClassName={'tours__pagination--active'}
                 />
             </div>
         </div>
     )
 }
 
-export default AdminFlights
+export default AdminTours

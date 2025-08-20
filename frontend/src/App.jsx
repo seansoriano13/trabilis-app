@@ -14,7 +14,6 @@ import Flights from './pages/client/Flights'
 import AboutUs from './pages/client/AboutUs'
 import ContactUs from './pages/client/ContactUs'
 import Dashboard from './pages/admin/Dashboard'
-import Users from './pages/admin/Users'
 import NotFound from './pages/NotFound'
 import FlightSearchResults from './pages/client/FlightSearchResults'
 import FlightBooking from './pages/client/FlightBooking'
@@ -31,6 +30,8 @@ import Tour from './pages/client/Tour'
 import TourBookingSuccess from './pages/client/TourBookingSuccess'
 import TourBookingCancel from './pages/client/TourBookingCancel'
 import TourBooking from './pages/client/TourBooking'
+import AdminTours from './pages/admin/AdminTour'
+import AdminUsers from './pages/admin/AdminUsers'
 
 Modal.setAppElement('#root')
 
@@ -150,12 +151,16 @@ function App() {
                             element={<EditTourPackage />}
                         />
                         <Route
+                            path='tour-sales'
+                            element={<AdminTours />}
+                        />
+                        <Route
                             path='flights'
                             element={<AdminFlights />}
                         />
                         <Route
                             path='users'
-                            element={<Users />}
+                            element={<AdminUsers />}
                         />
                     </Route>
                 </Route>
