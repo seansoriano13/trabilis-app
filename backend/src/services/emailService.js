@@ -1,5 +1,5 @@
 import { query } from '../config/db.js'
-import fs from 'fs'
+import fs from 'fs/promises'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import fetch from 'node-fetch'
