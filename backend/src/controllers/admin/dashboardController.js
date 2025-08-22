@@ -1,4 +1,4 @@
-import { supabase } from '../../config/supabaseClient.js'
+import { supabase, supabaseAdmin } from '../../config/supabaseClient.js'
 
 export const getFlightBookings = async (req, res) => {
     const page = parseInt(req.query.page) || 1
@@ -193,7 +193,7 @@ export const createUser = async (req, res) => {
     try {
         // Create user in auth.users
         const { data: authData, error: authError } =
-            await supabase.auth.admin.createUser({
+            await supabaseAdmin.auth.admin.createUser({
                 email,
                 password,
                 email_confirm: true, // Send confirmation email
@@ -212,7 +212,7 @@ export const createUser = async (req, res) => {
 
         if (insertError) {
             // Rollback: Delete user from auth.users if admins insert fails
-            await supabase.auth.admin.deleteUser(authData.user.id)
+            await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
             throw insertError
         }
 
