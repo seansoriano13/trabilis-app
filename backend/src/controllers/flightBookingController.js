@@ -250,7 +250,7 @@ export const initiateFlightBooking = async (req, res) => {
         }
 
         // Generate booking reference
-        const bookingReference = `TRB-FLT-${uuidv4()}`
+        const bookingReference = `TRB-${uuidv4().slice(0, 8)}`
 
         // Insert booking into database with order ID and search criteria
         try {

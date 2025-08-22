@@ -105,6 +105,10 @@ function App() {
                         element={<FlightBookingSuccess />}
                     />
                     <Route
+                        path='flight-booking/cancel'
+                        element={<FlightBookingSuccess />}
+                    />
+                    <Route
                         path='about-us'
                         element={<AboutUs />}
                     />
