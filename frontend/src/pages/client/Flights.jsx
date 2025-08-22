@@ -139,7 +139,7 @@ export default function Flights() {
 
             setIsLoading(false)
 
-            if (flights) {
+            if (flights?.outbound?.length > 0) {
                 const searchData = {
                     flights,
                     origin,
@@ -156,6 +156,8 @@ export default function Flights() {
                 )
 
                 navigate('search-result', { state: searchData })
+            } else {
+                setIsFlightSearchErr(true) // No flights found
             }
         } catch (err) {
             console.error('Flight search failed:', err)

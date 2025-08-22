@@ -44,6 +44,15 @@ export const searchFlights = async (req, res) => {
                     travelClass: cabinClassValue,
                     currencyCode: 'PHP',
                 })
+
+            // Check if Amadeus returned flights
+            if (!flightResponse.data || flightResponse.data.length === 0) {
+                return res.status(404).json({
+                    message: 'No flights found for the given criteria',
+                    flights: { outbound: [] },
+                })
+            }
+
             res.status(200).json({
                 flights: {
                     outbound: flightResponse.data,
