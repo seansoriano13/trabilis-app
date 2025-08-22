@@ -1,5 +1,13 @@
 import axios from 'axios'
 
+// Debug environment variables
+console.log('Backend URL:', import.meta.env.VITE_BACKEND_URL)
+
+// Validate environment variables
+if (!import.meta.env.VITE_BACKEND_URL) {
+    throw new Error('VITE_BACKEND_URL is required but not set')
+}
+
 const adminClient = axios.create({
     baseURL: import.meta.env.VITE_BACKEND_URL + '/api/v1/admin',
     headers: {
