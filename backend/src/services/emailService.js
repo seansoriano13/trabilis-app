@@ -264,7 +264,7 @@ export const generateTourSummaryPDF = async (bookingDetails) => {
 
     let html
     try {
-        html = fs.readFileSync(templatePath, 'utf-8')
+        html = await fs.readFile(templatePath, 'utf-8')
     } catch (err) {
         throw new Error(`Template not found: ${templatePath}`)
     }
