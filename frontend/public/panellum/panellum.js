@@ -2661,7 +2661,7 @@ window.pannellum = (function (E, g, p) {
                 friction: 0.15,
                 strings: {
                     loadButtonLabel:
-                        "<div class='pnlm-load-button__container'><img class='pnlm-load-button__img' src='../../src/assets/client/view.png'></div>",
+                        "<div class='pnlm-load-button__container'><img class='pnlm-load-button__img' src='/images/view.png'></div>",
                     loadingLabel: '', //Loading...
                     bylineLabel: 'by %s',
                     noPanoramaError: 'No panorama image was specified.',
