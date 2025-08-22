@@ -20,7 +20,7 @@ import FlightBooking from './pages/client/FlightBooking'
 import Modal from 'react-modal'
 import PassengerDetails from './pages/client/PassengerDetails'
 import FlightBookingSuccess from './pages/client/FlightBookingSuccess'
-import Login from './pages/admin/login'
+import AdminLogin from './pages/admin/Login'
 import AdminProtectedLayout from './layouts/AdminLayout'
 import TourPackages from './pages/admin/TourPackages'
 import AdminFlights from './pages/admin/AdminFlights'
@@ -37,7 +37,7 @@ Modal.setAppElement('#root')
 
 function App() {
     function AdminProtectedRoute({ children }) {
-        const token = localStorage.getItem('admin_token')
+        const token = localStorage.getItem('adminToken')
         if (!token) {
             return (
                 <Navigate
@@ -117,7 +117,7 @@ function App() {
                 {/* Admin Routes */}
                 <Route
                     path='/admin/login'
-                    element={<Login />}
+                    element={<AdminLogin />}
                 />
 
                 <Route
