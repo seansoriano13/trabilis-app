@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import './TourBookingSuccess.css' // You'll create this
 
 function TourBookingSuccess() {
     const { search } = useLocation()
@@ -14,11 +13,8 @@ function TourBookingSuccess() {
         const params = new URLSearchParams(search)
         const bookingReference = params.get('booking_reference')
 
-        console.log('Booking reference from URL:', bookingReference)
-
         const checkBookingStatus = async () => {
             if (!bookingReference) {
-                console.warn('Booking reference is missing from URL')
                 setError('Booking reference missing')
                 setLoading(false)
                 return
@@ -33,7 +29,6 @@ function TourBookingSuccess() {
                 )
 
                 if (!response.data) {
-                    console.warn('No booking data returned from API')
                     setError('Booking data not found')
                     return
                 }
@@ -55,17 +50,12 @@ function TourBookingSuccess() {
                 })
 
                 if (status === 'FAILED') {
-                    console.warn('Booking status is FAILED')
                     alert(
                         'Tour booking failed. A refund has been issued. Please try booking again.'
                     )
                     navigate('/destinations')
                 }
             } catch (err) {
-                console.error('Error fetching booking status:', err)
-                if (err.response) {
-                    console.error('API response error data:', err.response.data)
-                }
                 setError(
                     'Failed to verify booking status. Please contact support.'
                 )
@@ -77,67 +67,85 @@ function TourBookingSuccess() {
         checkBookingStatus()
     }, [search, navigate])
 
-    if (loading) {
-        return (
-            <div className='success-container'>
-                <h2 className='success-title'>Verifying Your Booking...</h2>
-                <p className='success-message'>
-                    Please wait while we confirm your tour booking details.
-                </p>
-            </div>
-        )
+    const getContent = () => {
+        if (loading) {
+            return {
+                title: 'Verifying Your Booking...',
+                message:
+                    'Please wait while we confirm your tour booking details.',
+                buttonText: null,
+            }
+        }
+        if (error) {
+            return {
+                title: 'Booking Error',
+                message: error,
+                buttonText: 'Try Another Booking',
+                buttonAction: () => navigate('/destinations'),
+            }
+        }
+        if (bookingDetails?.status === 'CONFIRMED') {
+            return {
+                title: 'Tour Booking Confirmed!',
+                message: `Your tour booking for ${
+                    bookingDetails.tourTitle
+                } from ${new Date(
+                    bookingDetails.startDate
+                ).toLocaleDateString()} to ${new Date(
+                    bookingDetails.endDate
+                ).toLocaleDateString()} for ${
+                    bookingDetails.passengerCount
+                } passenger(s) has been confirmed. Check your email for details.`,
+                buttonText: 'Return to Home',
+                buttonAction: () => navigate('/'),
+            }
+        }
+        return {
+            title: 'Processing Your Booking',
+            message:
+                'Your tour booking is being finalized. You will receive an email confirmation soon.',
+            buttonText: 'Return to Home',
+            buttonAction: () => navigate('/'),
+        }
     }
 
-    if (error) {
-        return (
-            <div className='success-container'>
-                <h2 className='success-title'>Booking Error</h2>
-                <p className='success-message'>{error}</p>
-                <button
-                    className='success-button'
-                    onClick={() => navigate('/destinations')}
-                >
-                    Try Another Booking
-                </button>
-            </div>
-        )
-    }
-
-    if (bookingDetails?.status === 'CONFIRMED') {
-        return (
-            <div className='success-container'>
-                <h2 className='success-title'>Tour Booking Confirmed!</h2>
-                <p className='success-message'>
-                    Your tour booking for {bookingDetails.tourTitle} from{' '}
-                    {new Date(bookingDetails.startDate).toLocaleDateString()} to{' '}
-                    {new Date(bookingDetails.endDate).toLocaleDateString()} for{' '}
-                    {bookingDetails.passengerCount} passenger(s) has been
-                    confirmed. Check your email for details.
-                </p>
-                <button
-                    className='success-button'
-                    onClick={() => navigate('/')}
-                >
-                    Return to Home
-                </button>
-            </div>
-        )
-    }
+    const { title, message, buttonText, buttonAction } = getContent()
 
     return (
-        <div className='success-container'>
-            <h2 className='success-title'>Processing Your Booking</h2>
-            <p className='success-message'>
-                Your tour booking is being finalized. You will receive an email
-                confirmation soon.
-            </p>
-            <button
-                className='success-button'
-                onClick={() => navigate('/')}
-            >
-                Return to Home
-            </button>
-        </div>
+        <section
+            id='sectionBookingSuccess'
+            className='relative w-full h-screen xl:h-screen bg-secondary-500'
+        >
+            <img
+                src='https://lindelatravel.com/images/section-content/reception-telephone-booth-20240602.jpg'
+                className='absolute top-0 left-0 w-full h-full object-center object-cover brightness-40'
+                alt=''
+            />
+            <div className='absolute top-0 left-0 w-full h-full bg-secondary-500/60'></div>
+
+            <div className='relative w-full xl:max-w-[1166px] h-screen mx-auto px-4 lg:px-8 xl:px-0 flex flex-col justify-center'>
+                <div className='max-w-lg xl:max-w-2xl mx-auto text-center bg-black/40 p-8 rounded-lg shadow-lg'>
+                    <h1 className='font-poppins font-bold text-yellow-300 text-lg lg:text-xl'>
+                        Booking Status
+                    </h1>
+                    <h3 className='font-poppins font-bold text-white text-2xl lg:text-4xl mt-2'>
+                        {title}
+                    </h3>
+                    <p className='mt-6 text-white text-sm lg:text-lg'>
+                        {message}
+                    </p>
+
+                    {buttonText && (
+                        <button
+                            onClick={buttonAction}
+                            className='mt-8 px-6 py-3 bg-primary-500 hover:bg-primary-600 transition rounded-lg font-semibold text-white'
+                        >
+                            {buttonText}
+                        </button>
+                    )}
+                </div>
+            </div>
+        </section>
     )
 }
 
