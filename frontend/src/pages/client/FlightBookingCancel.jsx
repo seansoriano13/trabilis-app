@@ -4,7 +4,7 @@ function FlightBookingCancel() {
     const navigate = useNavigate()
 
     return (
-        <div className='fixed inset-0 flex items-center justify-center bg-black/40 z-50 p-4'>
+        <div className='fixed inset-0 flex items-center justify-center bg-white z-50 p-4'>
             <div className='bg-tertiary-500 rounded-xl shadow-lg p-8 w-full max-w-md text-center flex flex-col items-center gap-4'>
                 <i className='bi-x-circle text-6xl text-red-500' />
                 <h3 className='font-bold text-2xl'>Booking Cancelled</h3>
