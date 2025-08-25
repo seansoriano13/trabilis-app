@@ -73,14 +73,14 @@ function ClientNavbar() {
                             Destinations
                         </Link>
                     </li>
-                    <li>
+                    {/* <li>
                         <Link
                             onClick={handleLinkClick}
                             to='/immigration-visa-consultancy'
                         >
                             Immigration Visa Consultancy
                         </Link>
-                    </li>
+                    </li> */}
                     <li>
                         <Link
                             onClick={handleLinkClick}

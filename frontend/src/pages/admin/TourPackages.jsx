@@ -134,6 +134,10 @@ function TourPackages() {
                                 Created:{' '}
                                 {new Date(tour.created_at).toLocaleDateString()}
                             </p>
+                            <p className='tour-package-card__created'>
+                                Available slots: {tour.dates[0].available_slots}
+                            </p>
+
                             <div className='tour-package-card__actions'>
                                 <button
                                     className='tour-package-card__button tour-package-card__button--edit'

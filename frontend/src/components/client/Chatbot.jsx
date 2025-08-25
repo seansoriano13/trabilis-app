@@ -53,6 +53,7 @@ export default function Chatbot() {
                         fontSize: '24px',
                         cursor: 'pointer',
                         boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                        zIndex: 999,
                     }}
                 >
                     💬

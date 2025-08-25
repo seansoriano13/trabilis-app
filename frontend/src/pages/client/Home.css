@@ -1,0 +1,120 @@
+.swiper-button-next,
+.swiper-button-prev {
+    color: #f7d100; /* your custom color */
+}
+
+.home__header {
+}
+.home__header-video {
+    position: relative;
+    height: 100vh;
+    object-fit: cover;
+    filter: brightness(45%);
+}
+.home__header-text {
+    width: 90%;
+    font-family: var(--ff-amaranth);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: white;
+    font-size: 0.875rem;
+}
+
+.home__header-btn {
+    position: absolute;
+    top: 58%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: transparent;
+    color: var(--color-yellow);
+    border: 1px solid #f7d100;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+}
+
+.home__about {
+    padding: 2rem 1rem;
+    display: grid;
+    gap: 1rem;
+}
+.home__about-title {
+    font-size: var(--fs-figtree-h3);
+    font-weight: 800;
+}
+
+.home__about-title u {
+    text-decoration-color: #f7d100;
+    text-decoration-thickness: 4px;
+}
+
+.home__about-image {
+    border-radius: 0.5rem;
+}
+.home__about-text {
+    font-size: var(--fs-p-small);
+}
+
+.home__destinations {
+    padding: 2rem 2rem;
+    background-image: url(/client/landing-destinations-bg.jpg);
+    background-position: center;
+    background-size: cover;
+    box-shadow: inset 0 0 0 1000px rgba(24, 24, 26, 0.8);
+}
+
+.home__destinations-title {
+    font-size: var(--fs-figtree-h3);
+    font-weight: bold;
+    color: white;
+}
+.home__destinations-subtitle {
+    color: white;
+    filter: var(--opacity-60);
+}
+.home__destinations-link {
+    color: #f7d100;
+}
+
+.home__tour-card {
+    position: relative;
+}
+.home__tour-image {
+    border-radius: 0.5rem;
+    width: calc(100% + 0rem);
+    height: 352px;
+    object-fit: cover;
+}
+.home__tour-title {
+    font-size: 0.875rem;
+}
+.home__tour-price {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+.home__tour-card-text {
+    cursor: pointer;
+    position: absolute;
+    bottom: 0;
+    color: white;
+    width: 100%;
+    text-align: center;
+    background: #18181ab3;
+    padding: 0.5rem;
+}
+.home__benefits {
+    padding: 2rem 1rem;
+}
+.home__benefits-header {
+}
+.home__benefits-list {
+}
+.home__benefit {
+}
+.home__benefit-icon {
+}
+.home__benefit-text {
+    color: #464648;
+}

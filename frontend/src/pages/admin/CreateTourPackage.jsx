@@ -158,8 +158,6 @@ function CreateTourPackage() {
         notes: [''],
     })
 
-    console.log(formData)
-
     const [openSections, setOpenSections] = useState({
         general: true,
         dates: false,

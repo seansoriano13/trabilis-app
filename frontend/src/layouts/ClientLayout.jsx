@@ -12,7 +12,7 @@ export default function ClientLayout() {
                 <Outlet />
             </main>
             <Chatbot />
-            {/* <Footer /> */}
+            <Footer />
         </>
     )
 }

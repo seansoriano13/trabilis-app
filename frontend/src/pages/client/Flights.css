@@ -8,6 +8,7 @@
 }
 
 .flights {
+    height: 100vh;
     padding: var(--default-padding-top) 1rem 0;
 }
 
@@ -93,6 +94,7 @@
 }
 
 .flights__description {
+    padding-top: var(--default-padding-top);
 }
 
 .flights__tagline {

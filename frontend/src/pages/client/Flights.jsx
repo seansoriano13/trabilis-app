@@ -201,6 +201,38 @@ export default function Flights() {
                 src={flightsHeroMobile}
                 alt='flightsHeroMobile'
             />
+            <div
+                data-aos='fade-up'
+                className='flights__description col-span-5 flex flex-col items-center lg:items-start gap-6'
+            >
+                <div className='text-center lg:text-left'>
+                    <h3 className='font-sans font-semibold lg:text-xl text-yellow-300'>
+                        Flights
+                    </h3>
+                    <h1 className='font-sans font-bold text-[40px] lg:text-[64px] text-white'>
+                        Travel smart, save time.
+                    </h1>
+                </div>
+
+                <p className='text-sm lg:text-lg text-center lg:text-left text-white'>
+                    Lindela provides tailored assistance for airline ticketing,
+                    helping you secure flights that match your schedule, budget
+                    and preferences.
+                </p>
+
+                <div className='text-sm flex items-center gap-2'>
+                    <i className='bi-airplane-fill block rotate-90 text-white'></i>
+                    <span className='text-[#B3B3B3]'>
+                        <span id='flightCount'>320,170</span> flights booked and
+                        counting
+                    </span>
+                </div>
+
+                <div
+                    data-aos='fade-up'
+                    className='flex lg:hidden items-center gap-2'
+                ></div>
+            </div>
 
             <form
                 onSubmit={handleSubmit}
@@ -359,20 +391,35 @@ export default function Flights() {
                     </p>
                 )}
             </form>
+            <section className='rounded-md w-full max-w-[72.75rem] mx-auto pt-4 lg:pt-16 pb-16 px-4 lg:px-16 xl:px-0 flex flex-col-reverse lg:flex-row items-center justify-between gap-4 lg:gap-8 xl:gap-16 bg-white my-8'>
+                <div
+                    data-aos='fade-up'
+                    data-aos-offset='200'
+                    className='w-full flex-1'
+                >
+                    <img
+                        src='https://lindelatravel.com/images/section-content/flights-reception.jpg'
+                        alt='Lindela airline ticketing agents'
+                        className='w-full h-48 lg:h-80 object-center object-cover rounded-lg'
+                    />
+                </div>
 
-            <div className='flights__description'>
-                <h3 className='flights__tagline'>Flights</h3>
-                <h1 className='flights__headline'>Travel smart, save time.</h1>
-                <p className='flights__text'>
-                    Lindela provides tailored assistance for airline ticketing,
-                    helping you secure flights that match your schedule, budget
-                    and preferences.
-                </p>
-                <p className='flights__text flights__text--highlight'>
-                    320,170 flights booked and counting
-                </p>
-                {/* Add plane icon with ::before via CSS */}
-            </div>
+                <div
+                    data-aos='fade-up'
+                    data-aos-offset='200'
+                    className='flex-1'
+                >
+                    <h5 className='font-sans font-bold text-2xl lg:text-4xl leading-snug'>
+                        We know travel, and we know it best.
+                    </h5>
+                    <p className='mt-2 text-sm lg:text-base'>
+                        We maximize value with expert route planning, airline
+                        deals, and seamless coordination for complex trips.
+                    </p>
+                </div>
+            </section>
+
+            
         </section>
     )
 }

@@ -136,6 +136,7 @@ const AdminTours = () => {
             </div>
         )
     }
+    
 
     return (
         <div className='tours'>

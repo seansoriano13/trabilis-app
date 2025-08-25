@@ -34,7 +34,6 @@ dd {
     margin-block-end: 0;
     margin: 0;
     padding: 0;
-    color: var(--fc-default);
 }
 
 ul[role='list'],

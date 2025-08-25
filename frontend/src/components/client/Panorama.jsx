@@ -1,8 +1,10 @@
 import { useEffect } from 'react'
 import '../../../public/panellum/panellum.css'
 
-function Panorama({ preview, image, aspectRatio = '16/9' }) {
+function Panorama({ preview, image, aspectRatio = '16/9', id }) {
     useEffect(() => {
+        const containerId = `panorama-${id}`
+
         if (!document.querySelector("script[src='/panellum/panellum.js']")) {
             const script = document.createElement('script')
             script.src = '/panellum/panellum.js'
@@ -15,7 +17,7 @@ function Panorama({ preview, image, aspectRatio = '16/9' }) {
 
         function initViewer() {
             if (window.pannellum) {
-                window.pannellum.viewer('panorama', {
+                window.pannellum.viewer(containerId, {
                     type: 'equirectangular',
                     panorama: image,
                     autoLoad: false,
@@ -27,18 +29,18 @@ function Panorama({ preview, image, aspectRatio = '16/9' }) {
         }
 
         return () => {
-            const container = document.getElementById('panorama')
+            const container = document.getElementById(containerId)
             if (container) container.innerHTML = ''
         }
-    }, [image])
+    }, [image, preview, id])
 
     return (
         <div
-            id='panorama'
+            id={`panorama-${id}`}
             style={{
                 width: '100%',
-                aspectRatio, // responsive height based on width
-                maxHeight: '20vh', // prevent overflow
+                aspectRatio,
+                maxHeight: '20vh',
             }}
         ></div>
     )

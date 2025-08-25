@@ -1,6 +1,10 @@
 .destinations {
+    height: 100vh;
     padding: var(--default-padding-top) 1rem 0;
     position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .tours__form {
@@ -28,9 +32,8 @@
 }
 
 .tours__form-header {
-    font-size: 1.8rem;
+    font-size: 1.1rem;
     font-weight: 700;
-    margin-bottom: 16px;
 }
 
 .tours__form-row {
@@ -78,7 +81,6 @@
 
 .tours__card-container {
     max-width: 1200px;
-    margin: 0 auto;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 20px;
@@ -107,16 +109,16 @@
     padding: 16px;
 }
 
-.tour-card__title {
-    font-size: 1.25rem;
-    font-weight: 600;
+.tour-card__title--destinations {
+    font-size: 1rem;
     color: #333333;
     margin: 0 0 8px;
 }
 
 .tour-card__price {
-    font-size: 1.1rem;
-    color: #1976d2;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #333333;
     margin: 0 0 12px;
 }
 
@@ -169,18 +171,11 @@
 
 .tours__promo {
     text-align: center;
-    margin: 40px 0;
 }
 
 .tours__promo h1 {
     font-size: 2rem;
     font-weight: 700;
-    color: #333333;
-    margin: 0 0 16px;
-}
-
-.tours__promo p {
-    font-size: 1.1rem;
-    color: #555555;
+    color: white;
     margin: 0 0 16px;
 }
