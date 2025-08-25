@@ -14,7 +14,7 @@ const AdminLogin = () => {
             const { data } = await adminClient.post('/login', {
                 email,
                 password,
-            }) 
+            })
             localStorage.setItem('adminToken', data.token)
             localStorage.setItem('admin_email', data.email)
             localStorage.setItem('admin_role', data.role)
@@ -25,26 +25,44 @@ const AdminLogin = () => {
     }
 
     return (
-        <div className='admin-login'>
-            <h1>Admin Login</h1>
-            <form onSubmit={handleSubmit}>
-                <input
-                    type='email'
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder='Email'
-                    required
-                />
-                <input
-                    type='password'
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder='Password'
-                    required
-                />
-                <button type='submit'>Login</button>
-                {error && <p className='admin-login__error'>{error}</p>}
-            </form>
+        <div className='min-h-screen flex items-center justify-center bg-gray-100 px-4'>
+            <div className='bg-white rounded-xl shadow-lg w-full max-w-md p-8'>
+                <h1 className='text-3xl font-bold text-center text-primary-500 mb-6'>
+                    Admin Login
+                </h1>
+                <form
+                    onSubmit={handleSubmit}
+                    className='flex flex-col gap-4'
+                >
+                    <input
+                        type='email'
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder='Email'
+                        required
+                        className='px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500'
+                    />
+                    <input
+                        type='password'
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder='Password'
+                        required
+                        className='px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500'
+                    />
+                    <button
+                        type='submit'
+                        className='bg-primary-500 text-black font-bold py-2 rounded-lg hover:bg-primary-600 transition'
+                    >
+                        Login
+                    </button>
+                    {error && (
+                        <p className='text-red-500 text-sm mt-2 text-center'>
+                            {error}
+                        </p>
+                    )}
+                </form>
+            </div>
         </div>
     )
 }

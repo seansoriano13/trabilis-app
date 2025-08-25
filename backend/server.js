@@ -19,9 +19,19 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
 app.use(
     cors({
         origin: (origin, callback) => {
-            if (!origin || allowedOrigins.includes(origin)) {
+            console.log('Incoming origin:', origin)
+            if (!origin) return callback(null, true)
+
+            if (allowedOrigins.includes(origin)) return callback(null, true)
+
+            // temporary dev allowance
+            if (
+                process.env.NODE_ENV !== 'production' &&
+                origin.includes('localhost')
+            ) {
                 return callback(null, true)
             }
+
             return callback(new Error('Not allowed by CORS'))
         },
         credentials: true,
