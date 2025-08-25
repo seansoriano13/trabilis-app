@@ -474,6 +474,7 @@ function Tour() {
                                                                                 {
                                                                                     item.day_number
                                                                                 }
+
                                                                                 :{' '}
                                                                                 {
                                                                                     item.title
@@ -497,18 +498,6 @@ function Tour() {
                                             />
                                         </div>
                                     ))}
-                        </div>
-                    )}
-                    {tour.panellum_url && (
-                        <div className='tour-card__virtual-tour'>
-                            <h2 className='tour-card__virtual-tour-title'>
-                                Virtual Tour Preview
-                            </h2>
-                            <img
-                                className='tour-card__virtual-tour-image'
-                                src={tour.panellum_url}
-                                alt='Virtual Tour Preview'
-                            />
                         </div>
                     )}
                 </div>
