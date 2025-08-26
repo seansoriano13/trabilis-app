@@ -125,17 +125,17 @@ export default function TestimonialsSection() {
                     </ul>
                 </div>
             </section>
-            <section class='w-full px-4 lg:px-16 xl:px-0 pt-8 pb-16 lg:pt-8 lg:pb-16 bg-[rgba(255,251,232,0.3)] border border-[#b3b3b3]'>
-                <div class='w-full max-w-[72.75rem] mx-auto flex flex-col gap-4 lg:grid lg:gap-6 xl:grid-cols-12 xl:gap-8'>
-                    <div class='flex-1 xl:col-span-7 flex flex-col gap-4 lg:grid lg:grid-cols-12 xl:flex xl:flex-col'>
+            <section className='w-full px-4 lg:px-16 xl:px-0 pt-8 pb-16 lg:pt-8 lg:pb-16 bg-[rgba(255,251,232,0.3)] border border-[#b3b3b3]'>
+                <div className='w-full max-w-[72.75rem] mx-auto flex flex-col gap-4 lg:grid lg:gap-6 xl:grid-cols-12 xl:gap-8'>
+                    <div className='flex-1 xl:col-span-7 flex flex-col gap-4 lg:grid lg:grid-cols-12 xl:flex xl:flex-col'>
                         <div
                             data-aos='fade-up'
-                            class='flex-1 lg:col-span-12 xl:flex-1 aos-init aos-animate'
+                            className='flex-1 lg:col-span-12 xl:flex-1 aos-init aos-animate'
                         >
-                            <h3 class='font-poppins font-bold text-xl lg:text-3xl'>
+                            <h3 className='font-poppins font-bold text-xl lg:text-3xl'>
                                 Talk to our Airline Ticketing Agents
                             </h3>
-                            <p class='text-sm'>
+                            <p className='text-sm'>
                                 We truly appreciate you reaching out and look
                                 forward to connecting with you!
                             </p>
@@ -143,64 +143,64 @@ export default function TestimonialsSection() {
                         <div
                             data-aos='fade-up'
                             data-delay='200'
-                            class='flex-1 lg:col-span-8 xl:flex-1 flex flex-col gap-4 lg:flex-row lg:flex-wrap aos-init aos-animate'
+                            className='flex-1 lg:col-span-8 xl:flex-1 flex flex-col gap-4 lg:flex-row lg:flex-wrap aos-init aos-animate'
                         >
-                            <div class='w-10/12 lg:w-[calc(calc(100%/2)-1rem)] text-sm'>
-                                <p class='text-secondary-400'>
+                            <div className='w-10/12 lg:w-[calc(calc(100%/2)-1rem)] text-sm'>
+                                <p className='text-secondary-400'>
                                     For standard domestic and international
                                     flights
                                 </p>
                                 <a
                                     href='tel:+639171406623'
-                                    class='block w-fit mt-2 hover:text-blue-600'
+                                    className='block w-fit mt-2 hover:text-blue-600'
                                 >
-                                    <i class='bi-telephone-fill mr-1'></i>
+                                    <i className='bi-telephone-fill mr-1'></i>
                                     <span>+639171406623</span>
                                 </a>
                                 <a
                                     href='tel:+639177133498'
-                                    class='block w-fit hover:text-blue-600'
+                                    className='block w-fit hover:text-blue-600'
                                 >
-                                    <i class='bi-telephone-fill mr-1'></i>
+                                    <i className='bi-telephone-fill mr-1'></i>
                                     <span>+639177133498</span>
                                 </a>
                             </div>
-                            <div class='w-10/12 lg:w-[calc(calc(100%/2)-1rem)] text-sm'>
-                                <p class='text-secondary-400'>
+                            <div className='w-10/12 lg:w-[calc(calc(100%/2)-1rem)] text-sm'>
+                                <p className='text-secondary-400'>
                                     For land arrangements and special requests
                                 </p>
                                 <a
                                     href='tel:+639177131236'
-                                    class='block w-fit mt-2 hover:text-blue-600'
+                                    className='block w-fit mt-2 hover:text-blue-600'
                                 >
-                                    <i class='bi-telephone-fill mr-1'></i>
+                                    <i className='bi-telephone-fill mr-1'></i>
                                     <span>+639177131236</span>
                                 </a>
                             </div>
-                            <div class='w-10/12 lg:w-[calc(calc(100%/2)-1rem)] text-sm'>
-                                <p class='text-secondary-400'>
+                            <div className='w-10/12 lg:w-[calc(calc(100%/2)-1rem)] text-sm'>
+                                <p className='text-secondary-400'>
                                     Write on your own time and send us an email.
                                 </p>
                                 <a
                                     href='mailto:flights@lindelatravel.com'
-                                    class='block w-fit mt-2 hover:text-blue-600'
+                                    className='block w-fit mt-2 hover:text-blue-600'
                                 >
-                                    <i class='bi-envelope-fill mr-1'></i>
+                                    <i className='bi-envelope-fill mr-1'></i>
                                     <span>flights@lindelatravel.com</span>
                                 </a>
                             </div>
-                            <div class='w-11/12 lg:w-[calc(calc(100%/2)-1rem)] text-sm'>
-                                <p class='text-secondary-400'>
+                            <div className='w-11/12 lg:w-[calc(calc(100%/2)-1rem)] text-sm'>
+                                <p className='text-secondary-400'>
                                     Connect directly through our Lindela Travel
                                     and Tours Facebook page.
                                 </p>
                                 <a
                                     href='https://m.me/298594160256476'
                                     target='_blank'
-                                    class='block w-fit mt-2 py-2 px-4 text-tertiary-500 bg-blue-600 hover:bg-blue-500 rounded-lg'
+                                    className='block w-fit mt-2 py-2 px-4 text-tertiary-500 bg-blue-600 hover:bg-blue-500 rounded-lg'
                                 >
-                                    <i class='bi-messenger mr-1'></i>
-                                    <span className='text-white'>
+                                    <i className='bi-messenger mr-1'></i>
+                                    <span classNameName='text-white'>
                                         Chat with us
                                     </span>
                                 </a>
@@ -209,22 +209,22 @@ export default function TestimonialsSection() {
                         <div
                             data-aos='fade-up'
                             data-delay='400'
-                            class='flex-1 lg:col-span-4 xl:flex-1 flex flex-col xl:flex-row gap-4 px-4 py-4 border border-[#b3b3b3] rounded-lg aos-init aos-animate text-sm'
+                            className='flex-1 lg:col-span-4 xl:flex-1 flex flex-col xl:flex-row gap-4 px-4 py-4 border border-[#b3b3b3] rounded-lg aos-init aos-animate text-sm'
                         >
-                            <div class='flex-1'>
-                                <b class='block'>Ticketing Office</b>
-                                <p class='mt-1'>
+                            <div className='flex-1'>
+                                <b className='block'>Ticketing Office</b>
+                                <p className='mt-1'>
                                     3rd floor Valero One Center
-                                    <span class='text-secondary-400'>
+                                    <span className='text-secondary-400'>
                                         (Former ACCM Building)
                                     </span>
                                     102 Valero St., Salcedo Village Makati City,
                                     Philippines
                                 </p>
                             </div>
-                            <div class='flex-1'>
-                                <b class='block'>Working Hours</b>
-                                <p class='mt-1'>
+                            <div className='flex-1'>
+                                <b className='block'>Working Hours</b>
+                                <p className='mt-1'>
                                     Monday to Friday — 9AM to 6PM Saturday — 9AM
                                     to 4PM
                                 </p>
@@ -234,10 +234,10 @@ export default function TestimonialsSection() {
                     <div
                         data-aos='fade-up'
                         data-aos-delay='500'
-                        class='flex-1 xl:col-span-5 aos-init aos-animate'
+                        className='flex-1 xl:col-span-5 aos-init aos-animate'
                     >
                         <iframe
-                            class='w-full h-96 xl:h-full border border-[#b3b3b3] rounded-lg shadow'
+                            className='w-full h-96 xl:h-full border border-[#b3b3b3] rounded-lg shadow'
                             src='https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3861.675897416213!2d121.01551607510552!3d14.560517385921164!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397c85160189c9f%3A0xaeb71056263ce223!2sLindela%20Travel%20and%20Tours!5e0!3m2!1sen!2sph!4v1732183568819!5m2!1sen!2sph'
                             allowfullscreen=''
                             loading='lazy'

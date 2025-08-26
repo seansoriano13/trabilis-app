@@ -1,54 +1,36 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import { IoIosArrowUp } from 'react-icons/io'
+import { IoIosArrowDown } from 'react-icons/io'
+import { FaCheck } from 'react-icons/fa6'
 import './Tour.css'
 import PrimaryButton from '../../components/client/PrimaryButton'
+import { formatToLongDate } from '../../utils/flightUtils.js'
 
 function Tour() {
+    useEffect(() => {
+        window.scrollTo(0, 0)
+    }, [])
     const { state } = useLocation()
     const [tour, setTour] = useState([])
-    const [selectedDateId, setSelectedDateId] = useState(null)
     const [showFullDescription, setShowFullDescription] = useState(false)
+    const [isDescHidden, setIsDescHidden] = useState({})
+    const [selectedTab, setSelectedTab] = useState('inclusions')
+    const [selectedDateId, setSelectedDateId] = useState(0)
     const [passengers, setPassengers] = useState(1)
-    const [openSections, setOpenSections] = useState({
-        inclusions: false,
-        exclusions: false,
-        notes: false,
-        payment_terms: false,
-        requirements: false,
-        itineraries: false,
-    })
+
+    const tourDates = tour.dates || []
+
+    const selectedDate = tourDates[selectedDateId]
 
     useEffect(() => {
-        const fetchTour = async () => {
-            try {
-                const response = await axios.get(
-                    `${
-                        import.meta.env.VITE_BACKEND_URL
-                    }/api/v1/destinations/tour/${state.id}`
-                )
-                setTour(response.data)
-            } catch (error) {
-                console.log(error)
-            }
+        if (state) {
+            setTour(state)
         }
-        fetchTour()
-    }, [state.id])
+    }, [state])
 
     const toggleDescription = () => {
         setShowFullDescription(!showFullDescription)
-    }
-
-    const handleDateClick = (dateId) => {
-        setSelectedDateId(selectedDateId === dateId ? null : dateId)
-        setPassengers(1) // Reset passengers when changing date
-    }
-
-    const toggleSection = (section) => {
-        setOpenSections((prev) => ({
-            ...prev,
-            [section]: !prev[section],
-        }))
     }
 
     const shortenDescription = (text, maxLength = 100) => {
@@ -56,31 +38,104 @@ function Tour() {
         return text.substring(0, maxLength) + '...'
     }
 
+    const handleCardClose = (id) => {
+        setIsDescHidden((prev) => ({ ...prev, [id]: !prev[id] }))
+    }
+
+    const handleDateClick = (index) => {
+        setSelectedDateId(index)
+    }
+
+    const title = tour?.title
+
     const navigate = useNavigate()
+
     const handleBookClick = () => {
-        const selectedDate = tour.dates?.find(
-            (date) => date.id === selectedDateId
-        )
-        navigate(`booking`, {
-            state: { ...tour, selectedDateId, passengers, selectedDate },
+        navigate('booking', {
+            state: {
+                ...tour,
+                selectedDateId,
+                passengers,
+                selectedDate,
+                title,
+            },
         })
     }
 
-    const handlePassengerChange = (e) => {
-        const selectedDate = tour.dates?.find(
-            (date) => date.id === selectedDateId
+    const availableSlots =
+        tourDates?.[selectedDateId]?.available_slots ?? '...loading'
+
+    const availableDates = tour?.dates?.map((date, index) => {
+        return (
+            <button
+                key={index}
+                onClick={() => handleDateClick(index)}
+                className={`text-gray-800 text-sm border border-gray-400 rounded-sm p-2 cursor-pointer ${
+                    selectedDateId === index &&
+                    'bg-[#f7d100] text-black border-0'
+                }`}
+            >{`${formatToLongDate(date.start_date)} - ${formatToLongDate(
+                date.end_date
+            )}`}</button>
         )
-        const maxPassengers = selectedDate?.available_slots || 1
-        let value = parseInt(e.target.value, 10)
-        if (isNaN(value)) value = 1
-        if (value < 1) value = 1
-        if (value > maxPassengers) value = maxPassengers
-        setPassengers(value)
-    }
+    })
+
+    const itineraries = tourDates[0]?.itineraries?.map((itinerary) => {
+        const isCollapsed = isDescHidden[itinerary.id]
+
+        return (
+            <div
+                key={itinerary.id}
+                className='text-sm'
+            >
+                <div className='relative grid gap-4 border border-gray-400 rounded-xl px-6 py-4 shadow-md'>
+                    <div className='text-gray-500'>
+                        Day {itinerary.day_number}
+                    </div>
+                    <div className='font-bold'>{itinerary.title}</div>
+                    <button
+                        onClick={() => {
+                            handleCardClose(itinerary.id)
+                        }}
+                        className='cursor-pointer'
+                    >
+                        <div className='absolute top-4 right-4 text-gray-500 text-2xl'>
+                            {isCollapsed ? (
+                                <IoIosArrowDown />
+                            ) : (
+                                <IoIosArrowUp />
+                            )}
+                        </div>
+                    </button>
+                    <div className={isCollapsed ? 'hidden' : ''}>
+                        {itinerary.description}
+                    </div>
+                </div>
+            </div>
+        )
+    })
+
+    const inclusions = tourDates[0]?.inclusions?.map((inclusion) => {
+        return (
+            <div className='flex items-center gap-1'>
+                <FaCheck className='text-green-700' />
+                <div className='text-sm'>{inclusion}</div>
+            </div>
+        )
+    })
+
+    const exclusions = tourDates[0]?.exclusions?.map((exclusion) => {
+        return (
+            <div className='flex items-center gap-1'>
+                <FaCheck className='text-green-700' />
+                <div className='text-sm'>{exclusion}</div>
+            </div>
+        )
+    })
 
     return (
         <div className='tour-container'>
-            <div className='tour-card'>
+            <div className='tour-card--destinations'>
                 {tour.main_image_url && (
                     <img
                         className='tour-card__image'
@@ -94,414 +149,110 @@ function Tour() {
                             {tour.title || 'Tour Title'}
                         </h1>
                     </div>
-                    <p className='tour-card__description'>
+                    <p className='tour-card__description text-xs'>
                         {showFullDescription
                             ? tour.description || 'No description available.'
                             : shortenDescription(tour.description)}
                         {tour.description && tour.description.length > 100 && (
                             <button
-                                className='tour-card__description-toggle'
+                                className='tour-card__description-toggle text-xs'
                                 onClick={toggleDescription}
                             >
                                 {showFullDescription ? 'See Less' : 'See More'}
                             </button>
                         )}
                     </p>
-                    {tour.dates && tour.dates.length > 0 && (
-                        <div className='tour-card__section'>
-                            <h2 className='tour-card__section-title'>
-                                Available Dates
-                            </h2>
-                            <div className='tour-card__date-buttons'>
-                                {tour.dates.map((date, index) => (
-                                    <button
-                                        key={date.id}
-                                        className={`tour-card__date-button ${
-                                            selectedDateId === date.id
-                                                ? 'tour-card__date-button--active'
-                                                : ''
-                                        }`}
-                                        onClick={() => handleDateClick(date.id)}
-                                    >
-                                        Option {index + 1}:{' '}
-                                        {new Date(
-                                            date.start_date
-                                        ).toLocaleDateString()}{' '}
-                                        -{' '}
-                                        {new Date(
-                                            date.end_date
-                                        ).toLocaleDateString()}
-                                    </button>
-                                ))}
-                            </div>
-                            {selectedDateId &&
-                                tour.dates
-                                    .filter(
-                                        (date) => date.id === selectedDateId
-                                    )
-                                    .map((date) => (
-                                        <div
-                                            key={date.id}
-                                            className='tour-card__date-details'
-                                        >
-                                            <div className='tour-card__detail'>
-                                                <span className='tour-card__detail-label'>
-                                                    Rate per Pax:
-                                                </span>
-                                                <span className='tour-card__detail-value'>
-                                                    {date.rate_per_pax
-                                                        ? `PHP ${date.rate_per_pax.toLocaleString()}`
-                                                        : 'N/A'}
-                                                </span>
-                                            </div>
-                                            <div className='tour-card__detail'>
-                                                <span className='tour-card__detail-label'>
-                                                    Available Slots:
-                                                </span>
-                                                <span className='tour-card__detail-value'>
-                                                    {date.available_slots ??
-                                                        'N/A'}
-                                                </span>
-                                            </div>
-                                            <div className='tour-card__detail'>
-                                                <span className='tour-card__detail-label'>
-                                                    Total Slots:
-                                                </span>
-                                                <span className='tour-card__detail-value'>
-                                                    {date.total_slots ?? 'N/A'}
-                                                </span>
-                                            </div>
-                                            <div className='tour-card__detail'>
-                                                <span className='tour-card__detail-label'>
-                                                    Number of Passengers:
-                                                </span>
-                                                <input
-                                                    type='number'
-                                                    value={passengers}
-                                                    onChange={
-                                                        handlePassengerChange
-                                                    }
-                                                    min='1'
-                                                    max={date.available_slots}
-                                                    className='tour-card__passenger-input'
-                                                />
-                                            </div>
-                                            {date.inclusions &&
-                                                date.inclusions.length > 0 && (
-                                                    <div className='tour-card__accordion'>
-                                                        <button
-                                                            className='tour-card__accordion-toggle'
-                                                            onClick={() =>
-                                                                toggleSection(
-                                                                    'inclusions'
-                                                                )
-                                                            }
-                                                        >
-                                                            Inclusions
-                                                            <span
-                                                                className={`tour-card__accordion-icon ${
-                                                                    openSections.inclusions
-                                                                        ? 'tour-card__accordion-icon--open'
-                                                                        : ''
-                                                                }`}
-                                                            >
-                                                                {openSections.inclusions
-                                                                    ? '−'
-                                                                    : '+'}
-                                                            </span>
-                                                        </button>
-                                                        {openSections.inclusions && (
-                                                            <div className='tour-card__accordion-content'>
-                                                                <ul className='tour-card__list-items'>
-                                                                    {date.inclusions.map(
-                                                                        (
-                                                                            item,
-                                                                            i
-                                                                        ) => (
-                                                                            <li
-                                                                                key={
-                                                                                    i
-                                                                                }
-                                                                                className='tour-card__list-item'
-                                                                            >
-                                                                                {
-                                                                                    item
-                                                                                }
-                                                                            </li>
-                                                                        )
-                                                                    )}
-                                                                </ul>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            {date.exclusions &&
-                                                date.exclusions.length > 0 && (
-                                                    <div className='tour-card__accordion'>
-                                                        <button
-                                                            className='tour-card__accordion-toggle'
-                                                            onClick={() =>
-                                                                toggleSection(
-                                                                    'exclusions'
-                                                                )
-                                                            }
-                                                        >
-                                                            Exclusions
-                                                            <span
-                                                                className={`tour-card__accordion-icon ${
-                                                                    openSections.exclusions
-                                                                        ? 'tour-card__accordion-icon--open'
-                                                                        : ''
-                                                                }`}
-                                                            >
-                                                                {openSections.exclusions
-                                                                    ? '−'
-                                                                    : '+'}
-                                                            </span>
-                                                        </button>
-                                                        {openSections.exclusions && (
-                                                            <div className='tour-card__accordion-content'>
-                                                                <ul className='tour-card__list-items'>
-                                                                    {date.exclusions.map(
-                                                                        (
-                                                                            item,
-                                                                            i
-                                                                        ) => (
-                                                                            <li
-                                                                                key={
-                                                                                    i
-                                                                                }
-                                                                                className='tour-card__list-item'
-                                                                            >
-                                                                                {
-                                                                                    item
-                                                                                }
-                                                                            </li>
-                                                                        )
-                                                                    )}
-                                                                </ul>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            {date.notes &&
-                                                date.notes.length > 0 && (
-                                                    <div className='tour-card__accordion'>
-                                                        <button
-                                                            className='tour-card__accordion-toggle'
-                                                            onClick={() =>
-                                                                toggleSection(
-                                                                    'notes'
-                                                                )
-                                                            }
-                                                        >
-                                                            Notes
-                                                            <span
-                                                                className={`tour-card__accordion-icon ${
-                                                                    openSections.notes
-                                                                        ? 'tour-card__accordion-icon--open'
-                                                                        : ''
-                                                                }`}
-                                                            >
-                                                                {openSections.notes
-                                                                    ? '−'
-                                                                    : '+'}
-                                                            </span>
-                                                        </button>
-                                                        {openSections.notes && (
-                                                            <div className='tour-card__accordion-content'>
-                                                                <ul className='tour-card__list-items'>
-                                                                    {date.notes.map(
-                                                                        (
-                                                                            item,
-                                                                            i
-                                                                        ) => (
-                                                                            <li
-                                                                                key={
-                                                                                    i
-                                                                                }
-                                                                                className='tour-card__list-item'
-                                                                            >
-                                                                                {
-                                                                                    item
-                                                                                }
-                                                                            </li>
-                                                                        )
-                                                                    )}
-                                                                </ul>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            {date.payment_terms &&
-                                                date.payment_terms.length >
-                                                    0 && (
-                                                    <div className='tour-card__accordion'>
-                                                        <button
-                                                            className='tour-card__accordion-toggle'
-                                                            onClick={() =>
-                                                                toggleSection(
-                                                                    'payment_terms'
-                                                                )
-                                                            }
-                                                        >
-                                                            Payment Terms
-                                                            <span
-                                                                className={`tour-card__accordion-icon ${
-                                                                    openSections.payment_terms
-                                                                        ? 'tour-card__accordion-icon--open'
-                                                                        : ''
-                                                                }`}
-                                                            >
-                                                                {openSections.payment_terms
-                                                                    ? '−'
-                                                                    : '+'}
-                                                            </span>
-                                                        </button>
-                                                        {openSections.payment_terms && (
-                                                            <div className='tour-card__accordion-content'>
-                                                                <ul className='tour-card__list-items'>
-                                                                    {date.payment_terms.map(
-                                                                        (
-                                                                            item,
-                                                                            i
-                                                                        ) => (
-                                                                            <li
-                                                                                key={
-                                                                                    i
-                                                                                }
-                                                                                className='tour-card__list-item'
-                                                                            >
-                                                                                {
-                                                                                    item
-                                                                                }
-                                                                            </li>
-                                                                        )
-                                                                    )}
-                                                                </ul>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            {date.requirements &&
-                                                date.requirements.length >
-                                                    0 && (
-                                                    <div className='tour-card__accordion'>
-                                                        <button
-                                                            className='tour-card__accordion-toggle'
-                                                            onClick={() =>
-                                                                toggleSection(
-                                                                    'requirements'
-                                                                )
-                                                            }
-                                                        >
-                                                            Requirements
-                                                            <span
-                                                                className={`tour-card__accordion-icon ${
-                                                                    openSections.requirements
-                                                                        ? 'tour-card__accordion-icon--open'
-                                                                        : ''
-                                                                }`}
-                                                            >
-                                                                {openSections.requirements
-                                                                    ? '−'
-                                                                    : '+'}
-                                                            </span>
-                                                        </button>
-                                                        {openSections.requirements && (
-                                                            <div className='tour-card__accordion-content'>
-                                                                <ul className='tour-card__list-items'>
-                                                                    {date.requirements.map(
-                                                                        (
-                                                                            item,
-                                                                            i
-                                                                        ) => (
-                                                                            <li
-                                                                                key={
-                                                                                    i
-                                                                                }
-                                                                                className='tour-card__list-item'
-                                                                            >
-                                                                                {
-                                                                                    item
-                                                                                }
-                                                                            </li>
-                                                                        )
-                                                                    )}
-                                                                </ul>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            {date.itineraries &&
-                                                date.itineraries.length > 0 && (
-                                                    <div className='tour-card__accordion'>
-                                                        <button
-                                                            className='tour-card__accordion-toggle'
-                                                            onClick={() =>
-                                                                toggleSection(
-                                                                    'itineraries'
-                                                                )
-                                                            }
-                                                        >
-                                                            Itinerary
-                                                            <span
-                                                                className={`tour-card__accordion-icon ${
-                                                                    openSections.itineraries
-                                                                        ? 'tour-card__accordion-icon--open'
-                                                                        : ''
-                                                                }`}
-                                                            >
-                                                                {openSections.itineraries
-                                                                    ? '−'
-                                                                    : '+'}
-                                                            </span>
-                                                        </button>
-                                                        {openSections.itineraries && (
-                                                            <div className='tour-card__accordion-content'>
-                                                                <ul className='tour-card__list-items'>
-                                                                    {date.itineraries.map(
-                                                                        (
-                                                                            item
-                                                                        ) => (
-                                                                            <li
-                                                                                key={
-                                                                                    item.id
-                                                                                }
-                                                                                className='tour-card__list-item'
-                                                                            >
-                                                                                Day{' '}
-                                                                                {
-                                                                                    item.day_number
-                                                                                }
-
-                                                                                :{' '}
-                                                                                {
-                                                                                    item.title
-                                                                                }
-                                                                            </li>
-                                                                        )
-                                                                    )}
-                                                                </ul>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            <PrimaryButton
-                                                onClick={handleBookClick}
-                                                className='tour-card__btn'
-                                                buttonText='Book Now'
-                                                disabled={
-                                                    !date.available_slots ||
-                                                    passengers === 0
-                                                }
-                                            />
-                                        </div>
-                                    ))}
+                    <div className='grid gap-2'>
+                        <div className='text-sm text-gray-600'>
+                            Available Dates
                         </div>
-                    )}
+                        <div>{availableDates}</div>
+                        <div className='text-sm text-gray-600'>
+                            Available Slots: {availableSlots}
+                        </div>
+                    </div>
+                    <div className='border-b py-4 border-gray-400'>
+                        <div className='font-bold flex items-start gap-2 text-sm lg:text-base text-[#646466]'>
+                            <i className='bi-calendar2-week'></i>
+                            <span>
+                                {tourDates.map(
+                                    (date) =>
+                                        `${Math.ceil(
+                                            (new Date(date.end_date) -
+                                                new Date(date.start_date)) /
+                                                (1000 * 60 * 60 * 24)
+                                        )} Days & ${Math.ceil(
+                                            (new Date(date.end_date) -
+                                                new Date(date.start_date)) /
+                                                (1000 * 60 * 60 * 24) -
+                                                1
+                                        )} Nights`
+                                )}
+                            </span>
+                        </div>
+                    </div>
+                    <div className='flex gap-2 py-2 text-[#646466]'>
+                        <button
+                            onClick={() => setSelectedTab('inclusions')}
+                            className={`flex gap-1 cursor-pointer ${
+                                selectedTab === 'inclusions' && 'text-black'
+                            }`}
+                        >
+                            <i className='bi-gift'></i>
+                            <span className='font-bold text-sm'>
+                                Inclusions
+                            </span>
+                        </button>
+                        <button
+                            onClick={() => setSelectedTab('exclusions')}
+                            className={`flex gap-1 cursor-pointer ${
+                                selectedTab === 'exclusions' && 'text-black'
+                            }`}
+                        >
+                            <i className='bi-x-circle'></i>
+                            <span className='font-bold text-sm'>
+                                Exclusions
+                            </span>
+                        </button>
+                    </div>
+
+                    <div className='grid gap-2'>
+                        {selectedTab === 'inclusions' ? inclusions : exclusions}
+                    </div>
+
+                    <div>
+                        <div className='font-poppins font-bold text-lg mb-3 border-t-1 border-gray-400 py-4'>
+                            Itinerary
+                        </div>
+                        <div className='grid gap-4'>{itineraries}</div>
+                    </div>
                 </div>
             </div>
+
+            <div className='flex items-center gap-4 border-t justify-center border-gray-300 pt-4 w-4/5 mx-auto'>
+                <span className='font-medium'>Passengers</span>
+                <div className='flex items-center gap-2'>
+                    <button
+                        onClick={() => setPassengers((p) => Math.max(1, p - 1))}
+                        className='px-3 py-1 bg-gray-200 rounded'
+                    >
+                        -
+                    </button>
+                    <span>{passengers}</span>
+                    <button
+                        onClick={() => setPassengers((p) => p + 1)}
+                        className='px-3 py-1 bg-gray-200 rounded'
+                    >
+                        +
+                    </button>
+                </div>
+            </div>
+
+            <PrimaryButton
+                onClick={() => handleBookClick()}
+                className='tour-card__btn'
+                buttonText='Book Now'
+            />
         </div>
     )
 }

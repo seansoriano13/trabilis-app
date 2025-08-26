@@ -15,48 +15,48 @@ export default function AboutUs() {
         <>
             <section
                 id='sectionHeadline'
-                class='relative w-full h-screen xl:h-screen xl:max-h-screen bg-[#33333]'
+                className='relative w-full h-screen xl:h-screen xl:max-h-screen bg-[#33333]'
             >
                 <img
                     src='https://lindelatravel.com/images/header-bgs/lindela-infinity-pool.png'
-                    class='absolute top-0 left-0 z-0 w-full h-full object-right xl:object-bottom object-cover brightness-40'
+                    className='absolute top-0 left-0 z-0 w-full h-full object-right xl:object-bottom object-cover brightness-40'
                 />
-                <div class='absolute top-0 left-0 w-full h-full bg-[#33333]/60'></div>
-                <div class='relative w-full xl:max-w-[1166px] h-screen xl:h-screen mx-auto px-4 lg:px-8 xl:px-0 flex flex-col justify-between gap-4'>
+                <div className='absolute top-0 left-0 w-full h-full bg-[#33333]/60'></div>
+                <div className='relative w-full xl:max-w-[1166px] h-screen xl:h-screen mx-auto px-4 lg:px-8 xl:px-0 flex flex-col justify-between gap-4'>
                     <div
                         x-intersect:enter='stableNav = false'
                         x-intersect:leave='stableNav = true'
                     ></div>
-                    <div class='w-full mx-auto mt-8 flex-1 flex flex-col justify-center'>
-                        <p class='mt-4 font-poppins font-bold text-base lg:text-xl text-yellow-300'>
+                    <div className='w-full mx-auto mt-8 flex-1 flex flex-col justify-center'>
+                        <p className='mt-4 font-poppins font-bold text-base lg:text-xl text-yellow-300'>
                             About Us
                         </p>
-                        <h1 class='font-poppins font-bold text-white text-5xl lg:text-f64'>
+                        <h1 className='font-poppins font-bold text-white text-5xl lg:text-f64'>
                             Your Trusted Travel Partner
                         </h1>
                     </div>
-                    <div class='w-full lg:w-9/12 xl:w-8/12 mb-8 flex flex-col lg:flex-row items-start lg:items-end justify-between lg:gap-4 text-white'>
+                    <div className='w-full lg:w-9/12 xl:w-8/12 mb-8 flex flex-col lg:flex-row items-start lg:items-end justify-between lg:gap-4 text-white'>
                         <a
                             href='#sectionAbout'
-                            class='lg:flex-1 py-2 pr-8 lg:pr-0 border-0 border-t border-[#b3b3b3] lg:font-bold hover:text-yellow-300 hover:border-yellow-300 transition-all'
+                            className='lg:flex-1 py-2 pr-8 lg:pr-0 border-0 border-t border-[#b3b3b3] lg:font-bold hover:text-yellow-300 hover:border-yellow-300 transition-all'
                         >
                             Our Story
                         </a>
                         <a
                             href='#sectionMission'
-                            class='lg:flex-1 py-2 pr-8 lg:pr-0 border-0 border-t border-[#b3b3b3] lg:font-bold hover:text-yellow-300 hover:border-yellow-300 transition-all'
+                            className='lg:flex-1 py-2 pr-8 lg:pr-0 border-0 border-t border-[#b3b3b3] lg:font-bold hover:text-yellow-300 hover:border-yellow-300 transition-all'
                         >
                             Our Mission
                         </a>
                         <a
                             href='#sectionAwards'
-                            class='lg:flex-1 py-2 pr-8 lg:pr-0 border-0 border-t border-[#b3b3b3] lg:font-bold hover:text-yellow-300 hover:border-yellow-300 transition-all'
+                            className='lg:flex-1 py-2 pr-8 lg:pr-0 border-0 border-t border-[#b3b3b3] lg:font-bold hover:text-yellow-300 hover:border-yellow-300 transition-all'
                         >
                             Our Awards
                         </a>
                         <a
                             href='#sectionPartners'
-                            class='lg:flex-1 py-2 pr-8 lg:pr-0 border-0 border-t border-[#b3b3b3] lg:font-bold hover:text-yellow-300 hover:border-yellow-300 transition-all'
+                            className='lg:flex-1 py-2 pr-8 lg:pr-0 border-0 border-t border-[#b3b3b3] lg:font-bold hover:text-yellow-300 hover:border-yellow-300 transition-all'
                         >
                             Our Accreditations
                         </a>
@@ -65,19 +65,19 @@ export default function AboutUs() {
             </section>
             <section
                 id='sectionAbout'
-                class='w-full mt-8'
+                className='w-full mt-8'
             >
-                <div class='w-full max-w-[72.875rem] mx-auto px-4 lg:px-8 xl:px-0 py-8'>
+                <div className='w-full max-w-[72.875rem] mx-auto px-4 lg:px-8 xl:px-0 py-8'>
                     <div>
-                        <h2 class='font-poppins font-bold text-sm lg:text-base text-primary-500'>
+                        <h2 className='font-poppins font-bold text-sm lg:text-base text-primary-500'>
                             Our Story
                         </h2>
-                        <h3 class='font-poppins font-bold text-2xl lg:text-f40'>
+                        <h3 className='font-poppins font-bold text-2xl lg:text-f40'>
                             LINDELA TRAVEL AND TOURS
                         </h3>
                     </div>
 
-                    <div class='mt-6 lg:columns-2 gap-8 text-xs lg:text-lg'>
+                    <div className='mt-6 lg:columns-2 gap-8 text-xs lg:text-lg'>
                         <p>
                             As the most trusted travel agency in the
                             Philippines, <b>Lindela Travel and Tours</b>{' '}
@@ -89,7 +89,7 @@ export default function AboutUs() {
                             their dreams, discover the world’s beauty, and leave
                             a lasting, positive impact on diverse communities.
                         </p>
-                        <p class='mt-3'>
+                        <p className='mt-3'>
                             Our employees are pioneers in the travel industry,
                             benefiting from routine team-building and
                             educational opportunities. Led by expert Team
@@ -97,7 +97,7 @@ export default function AboutUs() {
                             they excel in sales, training, and customer service,
                             delivering the highest standards of service.
                         </p>
-                        <p class='mt-3'>
+                        <p className='mt-3'>
                             Each tour is created to encourage a unique
                             experience that will spark a love for traveling.
                             Seeing the world can be a transformative experience.

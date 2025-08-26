@@ -92,9 +92,9 @@ export default function Home() {
                 </div>
                 <a
                     href='/about-us'
-                    class='w-full lg:w-fit mt-4 lg:mt-0 py-3 lg:py-4 px-8 flex items-center justify-center gap-2 text-secondary-500 hover:text-tertiary-500 hover:bg-secondary-500 border border-secondary-500 rounded-lg shadow transition-all'
+                    className='w-full lg:w-fit mt-4 lg:mt-0 py-3 lg:py-4 px-8 flex items-center justify-center gap-2 text-secondary-500 hover:text-tertiary-500 hover:bg-secondary-500 border border-secondary-500 rounded-lg shadow transition-all'
                 >
-                    <i class='bi-arrow-up-right'></i>
+                    <i className='bi-arrow-up-right'></i>
                     <span>KNOW MORE</span>
                 </a>
             </section>
@@ -106,7 +106,7 @@ export default function Home() {
                 </p>
                 <a
                     href='https://lindelatravel.com/tour-packages'
-                    class='home__destinations-link mr-2 hover:mr-0 flex items-center gap-2 hover:gap-4 font-bold transition-all'
+                    className='home__destinations-link mr-2 hover:mr-0 flex items-center gap-2 hover:gap-4 font-bold transition-all'
                 >
                     <span>Explore Destinations</span>
                     <FaLongArrowAltRight />
@@ -154,16 +154,16 @@ export default function Home() {
             </section>
 
             <section className='home__benefits'>
-                <div class='flex flex-col items-center justify-center'>
-                    <h3 class='font-poppins font-bold text-2xl lg:text-f40 text-center'>
-                        <span class='home__benefit-text block'>
+                <div className='flex flex-col items-center justify-center'>
+                    <h3 className='font-poppins font-bold text-2xl lg:text-f40 text-center'>
+                        <span className='home__benefit-text block'>
                             WHY GO WITH
                         </span>
-                        <span class='text-secondary-500'>
+                        <span className='text-secondary-500'>
                             LINDELA TRAVEL &amp; TOURS
                         </span>
                     </h3>
-                    <p class='mt-2 text-base lg:text-lg text-center'>
+                    <p className='mt-2 text-base lg:text-lg text-center'>
                         We provide the best experience possible within your
                         spending plan and schedule.
                     </p>

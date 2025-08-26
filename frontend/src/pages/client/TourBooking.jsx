@@ -1,9 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import axios from 'axios'
 import './TourBooking.css'
 
 function TourBooking() {
+    useEffect(() => {
+        window.scrollTo(0, 0)
+    }, [])
     const { state } = useLocation()
     const { selectedDateId, passengers, selectedDate, title } = state
 
@@ -93,31 +96,47 @@ function TourBooking() {
     }
 
     return (
-        <div className='booking-container'>
-            <h1 className='booking-title'>Book Your Tour</h1>
+        <div className='max-w-lg mx-auto px-6 pb-6 pt-[var(--default-padding-top)] bg-white rounded-lg shadow-md'>
+            <div className='text-3xl font-extrabold mb-6 text-gray-900'>
+                Lead Passenger Details
+            </div>
+
             <form
-                className='booking-form'
                 onSubmit={handleSubmit}
+                className='space-y-4'
             >
-                <div className='booking-form__group'>
-                    <label className='booking-form__label'>Tour</label>
-                    <p className='booking-form__value'>{title}</p>
+                {/* Tour */}
+                <div>
+                    <label className='block text-sm font-medium text-gray-700'>
+                        Tour Package Name
+                    </label>
+                    <div className='mt-1 text-lg text-gray-900'>{title}</div>
                 </div>
-                <div className='booking-form__group'>
-                    <label className='booking-form__label'>Date</label>
-                    <p className='booking-form__value'>
+
+                {/* Date */}
+                <div>
+                    <label className='block text-sm font-medium text-gray-700'>
+                        Date
+                    </label>
+                    <p className='mt-1 text-gray-900'>
                         {new Date(selectedDate.start_date).toLocaleDateString()}{' '}
                         - {new Date(selectedDate.end_date).toLocaleDateString()}
                     </p>
                 </div>
-                <div className='booking-form__group'>
-                    <label className='booking-form__label'>Passengers</label>
-                    <p className='booking-form__value'>{passengers}</p>
+
+                {/* Passengers */}
+                <div>
+                    <label className='block text-sm font-medium text-gray-700'>
+                        Passengers
+                    </label>
+                    <p className='mt-1 text-gray-900'>{passengers}</p>
                 </div>
-                <div className='booking-form__group'>
+
+                {/* First Name */}
+                <div>
                     <label
-                        className='booking-form__label'
                         htmlFor='firstName'
+                        className='block text-sm font-medium text-gray-700'
                     >
                         First Name
                     </label>
@@ -127,15 +146,17 @@ function TourBooking() {
                         name='firstName'
                         value={formData.firstName}
                         onChange={handleInputChange}
-                        className='booking-form__input'
+                        className='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm'
                         required
                         disabled={loading}
                     />
                 </div>
-                <div className='booking-form__group'>
+
+                {/* Last Name */}
+                <div>
                     <label
-                        className='booking-form__label'
                         htmlFor='lastName'
+                        className='block text-sm font-medium text-gray-700'
                     >
                         Last Name
                     </label>
@@ -145,15 +166,17 @@ function TourBooking() {
                         name='lastName'
                         value={formData.lastName}
                         onChange={handleInputChange}
-                        className='booking-form__input'
+                        className='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm'
                         required
                         disabled={loading}
                     />
                 </div>
-                <div className='booking-form__group'>
+
+                {/* Email */}
+                <div>
                     <label
-                        className='booking-form__label'
                         htmlFor='email'
+                        className='block text-sm font-medium text-gray-700'
                     >
                         Email
                     </label>
@@ -163,15 +186,17 @@ function TourBooking() {
                         name='email'
                         value={formData.email}
                         onChange={handleInputChange}
-                        className='booking-form__input'
+                        className='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm'
                         required
                         disabled={loading}
                     />
                 </div>
-                <div className='booking-form__group'>
+
+                {/* Phone */}
+                <div>
                     <label
-                        className='booking-form__label'
                         htmlFor='phone'
+                        className='block text-sm font-medium text-gray-700'
                     >
                         Phone
                     </label>
@@ -181,15 +206,17 @@ function TourBooking() {
                         name='phone'
                         value={formData.phone}
                         onChange={handleInputChange}
-                        className='booking-form__input'
+                        className='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm'
                         required
                         disabled={loading}
                     />
                 </div>
-                <div className='booking-form__group'>
+
+                {/* Payment Type */}
+                <div>
                     <label
-                        className='booking-form__label'
                         htmlFor='payment_type'
+                        className='block text-sm font-medium text-gray-700'
                     >
                         Payment Type
                     </label>
@@ -198,33 +225,36 @@ function TourBooking() {
                         name='payment_type'
                         value={formData.payment_type}
                         onChange={handleInputChange}
-                        className='booking-form__input'
+                        className='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm'
                         disabled={loading}
                     >
                         <option value='FULL'>Full Payment</option>
                         <option value='RESERVATION'>Reservation</option>
                     </select>
                 </div>
+
+                {/* Reservation Fee */}
                 {formData.payment_type === 'RESERVATION' && (
-                    <div className='booking-form__group'>
-                        <label
-                            className='booking-form__label'
-                            htmlFor='payment_type'
-                        >
+                    <div>
+                        <label className='block text-sm font-medium text-gray-700'>
                             Reservation Fee Per Pax
                         </label>
                         <input
-                            className='booking-form__input'
                             type='text'
                             disabled
                             defaultValue={`PHP ${reservation_per_pax}`}
+                            className='mt-1 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm sm:text-sm'
                         />
                     </div>
                 )}
-                {error && <p className='booking-form__error'>{error}</p>}
+
+                {/* Error */}
+                {error && <p className='text-red-600 text-sm'>{error}</p>}
+
+                {/* Submit */}
                 <button
                     type='submit'
-                    className='booking-form__submit'
+                    className='w-full py-2 px-4 bg-[var(--color-yellow)] text-black font-medium rounded-md shadow hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary'
                     disabled={loading}
                 >
                     {loading ? 'Processing...' : 'Confirm & Proceed to Payment'}
