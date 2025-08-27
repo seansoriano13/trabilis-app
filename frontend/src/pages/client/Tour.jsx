@@ -240,12 +240,19 @@ function Tour() {
                     </button>
                     <span>{passengers}</span>
                     <button
-                        onClick={() => setPassengers((p) => p + 1)}
+                        onClick={() =>
+                            setPassengers((p) =>
+                                p < availableSlots ? p + 1 : p
+                            )
+                        }
                         className='px-3 py-1 bg-gray-200 rounded'
                     >
                         +
                     </button>
                 </div>
+                {passengers === availableSlots && (
+                    <div className='text-red-600'>Max Passengers Reached.</div>
+                )}
             </div>
 
             <PrimaryButton

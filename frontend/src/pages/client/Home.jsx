@@ -9,8 +9,10 @@ import 'swiper/css/pagination'
 import './Home.css'
 import { FaLongArrowAltRight } from 'react-icons/fa'
 import { useNavigate } from 'react-router-dom'
+import { useRef } from 'react'
 
 export default function Home() {
+    const destinationRef = useRef(null)
     const [tours, setTours] = useState([])
 
     useEffect(() => {
@@ -29,6 +31,10 @@ export default function Home() {
         fetchTours()
     }, [])
 
+    const scrollToDestinations = () => {
+        destinationRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+
     const navigate = useNavigate()
 
     return (
@@ -36,124 +42,154 @@ export default function Home() {
             <div className='home__header'>
                 <video
                     className='home__header-video'
+                    preload='metadata'
                     src='/client/lindela-header-destinations.mp4'
                     autoPlay
                     loop
                 ></video>
-                <p className='home__header-text'>
+                <div className='home__header-text lg:text-lg text-lg lg:px-32 px-0'>
                     <b>Lindela</b> makes travel easy. We craft unforgettable
                     tours and handle all the essentials, from visas and flights
                     to ensure a seamless journey on your dream vacation.
-                </p>
+                </div>
                 <PrimaryButton
+                    onClick={scrollToDestinations}
                     className='home__header-btn'
                     buttonText='Explore Destinations'
                 />
             </div>
 
-            <section className='home__about'>
-                <h2 className='home__about-title'>
-                    <u>Lindela</u> Travel and Tours
+            <section className='grid gap-4 p-8 lg:max-w-[1166px] mx-auto'>
+                <h2 className='text-3xl font-extrabold'>
+                    <u className='[text-decoration-color:#f7d100] [text-decoration-thickness:4px]'>
+                        Lindela
+                    </u>{' '}
+                    Travel and Tours
                 </h2>
-                <img
-                    className='home__about-image'
-                    src='/client/lindela-reception.jpg'
-                    alt=''
-                />
-                <p className='home__about-text'>
-                    The most trusted travel agency in the Philippines. Since its
-                    founding in 2012, <b>Lindela Travel and Tours</b> has
-                    organized countless trips, helping travelers reach their
-                    destinations and create lasting memories.
-                </p>
-                <p className='home__about-text'>
-                    For us, travel is more than reaching a destination. Through
-                    our tours, we inspire people to chase their dreams, explore
-                    the world’s beauty, and leave a positive, lasting impact on
-                    communities.
-                </p>
-                <div className='grid grid-cols-2 grid-rows-2 gap-4'>
-                    <div>
-                        <h2 className='font-extrabold text-2xl'>12</h2>
-                        <p className='text-xs'>Years of Experience</p>
-                    </div>
-                    <div>
-                        <h2 className='font-extrabold text-2xl'>84</h2>
-                        <p className='text-xs'>Trips Organized</p>
-                    </div>
-                    <div>
-                        <h2 className='font-extrabold text-2xl'>100k+</h2>
-                        <p className='text-xs'>Countries Visited</p>
-                    </div>
-                    <div>
-                        <h2 className='font-extrabold text-2xl'>500k</h2>
-                        <p className='text-xs'>Satisfied Clients</p>
+
+                <div className='lg:flex gap-8 grid'>
+                    <img
+                        className='rounded-lg'
+                        src='/client/lindela-reception.jpg'
+                        alt=''
+                    />
+
+                    <div className='grid justify-center'>
+                        <div>
+                            <p className='text-sm lg:text-lg'>
+                                The most trusted travel agency in the
+                                Philippines. Since its founding in 2012,{' '}
+                                <b>Lindela Travel and Tours</b> has organized
+                                countless trips, helping travelers reach their
+                                destinations and create lasting memories.
+                            </p>
+
+                            <p className='text-sm lg:text-lg'>
+                                For us, travel is more than reaching a
+                                destination. Through our tours, we inspire
+                                people to chase their dreams, explore the
+                                world’s beauty, and leave a positive, lasting
+                                impact on communities.
+                            </p>
+                        </div>
+
+                        <div className='grid grid-cols-2 grid-rows-2 gap-4'>
+                            <div>
+                                <h2 className='font-extrabold text-2xl'>12</h2>
+                                <p className='text-xs'>Years of Experience</p>
+                            </div>
+                            <div>
+                                <h2 className='font-extrabold text-2xl'>84</h2>
+                                <p className='text-xs'>Trips Organized</p>
+                            </div>
+                            <div>
+                                <h2 className='font-extrabold text-2xl'>
+                                    100k+
+                                </h2>
+                                <p className='text-xs'>Countries Visited</p>
+                            </div>
+                            <div>
+                                <h2 className='font-extrabold text-2xl'>
+                                    500k
+                                </h2>
+                                <p className='text-xs'>Satisfied Clients</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <a
+                                ref={destinationRef}
+                                href='/about-us'
+                                className='w-full lg:w-fit mt-4 lg:mt-0 py-3 lg:py-4 px-8 flex items-center justify-center gap-2 text-secondary-500 hover:text-tertiary-500 hover:bg-secondary-500 border border-secondary-500 rounded-lg shadow transition-all'
+                            >
+                                <i className='bi-arrow-up-right'></i>
+                                <span>KNOW MORE</span>
+                            </a>
+                        </div>
                     </div>
                 </div>
-                <a
-                    href='/about-us'
-                    className='w-full lg:w-fit mt-4 lg:mt-0 py-3 lg:py-4 px-8 flex items-center justify-center gap-2 text-secondary-500 hover:text-tertiary-500 hover:bg-secondary-500 border border-secondary-500 rounded-lg shadow transition-all'
-                >
-                    <i className='bi-arrow-up-right'></i>
-                    <span>KNOW MORE</span>
-                </a>
             </section>
 
-            <section className='home__destinations'>
-                <h2 className='home__destinations-title'>Destinations</h2>
-                <p className='home__destinations-subtitle text-sm'>
-                    Explore new horizons and cultures around the world.
-                </p>
-                <a
-                    href='https://lindelatravel.com/tour-packages'
-                    className='home__destinations-link mr-2 hover:mr-0 flex items-center gap-2 hover:gap-4 font-bold transition-all'
-                >
-                    <span>Explore Destinations</span>
-                    <FaLongArrowAltRight />
-                </a>
+            <section className="px-8 py-8 bg-[url('/client/landing-destinations-bg.jpg')] bg-center bg-cover shadow-[inset_0_0_0_1000px_rgba(24,24,26,0.8)]">
+                <div className='lg:max-w-[1166px] mx-auto p-8'>
+                    <h2 className='text-white font-bold text-2xl'>
+                        Destinations
+                    </h2>
+                    <p className='text-white opacity-60 text-sm'>
+                        Explore new horizons and cultures around the world.
+                    </p>
 
-                <Swiper
-                    modules={[Navigation, Pagination]}
-                    navigation
-                    spaceBetween={20}
-                    slidesPerView={1}
-                    style={{ marginTop: '1rem' }}
-                >
-                    {tours.map((tour) => (
-                        <SwiperSlide key={tour.id}>
-                            <div className='home__tour-card'>
-                                <img
-                                    className='home__tour-image'
-                                    src={tour.main_image_url}
-                                    alt={tour.title}
-                                />
-                                <div
-                                    className='home__tour-card-text'
-                                    onClick={() =>
-                                        navigate(
-                                            `/destinations/tour/${tour.id}`,
-                                            {
-                                                state: tour,
-                                            }
-                                        )
-                                    }
-                                >
-                                    <h4 className='home__tour-title'>
-                                        {tour.title.toUpperCase()}
-                                    </h4>
-                                    <p className='home__tour-price'>
-                                        {tour.dates?.[0]?.rate_per_pax
-                                            ? `PHP ${tour.dates[0].rate_per_pax.toLocaleString()}`
-                                            : 'Price N/A'}
-                                    </p>
+                    <a
+                        href='https://lindelatravel.com/tour-packages'
+                        className='text-[#f7d100] mr-2 hover:mr-0 flex items-center gap-2 hover:gap-4 font-bold transition-all'
+                    >
+                        <span>Explore Destinations</span>
+                        <FaLongArrowAltRight />
+                    </a>
+
+                    <Swiper
+                        modules={[Navigation, Pagination]}
+                        navigation
+                        spaceBetween={20}
+                        slidesPerView={1}
+                        className='mt-4'
+                    >
+                        {tours.map((tour) => (
+                            <SwiperSlide key={tour.id}>
+                                <div className='relative'>
+                                    <img
+                                        className='rounded-lg w-full h-[352px] object-cover'
+                                        src={tour.main_image_url}
+                                        alt={tour.title}
+                                    />
+                                    <div
+                                        className='cursor-pointer absolute bottom-0 text-white w-full text-center bg-[#18181ab3] p-2'
+                                        onClick={() =>
+                                            navigate(
+                                                `/destinations/tour/${tour.id}`,
+                                                {
+                                                    state: tour,
+                                                }
+                                            )
+                                        }
+                                    >
+                                        <h4 className='text-sm'>
+                                            {tour.title.toUpperCase()}
+                                        </h4>
+                                        <p className='text-2xl font-bold'>
+                                            {tour.dates?.[0]?.rate_per_pax
+                                                ? `PHP ${tour.dates[0].rate_per_pax.toLocaleString()}`
+                                                : 'Price N/A'}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                        </SwiperSlide>
-                    ))}
-                </Swiper>
+                            </SwiperSlide>
+                        ))}
+                    </Swiper>
+                </div>
             </section>
 
-            <section className='home__benefits'>
+            <section className='home__benefits lg:max-w-[1166px] mx-auto'>
                 <div className='flex flex-col items-center justify-center'>
                     <h3 className='font-poppins font-bold text-2xl lg:text-f40 text-center'>
                         <span className='home__benefit-text block'>
@@ -163,7 +199,7 @@ export default function Home() {
                             LINDELA TRAVEL &amp; TOURS
                         </span>
                     </h3>
-                    <p className='mt-2 text-base lg:text-lg text-center'>
+                    <p className='mt-2 text-base lg:text-lg sm:text text-center'>
                         We provide the best experience possible within your
                         spending plan and schedule.
                     </p>
@@ -172,7 +208,7 @@ export default function Home() {
                     {[...Array(4)].map((_, i) => (
                         <div
                             key={i}
-                            className='home__benefit w-full lg:w-[calc(calc(100%/2)-2rem)] lg:pt-6 lg:px-8 lg:pb-4 flex flex-row lg:flex-col gap-4 bg-white lg:border-[0.5px] lg:border-secondary-100 rounded-lg lg:shadow group'
+                            className='home__benefit w-full lg:w-[calc(calc(100%/2)-2rem)] lg:pt-6 lg:px-8 lg:pb-4 flex flex-row lg:flex-col gap-4 bg-white lg:border-[0.5px] lg:border-gray-400 rounded-lg lg:shadow group'
                         >
                             <img
                                 className='home__benefit-icon w-12 lg:w-16 h-12 lg:h-16 block object-center object-contain group-hover:-rotate-6 transition-all'

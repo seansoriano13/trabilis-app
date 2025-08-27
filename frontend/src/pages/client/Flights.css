@@ -10,6 +10,7 @@
 .flights {
     height: 100vh;
     padding: var(--default-padding-top) 1rem 0;
+    overflow: hidden;
 }
 
 .flights__hero-mobile {
@@ -38,7 +39,6 @@
 
 .flights__form-header p {
     color: white;
-    text-align: center;
 }
 
 .flights__form-row {

@@ -1,13 +1,11 @@
 .nav__bar {
     top: 0;
-    background: rgb(0, 0, 0, 0);
+    background: transparent;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: space-evenly;
     gap: 1rem;
-    padding: 1rem;
     position: fixed;
-    width: 100%;
     z-index: 2;
     transition: 0.2s ease;
 }
@@ -22,16 +20,14 @@
     position: absolute;
     left: -30rem;
     top: 3.95rem;
-    padding: 2rem;
     display: grid;
     gap: 2rem;
     list-style: none;
     justify-content: center;
     color: aliceblue;
     text-align: center;
-    opacity: 0;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(5px);
+    opacity: 1;
+    /* box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1); */
     transition: 0.1s ease;
 }
 
@@ -39,11 +35,6 @@
     left: 0;
     display: grid;
     opacity: 1;
-}
-
-.nav__links {
-    gap: 1rem;
-    display: flex;
 }
 
 .nav__links li:hover {
@@ -76,6 +67,7 @@
         position: inherit;
         display: flex;
         background-color: transparent;
+        align-items: center;
         text-align: center;
         gap: 2rem;
     }

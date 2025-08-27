@@ -9,6 +9,7 @@ import axios from 'axios'
 import './Destinations.css'
 import Panorama from '../../components/client/Panorama'
 import TestimonialsSection from '../../components/client/TestimonialsSection'
+import greatPyramidOfGazaDesktop from '/images/great-pyramid.jpg'
 
 export default function Destinations() {
     const [tours, setTours] = useState([])
@@ -91,11 +92,20 @@ export default function Destinations() {
     return (
         <>
             <section className='destinations'>
-                <img
-                    className='destinations__hero-mobile'
-                    src={greatPyramidOfGazaMobile}
-                    alt='great-pyramid-of-giza-mobile'
-                />
+                <picture>
+                    {/* Desktop */}
+                    <source
+                        srcSet={greatPyramidOfGazaDesktop}
+                        media='(min-width: 1024px)' // Tailwind's lg breakpoint
+                    />
+
+                    {/* Mobile fallback */}
+                    <img
+                        className='destinations__hero-mobile'
+                        src={greatPyramidOfGazaMobile}
+                        alt='great-pyramid-of-giza'
+                    />
+                </picture>
                 <div className='tours__promo'>
                     <h1>
                         Let us take you to your{' '}
@@ -138,14 +148,17 @@ export default function Destinations() {
                     )}
                 </form>
             </section>
-            <div className='tours__card-container my-8'>
-                <h3 className='text-[#333333] font-bold text-3xl lg:text-3xl mx-auto text-center'>
+            <div className='max-w-[1200px] grid [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))] gap-5 px-5 my-8 mx-auto'>
+                <h3 className='text-[#333] font-bold text-3xl lg:text-3xl mx-auto text-center col-span-full lg:p-4'>
                     Tour Packages
                 </h3>
+
                 {isLoading ? (
-                    <p className='tours__loading'>Loading tours...</p>
+                    <p className='col-span-full text-center'>
+                        Loading tours...
+                    </p>
                 ) : currentTours.length === 0 ? (
-                    <p className='tours__no-results'>No tours found.</p>
+                    <p className='col-span-full text-center'>No tours found.</p>
                 ) : (
                     currentTours.map((tour) => (
                         <div
@@ -181,6 +194,7 @@ export default function Destinations() {
                     ))
                 )}
             </div>
+
             <section
                 id='sectionBenefits'
                 className='mt-8 relative'
@@ -190,7 +204,7 @@ export default function Destinations() {
                         <h3 className='font-sans font-bold text-3xl lg:text-3xl xl:text-[32px] mx-auto text-center'>
                             What makes our tours stand out?
                         </h3>
-                        <p className='w-full lg:w-1/2 mx-auto text-sm lg:text-base text-gray-400 text-center'>
+                        <p className='w-full mx-auto text-sm lg:text-base text-gray-400 text-center'>
                             There are a lot of good things we are eager to tell
                             you, and we'd love to be part of your journey.
                         </p>

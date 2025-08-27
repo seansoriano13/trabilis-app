@@ -33,85 +33,89 @@ function ClientNavbar() {
     }
 
     return (
-        <nav className={clsx('nav__bar', isScrolled && 'scrolled')}>
-            <div className='nav__logo-container'>
-                <RxHamburgerMenu
-                    className='rxHamburgerMenu'
-                    onClick={handleClick}
-                />
-                <Link
-                    to='/'
-                    className='nav__logo'
-                >
-                    <img
-                        className='logoShake'
-                        src={logoShake}
-                        alt='logoShake'
+        <nav
+            className={clsx(
+                'nav__bar fixed inset-x-0 top-0 w-full z-50', // full-width outer layer
+                isScrolled && 'scrolled'
+            )}
+        >
+            <div className='w-full max-w-[1166px] mx-auto px-4 py-4 sm:px-6 sm:py-3 md:px-8 md:py-4 lg:px-10 xl:px-0 flex items-center justify-between gap-4'>
+                {/* Logo + menu */}
+                <div className='nav__logo-container'>
+                    <RxHamburgerMenu
+                        className='rxHamburgerMenu'
+                        onClick={handleClick}
                     />
-                </Link>
-            </div>
-            <div className='nav__links'>
-                <ul
-                    className={clsx(
-                        'nav__links-ul',
-                        isMenuClicked && 'clicked'
-                    )}
-                >
-                    <li>
-                        <Link
-                            onClick={handleLinkClick}
-                            to='/'
-                        >
-                            Home
-                        </Link>
-                    </li>
-                    <li>
-                        <Link
-                            onClick={handleLinkClick}
-                            to='/destinations'
-                        >
-                            Destinations
-                        </Link>
-                    </li>
-                    {/* <li>
-                        <Link
-                            onClick={handleLinkClick}
-                            to='/immigration-visa-consultancy'
-                        >
-                            Immigration Visa Consultancy
-                        </Link>
-                    </li> */}
-                    <li>
-                        <Link
-                            onClick={handleLinkClick}
-                            to='/flights'
-                        >
-                            Flights
-                        </Link>
-                    </li>
-                    <li>
-                        <Link
-                            onClick={handleLinkClick}
-                            to='/about-us'
-                        >
-                            About Us
-                        </Link>
-                    </li>
-                    <li>
-                        <Link
-                            onClick={handleLinkClick}
-                            to='/contact-us'
-                        >
-                            Contact Us
-                        </Link>
-                    </li>
-                </ul>
-            </div>
-            <div>
-                <PrimaryButton
-                    buttonText='Book Now'
-                    isBold={true}
-                />
+                    <Link
+                        to='/'
+                        className='nav__logo'
+                    >
+                        <img
+                            className='logoShake'
+                            src={logoShake}
+                            alt='logoShake'
+                        />
+                    </Link>
+                </div>
+
+                {/* Nav links */}
+                <div className='nav__links'>
+                    <ul
+                        className={clsx(
+                            'nav__links-ul backdrop-blur-sm md:backdrop-blur-none lg:backdrop-blur-none py-8',
+                            isMenuClicked && 'clicked'
+                        )}
+                    >
+                        <li>
+                            <Link
+                                onClick={handleLinkClick}
+                                to='/'
+                            >
+                                Home
+                            </Link>
+                        </li>
+                        <li>
+                            <Link
+                                onClick={handleLinkClick}
+                                to='/destinations'
+                            >
+                                Destinations
+                            </Link>
+                        </li>
+                        <li>
+                            <Link
+                                onClick={handleLinkClick}
+                                to='/flights'
+                            >
+                                Flights
+                            </Link>
+                        </li>
+                        <li>
+                            <Link
+                                onClick={handleLinkClick}
+                                to='/about-us'
+                            >
+                                About Us
+                            </Link>
+                        </li>
+                        <li>
+                            <Link
+                                onClick={handleLinkClick}
+                                to='/contact-us'
+                            >
+                                Contact Us
+                            </Link>
+                        </li>
+                    </ul>
+                </div>
+
+                {/* Book button */}
+                <div>
+                    <PrimaryButton
+                        buttonText='Book Now'
+                        isBold={true}
+                    />
+                </div>
             </div>
         </nav>
     )

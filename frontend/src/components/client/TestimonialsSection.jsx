@@ -199,8 +199,8 @@ export default function TestimonialsSection() {
                                     target='_blank'
                                     className='block w-fit mt-2 py-2 px-4 text-tertiary-500 bg-blue-600 hover:bg-blue-500 rounded-lg'
                                 >
-                                    <i className='bi-messenger mr-1'></i>
-                                    <span classNameName='text-white'>
+                                    <i className='bi-messenger mr-1 text-white'></i>
+                                    <span className='text-white'>
                                         Chat with us
                                     </span>
                                 </a>
