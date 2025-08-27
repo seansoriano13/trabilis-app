@@ -5,6 +5,11 @@ function Panorama({ preview, image, aspectRatio = '16/9', id }) {
     useEffect(() => {
         const containerId = `panorama-${id}`
 
+        const proxy = (url) =>
+            `${
+                import.meta.env.VITE_BACKEND_URL
+            }api/v1/proxy/image?url=${encodeURIComponent(url)}`
+
         if (!document.querySelector("script[src='/panellum/panellum.js']")) {
             const script = document.createElement('script')
             script.src = '/panellum/panellum.js'
@@ -19,9 +24,9 @@ function Panorama({ preview, image, aspectRatio = '16/9', id }) {
             if (window.pannellum) {
                 window.pannellum.viewer(containerId, {
                     type: 'equirectangular',
-                    panorama: image,
+                    panorama: proxy(image),
                     autoLoad: false,
-                    preview: preview,
+                    preview: proxy(preview),
                     showZoomCtrl: false,
                     showFullscreenCtrl: true,
                 })
