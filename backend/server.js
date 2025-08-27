@@ -8,6 +8,7 @@ import testRoutes from './src/routes/testRoutes.js'
 import adminRoutes from './src/routes/adminRoutes.js'
 import tourRoutes from './src/routes/tourRoutes.js'
 import chatbotRoutes from './src/routes/chatbotRoutes.js'
+import proxyRoute from './src/routes/proxyRoute.js'
 
 const app = express()
 const port = process.env.PORT || 5000
@@ -46,6 +47,7 @@ app.use('/api/v1/bookings', bookingRoutes)
 app.use('/api/v1/destinations', tourRoutes)
 app.use('/api/v1/test', testRoutes)
 app.use('/api/v1/chatbot', chatbotRoutes)
+app.use('/proxy', proxyRoute)
 
 // Admin
 app.use('/api/v1/admin', adminRoutes)
