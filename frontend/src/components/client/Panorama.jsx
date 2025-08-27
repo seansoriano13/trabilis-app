@@ -8,7 +8,7 @@ function Panorama({ preview, image, aspectRatio = '16/9', id }) {
         const proxy = (url) =>
             `${
                 import.meta.env.VITE_BACKEND_URL
-            }api/v1/proxy/image?url=${encodeURIComponent(url)}`
+            }/api/v1/proxy/image?url=${encodeURIComponent(url)}`
 
         if (!document.querySelector("script[src='/panellum/panellum.js']")) {
             const script = document.createElement('script')
