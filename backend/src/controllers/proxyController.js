@@ -9,13 +9,20 @@ export const proxyImage = async (req, res) => {
     try {
         const response = await fetch(imageUrl)
         if (!response.ok) {
-            return res.status(500).send('Image fetch failed')
+            return res
+                .status(response.status)
+                .send(`Image fetch failed: ${response.statusText}`)
         }
 
-        const buffer = await response.arrayBuffer()
+        // Set CORS for browser use
         res.set('Access-Control-Allow-Origin', '*')
-        res.set('Content-Type', response.headers.get('content-type'))
-        res.send(Buffer.from(buffer))
+
+        // Set the exact same content type as original
+        const contentType = response.headers.get('content-type')
+        if (contentType) res.type(contentType)
+
+        // Stream to avoid memory issues
+        response.body.pipe(res)
     } catch (err) {
         console.error('Proxy error:', err)
         res.status(500).send('Error fetching image')

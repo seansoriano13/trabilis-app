@@ -11,7 +11,7 @@ function Panorama({ preview, image, aspectRatio = '16/9', id }) {
         const safeImage = isExternal
             ? `${
                   import.meta.env.VITE_BACKEND_URL || ''
-              }/proxy-image?url=${encodeURIComponent(image)}`
+              }/proxy/image?url=${encodeURIComponent(image)}`
             : image
 
         const safePreview =
