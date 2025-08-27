@@ -8,7 +8,6 @@ import testRoutes from './src/routes/testRoutes.js'
 import adminRoutes from './src/routes/adminRoutes.js'
 import tourRoutes from './src/routes/tourRoutes.js'
 import chatbotRoutes from './src/routes/chatbotRoutes.js'
-import proxyRoute from './src/routes/proxyRoute.js'
 
 const app = express()
 const port = process.env.PORT || 5000
@@ -17,26 +16,7 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
     .split(',')
     .map((o) => o.trim())
 
-app.use(
-    cors({
-        origin: (origin, callback) => {
-            if (!origin) return callback(null, true)
-
-            if (allowedOrigins.includes(origin)) return callback(null, true)
-
-            // temporary dev allowance
-            if (
-                process.env.NODE_ENV !== 'production' &&
-                origin.includes('localhost')
-            ) {
-                return callback(null, true)
-            }
-
-            return callback(new Error('Not allowed by CORS'))
-        },
-        credentials: true,
-    })
-)
+app.use(cors())
 
 app.use('/api/v1/webhooks', webhookRoutes)
 
@@ -47,7 +27,6 @@ app.use('/api/v1/bookings', bookingRoutes)
 app.use('/api/v1/destinations', tourRoutes)
 app.use('/api/v1/test', testRoutes)
 app.use('/api/v1/chatbot', chatbotRoutes)
-app.use('/proxy', proxyRoute)
 
 // Admin
 app.use('/api/v1/admin', adminRoutes)

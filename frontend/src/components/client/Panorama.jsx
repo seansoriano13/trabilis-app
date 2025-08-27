@@ -5,41 +5,23 @@ function Panorama({ preview, image, aspectRatio = '16/9', id }) {
     useEffect(() => {
         const containerId = `panorama-${id}`
 
-        // Auto-proxy external images
-        const isExternal =
-            !image.startsWith('/') && !image.includes(window.location.host)
-        const safeImage = isExternal
-            ? `${
-                  import.meta.env.VITE_BACKEND_URL || ''
-              }/proxy/image?url=${encodeURIComponent(image)}`
-            : image
-
-        const safePreview =
-            preview &&
-            !preview.startsWith('/') &&
-            !preview.includes(window.location.host)
-                ? `${
-                      import.meta.env.VITE_BACKEND_URL || ''
-                  }/proxy-image?url=${encodeURIComponent(preview)}`
-                : preview
-
         if (!document.querySelector("script[src='/panellum/panellum.js']")) {
             const script = document.createElement('script')
             script.src = '/panellum/panellum.js'
             script.async = true
-            script.onload = () => initViewer(safeImage, safePreview)
+            script.onload = () => initViewer()
             document.body.appendChild(script)
         } else {
-            initViewer(safeImage, safePreview)
+            initViewer()
         }
 
-        function initViewer(img, prev) {
+        function initViewer() {
             if (window.pannellum) {
                 window.pannellum.viewer(containerId, {
                     type: 'equirectangular',
-                    panorama: img,
+                    panorama: image,
                     autoLoad: false,
-                    preview: prev,
+                    preview: preview,
                     showZoomCtrl: false,
                     showFullscreenCtrl: true,
                 })
