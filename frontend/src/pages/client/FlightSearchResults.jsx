@@ -337,7 +337,7 @@ function FlightSearchResults() {
     }
 
     return (
-        <div className='flight-results'>
+        <div className='flight-results pt-[var(--default-padding-top)] lg:pt-22'>
             <FilterModal
                 filters={filters}
                 setFilters={setFilters}
@@ -348,7 +348,7 @@ function FlightSearchResults() {
                 setAllFlights={setAllFlights}
                 setIsLoading={setIsLoading}
             />
-            <div className='flight-nav'>
+            <div className='flight-nav max-w-[1200px] mx-auto'>
                 <div className='flight-nav__tabs'>
                     {/* Flights Button */}
                     <PrimaryButton
@@ -469,8 +469,8 @@ function FlightSearchResults() {
             <div className='flight-results__main'>
                 {activeTab === 'flights' && (
                     <>
-                        <div className='flight-results__panel'>
-                            <div className='flight-results__header'>
+                        <div className='flight-results__panel max-w-[1200px] mx-auto w-screen'>
+                            <div className='flight-results__header '>
                                 <div className='flight-results__title'>
                                     <h2>Flights</h2>
                                     <p>Results: {sortedFlights.length}</p>

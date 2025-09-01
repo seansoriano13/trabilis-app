@@ -12,9 +12,10 @@
 }
 
 .flight-results {
-    padding-top: var(--default-padding-top);
     background-color: rgb(24 24 26);
 }
+
+
 
 .flight-nav {
     display: grid;

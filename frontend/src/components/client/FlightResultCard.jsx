@@ -40,7 +40,7 @@ export default function FlightResultCard({
 
     return (
         <article
-            className='flight-result'
+            className='flight-result max-w-[1200px] mx-auto w-screen'
             key={index}
         >
             <header className='flight-result__header'>

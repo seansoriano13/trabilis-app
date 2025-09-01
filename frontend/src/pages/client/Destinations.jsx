@@ -106,47 +106,49 @@ export default function Destinations() {
                         alt='great-pyramid-of-giza'
                     />
                 </picture>
-                <div className='tours__promo'>
-                    <h1>
-                        Let us take you to your{' '}
-                        <span className='text-yellow-300'>
-                            dream destinations
-                        </span>
-                    </h1>
-                </div>
-                <form className='tours__form mt-6'>
-                    <div className='tours__form-header text-center text-white'>
-                        <b className='text-yellow-300'>Choose</b> your preferred
-                        tour package
+                <div className='max-w-[1200px] mx-auto'>
+                    <div className='tours__promo'>
+                        <h1>
+                            Let us take you to your{' '}
+                            <span className='text-yellow-300'>
+                                dream destinations
+                            </span>
+                        </h1>
                     </div>
-                    <div className='tours__form-row'>
-                        <Select
-                            required
-                            options={options}
-                            value={selectedTour}
-                            onChange={(option) => setSelectedTour(option)}
-                            name='tourSearch'
-                            placeholder={
-                                isLoading ? 'Loading...' : 'Choose One'
-                            }
-                            styles={reactSelectStyles()}
-                            isSearchable
+                    <form className='tours__form mt-6'>
+                        <div className='tours__form-header text-center text-white'>
+                            <b className='text-yellow-300'>Choose</b> your
+                            preferred tour package
+                        </div>
+                        <div className='tours__form-row'>
+                            <Select
+                                required
+                                options={options}
+                                value={selectedTour}
+                                onChange={(option) => setSelectedTour(option)}
+                                name='tourSearch'
+                                placeholder={
+                                    isLoading ? 'Loading...' : 'Choose One'
+                                }
+                                styles={reactSelectStyles()}
+                                isSearchable
+                            />
+                        </div>
+                        <PrimaryButton
+                            type='button'
+                            onClick={handleCheck}
+                            buttonText='Check Availability'
+                            isBold={true}
+                            style={{ padding: '1rem 2rem' }}
+                            loading={isLoading}
                         />
-                    </div>
-                    <PrimaryButton
-                        type='button'
-                        onClick={handleCheck}
-                        buttonText='Check Availability'
-                        isBold={true}
-                        style={{ padding: '1rem 2rem' }}
-                        loading={isLoading}
-                    />
-                    {isTourSearchErr && (
-                        <p className='tours__search-error'>
-                            <b>Error Searching Tours.</b>
-                        </p>
-                    )}
-                </form>
+                        {isTourSearchErr && (
+                            <p className='tours__search-error'>
+                                <b>Error Searching Tours.</b>
+                            </p>
+                        )}
+                    </form>
+                </div>
             </section>
             <div className='max-w-[1200px] grid [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))] gap-5 px-5 my-8 mx-auto'>
                 <h3 className='text-[#333] font-bold text-3xl lg:text-3xl mx-auto text-center col-span-full lg:p-4'>

@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRef } from 'react'
 import { IoAirplane } from 'react-icons/io5'
 import FlightDetailsModal from '../client/FlightDetailsModal.jsx'
+import { useNavigate } from 'react-router-dom'
 
 export default function FlightDetailsCard({
     flightData,
@@ -59,6 +60,13 @@ export default function FlightDetailsCard({
 
     const amenities = fareDetails?.amenities || []
     const brandedFareLabel = fareDetails?.brandedFareLabel || ''
+
+    const navigate = useNavigate()
+    const handleChangeFlight = () => {
+        if (window.confirm('Are you sure you want to change the flight?')) {
+            navigate('/flights')
+        }
+    }
 
     return (
         <div className={'flight-details'}>
@@ -177,6 +185,7 @@ export default function FlightDetailsCard({
                             buttonText={'Change Flight'}
                             isBold={true}
                             className='flight-details__btn'
+                            onClick={() => handleChangeFlight()}
                         />
                     </>
                 )}

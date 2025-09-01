@@ -196,8 +196,8 @@ export default function Flights() {
     }
 
     return (
-        <>
-            <section className='flights '>
+        <div className='max-w-[1200px] mx-auto'>
+            <section className='flights'>
                 <div className='grid gap-8'>
                     <picture>
                         <source
@@ -429,6 +429,6 @@ export default function Flights() {
                     </p>
                 </div>
             </section>
-        </>
+        </div>
     )
 }

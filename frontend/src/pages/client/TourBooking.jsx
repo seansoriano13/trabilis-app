@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import axios from 'axios'
 import './TourBooking.css'
+import flightsHeroDesktop from '/images/flights-hero-desktop.jpg'
 
 function TourBooking() {
     useEffect(() => {
@@ -36,6 +37,8 @@ function TourBooking() {
             return 'Invalid number of passengers'
         return null
     }
+
+    console.log(selectedDateId)
 
     const handleInputChange = (e) => {
         const { name, value } = e.target
@@ -96,10 +99,16 @@ function TourBooking() {
     }
 
     return (
-        <div className='max-w-lg mx-auto px-6 pb-6 pt-[var(--default-padding-top)] bg-white rounded-lg shadow-md'>
+        <div className='max-w-lg mx-auto px-6 pb-6 mt-30 mb-4 pt-8 bg-white rounded-lg shadow-md'>
             <div className='text-3xl font-extrabold mb-6 text-gray-900'>
                 Lead Passenger Details
             </div>
+
+            <img
+                className='flights__hero-mobile'
+                src={flightsHeroDesktop}
+                alt='flightsHeroDesktop'
+            />
 
             <form
                 onSubmit={handleSubmit}

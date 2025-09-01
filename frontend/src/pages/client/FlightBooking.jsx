@@ -205,13 +205,13 @@ function FlightBooking() {
     }
 
     return (
-        <div className='flight-booking'>
+        <div className='flight-booking pt-[var(--default-padding-top)] lg:pt-30'>
             <BaggagePolicyModal
                 isOpen={isBaggageModalOpen}
                 onClose={() => setIsBaggageModalOpen(false)}
                 baggage={baggageModalData}
             />
-            <div className='flight-booking__main'>
+            <div className='flight-booking__main max-w-[1200px] mx-auto'>
                 <h2 className='flight-booking__heading'>Flight details</h2>
 
                 <FlightDetailsCard

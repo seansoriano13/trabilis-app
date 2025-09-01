@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import './ClientNavbar.css'
 import { RxHamburgerMenu } from 'react-icons/rx'
 import logoShake from '../../assets/logo-shake.png'
@@ -30,6 +30,11 @@ function ClientNavbar() {
     function handleLinkClick() {
         setMenuClicked(false)
         setIsScrolled(false)
+    }
+
+    const navigate = useNavigate()
+    const handleBookNowClick = () => {
+        navigate('/flights')
     }
 
     return (
@@ -114,6 +119,7 @@ function ClientNavbar() {
                     <PrimaryButton
                         buttonText='Book Now'
                         isBold={true}
+                        onClick={() => handleBookNowClick()}
                     />
                 </div>
             </div>

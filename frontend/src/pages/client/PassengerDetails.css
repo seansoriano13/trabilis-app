@@ -2,7 +2,7 @@
     display: grid;
     gap: 1rem;
     background-color: rgb(24, 25, 26);
-    padding-top: var(--default-padding-top);
+    justify-content: center;
 }
 
 .error-message {
@@ -36,12 +36,11 @@
 }
 
 .passenger-details__travel-info {
-    margin: 1rem;
     background-color: white;
     border-radius: 0.5rem;
     padding: 1rem;
     display: grid;
-    gap: 0.5rem;
+    gap: 1rem;
 }
 
 .passenger-details__route {
@@ -73,7 +72,7 @@
 }
 
 .passenger-details__meta {
-    padding-bottom: 0.5rem;
+    padding-bottom: 1.5rem;
     border-bottom: 1px solid #ccc;
     display: flex;
     justify-content: center;

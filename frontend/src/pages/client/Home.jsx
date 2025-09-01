@@ -10,6 +10,7 @@ import './Home.css'
 import { FaLongArrowAltRight } from 'react-icons/fa'
 import { useNavigate } from 'react-router-dom'
 import { useRef } from 'react'
+import { Link } from 'react-router-dom'
 
 export default function Home() {
     const destinationRef = useRef(null)
@@ -139,13 +140,13 @@ export default function Home() {
                         Explore new horizons and cultures around the world.
                     </p>
 
-                    <a
-                        href='https://lindelatravel.com/tour-packages'
+                    <Link
+                        to='destinations'
                         className='text-[#f7d100] mr-2 hover:mr-0 flex items-center gap-2 hover:gap-4 font-bold transition-all'
                     >
                         <span>Explore Destinations</span>
                         <FaLongArrowAltRight />
-                    </a>
+                    </Link>
 
                     <Swiper
                         modules={[Navigation, Pagination]}

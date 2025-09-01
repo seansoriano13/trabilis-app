@@ -866,8 +866,8 @@ function PassengerDetails() {
     }
 
     return (
-        <div className='passenger-details'>
-            <div className='passenger-details__travel-info'>
+        <div className='passenger-details pt-[var(--default-padding-top)] lg:pt-30'>
+            <div className='passenger-details__travel-info max-w-[1200px] mx-auto w-screen'>
                 <div className='passenger-details__route'>
                     <h3 className='passenger-details__origin'>{origin}</h3>
                     <FaArrowsAltH className='passenger-details__arrow' />
