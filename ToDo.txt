@@ -1,15 +1,13 @@
-stripe listen --forward-to http://localhost:3001/api/v1/webhooks/stripe
-
 ---------ADMIN-------------------------ADMIN-------------------------ADMIN----------------
-- add profile pic 
-- pagka specify ng date, dapat kung ilang days yun, ganun din karami (programatically) yung days, and required
 - if naka draft pa yung tour package, show a button na publish with confirmation
 
 
 
 
 ---------CLIENT-------------------------CLIENT-------------------------CLIENT----------------
+
 ---------HIGH PRIO---------------
+- add loading state after saving in tour packages manager
 
 ---------MEDIUM PRIO----------------
 

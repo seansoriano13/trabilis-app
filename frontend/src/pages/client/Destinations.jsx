@@ -89,6 +89,8 @@ export default function Destinations() {
     const currentTours = filteredTours.slice(offset, offset + toursPerPage)
     const pageCount = Math.ceil(filteredTours.length / toursPerPage)
 
+    console.log(currentTours)
+
     return (
         <>
             <section className='destinations'>
@@ -162,38 +164,42 @@ export default function Destinations() {
                 ) : currentTours.length === 0 ? (
                     <p className='col-span-full text-center'>No tours found.</p>
                 ) : (
-                    currentTours.map((tour) => (
-                        <div
-                            key={tour.id}
-                            className='tour-card'
-                        >
-                            <Panorama
-                                id={tour.id}
-                                image={tour.panellum_url}
-                                preview={tour.main_image_url}
-                            />
-                            <div className='tour-card__content'>
-                                <h3 className='tour-card__title--destinations'>
-                                    {tour.title || 'Tour Title'}
-                                </h3>
-                                <p className='tour-card__price'>
-                                    {tour.dates && tour.dates[0]?.rate_per_pax
-                                        ? `PHP ${tour.dates[0].rate_per_pax.toLocaleString()}`
-                                        : 'Price N/A'}
-                                </p>
-                                <PrimaryButton
-                                    buttonText='View Details'
-                                    isBold={true}
-                                    style={{ padding: '0.5rem 1rem' }}
-                                    onClick={() =>
-                                        navigate(`tour/${tour.id}`, {
-                                            state: tour,
-                                        })
-                                    }
-                                />
-                            </div>
-                        </div>
-                    ))
+                    currentTours.map(
+                        (tour) =>
+                            tour.status === 'PUBLISHED' && (
+                                <div
+                                    key={tour.id}
+                                    className='tour-card'
+                                >
+                                    <Panorama
+                                        id={tour.id}
+                                        image={tour.panellum_url}
+                                        preview={tour.main_image_url}
+                                    />
+                                    <div className='tour-card__content'>
+                                        <h3 className='tour-card__title--destinations'>
+                                            {tour.title || 'Tour Title'}
+                                        </h3>
+                                        <p className='tour-card__price'>
+                                            {tour.dates &&
+                                            tour.dates[0]?.rate_per_pax
+                                                ? `PHP ${tour.dates[0].rate_per_pax.toLocaleString()}`
+                                                : 'Price N/A'}
+                                        </p>
+                                        <PrimaryButton
+                                            buttonText='View Details'
+                                            isBold={true}
+                                            style={{ padding: '0.5rem 1rem' }}
+                                            onClick={() =>
+                                                navigate(`tour/${tour.id}`, {
+                                                    state: tour,
+                                                })
+                                            }
+                                        />
+                                    </div>
+                                </div>
+                            )
+                    )
                 )}
             </div>
 
