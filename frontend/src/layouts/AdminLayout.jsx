@@ -1,6 +1,5 @@
 import AdminNavbar from '../components/admin/AdminNavbar'
 import { Outlet } from 'react-router-dom'
-import '../styles/client/index.css'
 import './AdminLayout.css'
 
 export default function AdminProtectedLayout() {

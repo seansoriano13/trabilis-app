@@ -135,7 +135,7 @@ const AdminFlights = () => {
             <div className='flights__header'>
                 <BsFillAirplaneFill
                     size={32}
-                    color='#f7d100'
+                    color='black'
                 />
                 <h1>Flights Management</h1>
             </div>

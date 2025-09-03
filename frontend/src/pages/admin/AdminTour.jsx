@@ -1,3 +1,4 @@
+// AdminTour.jsx
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { FiMap } from 'react-icons/fi'
@@ -13,10 +14,11 @@ const AdminTours = () => {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [sort, setSort] = useState({
-        key: 'booking_reference',
+        key: 'created_at',
         direction: 'asc',
     })
     const [filters, setFilters] = useState({ status: 'All', package_name: '' })
+    const [searchInput, setSearchInput] = useState('')
 
     const pageSize = 5
     const jwt = localStorage.getItem('adminToken')
@@ -28,8 +30,17 @@ const AdminTours = () => {
     }, [jwt])
 
     useEffect(() => {
+        const timer = setTimeout(() => {
+            setFilters((prev) => ({ ...prev, package_name: searchInput }))
+        }, 500)
+
+        return () => clearTimeout(timer)
+    }, [searchInput])
+
+    useEffect(() => {
         const fetchData = async () => {
             setLoading(true)
+            setError(null)
             try {
                 let query = supabase
                     .from('tour_bookings')
@@ -48,7 +59,7 @@ const AdminTours = () => {
                         { count: 'exact' }
                     )
                     .range(page * pageSize, (page + 1) * pageSize - 1)
-                    .order('created_at', { ascending: true })
+                    .order(sort.key, { ascending: sort.direction === 'asc' })
 
                 if (filters.status && filters.status !== 'All') {
                     query = query.eq('status', filters.status)
@@ -71,51 +82,44 @@ const AdminTours = () => {
 
                 setTourBookings(bookingsRes.data)
                 setTourStats(statsRes.data[0] || {})
-                setTotal(bookingsRes.count)
+                setTotal(bookingsRes.count || 0)
                 setLoading(false)
             } catch (err) {
+                console.error(err)
                 setError('Failed to load tours. Please try again.')
                 setLoading(false)
             }
         }
 
         fetchData()
-    }, [page, filters, jwt])
+    }, [page, filters, sort, jwt])
 
-    const sortData = (data, sort) => {
-        return [...data].sort((a, b) => {
-            const valA = sort.key.includes('.')
-                ? sort.key.split('.').reduce((o, k) => o?.[k], a) || ''
-                : a[sort.key] || ''
-            const valB = sort.key.includes('.')
-                ? sort.key.split('.').reduce((o, k) => o?.[k], b) || ''
-                : b[sort.key] || ''
-            return sort.direction === 'asc'
-                ? valA > valB
-                    ? 1
-                    : -1
-                : valA < valB
-                ? 1
-                : -1
-        })
+    const getNestedValue = (obj, path) => {
+        return path.split('.').reduce((o, k) => o?.[k], obj) || ''
     }
 
     const handleSort = (key) => {
-        setSort({
+        setSort((prev) => ({
             key,
             direction:
-                sort.key === key && sort.direction === 'asc' ? 'desc' : 'asc',
-        })
+                prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
+        }))
+        setPage(0)
     }
 
     const handleFilterChange = (e) => {
         const { name, value } = e.target
-        setFilters((prev) => ({ ...prev, [name]: value }))
-        setPage(0)
+        if (name === 'package_name') {
+            setSearchInput(value)
+        } else {
+            setFilters((prev) => ({ ...prev, [name]: value }))
+            setPage(0)
+        }
     }
 
     const clearFilters = () => {
         setFilters({ status: 'All', package_name: '' })
+        setSearchInput('')
         setPage(0)
     }
 
@@ -136,14 +140,13 @@ const AdminTours = () => {
             </div>
         )
     }
-    
 
     return (
         <div className='tours'>
             <div className='tours__header'>
                 <FiMap
                     size={32}
-                    color='#f7d100'
+                    color='black'
                 />
                 <h1>Tours Management</h1>
             </div>
@@ -181,7 +184,7 @@ const AdminTours = () => {
                 <input
                     type='text'
                     name='package_name'
-                    value={filters.package_name}
+                    value={searchInput}
                     onChange={handleFilterChange}
                     placeholder='Search Package (e.g., Boracay Tour)'
                 />
@@ -204,30 +207,97 @@ const AdminTours = () => {
                                         handleSort('booking_reference')
                                     }
                                 >
-                                    Ref
+                                    Ref{' '}
+                                    {sort.key === 'booking_reference'
+                                        ? sort.direction === 'asc'
+                                            ? '↑'
+                                            : '↓'
+                                        : ''}
                                 </th>
                                 <th onClick={() => handleSort('status')}>
-                                    Status
+                                    Status{' '}
+                                    {sort.key === 'status'
+                                        ? sort.direction === 'asc'
+                                            ? '↑'
+                                            : '↓'
+                                        : ''}
                                 </th>
-                                <th>Package</th>
-                                <th>Start Date</th>
-                                <th>End Date</th>
-                                <th>Slots</th>
+                                <th
+                                    onClick={() =>
+                                        handleSort(
+                                            'package_dates.tour_packages.title'
+                                        )
+                                    }
+                                >
+                                    Package{' '}
+                                    {sort.key ===
+                                    'package_dates.tour_packages.title'
+                                        ? sort.direction === 'asc'
+                                            ? '↑'
+                                            : '↓'
+                                        : ''}
+                                </th>
+                                <th
+                                    onClick={() =>
+                                        handleSort('package_dates.start_date')
+                                    }
+                                >
+                                    Start Date{' '}
+                                    {sort.key === 'package_dates.start_date'
+                                        ? sort.direction === 'asc'
+                                            ? '↑'
+                                            : '↓'
+                                        : ''}
+                                </th>
+                                <th
+                                    onClick={() =>
+                                        handleSort('package_dates.end_date')
+                                    }
+                                >
+                                    End Date{' '}
+                                    {sort.key === 'package_dates.end_date'
+                                        ? sort.direction === 'asc'
+                                            ? '↑'
+                                            : '↓'
+                                        : ''}
+                                </th>
+                                <th
+                                    onClick={() =>
+                                        handleSort('package_dates.total_slots')
+                                    }
+                                >
+                                    Slots{' '}
+                                    {sort.key === 'package_dates.total_slots'
+                                        ? sort.direction === 'asc'
+                                            ? '↑'
+                                            : '↓'
+                                        : ''}
+                                </th>
                                 <th
                                     onClick={() =>
                                         handleSort('passenger_count')
                                     }
                                 >
-                                    Passengers
+                                    Passengers{' '}
+                                    {sort.key === 'passenger_count'
+                                        ? sort.direction === 'asc'
+                                            ? '↑'
+                                            : '↓'
+                                        : ''}
                                 </th>
                                 <th>Lead</th>
                                 <th onClick={() => handleSort('total_amount')}>
-                                    Amount
+                                    Amount{' '}
+                                    {sort.key === 'total_amount'
+                                        ? sort.direction === 'asc'
+                                            ? '↑'
+                                            : '↓'
+                                        : ''}
                                 </th>
                             </tr>
                         </thead>
                         <tbody>
-                            {sortData(tourBookings, sort).map((booking) => (
+                            {tourBookings.map((booking) => (
                                 <tr key={booking.id}>
                                     <td>
                                         <Link to={`/admin/tours/${booking.id}`}>
@@ -240,8 +310,10 @@ const AdminTours = () => {
                                         {booking.status}
                                     </td>
                                     <td>
-                                        {booking.package_dates?.tour_packages
-                                            ?.title || 'Unknown'}
+                                        {getNestedValue(
+                                            booking,
+                                            'package_dates.tour_packages.title'
+                                        ) || 'Unknown'}
                                     </td>
                                     <td>
                                         {booking.package_dates?.start_date ||
@@ -274,6 +346,7 @@ const AdminTours = () => {
                     onPageChange={({ selected }) => setPage(selected)}
                     containerClassName={'tours__pagination'}
                     activeClassName={'tours__pagination--active'}
+                    forcePage={page}
                 />
             </div>
         </div>

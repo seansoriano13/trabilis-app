@@ -21,12 +21,12 @@ const ThemeToggle = () => {
             {isDarkMode ? (
                 <FiSun
                     size={24}
-                    color='#f7d100'
+                    color='black'
                 />
             ) : (
                 <FiMoon
                     size={24}
-                    color='#f7d100'
+                    color='black'
                 />
             )}
         </button>

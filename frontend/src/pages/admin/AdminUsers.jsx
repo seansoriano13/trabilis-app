@@ -1,9 +1,11 @@
+// AdminUsers.jsx
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FiUsers } from 'react-icons/fi'
 import ReactPaginate from 'react-paginate'
 import './AdminUsers.css'
 import adminClient from '../../api/adminClient.js'
+
 
 const AdminUsers = () => {
     const [users, setUsers] = useState([])
@@ -49,8 +51,8 @@ const AdminUsers = () => {
                 const [usersRes, statsRes] = await Promise.all([
                     adminClient.get(
                         `/users?page=${page + 1}&role=${filters.role}`
-                    ), // Use adminClient
-                    adminClient.get('/users/stats'), // Use adminClient
+                    ),
+                    adminClient.get('/users/stats'),
                 ])
 
                 setUsers(usersRes.data.data)
@@ -73,22 +75,22 @@ const AdminUsers = () => {
         return [...data].sort((a, b) => {
             const valA = a[sort.key] || ''
             const valB = b[sort.key] || ''
-            return sort.direction === 'asc'
-                ? valA > valB
-                    ? 1
-                    : -1
-                : valA < valB
-                ? 1
-                : -1
+            if (valA === valB) return 0
+            if (sort.direction === 'asc') {
+                return valA > valB ? 1 : -1
+            } else {
+                return valA < valB ? 1 : -1
+            }
         })
     }
 
     const handleSort = (key) => {
-        setSort({
+        setSort((prev) => ({
             key,
             direction:
-                sort.key === key && sort.direction === 'asc' ? 'desc' : 'asc',
-        })
+                prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
+        }))
+        setPage(0)
     }
 
     const handleFilterChange = (e) => {
@@ -109,7 +111,7 @@ const AdminUsers = () => {
         }
 
         try {
-            await adminClient.post('/users/create', { ...formData }) // Use adminClient
+            await adminClient.post('/users/create', { ...formData })
             setFormData({
                 first_name: '',
                 last_name: '',
@@ -120,7 +122,7 @@ const AdminUsers = () => {
             // Refresh users
             const { data } = await adminClient.get(
                 `/users?page=${page + 1}&role=${filters.role}`
-            ) // Use adminClient
+            )
             setUsers(data.data)
             setTotal(data.total)
         } catch (err) {
@@ -137,12 +139,12 @@ const AdminUsers = () => {
         try {
             await adminClient.put(`/users/${editingUser.id}`, {
                 role: editingUser.role,
-            }) // Use adminClient
+            })
             setEditingUser(null)
             // Refresh users
             const { data } = await adminClient.get(
                 `/users?page=${page + 1}&role=${filters.role}`
-            ) // Use adminClient
+            )
             setUsers(data.data)
             setTotal(data.total)
         } catch (err) {
@@ -153,11 +155,11 @@ const AdminUsers = () => {
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this user?')) {
             try {
-                await adminClient.delete(`/users/${id}`) // Use adminClient
+                await adminClient.delete(`/users/${id}`)
                 // Refresh users
                 const { data } = await adminClient.get(
                     `/users?page=${page + 1}&role=${filters.role}`
-                ) // Use adminClient
+                )
                 setUsers(data.data)
                 setTotal(data.total)
             } catch (err) {
@@ -184,14 +186,16 @@ const AdminUsers = () => {
         )
     }
 
+    const sortedUsers = sortData(users, sort)
+
     return (
         <div className='users'>
             <div className='users__header'>
                 <FiUsers
                     size={32}
-                    color='#f7d100'
+                    color='black'
                 />
-                <h1>Users Management</h1>
+                <h1>User Management</h1>
             </div>
 
             <div className='users__summary'>
@@ -200,17 +204,17 @@ const AdminUsers = () => {
                     <p>{userStats.total_users || 0}</p>
                 </div>
                 <div className='users__summary-card'>
-                    <h3>Admins</h3>
+                    <h3>Admin Users</h3>
                     <p>{userStats.admin_count || 0}</p>
                 </div>
                 <div className='users__summary-card'>
-                    <h3>Accounting</h3>
+                    <h3>Accounting Users</h3>
                     <p>{userStats.accounting_count || 0}</p>
                 </div>
             </div>
 
             <div className='users__form-container'>
-                <h2>Create User</h2>
+                <h2>Create New User</h2>
                 <form
                     onSubmit={handleSubmit}
                     className='users__form'
@@ -244,7 +248,7 @@ const AdminUsers = () => {
                         name='password'
                         value={formData.password}
                         onChange={handleFormChange}
-                        placeholder='Password (min 8 characters)'
+                        placeholder='Password'
                         required
                     />
                     <select
@@ -331,14 +335,26 @@ const AdminUsers = () => {
                                 <th>First Name</th>
                                 <th>Last Name</th>
                                 <th onClick={() => handleSort('email')}>
-                                    Email
+                                    Email{' '}
+                                    {sort.key === 'email'
+                                        ? sort.direction === 'asc'
+                                            ? '↑'
+                                            : '↓'
+                                        : ''}
                                 </th>
-                                <th onClick={() => handleSort('role')}>Role</th>
+                                <th onClick={() => handleSort('role')}>
+                                    Role{' '}
+                                    {sort.key === 'role'
+                                        ? sort.direction === 'asc'
+                                            ? '↑'
+                                            : '↓'
+                                        : ''}
+                                </th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {sortData(users, sort).map((user) => (
+                            {sortedUsers.map((user) => (
                                 <tr key={user.id}>
                                     <td>{user.id.slice(0, 8)}</td>
                                     <td>{user.first_name || '-'}</td>
@@ -373,6 +389,7 @@ const AdminUsers = () => {
                     onPageChange={({ selected }) => setPage(selected)}
                     containerClassName={'users__pagination'}
                     activeClassName={'users__pagination--active'}
+                    forcePage={page}
                 />
             </div>
         </div>

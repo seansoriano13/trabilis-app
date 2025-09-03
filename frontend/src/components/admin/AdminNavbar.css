@@ -1,65 +1,50 @@
-.admin-nav {
+/* AdminNavbar.css */
+:root {
+    --color-primary: #f7d100;
+    --color-primary-dark: #d1b000;
+    --color-bg-light: #ffffff;
+    --color-text-light: #1a1a1a;
+    --color-bg-dark: #121212;
+    --color-text-dark: #e0e0e0;
+    --color-accent: #4a90e2;
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.15);
+    --border-radius: 12px;
+    --transition: all 0.3s ease;
 }
+
+[data-theme='light'] {
+    --nav-bg: var(--color-bg-light);
+    --nav-text: var(--color-text-light);
+    --nav-border: #e0e0e0;
+    --nav-bg-secondary: #f9f9f9;
+}
+
+[data-theme='dark'] {
+    --nav-bg: var(--color-bg-dark);
+    --nav-text: var(--color-text-dark);
+    --nav-border: #333333;
+    --nav-bg-secondary: #1e1e1e;
+}
+
 .admin-nav__bar {
-    position: relative;
+    position: fixed;
     top: 0;
-    background: white;
+    left: 0;
+    width: 100%;
+    background: var(--nav-bg);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
-    padding: 1rem;
-    position: fixed;
-    width: 100%;
-    z-index: 2;
-    transition: 0.2s ease;
-    border-bottom: 1px solid #ccc;
+    gap: 1.5rem;
+    padding: 1rem 2rem;
+    z-index: 1000;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
 }
 
-.admin-nav__btn {
-    background-color: red;
-}
-
-.admin-nav__btn:hover {
-    background-color: red;
-    filter: opacity(100%);
-}
-
-.admin-nav__profile-details {
-    position: absolute;
-    top: var(--default-padding-top);
-    filter: var(--opacity-80);
-    right: 1rem;
-    padding: 1rem;
-    color: white;
-    background-color: black;
-    box-shadow: var(--box-shadow);
-    border-radius: var(--border-radius-bot);
-    display: none;
-    z-index: 1;
-}
-.admin-nav__profile-details.clicked {
-    display: grid;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-}
-
-.admin-nav__details {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.admin-nav__profile {
-    cursor: pointer;
-    width: 2.5rem;
-    border-radius: 1.5rem;
-}
-
-.admin-nav__email {
-    filter: var(--opacity-80);
-    font-size: 0.925rem;
+.admin-nav__bar--scrolled {
+    box-shadow: var(--shadow-md);
 }
 
 .admin-nav__logo-container {
@@ -69,68 +54,190 @@
 }
 
 .admin-nav__hamburger {
-    color: black;
+    font-size: 1.5rem;
+    color: var(--nav-text);
     cursor: pointer;
+    transition: var(--transition);
+}
+
+.admin-nav__hamburger:hover {
+    color: var(--color-primary);
 }
 
 .admin-nav__logo {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    text-decoration: none;
 }
 
 .admin-nav__logo-image {
-    height: 3rem;
+    height: 2.5rem;
+    transition: var(--transition);
 }
 
 .admin-nav__links {
-    gap: 1rem;
-    display: flex;
+    display: none;
+    flex: 1;
+    justify-content: center;
+}
+
+.admin-nav__links--open {
+    display: block;
+    position: fixed;
+    top: 4rem;
+    left: 0;
+    width: 100%;
+    height: calc(100vh - 4rem);
+    background: var(--nav-bg);
+    z-index: 999;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(0);
+    }
 }
 
 .admin-nav__links-list {
-    background: white;
-    width: 100%;
-    position: absolute;
-    left: -30rem;
-    top: 3.95rem;
-    padding: 2rem;
-    display: grid;
-    gap: 2rem;
     list-style: none;
-    justify-content: center;
-    color: black;
+    padding: 2rem;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    align-items: center;
+    background: var(--nav-bg);
+}
+
+.admin-nav__link {
+    color: var(--nav-text);
+    font-size: 1.1rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.admin-nav__link:hover,
+.admin-nav__link--active {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.admin-nav__details {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.admin-nav__profile {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid var(--nav-border);
+    transition: var(--transition);
+}
+
+.admin-nav__profile:hover {
+    border-color: var(--color-primary);
+}
+
+.admin-nav__profile-details {
+    position: fixed;
+    top: 4.5rem;
+    right: 1rem;
+    background: var(--nav-bg-secondary);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-md);
+    display: none;
+    z-index: 1002; /* Increased to ensure visibility over other elements */
+    min-width: 200px;
     text-align: center;
-    opacity: 0;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(5px);
-    transition: 0.1s ease;
 }
 
-.admin-nav__links-list--clicked {
-    left: 0;
-    display: grid;
-    opacity: 1;
+.admin-nav__profile-details--open {
+    display: block;
+    animation: fadeIn 0.2s ease;
 }
 
-.admin-nav__links-list li:hover {
-    color: rgb(255, 227, 71);
-}
-
-.admin-nav__button-container {
-}
-
-/* Responsive adjustments */
-@media (min-width: 768px) {
-    .admin-nav__links-list {
-        position: inherit;
-        display: flex;
-        background-color: transparent;
-        text-align: center;
-        gap: 2rem;
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
     }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 
+.admin-nav__email {
+    font-size: 0.95rem;
+    color: var(--nav-text);
+    margin-bottom: 1rem;
+    opacity: 0.85;
+}
+
+.admin-nav__btn {
+    background: var(--color-primary);
+    color: var(--color-text-dark);
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    transition: var(--transition);
+}
+
+.admin-nav__btn:hover {
+    background: var(--color-primary-dark);
+}
+
+@media (min-width: 768px) {
     .admin-nav__hamburger {
         display: none;
+    }
+
+    .admin-nav__links {
+        display: flex;
+    }
+
+    .admin-nav__links--open {
+        position: static;
+        height: auto;
+        background: transparent;
+        animation: none;
+    }
+
+    .admin-nav__links-list {
+        flex-direction: row;
+        padding: 0;
+        gap: 2rem;
+        background: transparent;
+    }
+
+    .admin-nav__profile-details {
+        top: 4rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-nav__bar {
+        padding: 1rem;
+    }
+
+    .admin-nav__logo-image {
+        height: 2rem;
+    }
+
+    .admin-nav__profile-details {
+        right: 0.5rem;
+        min-width: 150px;
     }
 }
