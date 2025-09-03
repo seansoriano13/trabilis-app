@@ -110,7 +110,7 @@
     flex-direction: column;
     gap: 1.5rem;
     align-items: center;
-    background: var(--nav-bg);
+    background: white;
 }
 
 .admin-nav__link {
