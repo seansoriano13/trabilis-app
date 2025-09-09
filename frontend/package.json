@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@botpress/webchat": "^1.1.1",
+    "@botpress/webchat": "^3.2.4",
     "@supabase/supabase-js": "^2.55.0",
     "@tailwindcss/vite": "^4.1.11",
     "axios": "^1.10.0",
