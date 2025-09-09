@@ -40,20 +40,24 @@ function AdminNavbar() {
     useEffect(() => {
         // Connect to Pusher in production, skip in development
         if (PROD) {
-            const pusher = new Pusher('371c6201af1a663a4f58', {
-                cluster: 'ap1',
-                useTLS: true,
-                encrypted: true
-            })
+            try {
+                const pusher = new Pusher('371c6201af1a663a4f58', {
+                    cluster: 'ap1',
+                    useTLS: true,
+                    encrypted: true
+                })
 
-            const channel = pusher.subscribe('bookings')
+                const channel = pusher.subscribe('bookings')
 
-            channel.bind('new-booking', (data) => {
-                setNotifications((prev) => [data, ...prev])
-            })
+                channel.bind('new-booking', (data) => {
+                    setNotifications((prev) => [data, ...prev])
+                })
 
-            return () => {
-                pusher.disconnect()
+                return () => {
+                    pusher.disconnect()
+                }
+            } catch (error) {
+                console.error('Failed to initialize Pusher:', error)
             }
         } else {
             console.log('🔔 [LOCAL] Admin panel loaded - notifications will appear in backend console')
