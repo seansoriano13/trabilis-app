@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@botpress/webchat": "^3.2.0",
+    "@botpress/webchat": "^1.1.1",
     "@supabase/supabase-js": "^2.55.0",
     "@tailwindcss/vite": "^4.1.11",
     "axios": "^1.10.0",
@@ -20,6 +20,8 @@
     "flatpickr": "^4.6.13",
     "lodash.debounce": "^4.0.8",
     "luxon": "^3.7.1",
+    "pusher": "^5.2.0",
+    "pusher-js": "^8.4.0",
     "react": "^19.1.0",
     "react-chartjs-2": "^5.2.0",
     "react-date-range": "^2.0.1",
