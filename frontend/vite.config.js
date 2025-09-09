@@ -7,7 +7,8 @@ export default defineConfig({
     plugins: [react(), tailwindcss()],
     server: {
         proxy: {
-            '/api': 'https://trabilis.onrender.com',
+            '/api': 'http://localhost:3001',
+            // '/api': 'https://trabilis.onrender.com',
         },
     },
 })

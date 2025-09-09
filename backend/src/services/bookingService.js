@@ -1,7 +1,13 @@
 import { query } from '../config/db.js'
 import { amadeus } from '../config/amadeus.js'
 import stripe from '../config/stripe.js'
-import { sendConfirmationEmail, sendFailureEmail } from './emailService.js'
+import {
+    sendConfirmationEmail,
+    sendFailureEmail,
+    sendTourConfirmationEmail,
+    sendTourFailureEmail,
+} from './emailService.js'
+import { pusher } from '../config/pusher.js'
 
 export async function finalizeFlightBooking(bookingReference) {
     function safeParseJson(data, fallback = null) {
@@ -84,6 +90,16 @@ export async function finalizeFlightBooking(bookingReference) {
             console.log(
                 `✅ Booking ${bookingReference} finalized with status TICKETED, PNR: ${pnr}`
             )
+            try {
+                await pusher.trigger('bookings', 'new-booking', {
+                    message: `New booking for ${bookingReference}`,
+                    bookingId: `${bookingReference}`,
+                })
+                console.log('✅ Notification sent successfully')
+            } catch (pusherError) {
+                console.error('❌ Failed to send notification:', pusherError)
+                // Don't throw error - notification failure shouldn't break booking
+            }
         } catch (dbError) {
             console.error(
                 `Failed to update booking ${bookingReference}:`,
@@ -221,6 +237,17 @@ export async function finalizeTourBooking(bookingReference) {
                 `Failed to send tour confirmation email for ${bookingReference}:`,
                 emailError
             )
+        }
+
+        try {
+            await pusher.trigger('bookings', 'new-booking', {
+                message: `New booking for ${bookingReference}`,
+                bookingId: `${bookingReference}`,
+            })
+            console.log('✅ Notification sent successfully')
+        } catch (pusherError) {
+            console.error('❌ Failed to send notification:', pusherError)
+            // Don't throw error - notification failure shouldn't break booking
         }
 
         return { status: 'CONFIRMED' }

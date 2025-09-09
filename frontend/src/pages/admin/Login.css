@@ -40,13 +40,13 @@
     gap: 0.5rem;
 }
 
-.admin-login input {
+/* .admin-login input {
     padding: 0.5rem;
     border: 1px solid var(--color-text);
     border-radius: 4px;
     font-family: var(--ff-figtree);
     font-size: 0.875rem;
-}
+} */
 
 .admin-login button {
     background: var(--color-primary);

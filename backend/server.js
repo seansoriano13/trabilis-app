@@ -11,13 +11,18 @@ import chatbotRoutes from './src/routes/chatbotRoutes.js'
 import proxyRoutes from './src/routes/proxyRoutes.js'
 
 const app = express()
-const port = process.env.PORT || 5000
+const port = process.env.PORT || 3001
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:3000')
     .split(',')
     .map((o) => o.trim())
 
-app.use(cors({ origin: '*' }))
+app.use(cors({ 
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}))
 
 app.use('/api/v1/webhooks', webhookRoutes)
 

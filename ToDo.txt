@@ -1,6 +1,38 @@
+FEAT
+
+To implement notifications:
+- use pusher api
+- in backend, trigger the notification after succesful booking (bookingService.js)
+- in frontend, connect to pusher and subscribe to bookings (named after trigger)
+- listen and trigger notif using state then cleanup
+- use react toastify for better visual
+
+To implement flight status
+- Add route for another page containing a form to track flight status
+- Get the flight number after fetching the booking data based on booking_reference
+- Preview the necessary information and status 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ---------ADMIN-------------------------ADMIN-------------------------ADMIN----------------
 - if naka draft pa yung tour package, show a button na publish with confirmation
-
 
 
 
@@ -16,6 +48,14 @@
 -Make comments for whole code base to make it more readable (future)
 
 ---------AMADEUS SPECIFIC----------------
+
+
+
+
+
+
+
+
 
 
 

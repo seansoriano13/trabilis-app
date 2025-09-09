@@ -4,11 +4,13 @@ import adminLogo from '../../assets/admin/admin-logo.png'
 import { useState, useEffect } from 'react'
 import clsx from 'clsx'
 import './AdminNavbar.css'
-import profileIcon from '../../assets/admin/admin-profile-placeholder.jpg'
 import AdminPrimaryButton from '../admin/AdminPrimaryButton'
 import ThemeToggle from './ThemeToggle'
 import adminClient from '../../api/adminClient.js'
 import { CgProfile } from 'react-icons/cg'
+import { RiNotification4Line } from 'react-icons/ri'
+import { FaCircle } from 'react-icons/fa'
+import Pusher from 'pusher-js'
 
 function AdminNavbar() {
     const [isScrolled, setIsScrolled] = useState(false)
@@ -21,6 +23,10 @@ function AdminNavbar() {
     const location = useLocation()
     const jwt = localStorage.getItem('adminToken')
     const adminEmail = localStorage.getItem('admin_email')
+    const [notifications, setNotifications] = useState([])
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+
+    const PROD = true
 
     useEffect(() => {
         const handleScroll = () => {
@@ -29,6 +35,29 @@ function AdminNavbar() {
 
         window.addEventListener('scroll', handleScroll)
         return () => window.removeEventListener('scroll', handleScroll)
+    }, [])
+
+    useEffect(() => {
+        // Connect to Pusher in production, skip in development
+        if (PROD) {
+            const pusher = new Pusher('371c6201af1a663a4f58', {
+                cluster: 'ap1',
+                useTLS: true,
+                encrypted: true
+            })
+
+            const channel = pusher.subscribe('bookings')
+
+            channel.bind('new-booking', (data) => {
+                setNotifications((prev) => [data, ...prev])
+            })
+
+            return () => {
+                pusher.disconnect()
+            }
+        } else {
+            console.log('🔔 [LOCAL] Admin panel loaded - notifications will appear in backend console')
+        }
     }, [])
 
     useEffect(() => {
@@ -193,6 +222,17 @@ function AdminNavbar() {
                 </div>
 
                 <div className='admin-nav__details'>
+                    <div className='relative'>
+                        <RiNotification4Line
+                            className='admin-nav__notification'
+                            onClick={() =>
+                                setIsNotificationsOpen((prev) => !prev)
+                            }
+                        />
+                        {notifications.length !== 0 && (
+                            <FaCircle className='text-red-500 h-3 absolute top-0 right-0' />
+                        )}
+                    </div>
                     <CgProfile
                         onClick={toggleProfile}
                         className='admin-nav__profile'
@@ -201,6 +241,32 @@ function AdminNavbar() {
                     {/* <ThemeToggle /> */}
                 </div>
             </nav>
+
+            <div
+                className={clsx(
+                    'admin-nav__notifications',
+                    isNotificationsOpen && 'admin-nav__notifications--open'
+                )}
+            >
+                {notifications.length === 0 ? (
+                    <p className='admin-nav__notifications-empty'>
+                        No new notifications
+                    </p>
+                ) : (
+                    <ul className='admin-nav__notifications-list'>
+                        {notifications.map((notif, index) => (
+                            <li
+                                key={index}
+                                className='admin-nav__notification-item'
+                            >
+                                <Link to={`/admin/bookings/${notif.bookingId}`}>
+                                    New booking for {notif.bookingId}
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
 
             <div
                 className={clsx(

@@ -108,7 +108,6 @@ a {
 textarea,
 select {
     appearance: none;
-    border-radius: 0;
     background-color: #fff;
     border-width: 1px;
     padding: 0.5rem 0.75rem;
