@@ -2,6 +2,7 @@ import stripe from '../config/stripe.js'
 import { supabase } from '../config/supabaseClient.js'
 import { query } from '../config/db.js'
 import { finalizeFlightBooking } from '../services/bookingService.js'
+import Pusher from 'pusher'
 import {
     sendTourConfirmationEmail,
     sendTourFailureEmail,
@@ -141,6 +142,39 @@ export const handleStripeWebhook = async (req, res) => {
 
             if (updateSlotsError) throw updateSlotsError
 
+            // Immediately notify admin that a tour payment is confirmed
+            try {
+                const pusher = new Pusher({
+                    appId: '2048372',
+                    key: '371c6201af1a663a4f58',
+                    secret: 'b4a5985ecd6d27690c8b',
+                    cluster: 'ap1',
+                    useTLS: true,
+                })
+
+                const { error: insertError } = await supabase
+                    .from('admin_notifications')
+                    .insert([
+                        {
+                            type: 'payment_confirmed_tour',
+                            message: `Tour payment confirmed for ${booking_reference}.`,
+                            booking_reference: booking_reference,
+                            created_at: new Date().toISOString(),
+                        },
+                    ])
+
+                if (insertError) {
+                    console.error('Supabase insert error (payment_confirmed_tour):', insertError.message)
+                }
+
+                await pusher.trigger('admin-notifications', 'new-booking', {
+                    bookingReference: booking_reference,
+                    pnr: null,
+                })
+            } catch (notifyErr) {
+                console.error('❌ Failed to send immediate tour payment notification:', notifyErr)
+            }
+
             await sendTourConfirmationEmail(bookingDetails)
         } else {
             // ===== FLIGHT LOGIC =====
@@ -153,6 +187,39 @@ export const handleStripeWebhook = async (req, res) => {
                 console.log(
                     `✅ Database updated for flight booking ${booking_reference}. Status is now PAID_PENDING_TICKETING.`
                 )
+
+                // Immediately notify admin that payment succeeded (before ticketing completes)
+                try {
+                    const pusher = new Pusher({
+                        appId: '2048372',
+                        key: '371c6201af1a663a4f58',
+                        secret: 'b4a5985ecd6d27690c8b',
+                        cluster: 'ap1',
+                        useTLS: true,
+                    })
+
+                    const { error: insertError } = await supabase
+                        .from('admin_notifications')
+                        .insert([
+                            {
+                                type: 'payment_confirmed',
+                                message: `Payment confirmed for booking ${booking_reference}. Ticketing in progress...`,
+                                booking_reference: booking_reference,
+                                created_at: new Date().toISOString(),
+                            },
+                        ])
+
+                    if (insertError) {
+                        console.error('Supabase insert error (payment_confirmed):', insertError.message)
+                    }
+
+                    await pusher.trigger('admin-notifications', 'new-booking', {
+                        bookingReference: booking_reference,
+                        pnr: null,
+                    })
+                } catch (notifyErr) {
+                    console.error('❌ Failed to send immediate payment notification:', notifyErr)
+                }
 
                 finalizeFlightBooking(booking_reference).catch((err) => {
                     console.error(
