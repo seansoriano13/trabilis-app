@@ -7,7 +7,17 @@ import {
     sendTourConfirmationEmail,
     sendTourFailureEmail,
 } from './emailService.js'
-import { pusher } from '../config/pusher.js'
+
+import Pusher from 'pusher'
+import { supabase } from '../config/supabaseClient.js'
+
+const pusher = new Pusher({
+    appId: '2048372',
+    key: '371c6201af1a663a4f58',
+    secret: 'b4a5985ecd6d27690c8b',
+    cluster: 'ap1',
+    useTLS: true,
+})
 
 export async function finalizeFlightBooking(bookingReference) {
     function safeParseJson(data, fallback = null) {
@@ -90,16 +100,6 @@ export async function finalizeFlightBooking(bookingReference) {
             console.log(
                 `✅ Booking ${bookingReference} finalized with status TICKETED, PNR: ${pnr}`
             )
-            try {
-                await pusher.trigger('bookings', 'new-booking', {
-                    message: `New booking for ${bookingReference}`,
-                    bookingId: `${bookingReference}`,
-                })
-                console.log('✅ Notification sent successfully')
-            } catch (pusherError) {
-                console.error('❌ Failed to send notification:', pusherError)
-                // Don't throw error - notification failure shouldn't break booking
-            }
         } catch (dbError) {
             console.error(
                 `Failed to update booking ${bookingReference}:`,
@@ -108,17 +108,41 @@ export async function finalizeFlightBooking(bookingReference) {
             throw new Error(`Database error: ${dbError.message}`)
         }
 
-        // Send confirmation email after successful ticketing
-        try {
-            await sendConfirmationEmail(bookingReference)
-            console.log(`✅ Confirmation email sent for ${bookingReference}`)
-        } catch (emailError) {
-            console.error(
-                `Failed to send confirmation email for ${bookingReference}:`,
-                emailError
-            )
+        // Save to Supabase (awaited)
+        const { error: insertError } = await supabase
+            .from('admin_notifications')
+            .insert([
+                {
+                    type: 'new_booking',
+                    message: `Booking ${bookingReference} finalized with PNR: ${pnr}`,
+                    booking_reference: bookingReference,
+                    created_at: new Date().toISOString(),
+                },
+            ])
+
+        if (insertError) {
+            console.error('Supabase insert error:', insertError.message)
         }
-        return { status: 'TICKETED', eTicketNumbers, pnr }
+
+        // Send real-time notification (awaited)
+        await pusher.trigger('admin-notifications', 'new-booking', {
+            bookingReference,
+            pnr,
+        })
+
+        // Send confirmation email (non-blocking)
+        sendConfirmationEmail(bookingReference)
+            .then(() =>
+                console.log(
+                    `✅ Confirmation email sent for ${bookingReference}`
+                )
+            )
+            .catch((emailError) =>
+                console.error(
+                    `Failed to send confirmation email for ${bookingReference}:`,
+                    emailError
+                )
+            )
     } catch (error) {
         console.error(
             `❌ CRITICAL FAILURE during finalization for ${bookingReference}: ${error.message}`
@@ -213,6 +237,29 @@ export async function finalizeTourBooking(bookingReference) {
             )
         }
 
+        // Insert admin notification (awaited)
+        const { error: insertError } = await supabase
+            .from('admin_notifications')
+            .insert([
+                {
+                    type: 'new_tour_booking',
+                    booking_reference: bookingReference,
+                    pnr: null,
+                    message: `Tour booking confirmed: ${booking.package_dates.tour_packages.title} (${bookingReference})`,
+                    created_at: new Date().toISOString(),
+                },
+            ])
+
+        if (insertError) {
+            console.error('Supabase insert error:', insertError.message)
+        }
+
+        // Send real-time notification (awaited)
+        await pusher.trigger('admin-notifications', 'new-booking', {
+            bookingReference,
+            pnr: null,
+        })
+
         // Send confirmation email
         try {
             await sendTourConfirmationEmail({
@@ -237,17 +284,6 @@ export async function finalizeTourBooking(bookingReference) {
                 `Failed to send tour confirmation email for ${bookingReference}:`,
                 emailError
             )
-        }
-
-        try {
-            await pusher.trigger('bookings', 'new-booking', {
-                message: `New booking for ${bookingReference}`,
-                bookingId: `${bookingReference}`,
-            })
-            console.log('✅ Notification sent successfully')
-        } catch (pusherError) {
-            console.error('❌ Failed to send notification:', pusherError)
-            // Don't throw error - notification failure shouldn't break booking
         }
 
         return { status: 'CONFIRMED' }

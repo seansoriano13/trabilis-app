@@ -142,15 +142,6 @@ export const handleStripeWebhook = async (req, res) => {
             if (updateSlotsError) throw updateSlotsError
 
             await sendTourConfirmationEmail(bookingDetails)
-
-            await supabase.from('admin_notifications').insert({
-                type: 'TOUR_BOOKING_CONFIRMED',
-                message: `Tour booking ${booking_reference} confirmed for ${bookingData.passenger_count} passengers.`,
-            })
-
-            console.log(
-                `✅ Tour booking ${booking_reference} confirmed. Slots updated, email sent.`
-            )
         } else {
             // ===== FLIGHT LOGIC =====
             const updateResult = await query(

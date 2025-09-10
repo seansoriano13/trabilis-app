@@ -11,6 +11,7 @@ import { CgProfile } from 'react-icons/cg'
 import { RiNotification4Line } from 'react-icons/ri'
 import { FaCircle } from 'react-icons/fa'
 import Pusher from 'pusher-js'
+import { supabase } from '../../api/supabaseClient.js'
 
 function AdminNavbar() {
     const [isScrolled, setIsScrolled] = useState(false)
@@ -29,39 +30,60 @@ function AdminNavbar() {
     const PROD = true
 
     useEffect(() => {
+        const fetchNotifications = async () => {
+            const { data, error } = await supabase
+                .from('admin_notifications')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(10)
+            if (!error && data) setNotifications(data)
+        }
+
+        fetchNotifications()
+
+        // Setup Pusher
+        const pusher = new Pusher('371c6201af1a663a4f58', {
+            cluster: 'ap1',
+            forceTLS: true,
+        })
+        const channel = pusher.subscribe('admin-notifications')
+
+        channel.bind('new-booking', (data) => {
+            setNotifications((prev) => [
+                {
+                    booking_reference: data.bookingReference,
+                    created_at: new Date().toISOString(),
+                },
+                ...prev,
+            ])
+            if (!isNotificationsOpen) setIsNotificationsOpen(true)
+        })
+
+        return () => {
+            channel.unbind_all()
+            channel.unsubscribe()
+        }
+    }, [])
+
+    useEffect(() => {
+        const saved = localStorage.getItem('admin_notifications')
+        if (saved) setNotifications(JSON.parse(saved))
+    }, [])
+
+    useEffect(() => {
+        localStorage.setItem(
+            'admin_notifications',
+            JSON.stringify(notifications)
+        )
+    }, [notifications])
+
+    useEffect(() => {
         const handleScroll = () => {
             setIsScrolled(window.scrollY > 10)
         }
 
         window.addEventListener('scroll', handleScroll)
         return () => window.removeEventListener('scroll', handleScroll)
-    }, [])
-
-    useEffect(() => {
-        // Connect to Pusher in production, skip in development
-        if (PROD) {
-            try {
-                const pusher = new Pusher('371c6201af1a663a4f58', {
-                    cluster: 'ap1',
-                    useTLS: true,
-                    encrypted: true
-                })
-
-                const channel = pusher.subscribe('bookings')
-
-                channel.bind('new-booking', (data) => {
-                    setNotifications((prev) => [data, ...prev])
-                })
-
-                return () => {
-                    pusher.disconnect()
-                }
-            } catch (error) {
-                console.error('Failed to initialize Pusher:', error)
-            }
-        } else {
-            console.log('🔔 [LOCAL] Admin panel loaded - notifications will appear in backend console')
-        }
     }, [])
 
     useEffect(() => {
@@ -263,8 +285,10 @@ function AdminNavbar() {
                                 key={index}
                                 className='admin-nav__notification-item'
                             >
-                                <Link to={`/admin/bookings/${notif.bookingId}`}>
-                                    New booking for {notif.bookingId}
+                                <Link
+                                    to={`/admin/bookings/${notif.booking_reference}`}
+                                >
+                                    New booking for {notif.booking_reference}
                                 </Link>
                             </li>
                         ))}

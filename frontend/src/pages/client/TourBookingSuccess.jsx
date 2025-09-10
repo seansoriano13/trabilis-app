@@ -55,6 +55,7 @@ function TourBookingSuccess() {
                     )
                     navigate('/destinations')
                 }
+            // eslint-disable-next-line no-unused-vars
             } catch (err) {
                 setError(
                     'Failed to verify booking status. Please contact support.'

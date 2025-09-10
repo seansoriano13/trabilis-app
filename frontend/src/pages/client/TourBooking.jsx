@@ -38,8 +38,6 @@ function TourBooking() {
         return null
     }
 
-    console.log(selectedDateId)
-
     const handleInputChange = (e) => {
         const { name, value } = e.target
         setFormData((prev) => ({ ...prev, [name]: value }))

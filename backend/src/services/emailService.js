@@ -488,7 +488,7 @@ export const sendTourConfirmationEmail = async (bookingDetails) => {
 
         const info = await transporter.sendMail(mailOptions)
         console.log(
-            `✅ Tour confirmation email sent to ${email} (BookingRef: ${bookingReference})`
+            `✅ Tour confirmation email sent to ${email} (: ${bookingReference})`
         )
         console.log('Preview URL:', nodemailer.getTestMessageUrl(info))
     } catch (err) {
