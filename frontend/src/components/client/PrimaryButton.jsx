@@ -1,5 +1,3 @@
-import styles from './PrimaryButton.module.css'
-
 function PrimaryButton({
     buttonText,
     isBold = false,
@@ -11,12 +9,13 @@ function PrimaryButton({
 }) {
     return (
         <button
-            className={`${styles.button} ${className}`}
+            className={`flex items-center justify-center gap-2 bg-[#f7d100] rounded-md px-4 py-2 
+              text-center cursor-pointer transition hover:bg-[#ffe347] disabled:opacity-50 ${className}`}
             disabled={loading}
             {...rest}
         >
             {icon && iconPosition === 'left' && (
-                <span className={styles.icon}>{icon}</span>
+                <span className='flex items-center justify-center'>{icon}</span>
             )}
 
             {loading ? (
@@ -32,7 +31,7 @@ function PrimaryButton({
             )}
 
             {icon && iconPosition === 'right' && (
-                <span className={styles.icon}>{icon}</span>
+                <span className='flex items-center justify-center'>{icon}</span>
             )}
         </button>
     )

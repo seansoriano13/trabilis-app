@@ -89,8 +89,6 @@ export default function Destinations() {
     const currentTours = filteredTours.slice(offset, offset + toursPerPage)
     const pageCount = Math.ceil(filteredTours.length / toursPerPage)
 
-    console.log(currentTours)
-
     return (
         <>
             <section className='destinations'>

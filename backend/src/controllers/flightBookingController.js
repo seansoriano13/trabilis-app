@@ -250,7 +250,7 @@ export const initiateFlightBooking = async (req, res) => {
         }
 
         // Generate booking reference
-        const bookingReference = `TRB-${uuidv4().slice(0, 8)}`
+        const bookingReference = `TRB-FLT-${uuidv4().slice(0, 8)}`
 
         try {
             await query(
@@ -282,6 +282,14 @@ export const initiateFlightBooking = async (req, res) => {
             throw new Error(`Database error: ${dbError.message}`)
         }
 
+        const routeSummary = flightOffer.itineraries
+            .map((itin) => {
+                const firstSeg = itin.segments[0]
+                const lastSeg = itin.segments[itin.segments.length - 1]
+                return `${firstSeg.departure.iataCode} → ${lastSeg.arrival.iataCode}`
+            })
+            .join(' / ')
+
         // Create Stripe checkout session
         let session
         try {
@@ -292,10 +300,7 @@ export const initiateFlightBooking = async (req, res) => {
                         price_data: {
                             currency: currency.toLowerCase(),
                             product_data: {
-                                name: `Flight from 
-                                    ${flightOffer.itineraries[0].segments[0].departure.iataCode} 
-                                    to 
-                                    ${flightOffer.itineraries[0].segments[0].arrival.iataCode}`,
+                                name: `Flight ${routeSummary}`,
                                 description:
                                     'Flight booking with Lindela Travel and Tours',
                             },

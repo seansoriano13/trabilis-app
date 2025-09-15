@@ -34,7 +34,7 @@ function ClientNavbar() {
 
     const navigate = useNavigate()
     const handleBookNowClick = () => {
-        navigate('/flights')
+        navigate('/track-booking')
     }
 
     return (
@@ -117,7 +117,7 @@ function ClientNavbar() {
                 {/* Book button */}
                 <div>
                     <PrimaryButton
-                        buttonText='Book Now'
+                        buttonText='Track My Booking'
                         isBold={true}
                         onClick={() => handleBookNowClick()}
                     />

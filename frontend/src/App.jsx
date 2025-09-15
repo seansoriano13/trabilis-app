@@ -32,6 +32,7 @@ import TourBookingCancel from './pages/client/TourBookingCancel'
 import TourBooking from './pages/client/TourBooking'
 import AdminTours from './pages/admin/AdminTour'
 import AdminUsers from './pages/admin/AdminUsers'
+import TrackBooking from './pages/client/TrackBooking'
 
 Modal.setAppElement('#root')
 
@@ -59,6 +60,10 @@ function App() {
                     <Route
                         index
                         element={<Home />}
+                    />
+                    <Route
+                        path='track-booking'
+                        element={<TrackBooking />}
                     />
                     <Route
                         path='destinations'

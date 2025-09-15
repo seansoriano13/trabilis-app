@@ -1,0 +1,101 @@
+.track-booking {
+    padding: var(--default-padding-top) 0 0;
+}
+
+.radio-input input {
+    display: none;
+}
+
+.radio-input {
+    --container_width: 250px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    border-radius: 10px;
+    background-color: #212121;
+    color: #eee;
+    width: var(--container_width);
+    overflow: hidden;
+    border: 2px solid #fff;
+}
+
+.radio-input label {
+    width: 100%;
+    padding: 10px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1;
+    font-weight: 600;
+    letter-spacing: -1px;
+    font-size: 14px;
+}
+
+.selection {
+    display: none;
+    position: absolute;
+    height: 100%;
+    width: calc(var(--container_width) / 2);
+    z-index: 0;
+    left: 0;
+    top: 0;
+    transition: 0.15s ease;
+}
+
+.radio-input label:nth-child(1):has(input:checked) {
+    color: black;
+}
+.radio-input label:nth-child(2):has(input:checked) {
+    color: #212121;
+}
+.radio-input label:nth-child(1):has(input:checked) ~ .selection {
+    background-color: var(--color-yellow);
+    display: inline-block;
+}
+.radio-input label:nth-child(2):has(input:checked) ~ .selection {
+    background-color: var(--color-yellow);
+    display: inline-block;
+}
+.radio-input label:nth-child(1):has(input:checked) ~ .selection {
+    transform: translateX(calc(var(--container_width) * 0 / 2));
+}
+
+.radio-input label:nth-child(2):has(input:checked) ~ .selection {
+    transform: translateX(calc(var(--container_width) * 1 / 2));
+}
+
+.flight-card .dot {
+    width: 8px;
+    height: 8px;
+    background-color: #001e4f;
+    border-radius: 50%;
+}
+
+.flight-card .line {
+    height: 2px;
+    background-color: #001e4f;
+    margin: 0 4px;
+}
+
+.flight-card .vertical-line {
+    width: 1px;
+    background-color: #e5e7eb; /* Tailwind gray-200 */
+}
+
+.flight-card .status {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.flight-card .status.departed {
+    color: #fff;
+    background-color: #16a34a; /* green-600 */
+}
+
+.flight-card .status.arrived {
+    color: #fff;
+    background-color: #15803d; /* darker green */
+}

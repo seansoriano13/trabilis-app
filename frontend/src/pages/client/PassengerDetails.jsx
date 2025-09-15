@@ -664,6 +664,7 @@ function PassengerDetails() {
     const destination = state.destination
     const inboundDeparture = state.inboundDeparture
     const outboundDeparture = state.outboundDeparture
+    const tripType = !inboundDeparture ? 'oneWay' : 'roundTrip'
 
     const [isLoading, setIsLoading] = useState(false)
     const [validationErrors, setValidationErrors] = useState([])
@@ -820,6 +821,7 @@ function PassengerDetails() {
             }
 
             const searchCriteria = {
+                tripType,
                 origin,
                 destination,
                 inboundDeparture,

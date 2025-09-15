@@ -108,28 +108,6 @@ export async function finalizeFlightBooking(bookingReference) {
             throw new Error(`Database error: ${dbError.message}`)
         }
 
-        // Save to Supabase (awaited)
-        const { error: insertError } = await supabase
-            .from('admin_notifications')
-            .insert([
-                {
-                    type: 'new_booking',
-                    message: `Booking ${bookingReference} finalized with PNR: ${pnr}`,
-                    booking_reference: bookingReference,
-                    created_at: new Date().toISOString(),
-                },
-            ])
-
-        if (insertError) {
-            console.error('Supabase insert error:', insertError.message)
-        }
-
-        // Send real-time notification (awaited)
-        await pusher.trigger('admin-notifications', 'new-booking', {
-            bookingReference,
-            pnr,
-        })
-
         // Send confirmation email (non-blocking)
         sendConfirmationEmail(bookingReference)
             .then(() =>

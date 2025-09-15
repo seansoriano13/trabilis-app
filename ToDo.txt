@@ -1,16 +1,27 @@
 FEAT
 
-To implement notifications:
-- use pusher api
-- in backend, trigger the notification after succesful booking (bookingService.js)
-- in frontend, connect to pusher and subscribe to bookings (named after trigger)
-- listen and trigger notif using state then cleanup
-- use react toastify for better visual
 
-To implement flight status
-- Add route for another page containing a form to track flight status
-- Get the flight number after fetching the booking data based on booking_reference
-- Preview the necessary information and status 
+TODO:
+
+Create Response object for FlightCardTracking Result from TrackBookingController then ilapat sa frontend
+
+use existing airport context, airline codes and logo for better visuals sa cards
+
+
+
+
+
+
+
+
+
+
+
+
+Implementation of custom booking
+- add another status for tour package to be custom, which provides link for vieweing of custom tour
+
+Implementation of PDF viewing in Current tour bookings (downloadable) so that both ends have the copy of pdf receipt
 
 
 
@@ -42,6 +53,7 @@ To implement flight status
 - add loading state after saving in tour packages manager
 
 ---------MEDIUM PRIO----------------
+- arrow image in passenger-details should be one sided if one-way
 
 
 ---------LOW PRIO----------------
