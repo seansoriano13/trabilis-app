@@ -1,16 +1,21 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import './TrackBooking.css'
 import PrimaryButton from '../../components/client/PrimaryButton'
 import greatPyramidOfGazaDesktop from '/images/great-pyramid.jpg'
 import greatPyramidOfGazaMobile from '../../assets/great-pyramid-of-giza-mobile.jpg'
 import { GiAirplaneDeparture } from 'react-icons/gi'
 import axios from 'axios'
+import { getStatusStyle } from '../../utils/statusStyles.js'
+import { useAirports } from '../../context/AirportContext.jsx'
+import { getAirportInfoByIata } from '../../utils/getAirportInfoByIata.js'
 
 function TrackBooking() {
     const [isLoading, setIsLoading] = useState()
     const [bookingRef, setBookingRef] = useState('')
     const [bookingType, setBookingType] = useState('flight')
     const [result, setResult] = useState(null)
+
+    const { airports } = useAirports()
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -21,7 +26,7 @@ function TrackBooking() {
                     import.meta.env.VITE_BACKEND_URL
                 }/api/v1/bookings/track-booking?bookingReference=${bookingRef}&bookingType=${bookingType}`
             )
-            console.log(res)
+            console.log(res.data)
             setResult(res.data)
         } catch (err) {
             console.error(err)
@@ -29,6 +34,21 @@ function TrackBooking() {
             setIsLoading(false)
         }
     }
+
+    // Load on mount
+    useEffect(() => {
+        const saved = localStorage.getItem('bookingResult')
+        if (saved) {
+            setResult(JSON.parse(saved))
+        }
+    }, [])
+
+    // Save whenever result changes
+    useEffect(() => {
+        if (result) {
+            localStorage.setItem('bookingResult', JSON.stringify(result))
+        }
+    }, [result])
 
     return (
         <section className='track-booking'>
@@ -124,7 +144,19 @@ function TrackBooking() {
                     <div className='max-w-[1200px] mx-auto flight-card shadow-md rounded-lg border border-gray-200 p-6 bg-white mt-8'>
                         {/* Route */}
                         <div className='text-lg font-semibold text-gray-800 mb-4'>
-                            MNL to CEB
+                            {
+                                getAirportInfoByIata(
+                                    result.bookingData.outbound.departure.iata,
+                                    airports
+                                ).city
+                            }{' '}
+                            to{' '}
+                            {
+                                getAirportInfoByIata(
+                                    result.bookingData.outbound.arrival.iata,
+                                    airports
+                                ).city
+                            }
                         </div>
 
                         <div className='flex flex-col lg:flex-row justify-between gap-6'>
@@ -132,14 +164,27 @@ function TrackBooking() {
                             <div className='flex-1'>
                                 {/* Dates */}
                                 <div className='flex justify-between text-gray-600 text-sm mb-2'>
-                                    <div>Thu 11 Sep 2025</div>
-                                    <div>Thu 11 Sep 2025</div>
+                                    <div>
+                                        {
+                                            result.bookingData.outbound
+                                                .departure.date
+                                        }
+                                    </div>
+                                    <div>
+                                        {
+                                            result.bookingData.outbound.arrival
+                                                .date
+                                        }
+                                    </div>
                                 </div>
 
                                 {/* Times */}
                                 <div className='flex items-center gap-3 mb-2'>
                                     <div className='text-lg font-medium text-gray-900'>
-                                        4:50 PM
+                                        {
+                                            result.bookingData.outbound
+                                                .departure.time
+                                        }
                                     </div>
                                     <div className='flex items-center flex-1'>
                                         <span className='dot'></span>
@@ -147,19 +192,42 @@ function TrackBooking() {
                                         <span className='dot'></span>
                                     </div>
                                     <div className='text-lg font-medium text-gray-900'>
-                                        6:20 PM
+                                        {
+                                            result.bookingData.outbound.arrival
+                                                .time
+                                        }
                                     </div>
                                 </div>
 
                                 {/* Airports */}
                                 <div className='flex justify-between text-sm text-gray-700'>
                                     <div>
-                                        CEB - Mactan-Cebu International Airport,
-                                        Philippines
+                                        {
+                                            getAirportInfoByIata(
+                                                result.bookingData.outbound
+                                                    .departure.iata,
+                                                airports
+                                            ).name
+                                        }{' '}
+                                        Terminal{' '}
+                                        {
+                                            result.bookingData.outbound
+                                                .departure.terminal
+                                        }
                                     </div>
                                     <div className='text-right'>
-                                        CEB - Mactan-Cebu International Airport,
-                                        Philippines
+                                        {
+                                            getAirportInfoByIata(
+                                                result.bookingData.outbound
+                                                    .arrival.iata,
+                                                airports
+                                            ).name
+                                        }{' '}
+                                        Terminal{' '}
+                                        {
+                                            result.bookingData.outbound.arrival
+                                                .terminal
+                                        }
                                     </div>
                                 </div>
                             </div>
@@ -169,17 +237,30 @@ function TrackBooking() {
 
                             {/* Flight Status */}
                             <div className='flex-1'>
-                                <div className='text-sm text-gray-500 mb-1'>
-                                    Actual
+                                <div className='text-md font-bold text-gray-500 mb-1'>
+                                    Status
                                 </div>
                                 <div className='flex justify-between text-gray-600 text-sm mb-2'>
-                                    <div>Thu 11 Sep 2025</div>
-                                    <div>Thu 11 Sep 2025</div>
+                                    <div>
+                                        {
+                                            result.bookingData.outbound
+                                                .departure.date
+                                        }
+                                    </div>
+                                    <div>
+                                        {
+                                            result.bookingData.outbound.arrival
+                                                .date
+                                        }
+                                    </div>
                                 </div>
 
                                 <div className='flex items-center gap-3 mb-2'>
                                     <div className='text-lg font-medium text-gray-900'>
-                                        4:50 PM
+                                        {
+                                            result.bookingData.outbound
+                                                .departure.time
+                                        }
                                     </div>
                                     <div className='flex items-center flex-1'>
                                         <span className='dot'></span>
@@ -187,16 +268,35 @@ function TrackBooking() {
                                         <span className='dot'></span>
                                     </div>
                                     <div className='text-lg font-medium text-gray-900'>
-                                        6:20 PM
+                                        {
+                                            result.bookingData.outbound.arrival
+                                                .time
+                                        }
                                     </div>
                                 </div>
 
                                 <div className='flex justify-between'>
-                                    <span className='status departed'>
-                                        Departed
+                                    <span
+                                        className={getStatusStyle(
+                                            result.bookingData.outbound
+                                                .departure.status
+                                        )}
+                                    >
+                                        {
+                                            result.bookingData.outbound
+                                                .departure.status
+                                        }
                                     </span>
-                                    <span className='status arrived'>
-                                        Arrived
+                                    <span
+                                        className={getStatusStyle(
+                                            result.bookingData.outbound.arrival
+                                                .status
+                                        )}
+                                    >
+                                        {
+                                            result.bookingData.outbound.arrival
+                                                .status
+                                        }
                                     </span>
                                 </div>
                             </div>
@@ -207,12 +307,12 @@ function TrackBooking() {
                             <div className='flex items-center gap-2 text-gray-600'>
                                 <GiAirplaneDeparture className='text-blue-900' />
                                 <span className='font-semibold text-gray-600'>
-                                    PR 2313
+                                    {result.bookingReference}
                                 </span>
                             </div>
                             <div className='text-gray-600 flex gap-1'>
                                 <div>This flight is operated by</div>
-                                <div>PAL Express</div>
+                                <div>Philippine Airlines</div>
                             </div>
                         </div>
                     </div>

@@ -212,7 +212,7 @@
 }
 
 .admin-nav__notifications {
-    position: absolute;
+    position: fixed;
     top: 60px; /* Adjust based on your navbar height */
     right: 10px;
     background: var(--color-surface, #fff);

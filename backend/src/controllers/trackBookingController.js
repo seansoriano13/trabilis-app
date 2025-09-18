@@ -17,7 +17,7 @@ function formatPoint(point) {
     return {
         iata: point.iataCode || null,
         date: dayjs(dateTime).format('ddd DD MMM YYYY'),
-        time: dayjs(dateTime).format('h:mm A'),
+        time: dayjs(dateTime).format('HH:mm'),
         terminal: point.terminal || null,
         status: point.qualifier
             ? qualifierMap[point.qualifier] || 'Unknown'

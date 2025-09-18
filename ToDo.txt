@@ -1,74 +1,36 @@
-FEAT
+Track Booking Feature (TODO)
+- use existing airport context, airline codes and logo for better visuals sa cards
+- add tour package function
 
 
-TODO:
-
-Create Response object for FlightCardTracking Result from TrackBookingController then ilapat sa frontend
-
-use existing airport context, airline codes and logo for better visuals sa cards
-
-
-
-
+fix: Make logo, Font bigger in Navbar
+fix: use +63 in passengerDetails
+fix: military time flightSearchResults
+fix: caption in icon sa flight form
+fix: arrival and departure in pdf
+fix: arrow image in passenger-details should be one sided if one-way
+fix: yung pasenger details sa tour, dapat kung ilan yung passenger, ganun din (also aapply adult and email), PASSENGER 1 will be matically the lead
 
 
+fix-admin: in user access, remove placeholder and use label instead
+fix-admin: create border for inputs in user access
+fix-admin: add loading state on save btn after saving in tour packages manager
+fix-admin: add function where an admin can appoint a name to a specific booking so that the employee will handle it using button
+fix-admin: if naka draft pa yung tour package, show a button na publish with confirmation
+fix-admin: sa appointing system, kelangan pag naapoint ng admin yung booking, dapat siya lang makakakita
 
 
+feat: Add custom capability in tour package 
+feat: Ilagay yung date price katulad nung sa pal na may price between
+feat: add another status for tour package to be custom, which provides link for vieweing of custom tour
+feat: PDF viewing in Current tour bookings (downloadable) so that both ends have the copy of pdf receipt
+feat: botUI (wag na yung potek na botpress)
+feat: visa form inquiry - accept inquiry and compose email, add separate tab that view the inquiry details
+feat: refund system pag nag cancel yung booking 
+feat: add editable pdf in admin side na malalagyan ng flights na input yung pdf para masend uli sa client para sa updated, and for the mean time, make the flight status TBA for now
 
+feat-mobile: create navbar for mobile app
 
+bug: email is not sent to specific email
 
-
-Implementation of custom booking
-- add another status for tour package to be custom, which provides link for vieweing of custom tour
-
-Implementation of PDF viewing in Current tour bookings (downloadable) so that both ends have the copy of pdf receipt
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
----------ADMIN-------------------------ADMIN-------------------------ADMIN----------------
-- if naka draft pa yung tour package, show a button na publish with confirmation
-
-
-
----------CLIENT-------------------------CLIENT-------------------------CLIENT----------------
-
----------HIGH PRIO---------------
-- add loading state after saving in tour packages manager
-
----------MEDIUM PRIO----------------
-- arrow image in passenger-details should be one sided if one-way
-
-
----------LOW PRIO----------------
--Make comments for whole code base to make it more readable (future)
-
----------AMADEUS SPECIFIC----------------
-
-
-
-
-
-
-
-
-
-
-
-
+future: Make comments for whole code base to make it more readable (future)
