@@ -31,6 +31,10 @@
     transition: 0.1s ease;
 }
 
+.nav__links li {
+    font-size: 1.1rem;
+}
+
 .nav__links-ul.clicked {
     left: 0;
     display: grid;
@@ -54,7 +58,7 @@
 }
 
 .logoShake {
-    height: 3rem;
+    height: 2rem;
 }
 
 .rxHamburgerMenu {
@@ -70,6 +74,10 @@
         align-items: center;
         text-align: center;
         gap: 2rem;
+    }
+
+    .logoShake {
+        height: 4rem;
     }
 
     .rxHamburgerMenu {

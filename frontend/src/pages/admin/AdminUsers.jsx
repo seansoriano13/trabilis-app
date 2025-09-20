@@ -6,7 +6,6 @@ import ReactPaginate from 'react-paginate'
 import './AdminUsers.css'
 import adminClient from '../../api/adminClient.js'
 
-
 const AdminUsers = () => {
     const [users, setUsers] = useState([])
     const [userStats, setUserStats] = useState({})
@@ -219,46 +218,72 @@ const AdminUsers = () => {
                     onSubmit={handleSubmit}
                     className='users__form'
                 >
-                    <input
-                        type='text'
-                        name='first_name'
-                        value={formData.first_name}
-                        onChange={handleFormChange}
-                        placeholder='First Name'
-                        required
-                    />
-                    <input
-                        type='text'
-                        name='last_name'
-                        value={formData.last_name}
-                        onChange={handleFormChange}
-                        placeholder='Last Name'
-                        required
-                    />
-                    <input
-                        type='email'
-                        name='email'
-                        value={formData.email}
-                        onChange={handleFormChange}
-                        placeholder='Email'
-                        required
-                    />
-                    <input
-                        type='password'
-                        name='password'
-                        value={formData.password}
-                        onChange={handleFormChange}
-                        placeholder='Password'
-                        required
-                    />
-                    <select
-                        name='role'
-                        value={formData.role}
-                        onChange={handleFormChange}
-                    >
-                        <option value='admin'>Admin</option>
-                        <option value='accounting'>Accounting</option>
-                    </select>
+                    <label className='flex items-center gap-4'>
+                        <span className='w-1/3'>First Name</span>
+                        <input
+                            type='text'
+                            name='first_name'
+                            value={formData.first_name}
+                            onChange={handleFormChange}
+                            placeholder='First Name'
+                            required
+                            className='flex-1'
+                        />
+                    </label>
+
+                    <label className='flex items-center gap-4'>
+                        <span className='w-1/3'>Last Name</span>
+                        <input
+                            type='text'
+                            name='last_name'
+                            value={formData.last_name}
+                            onChange={handleFormChange}
+                            placeholder='Last Name'
+                            required
+                            className='flex-1'
+                        />
+                    </label>
+
+                    <label className='flex items-center gap-4'>
+                        <span className='w-1/3'>Email</span>
+                        <input
+                            type='email'
+                            name='email'
+                            value={formData.email}
+                            onChange={handleFormChange}
+                            placeholder='Email'
+                            required
+                            className='flex-1'
+                        />
+                    </label>
+
+                    <label className='flex items-center gap-4'>
+                        <span className='w-1/3'>Password</span>
+                        <input
+                            type='password'
+                            name='password'
+                            value={formData.password}
+                            onChange={handleFormChange}
+                            placeholder='Password'
+                            required
+                            className='flex-1'
+                        />
+                    </label>
+
+                    <label className='flex items-center gap-4'>
+                        <span className='w-1/3'>Role</span>
+                        <select
+                            name='role'
+                            value={formData.role}
+                            onChange={handleFormChange}
+                            required
+                            className='flex-1'
+                        >
+                            <option value='admin'>Admin</option>
+                            <option value='accounting'>Accounting</option>
+                        </select>
+                    </label>
+
                     <button
                         type='submit'
                         className='users__form-submit'

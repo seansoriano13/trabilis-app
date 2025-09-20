@@ -12,6 +12,11 @@ import PrimaryButton from '../../components/client/PrimaryButton'
 import { formatToYMD } from '../../utils/flightUtils.js'
 import axios from 'axios'
 import { calculateAge, formatPhoneForAmadeus } from '../../utils/stringUtils.js'
+import countries from '../../data/CountryCodes.json'
+import nationalities from '../../data/nationalities.json'
+
+import { FaArrowRightArrowLeft } from 'react-icons/fa6'
+import { FaArrowRight } from 'react-icons/fa6'
 
 function PassengerForm({
     passengers,
@@ -24,6 +29,22 @@ function PassengerForm({
     function handleGenderSelection(gender) {
         setSelectGender(gender)
     }
+
+    const countryOptions = countries.map((c) => ({
+        value: c.dial_code.replace('+', ''), // "63"
+        label: `${c.name} (${c.dial_code})`,
+        code: c.code,
+    }))
+
+    const nationalityOptions = nationalities.map((n) => ({
+        value: n, // "Filipino"
+        label: n, // "Filipino"
+    }))
+
+    const issuanceCountryOptions = countries.map((c) => ({
+        value: c.code, // "PH"
+        label: `${c.name} (${c.code})`, // "Philippines (PH)"
+    }))
 
     const titleOptions = [
         { value: 'mr', label: 'Mr' },
@@ -353,6 +374,62 @@ function PassengerForm({
                             </div>
                             <div className='passenger-form__field'>
                                 <label className='passenger-form__label'>
+                                    Country Calling Code (e.g., 63)
+                                </label>
+                                <Select
+                                    className='passenger-form__select'
+                                    options={countryOptions}
+                                    defaultValue={'63'}
+                                    // value={
+                                    //     countryOptions.find(
+                                    //         (opt) =>
+                                    //             opt.value ===
+                                    //             passenger.contact.phones[0]
+                                    //                 ?.countryCallingCode
+                                    //     ) || null
+                                    // }
+                                    onChange={(selected) =>
+                                        handleChange(
+                                            index,
+                                            'contact.phones[0].countryCallingCode',
+                                            selected?.value || '' // just digits, e.g. "63"
+                                        )
+                                    }
+                                    placeholder='Select country code'
+                                    isSearchable
+                                    styles={{
+                                        ...formSelectStyles,
+                                        control: (provided, state) => ({
+                                            ...(formSelectStyles.control
+                                                ? formSelectStyles.control(
+                                                      provided,
+                                                      state
+                                                  )
+                                                : provided),
+                                            padding: '.5rem 1rem',
+                                        }),
+                                    }}
+                                />
+                                {validationErrors
+                                    .filter(
+                                        (e) =>
+                                            e.index === index &&
+                                            e.field ===
+                                                'contact.phones[0].countryCallingCode'
+                                    )
+                                    .map((e) => (
+                                        <p
+                                            key={`${e.index}-${e.field}-${
+                                                e.message
+                                            }-${Date.now()}`}
+                                            className='error-message'
+                                        >
+                                            {e.message}
+                                        </p>
+                                    ))}
+                            </div>
+                            <div className='passenger-form__field'>
+                                <label className='passenger-form__label'>
                                     Phone
                                 </label>
                                 <input
@@ -380,44 +457,6 @@ function PassengerForm({
                                         (e) =>
                                             e.index === index &&
                                             e.field === 'contact.phones[0]'
-                                    )
-                                    .map((e) => (
-                                        <p
-                                            key={`${e.index}-${e.field}-${
-                                                e.message
-                                            }-${Date.now()}`}
-                                            className='error-message'
-                                        >
-                                            {e.message}
-                                        </p>
-                                    ))}
-                            </div>
-                            <div className='passenger-form__field'>
-                                <label className='passenger-form__label'>
-                                    Country Calling Code (e.g., 34)
-                                </label>
-                                <input
-                                    type='text'
-                                    className='passenger-form__input'
-                                    value={
-                                        passenger.contact.phones[0]
-                                            ?.countryCallingCode || ''
-                                    }
-                                    onChange={(e) =>
-                                        handleChange(
-                                            index,
-                                            'contact.phones[0].countryCallingCode',
-                                            e.target.value.replace(/^\+/, '')
-                                        )
-                                    }
-                                    required
-                                />
-                                {validationErrors
-                                    .filter(
-                                        (e) =>
-                                            e.index === index &&
-                                            e.field ===
-                                                'contact.phones[0].countryCallingCode'
                                     )
                                     .map((e) => (
                                         <p
@@ -468,23 +507,42 @@ function PassengerForm({
                             </div>
                             <div className='passenger-form__field'>
                                 <label className='passenger-form__label'>
-                                    Nationality (e.g., PH)
+                                    Nationality (e.g., Filipino)
                                 </label>
-                                <input
-                                    type='text'
-                                    className='passenger-form__input'
+                                <Select
+                                    className='passenger-form__select'
+                                    options={nationalityOptions}
                                     value={
-                                        passenger.documents[0]?.nationality ||
-                                        ''
+                                        nationalityOptions.find(
+                                            (opt) =>
+                                                opt.value ===
+                                                passenger.documents[0]
+                                                    ?.nationality
+                                        ) || null
                                     }
-                                    onChange={(e) =>
+                                    onChange={(selected) =>
                                         handleChange(
                                             index,
                                             'documents[0].nationality',
-                                            e.target.value.toUpperCase()
+                                            selected?.value || ''
                                         )
                                     }
+                                    placeholder=''
+                                    isSearchable={true}
+                                    styles={{
+                                        ...formSelectStyles,
+                                        control: (provided, state) => ({
+                                            ...(formSelectStyles.control
+                                                ? formSelectStyles.control(
+                                                      provided,
+                                                      state
+                                                  )
+                                                : provided),
+                                            padding: '.5rem 1rem',
+                                        }),
+                                    }}
                                 />
+
                                 {validationErrors
                                     .filter(
                                         (e) =>
@@ -507,21 +565,40 @@ function PassengerForm({
                                 <label className='passenger-form__label'>
                                     Issuance Country (e.g., PH)
                                 </label>
-                                <input
-                                    type='text'
-                                    className='passenger-form__input'
+                                <Select
+                                    className='passenger-form__select'
+                                    options={issuanceCountryOptions}
                                     value={
-                                        passenger.documents[0]
-                                            ?.issuanceCountry || ''
+                                        issuanceCountryOptions.find(
+                                            (opt) =>
+                                                opt.value ===
+                                                passenger.documents[0]
+                                                    ?.issuanceCountry
+                                        ) || null
                                     }
-                                    onChange={(e) =>
+                                    onChange={(selected) =>
                                         handleChange(
                                             index,
                                             'documents[0].issuanceCountry',
-                                            e.target.value.toUpperCase()
+                                            selected?.value || ''
                                         )
                                     }
+                                    placeholder=''
+                                    isSearchable={true}
+                                    styles={{
+                                        ...formSelectStyles,
+                                        control: (provided, state) => ({
+                                            ...(formSelectStyles.control
+                                                ? formSelectStyles.control(
+                                                      provided,
+                                                      state
+                                                  )
+                                                : provided),
+                                            padding: '.5rem 1rem',
+                                        }),
+                                    }}
                                 />
+
                                 {validationErrors
                                     .filter(
                                         (e) =>
@@ -628,7 +705,7 @@ function PassengerDetails() {
                 phones: [
                     {
                         deviceType: 'MOBILE',
-                        countryCallingCode: '63',
+                        countryCallingCode: '',
                         number: '9927831240',
                     },
                 ],
@@ -637,7 +714,7 @@ function PassengerDetails() {
                 {
                     documentType: 'PASSPORT',
                     number: 'AB1234567',
-                    nationality: 'PH',
+                    nationality: 'Filipino',
                     issuanceCountry: 'PH',
                     expiryDate: '2032-08-07',
                     issuanceDate: '2024-08-07',
@@ -649,6 +726,7 @@ function PassengerDetails() {
         }))
     )
 
+    // HandleChange inputs
     const handleChange = (index, field, value) => {
         const updated = [...passengers]
         const keys = field.split('.')
@@ -868,11 +946,15 @@ function PassengerDetails() {
     }
 
     return (
-        <div className='passenger-details pt-[var(--default-padding-top)] lg:pt-30'>
+        <div className='passenger-details pt-[var(--default-padding-top)] lg:pt-25 md:pt-35'>
             <div className='passenger-details__travel-info max-w-[1200px] mx-auto w-screen'>
                 <div className='passenger-details__route'>
                     <h3 className='passenger-details__origin'>{origin}</h3>
-                    <FaArrowsAltH className='passenger-details__arrow' />
+                    {tripType === 'roundTrip' ? (
+                        <FaArrowRightArrowLeft className='passenger-details__arrow' />
+                    ) : (
+                        <FaArrowRight className='passenger-details__arrow' />
+                    )}
                     <h3 className='passenger-details__destination'>
                         {destination}
                     </h3>

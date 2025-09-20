@@ -343,9 +343,10 @@ export default function Flights() {
                         <div className='flights__input-group'>
                             <label
                                 htmlFor='adultCount'
-                                className='flights__label'
+                                className='flights__label flex gap-2 text-gray-300 items-center'
                             >
                                 <IoPeopleSharp />
+                                Adults
                             </label>
                             <input
                                 id='adultCount'
@@ -367,9 +368,9 @@ export default function Flights() {
                         <div className='flights__input-group'>
                             <label
                                 htmlFor='childCount'
-                                className='flights__label'
+                                className='flights__label flex gap-2 text-gray-300'
                             >
-                                <FaBabyCarriage />
+                                <FaBabyCarriage /> Child
                             </label>
                             <input
                                 id='childCount'

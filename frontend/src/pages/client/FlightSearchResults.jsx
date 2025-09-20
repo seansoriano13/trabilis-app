@@ -337,7 +337,7 @@ function FlightSearchResults() {
     }
 
     return (
-        <div className='flight-results pt-[var(--default-padding-top)] lg:pt-22'>
+        <div className='flight-results pt-[var(--default-padding-top)] lg:pt-25 md:pt-35'>
             <FilterModal
                 filters={filters}
                 setFilters={setFilters}

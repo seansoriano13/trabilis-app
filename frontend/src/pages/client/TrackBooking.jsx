@@ -8,6 +8,7 @@ import axios from 'axios'
 import { getStatusStyle } from '../../utils/statusStyles.js'
 import { useAirports } from '../../context/AirportContext.jsx'
 import { getAirportInfoByIata } from '../../utils/getAirportInfoByIata.js'
+import { getAirlineInfo } from '../../utils/airlinesUtils.js'
 
 function TrackBooking() {
     const [isLoading, setIsLoading] = useState()
@@ -304,15 +305,29 @@ function TrackBooking() {
 
                         {/* Footer */}
                         <div className='flex items-center justify-between border-t pt-3 mt-4 text-sm text-gray-200'>
-                            <div className='flex items-center gap-2 text-gray-600'>
+                            <div className='flex items-center gap-1 text-gray-600'>
                                 <GiAirplaneDeparture className='text-blue-900' />
+                                <span>Booking Reference: </span>
                                 <span className='font-semibold text-gray-600'>
                                     {result.bookingReference}
                                 </span>
                             </div>
-                            <div className='text-gray-600 flex gap-1'>
+                            <div className='text-gray-600 flex gap-1 items-center'>
                                 <div>This flight is operated by</div>
-                                <div>Philippine Airlines</div>
+                                <div className='flex items-center'>
+                                    {getAirlineInfo(result.airlineCode).name}
+                                    <img
+                                        className='h-8'
+                                        src={
+                                            getAirlineInfo(result.airlineCode)
+                                                .logo
+                                        }
+                                        alt={
+                                            getAirlineInfo(result.airlineCode)
+                                                .name
+                                        }
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -41,6 +41,8 @@ export const trackBookingStatus = async (req, res) => {
             return res.status(404).json({ error: 'Booking not found' })
         }
 
+        const airlineCode = data.amadeus_flight_offer.validatingAirlineCodes[0]
+
         let bookingData = null
 
         if (bookingType === 'flight') {
@@ -75,7 +77,7 @@ export const trackBookingStatus = async (req, res) => {
             // TODO: handle tour booking status
         }
 
-        res.status(200).json({ bookingReference, bookingData })
+        res.status(200).json({ bookingReference, bookingData, airlineCode })
     } catch (err) {
         console.error('Error in trackBookingStatus:', err)
         res.status(500).json({ error: 'Internal Server Error' })

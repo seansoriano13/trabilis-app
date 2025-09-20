@@ -44,7 +44,7 @@ function ClientNavbar() {
                 isScrolled && 'scrolled'
             )}
         >
-            <div className='w-full max-w-[1166px] mx-auto px-4 py-4 sm:px-6 sm:py-3 md:px-8 md:py-4 lg:px-10 xl:px-0 flex items-center justify-between gap-4'>
+            <div className='w-full max-w-[1166px] lg:py-1 py-6 px-4 lg:px-0 mx-auto flex items-center justify-between gap-4'>
                 {/* Logo + menu */}
                 <div className='nav__logo-container'>
                     <RxHamburgerMenu
