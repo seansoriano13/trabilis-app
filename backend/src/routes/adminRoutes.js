@@ -67,13 +67,13 @@ router.get('/dashboard/tour_stats', getTourStats)
 
 // Flight PDF (using special PDF auth middleware)
 router.get('/flights/:id/pdf', pdfAuthMiddleware, generateFlightPDF)
-router.get('/flights/:id/pdf-admin', pdfAuthMiddleware, generateFlightPDFAdmin)
+router.get('/flights/:id/pdfadmin', pdfAuthMiddleware, generateFlightPDFAdmin)
 router.get('/flights/:id/html', pdfAuthMiddleware, viewFlightBookingHTML)
 router.get('/flights/:id/print', pdfAuthMiddleware, viewFlightBookingPrint)
 
 // Tour PDF (using special PDF auth middleware)
 router.get('/tours/:id/pdf', pdfAuthMiddleware, generateTourPDF)
-router.get('/tours/:id/pdf-admin', pdfAuthMiddleware, generateTourPDFAdmin)
+router.get('/tours/:id/pdfadmin', pdfAuthMiddleware, generateTourPDFAdmin)
 router.get('/tours/:id/html', pdfAuthMiddleware, viewTourBookingHTML)
 router.get('/tours/:id/print', pdfAuthMiddleware, viewTourBookingPrint)
 

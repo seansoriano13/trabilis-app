@@ -172,7 +172,7 @@ const FlightBookingDetail = () => {
         setPrintLoading(true)
         try {
             // Use the new admin PDF route that doesn't use PDFShift
-            const response = await adminClient.get(`/flights/${booking.id}/pdf-admin`, {
+            const response = await adminClient.get(`/flights/${booking.id}/pdfadmin`, {
                 responseType: 'blob'
             })
 

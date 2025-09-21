@@ -8,6 +8,6 @@ router.get('/tours', getAllTours)
 router.post('/tour/booking', TourBookingController.initiateTourBooking)
 router.get('/tour/booking', TourBookingController.getBooking)
 router.get('/tour/:id', getTour)
-router.patch('/tours/booking/cancel/a:id', TourBookingController.cancelBooking)
+router.patch('/tours/booking/cancel/:id', TourBookingController.cancelBooking)
 
 export default router
