@@ -15,18 +15,13 @@ import { viewFlightBookingHTML, viewFlightBookingPrint } from './src/controllers
 const app = express()
 const port = process.env.PORT || 5000
 
-// Configure CORS - using permissive approach that was working
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-    credentials: false, // Set to false when using origin: '*'
-    optionsSuccessStatus: 200
-}))
+// const allowedOrigins = process.env.ALLOWED_ORIGINS || ''
 
-app.use(express.json())
+app.use(cors({ origin: '*' }))
 
 app.use('/api/v1/webhooks', webhookRoutes)
+
+app.use(express.json())
 
 app.use('/api/v1/flights', flightRoutes)
 app.use('/api/v1/bookings', bookingRoutes)
@@ -46,16 +41,12 @@ app.get('/api/v1/tours/:id/print', viewTourBookingPrint)
 app.get('/api/v1/flights/:id/html', viewFlightBookingHTML)
 app.get('/api/v1/flights/:id/print', viewFlightBookingPrint)
 
-// Health check endpoint
 app.get('/', async (req, res) => {
     try {
-        res.json({ 
-            status: 'Node Server Running!', 
-            timestamp: new Date().toISOString()
-        })
+        res.send('Node Server Running!')
     } catch (err) {
         console.error('Database connection failed: ', err)
-        res.status(500).json({ error: 'Database connection failed' })
+        res.status(500).send('Database connection failed')
     }
 })
 
