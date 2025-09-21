@@ -1,18 +1,13 @@
 bug: email is not sent to specific email
 
 General Admin Concerns: 
-- add function where an admin can appoint a name to a specific booking so that the employee will handle it using button
-- sa appointing system, kelangan pag naapoint ng admin yung booking, dapat siya lang makakakita
 - add travel consultant role
 
 Visa Concerns:
 - visa form inquiry - accept inquiry and compose email
 - add separate tab that view the inquiry details in admin
 
-
-
 Tour Package Concerns:
-- Passenger form in Tour packages should be same as the flights 
 - Make the inclusions untickable
 - Make Itinerary Also clearable (if inalis yung day na yun, magiging rest day)
 - Add Customized Option like slidebar from trackbooking

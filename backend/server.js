@@ -15,13 +15,34 @@ import { viewFlightBookingHTML, viewFlightBookingPrint } from './src/controllers
 const app = express()
 const port = process.env.PORT || 5000
 
-const allowedOrigins = process.env.ALLOWED_ORIGINS || ''
+// Configure CORS properly
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+    : ['http://localhost:3001', 'http://localhost:5173', 'https://trabilis.onrender.com']
 
-app.use(cors({ origin: '*' }))
+console.log('Allowed origins:', allowedOrigins)
 
-app.use('/api/v1/webhooks', webhookRoutes)
+// Simplified CORS configuration to avoid server crashes
+const corsOptions = {
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    optionsSuccessStatus: 200
+}
+
+// Apply CORS before all routes
+app.use(cors(corsOptions))
+
+// Add error handling middleware
+app.use((err, req, res, next) => {
+    console.error('CORS Error:', err.message)
+    res.status(500).json({ error: 'CORS Error: ' + err.message })
+})
 
 app.use(express.json())
+
+app.use('/api/v1/webhooks', webhookRoutes)
 
 app.use('/api/v1/flights', flightRoutes)
 app.use('/api/v1/bookings', bookingRoutes)
@@ -41,13 +62,27 @@ app.get('/api/v1/tours/:id/print', viewTourBookingPrint)
 app.get('/api/v1/flights/:id/html', viewFlightBookingHTML)
 app.get('/api/v1/flights/:id/print', viewFlightBookingPrint)
 
+// Health check endpoint
 app.get('/', async (req, res) => {
     try {
-        res.send('Node Server Running!')
+        res.json({ 
+            status: 'Node Server Running!', 
+            timestamp: new Date().toISOString(),
+            allowedOrigins: allowedOrigins
+        })
     } catch (err) {
         console.error('Database connection failed: ', err)
-        res.status(500).send('Database connection failed')
+        res.status(500).json({ error: 'Database connection failed' })
     }
+})
+
+// CORS test endpoint
+app.get('/api/v1/cors-test', (req, res) => {
+    res.json({ 
+        message: 'CORS is working!', 
+        origin: req.headers.origin,
+        timestamp: new Date().toISOString()
+    })
 })
 
 app.listen(port, () => {

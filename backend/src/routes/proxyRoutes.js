@@ -13,7 +13,6 @@ router.get('/image', async (req, res) => {
         const buffer = await response.arrayBuffer()
 
         res.set('Content-Type', contentType)
-        res.set('Access-Control-Allow-Origin', '*')
         res.send(Buffer.from(buffer))
     } catch (err) {
         res.status(500).send('Failed to fetch image')
