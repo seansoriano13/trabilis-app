@@ -54,6 +54,26 @@
                 font-weight: bold;
                 border-radius: 4px 4px 0 0;
             }
+            .flight-column-headers {
+                display: flex;
+                background-color: #f8f9fa;
+                border-bottom: 1px solid #ddd;
+                padding: 8px 12px;
+                font-weight: bold;
+                font-size: 10px;
+                color: #666;
+            }
+            .flight-column-headers .flight-col {
+                flex: 1;
+                padding: 0 10px;
+            }
+            .flight-column-headers .flight-col.airline {
+                flex: 0 0 150px;
+            }
+            .flight-column-headers .flight-col.duration {
+                flex: 0 0 100px;
+                text-align: right;
+            }
             .itinerary-header.return {
                 background-color: #343a40;
             }

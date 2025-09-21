@@ -9,6 +9,8 @@ import adminRoutes from './src/routes/adminRoutes.js'
 import tourRoutes from './src/routes/tourRoutes.js'
 import chatbotRoutes from './src/routes/chatbotRoutes.js'
 import proxyRoutes from './src/routes/proxyRoutes.js'
+import { viewTourBookingHTML, viewTourBookingPrint } from './src/controllers/admin/tourController.js'
+import { viewFlightBookingHTML, viewFlightBookingPrint } from './src/controllers/admin/flightController.js'
 
 const app = express()
 const port = process.env.PORT || 5000
@@ -30,6 +32,14 @@ app.use('/api/v1/proxy', proxyRoutes)
 
 // Admin
 app.use('/api/v1/admin', adminRoutes)
+
+// Public routes for testing tour HTML and print (no auth required)
+app.get('/api/v1/tours/:id/html', viewTourBookingHTML)
+app.get('/api/v1/tours/:id/print', viewTourBookingPrint)
+
+// Public routes for testing flight HTML and print (no auth required)
+app.get('/api/v1/flights/:id/html', viewFlightBookingHTML)
+app.get('/api/v1/flights/:id/print', viewFlightBookingPrint)
 
 app.get('/', async (req, res) => {
     try {

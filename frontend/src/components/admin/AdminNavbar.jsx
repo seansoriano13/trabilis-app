@@ -1,5 +1,22 @@
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { RxHamburgerMenu } from 'react-icons/rx'
+import { 
+    RxHamburgerMenu,
+    RxCross2
+} from 'react-icons/rx'
+import { 
+    FiHome,
+    FiPackage,
+    FiTrendingUp,
+    FiNavigation,
+    FiUsers,
+    FiBell,
+    FiUser,
+    FiLogOut,
+    FiSettings,
+    FiChevronDown,
+    FiMenu,
+    FiX
+} from 'react-icons/fi'
 import adminLogo from '../../assets/admin/admin-logo.png'
 import { useState, useEffect } from 'react'
 import clsx from 'clsx'
@@ -53,6 +70,36 @@ function AdminNavbar() {
                 {
                     booking_reference: data.bookingReference,
                     created_at: new Date().toISOString(),
+                    type: 'new_booking',
+                    bookingType: data.bookingType || 'tour',
+                },
+                ...prev,
+            ])
+            if (!isNotificationsOpen) setIsNotificationsOpen(true)
+        })
+
+        channel.bind('booking-assigned', (data) => {
+            setNotifications((prev) => [
+                {
+                    booking_reference: data.bookingReference,
+                    created_at: new Date().toISOString(),
+                    type: 'assignment',
+                    bookingType: data.bookingType,
+                    booking_id: data.bookingId,
+                },
+                ...prev,
+            ])
+            if (!isNotificationsOpen) setIsNotificationsOpen(true)
+        })
+
+        channel.bind('booking-reassigned', (data) => {
+            setNotifications((prev) => [
+                {
+                    booking_reference: data.bookingReference,
+                    created_at: new Date().toISOString(),
+                    type: 'reassignment',
+                    bookingType: data.bookingType,
+                    booking_id: data.bookingId,
                 },
                 ...prev,
             ])
@@ -133,6 +180,29 @@ function AdminNavbar() {
         window.location.href = '/admin/login'
     }
 
+    const getNotificationRoute = (notif) => {
+        // If it's an assignment or reassignment notification, route to the specific booking detail
+        if (notif.type === 'assignment' || notif.type === 'reassignment') {
+            if (notif.bookingType === 'tour') {
+                return `/admin/tour-sales/${notif.booking_id || notif.booking_reference}`
+            } else if (notif.bookingType === 'flight') {
+                return `/admin/flights/${notif.booking_id || notif.booking_reference}`
+            }
+        }
+        
+        // For new booking notifications, route based on booking type
+        if (notif.type === 'new_booking') {
+            if (notif.bookingType === 'tour') {
+                return `/admin/tour-sales`
+            } else if (notif.bookingType === 'flight') {
+                return `/admin/flights`
+            }
+        }
+        
+        // Default fallback - go to tour sales page
+        return `/admin/tour-sales`
+    }
+
     if (loading) {
         return null
     }
@@ -145,169 +215,275 @@ function AdminNavbar() {
                     isScrolled && 'admin-nav__bar--scrolled'
                 )}
             >
-                <div className='admin-nav__logo-container'>
-                    <RxHamburgerMenu
-                        className='admin-nav__hamburger'
-                        onClick={toggleMenu}
-                        aria-label='Toggle navigation menu'
-                    />
-                    <NavLink
-                        to='/admin'
-                        className='admin-nav__logo'
-                        onClick={() => setMenuOpen(false)}
-                    >
-                        <img
-                            className='admin-nav__logo-image'
-                            src={adminLogo}
-                            alt='Admin Dashboard Logo'
-                        />
-                    </NavLink>
-                </div>
+                <div className='admin-nav__container'>
+                    <div className='admin-nav__brand'>
+                        <button
+                            className='admin-nav__mobile-toggle'
+                            onClick={toggleMenu}
+                            aria-label='Toggle navigation menu'
+                        >
+                            {isMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+                        </button>
+                        <NavLink
+                            to='/admin'
+                            className='admin-nav__logo'
+                            onClick={() => setMenuOpen(false)}
+                        >
+                            <div className='admin-nav__logo-container'>
+                                <img
+                                    className='admin-nav__logo-image'
+                                    src={adminLogo}
+                                    alt='Admin Dashboard Logo'
+                                />
+                                {/* <div className='admin-nav__logo-text'>
+                                    <span className='admin-nav__logo-title'>Trabilis</span>
+                                    <span className='admin-nav__logo-subtitle'>Admin Panel</span>
+                                </div> */}
+                            </div>
+                        </NavLink>
+                    </div>
 
-                <div
-                    className={clsx(
-                        'admin-nav__links',
-                        isMenuOpen && 'admin-nav__links--open'
-                    )}
-                >
-                    <ul className='admin-nav__links-list'>
-                        <li>
-                            <NavLink
-                                to='/admin/dashboard'
-                                className={({ isActive }) =>
-                                    clsx(
-                                        'admin-nav__link',
-                                        isActive && 'admin-nav__link--active'
-                                    )
-                                }
-                                onClick={() => setMenuOpen(false)}
-                            >
-                                Dashboard
-                            </NavLink>
-                        </li>
-                        <li>
-                            <NavLink
-                                to='tours'
-                                className={({ isActive }) =>
-                                    clsx(
-                                        'admin-nav__link',
-                                        isActive && 'admin-nav__link--active'
-                                    )
-                                }
-                                onClick={() => setMenuOpen(false)}
-                            >
-                                Tour Packages
-                            </NavLink>
-                        </li>
-                        <li>
-                            <NavLink
-                                to='tour-sales'
-                                className={({ isActive }) =>
-                                    clsx(
-                                        'admin-nav__link',
-                                        isActive && 'admin-nav__link--active'
-                                    )
-                                }
-                                onClick={() => setMenuOpen(false)}
-                            >
-                                Tour Sales
-                            </NavLink>
-                        </li>
-                        <li>
-                            <NavLink
-                                to='flights'
-                                className={({ isActive }) =>
-                                    clsx(
-                                        'admin-nav__link',
-                                        isActive && 'admin-nav__link--active'
-                                    )
-                                }
-                                onClick={() => setMenuOpen(false)}
-                            >
-                                Flight Sales
-                            </NavLink>
-                        </li>
-                        {userRole === 'admin' && (
-                            <li>
+                    <div
+                        className={clsx(
+                            'admin-nav__navigation',
+                            isMenuOpen && 'admin-nav__navigation--open'
+                        )}
+                    >
+                        <ul className='admin-nav__nav-list'>
+                            <li className='admin-nav__nav-item'>
                                 <NavLink
-                                    to='users'
+                                    to='/admin/dashboard'
                                     className={({ isActive }) =>
                                         clsx(
-                                            'admin-nav__link',
-                                            isActive &&
-                                                'admin-nav__link--active'
+                                            'admin-nav__nav-link',
+                                            isActive && 'admin-nav__nav-link--active'
                                         )
                                     }
                                     onClick={() => setMenuOpen(false)}
                                 >
-                                    User Access
+                                    <FiHome size={18} />
+                                    <span>Dashboard</span>
                                 </NavLink>
                             </li>
-                        )}
-                    </ul>
-                </div>
-
-                <div className='admin-nav__details'>
-                    <div className='relative'>
-                        <RiNotification4Line
-                            className='admin-nav__notification'
-                            onClick={() =>
-                                setIsNotificationsOpen((prev) => !prev)
-                            }
-                        />
-                        {notifications.length !== 0 && (
-                            <FaCircle className='text-red-500 h-3 absolute top-0 right-0' />
-                        )}
+                            {userRole === 'admin' && (
+                                <li className='admin-nav__nav-item'>
+                                    <NavLink
+                                        to='tours'
+                                        className={({ isActive }) =>
+                                            clsx(
+                                                'admin-nav__nav-link',
+                                                isActive && 'admin-nav__nav-link--active'
+                                            )
+                                        }
+                                        onClick={() => setMenuOpen(false)}
+                                    >
+                                        <FiPackage size={18} />
+                                        <span>Tour Packages</span>
+                                    </NavLink>
+                                </li>
+                            )}
+                            <li className='admin-nav__nav-item'>
+                                <NavLink
+                                    to='tour-sales'
+                                    className={({ isActive }) =>
+                                        clsx(
+                                            'admin-nav__nav-link',
+                                            isActive && 'admin-nav__nav-link--active'
+                                        )
+                                    }
+                                    onClick={() => setMenuOpen(false)}
+                                >
+                                    <FiTrendingUp size={18} />
+                                    <span>Tour Sales</span>
+                                </NavLink>
+                            </li>
+                            <li className='admin-nav__nav-item'>
+                                <NavLink
+                                    to='flights'
+                                    className={({ isActive }) =>
+                                        clsx(
+                                            'admin-nav__nav-link',
+                                            isActive && 'admin-nav__nav-link--active'
+                                        )
+                                    }
+                                    onClick={() => setMenuOpen(false)}
+                                >
+                                    <FiNavigation size={18} />
+                                    <span>Flight Sales</span>
+                                </NavLink>
+                            </li>
+                            {userRole === 'admin' && (
+                                <li className='admin-nav__nav-item'>
+                                    <NavLink
+                                        to='users'
+                                        className={({ isActive }) =>
+                                            clsx(
+                                                'admin-nav__nav-link',
+                                                isActive && 'admin-nav__nav-link--active'
+                                            )
+                                        }
+                                        onClick={() => setMenuOpen(false)}
+                                    >
+                                        <FiUsers size={18} />
+                                        <span>User Access</span>
+                                    </NavLink>
+                                </li>
+                            )}
+                        </ul>
                     </div>
-                    <CgProfile
-                        onClick={toggleProfile}
-                        className='admin-nav__profile'
-                        aria-label='Toggle profile menu'
-                    />
-                    {/* <ThemeToggle /> */}
+
+                    <div className='admin-nav__actions'>
+                        <div className='admin-nav__notifications-container'>
+                            <button
+                                className='admin-nav__notification-btn'
+                                onClick={() => setIsNotificationsOpen((prev) => !prev)}
+                                aria-label='Toggle notifications'
+                            >
+                                <FiBell size={20} />
+                                {notifications.length > 0 && (
+                                    <span className='admin-nav__notification-badge'>
+                                        {notifications.length}
+                                    </span>
+                                )}
+                            </button>
+                        </div>
+                        
+                        <div className='admin-nav__profile-container'>
+                            <button
+                                className='admin-nav__profile-btn'
+                                onClick={toggleProfile}
+                                aria-label='Toggle profile menu'
+                            >
+                                <div className='admin-nav__profile-avatar'>
+                                    <FiUser size={18} />
+                                </div>
+                                <div className='admin-nav__profile-info'>
+                                    <span className='admin-nav__profile-name'>
+                                        {adminEmail?.split('@')[0] || 'Admin'}
+                                    </span>
+                                    <span className='admin-nav__profile-role'>
+                                        {userRole === 'admin' ? 'Administrator' : 'Accounting'}
+                                    </span>
+                                </div>
+                                <FiChevronDown 
+                                    size={16} 
+                                    className={clsx(
+                                        'admin-nav__profile-chevron',
+                                        isProfileOpen && 'admin-nav__profile-chevron--open'
+                                    )}
+                                />
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </nav>
 
+            {/* Notifications Dropdown */}
             <div
                 className={clsx(
-                    'admin-nav__notifications',
-                    isNotificationsOpen && 'admin-nav__notifications--open'
+                    'admin-nav__notifications-dropdown',
+                    isNotificationsOpen && 'admin-nav__notifications-dropdown--open'
                 )}
             >
-                {notifications.length === 0 ? (
-                    <p className='admin-nav__notifications-empty'>
-                        No new notifications
-                    </p>
-                ) : (
-                    <ul className='admin-nav__notifications-list'>
-                        {notifications.map((notif, index) => (
-                            <li
-                                key={index}
-                                className='admin-nav__notification-item'
-                            >
-                                <Link
-                                    to={`/admin/bookings/${notif.booking_reference}`}
+                <div className='admin-nav__notifications-header'>
+                    <h3 className='admin-nav__notifications-title'>
+                        <FiBell size={18} />
+                        Notifications
+                    </h3>
+                    <button
+                        className='admin-nav__notifications-close'
+                        onClick={() => setIsNotificationsOpen(false)}
+                    >
+                        <FiX size={16} />
+                    </button>
+                </div>
+                <div className='admin-nav__notifications-content'>
+                    {notifications.length === 0 ? (
+                        <div className='admin-nav__notifications-empty'>
+                            <FiBell size={32} />
+                            <p>No new notifications</p>
+                            <span>You're all caught up!</span>
+                        </div>
+                    ) : (
+                        <ul className='admin-nav__notifications-list'>
+                            {notifications.map((notif, index) => (
+                                <li
+                                    key={index}
+                                    className='admin-nav__notification-item'
                                 >
-                                    New booking for {notif.booking_reference}
-                                </Link>
-                            </li>
-                        ))}
-                    </ul>
-                )}
+                                    <Link
+                                        to={getNotificationRoute(notif)}
+                                        className='admin-nav__notification-link'
+                                        onClick={() => setIsNotificationsOpen(false)}
+                                    >
+                                        <div className='admin-nav__notification-icon'>
+                                            <FiBell size={16} />
+                                        </div>
+                                        <div className='admin-nav__notification-content'>
+                                            <p className='admin-nav__notification-title'>
+                                                {notif.type === 'assignment' 
+                                                    ? `Booking Assigned - ${notif.bookingType === 'tour' ? 'Tour' : 'Flight'}`
+                                                    : notif.type === 'reassignment'
+                                                    ? `Booking Reassigned - ${notif.bookingType === 'tour' ? 'Tour' : 'Flight'}`
+                                                    : notif.type === 'new_booking'
+                                                    ? `New ${notif.bookingType === 'tour' ? 'Tour' : 'Flight'} Booking`
+                                                    : 'New Booking Received'
+                                                }
+                                            </p>
+                                            <p className='admin-nav__notification-desc'>
+                                                Booking reference: {notif.booking_reference}
+                                            </p>
+                                            <span className='admin-nav__notification-time'>
+                                                {new Date(notif.created_at).toLocaleString()}
+                                            </span>
+                                        </div>
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
             </div>
 
+            {/* Profile Dropdown */}
             <div
                 className={clsx(
-                    'admin-nav__profile-details',
-                    isProfileOpen && 'admin-nav__profile-details--open'
+                    'admin-nav__profile-dropdown',
+                    isProfileOpen && 'admin-nav__profile-dropdown--open'
                 )}
             >
-                <p className='admin-nav__email'>{adminEmail}</p>
-                <AdminPrimaryButton
-                    className='admin-nav__btn'
-                    onClick={handleLogout}
-                    buttonText='Logout'
-                />
+                <div className='admin-nav__profile-header'>
+                    <div className='admin-nav__profile-avatar-large'>
+                        <FiUser size={24} />
+                    </div>
+                    <div className='admin-nav__profile-details'>
+                        <h3 className='admin-nav__profile-name-large'>
+                            {adminEmail?.split('@')[0] || 'Admin User'}
+                        </h3>
+                        <p className='admin-nav__profile-email'>{adminEmail}</p>
+                        <span className='admin-nav__profile-role-badge'>
+                            {userRole === 'admin' ? 'Administrator' : 'Accounting User'}
+                        </span>
+                    </div>
+                </div>
+                <div className='admin-nav__profile-menu'>
+                    <button className='admin-nav__profile-menu-item'>
+                        <FiSettings size={18} />
+                        <span>Settings</span>
+                    </button>
+                    <button className='admin-nav__profile-menu-item'>
+                        <FiUser size={18} />
+                        <span>Profile</span>
+                    </button>
+                    <hr className='admin-nav__profile-divider' />
+                    <button 
+                        className='admin-nav__profile-menu-item admin-nav__profile-menu-item--logout'
+                        onClick={handleLogout}
+                    >
+                        <FiLogOut size={18} />
+                        <span>Logout</span>
+                    </button>
+                </div>
             </div>
         </>
     )

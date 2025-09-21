@@ -51,6 +51,7 @@
 }
 
 .passenger-details__origin {
+    font-size: 1.25rem;
 }
 
 .passenger-details__destination {
@@ -81,6 +82,7 @@
 }
 
 .passenger-details__dates {
+    font-size: 1.25rem;
 }
 
 .passenger-details__separator {
@@ -91,6 +93,7 @@
 }
 
 .passenger-details__count {
+    font-size: 1.25rem;
 }
 
 .passenger-details__form-wrapper {

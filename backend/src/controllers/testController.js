@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabaseClient.js'
-import { sendConfirmationEmail } from '../services/emailService.js'
+import { sendConfirmationEmail, generateFlightItineraryPDF } from '../services/emailService.js'
+import { mockFlightOffers } from '../mock/flightResultMockData.js'
 import Pusher from 'pusher'
 
 export const sendTestEmail = async (req, res) => {
@@ -79,6 +80,73 @@ export const sendTestNotification = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Failed to send test notification',
+        })
+    }
+}
+
+export const generateMockPDF = async (req, res) => {
+    try {
+        // Create mock booking data using the first flight offer from mock data
+        const mockBookingData = {
+            booking_reference: 'TRB-FLT-MOCK123',
+            pnr: 'MOCKPNR',
+            status: 'TICKETED',
+            e_ticket_numbers: ['ET123456789', 'ET987654321'],
+            amadeus_flight_offer: mockFlightOffers.data[0], // Use first mock flight offer
+            passenger_details: {
+                travelers: [
+                    {
+                        title: 'Mr',
+                        name: {
+                            firstName: 'John',
+                            lastName: 'Doe'
+                        },
+                        dateOfBirth: '1990-01-15',
+                        documents: [{
+                            number: 'P123456789',
+                            expiryDate: '2030-01-15',
+                            nationality: 'US'
+                        }],
+                        contact: {
+                            emailAddress: 'john.doe@example.com'
+                        }
+                    },
+                    {
+                        title: 'Ms',
+                        name: {
+                            firstName: 'Jane',
+                            lastName: 'Doe'
+                        },
+                        dateOfBirth: '1992-05-20',
+                        documents: [{
+                            number: 'P987654321',
+                            expiryDate: '2032-05-20',
+                            nationality: 'US'
+                        }],
+                        contact: {
+                            emailAddress: 'jane.doe@example.com'
+                        }
+                    }
+                ]
+            }
+        }
+
+        // Generate PDF
+        const pdfBuffer = await generateFlightItineraryPDF(mockBookingData)
+
+        // Set response headers for PDF download
+        res.setHeader('Content-Type', 'application/pdf')
+        res.setHeader('Content-Disposition', 'attachment; filename="mock-flight-itinerary.pdf"')
+        res.setHeader('Content-Length', pdfBuffer.length)
+
+        // Send PDF buffer
+        res.send(pdfBuffer)
+
+    } catch (error) {
+        console.error('Error generating mock PDF:', error)
+        res.status(500).json({
+            error: 'Failed to generate mock PDF',
+            details: error.message
         })
     }
 }

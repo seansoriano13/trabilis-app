@@ -1,7 +1,28 @@
 // Dashboard.jsx
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { FiCloud } from 'react-icons/fi'
+import { 
+    FiCloud, 
+    FiUsers, 
+    FiDollarSign, 
+    FiTrendingUp, 
+    FiMapPin,
+    FiRefreshCw,
+    FiEye,
+    FiEdit,
+    FiTrash2,
+    FiCalendar,
+    FiClock,
+    FiUser,
+    FiNavigation,
+    FiBarChart2,
+    FiActivity,
+    FiSun,
+    FiWind,
+    FiSunrise,
+    FiBell,
+    FiPackage
+} from 'react-icons/fi'
 import { Bar, Line } from 'react-chartjs-2'
 import {
     Chart as ChartJS,
@@ -270,22 +291,60 @@ const Dashboard = () => {
 
     return (
         <div className='dashboard'>
-            <h1 className='dashboard__title'>Dashboard</h1>
+            <div className='dashboard__header'>
+                <div className='dashboard__header-content'>
+                    <div className='dashboard__header-icon'>
+                        <FiBarChart2 size={32} />
+                    </div>
+                    <div className='dashboard__header-text'>
+                        <h1>Admin Dashboard</h1>
+                        <p>Overview of your travel business performance</p>
+                    </div>
+                </div>
+                <div className='dashboard__header-actions'>
+                    <button className='dashboard__action-btn dashboard__action-btn--refresh'>
+                        <FiRefreshCw size={16} />
+                        Refresh
+                    </button>
+                </div>
+            </div>
 
-            <div className='dashboard__cards'>
-                <div className='dashboard__card'>
+            <div className='dashboard__summary'>
+                <div className='dashboard__summary-card dashboard__summary-card--flights'>
+                    <div className='dashboard__summary-icon'>
+                        <FiNavigation size={24} />
+                    </div>
+                    <div className='dashboard__summary-content'>
                     <h3>Flight Bookings</h3>
                     <p>{flightTotal}</p>
+                        <span className='dashboard__summary-label'>Active bookings</span>
+                    </div>
                 </div>
-                <div className='dashboard__card'>
+                <div className='dashboard__summary-card dashboard__summary-card--tours'>
+                    <div className='dashboard__summary-icon'>
+                        <FiPackage size={24} />
+                    </div>
+                    <div className='dashboard__summary-content'>
                     <h3>Tour Bookings</h3>
                     <p>{tourTotal}</p>
+                        <span className='dashboard__summary-label'>Active bookings</span>
+                    </div>
                 </div>
-                <div className='dashboard__card'>
+                <div className='dashboard__summary-card dashboard__summary-card--notifications'>
+                    <div className='dashboard__summary-icon'>
+                        <FiBell size={24} />
+                    </div>
+                    <div className='dashboard__summary-content'>
                     <h3>Notifications</h3>
                     <p>{notifTotal}</p>
+                        <span className='dashboard__summary-label'>Unread alerts</span>
+                    </div>
                 </div>
-                <div className='dashboard__card'>
+                <div className='dashboard__summary-card dashboard__summary-card--revenue'>
+                    <div className='dashboard__summary-icon'>
+                        <FiDollarSign size={24} />
+                    </div>
+                    <div className='dashboard__summary-content'>
                     <h3>Total Revenue</h3>
                     <p>
                         ₱
@@ -300,283 +359,415 @@ const Dashboard = () => {
                             )
                         ).toLocaleString()}
                     </p>
+                        <span className='dashboard__summary-label'>All time</span>
+                    </div>
                 </div>
             </div>
 
             <div className='dashboard__section'>
-                <h2>Flight Bookings</h2>
+                <div className='dashboard__section-header'>
+                    <div className='dashboard__section-title'>
+                        <FiNavigation size={24} />
+                        <h2>Recent Flight Bookings</h2>
+                        <span className='dashboard__section-count'>({flightTotal} total)</span>
+                    </div>
+                    <div className='dashboard__section-actions'>
+                        <Link to="/admin/flights" className='dashboard__action-btn dashboard__action-btn--view-all'>
+                            <FiEye size={16} />
+                            View All
+                        </Link>
+                    </div>
+                </div>
+                
                 <div className='dashboard__table-container'>
                     <table className='dashboard__table'>
                         <thead>
                             <tr>
                                 <th
-                                    onClick={() =>
-                                        handleSortFlight('booking_reference')
-                                    }
+                                    onClick={() => handleSortFlight('booking_reference')}
+                                    className='dashboard__table-header dashboard__table-header--sortable'
                                 >
-                                    Ref{' '}
-                                    {sortFlight.key === 'booking_reference'
-                                        ? sortFlight.direction === 'asc'
-                                            ? '↑'
-                                            : '↓'
-                                        : ''}
+                                    <div className='dashboard__table-header-content'>
+                                        <span>Reference</span>
+                                        {sortFlight.key === 'booking_reference' && (
+                                            <span className='dashboard__sort-indicator'>
+                                                {sortFlight.direction === 'asc' ? '↑' : '↓'}
+                                            </span>
+                                        )}
+                                    </div>
                                 </th>
-                                <th onClick={() => handleSortFlight('status')}>
-                                    Status{' '}
-                                    {sortFlight.key === 'status'
-                                        ? sortFlight.direction === 'asc'
-                                            ? '↑'
-                                            : '↓'
-                                        : ''}
+                                <th 
+                                    onClick={() => handleSortFlight('status')}
+                                    className='dashboard__table-header dashboard__table-header--sortable'
+                                >
+                                    <div className='dashboard__table-header-content'>
+                                        <span>Status</span>
+                                        {sortFlight.key === 'status' && (
+                                            <span className='dashboard__sort-indicator'>
+                                                {sortFlight.direction === 'asc' ? '↑' : '↓'}
+                                            </span>
+                                        )}
+                                    </div>
                                 </th>
                                 <th
-                                    onClick={() =>
-                                        handleSortFlight(
-                                            'search_criteria.destination'
-                                        )
-                                    }
+                                    onClick={() => handleSortFlight('search_criteria.destination')}
+                                    className='dashboard__table-header dashboard__table-header--sortable'
                                 >
-                                    Destination{' '}
-                                    {sortFlight.key ===
-                                    'search_criteria.destination'
-                                        ? sortFlight.direction === 'asc'
-                                            ? '↑'
-                                            : '↓'
-                                        : ''}
+                                    <div className='dashboard__table-header-content'>
+                                        <span>Destination</span>
+                                        {sortFlight.key === 'search_criteria.destination' && (
+                                            <span className='dashboard__sort-indicator'>
+                                                {sortFlight.direction === 'asc' ? '↑' : '↓'}
+                                            </span>
+                                        )}
+                                    </div>
                                 </th>
                                 <th
-                                    onClick={() =>
-                                        handleSortFlight(
-                                            'search_criteria.outboundDeparture'
-                                        )
-                                    }
+                                    onClick={() => handleSortFlight('search_criteria.outboundDeparture')}
+                                    className='dashboard__table-header dashboard__table-header--sortable'
                                 >
-                                    Date{' '}
-                                    {sortFlight.key ===
-                                    'search_criteria.outboundDeparture'
-                                        ? sortFlight.direction === 'asc'
-                                            ? '↑'
-                                            : '↓'
-                                        : ''}
+                                    <div className='dashboard__table-header-content'>
+                                        <span>Date</span>
+                                        {sortFlight.key === 'search_criteria.outboundDeparture' && (
+                                            <span className='dashboard__sort-indicator'>
+                                                {sortFlight.direction === 'asc' ? '↑' : '↓'}
+                                            </span>
+                                        )}
+                                    </div>
                                 </th>
                                 <th
-                                    onClick={() =>
-                                        handleSortFlight('total_amount')
-                                    }
+                                    onClick={() => handleSortFlight('total_amount')}
+                                    className='dashboard__table-header dashboard__table-header--sortable'
                                 >
-                                    Amount{' '}
-                                    {sortFlight.key === 'total_amount'
-                                        ? sortFlight.direction === 'asc'
-                                            ? '↑'
-                                            : '↓'
-                                        : ''}
+                                    <div className='dashboard__table-header-content'>
+                                        <span>Amount</span>
+                                        {sortFlight.key === 'total_amount' && (
+                                            <span className='dashboard__sort-indicator'>
+                                                {sortFlight.direction === 'asc' ? '↑' : '↓'}
+                                            </span>
+                                        )}
+                                    </div>
                                 </th>
-                                <th>PNR</th>
+                                <th className='dashboard__table-header'>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {sortedFlightBookings.map((booking) => (
-                                <tr key={booking.id}>
-                                    <td>
+                                <tr key={booking.id} className='dashboard__table-row'>
+                                    <td className='dashboard__table-cell dashboard__table-cell--reference'>
                                         <Link
                                             to={`/admin/flights/${booking.id}`}
+                                            className='dashboard__booking-link'
                                         >
                                             {booking.booking_reference}
                                         </Link>
                                     </td>
-                                    <td
-                                        className={`dashboard__status dashboard__status--${booking.status.toLowerCase()}`}
-                                    >
-                                        {booking.status}
+                                    <td className='dashboard__table-cell'>
+                                        <span className={`dashboard__status dashboard__status--${booking.status === 'TICKETED' ? 'confirmed' : booking.status.toLowerCase()}`}>
+                                        {booking.status === 'TICKETED' ? 'Confirmed' : booking.status}
+                                        </span>
                                     </td>
-                                    <td>
-                                        {getNestedValue(
-                                            booking,
-                                            'search_criteria.destination'
-                                        ) || '-'}
+                                    <td className='dashboard__table-cell'>
+                                        <div className='dashboard__destination-info'>
+                                            <FiMapPin size={16} />
+                                            <span>{getNestedValue(booking, 'search_criteria.destination') || '-'}</span>
+                                        </div>
                                     </td>
-                                    <td>
-                                        {getNestedValue(
-                                            booking,
-                                            'search_criteria.outboundDeparture'
-                                        ) || '-'}
+                                    <td className='dashboard__table-cell'>
+                                        <div className='dashboard__date-info'>
+                                            <FiCalendar size={16} />
+                                            <span>{getNestedValue(booking, 'search_criteria.outboundDeparture') || '-'}</span>
+                                        </div>
                                     </td>
-                                    <td>
-                                        ₱
-                                        {(
-                                            booking.total_amount || 0
-                                        ).toLocaleString()}
+                                    <td className='dashboard__table-cell dashboard__table-cell--amount'>
+                                        <div className='dashboard__amount'>
+                                            <span className='dashboard__amount-value'>
+                                                ₱{(booking.total_amount || 0).toLocaleString()}
+                                            </span>
+                                        </div>
                                     </td>
-                                    <td>{booking.pnr || '-'}</td>
+                                    <td className='dashboard__table-cell dashboard__table-cell--actions'>
+                                        <div className='dashboard__actions'>
+                                            <Link 
+                                                to={`/admin/flights/${booking.id}`}
+                                                className='dashboard__action-btn dashboard__action-btn--view'
+                                                title='View Details'
+                                            >
+                                                <FiEye size={16} />
+                                            </Link>
+                                        </div>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
+                
+                <div className='dashboard__pagination-container'>
                 <ReactPaginate
-                    previousLabel={'←'}
-                    nextLabel={'→'}
+                        previousLabel={'← Previous'}
+                        nextLabel={'Next →'}
                     pageCount={Math.ceil(flightTotal / pageSize)}
                     onPageChange={({ selected }) => setFlightPage(selected)}
                     containerClassName={'dashboard__pagination'}
                     activeClassName={'dashboard__pagination--active'}
                     forcePage={flightPage}
+                        breakLabel={'...'}
+                        pageRangeDisplayed={3}
+                        marginPagesDisplayed={1}
                 />
+                </div>
             </div>
 
             <div className='dashboard__section'>
-                <h2>Tour Bookings</h2>
+                <div className='dashboard__section-header'>
+                    <div className='dashboard__section-title'>
+                        <FiPackage size={24} />
+                        <h2>Recent Tour Bookings</h2>
+                        <span className='dashboard__section-count'>({tourTotal} total)</span>
+                    </div>
+                    <div className='dashboard__section-actions'>
+                        <Link to="/admin/tours" className='dashboard__action-btn dashboard__action-btn--view-all'>
+                            <FiEye size={16} />
+                            View All
+                        </Link>
+                    </div>
+                </div>
+                
                 <div className='dashboard__table-container'>
                     <table className='dashboard__table'>
                         <thead>
                             <tr>
                                 <th
-                                    onClick={() =>
-                                        handleSortTour('booking_reference')
-                                    }
+                                    onClick={() => handleSortTour('booking_reference')}
+                                    className='dashboard__table-header dashboard__table-header--sortable'
                                 >
-                                    Ref{' '}
-                                    {sortTour.key === 'booking_reference'
-                                        ? sortTour.direction === 'asc'
-                                            ? '↑'
-                                            : '↓'
-                                        : ''}
+                                    <div className='dashboard__table-header-content'>
+                                        <span>Reference</span>
+                                        {sortTour.key === 'booking_reference' && (
+                                            <span className='dashboard__sort-indicator'>
+                                                {sortTour.direction === 'asc' ? '↑' : '↓'}
+                                            </span>
+                                        )}
+                                    </div>
                                 </th>
-                                <th onClick={() => handleSortTour('status')}>
-                                    Status{' '}
-                                    {sortTour.key === 'status'
-                                        ? sortTour.direction === 'asc'
-                                            ? '↑'
-                                            : '↓'
-                                        : ''}
+                                <th 
+                                    onClick={() => handleSortTour('status')}
+                                    className='dashboard__table-header dashboard__table-header--sortable'
+                                >
+                                    <div className='dashboard__table-header-content'>
+                                        <span>Status</span>
+                                        {sortTour.key === 'status' && (
+                                            <span className='dashboard__sort-indicator'>
+                                                {sortTour.direction === 'asc' ? '↑' : '↓'}
+                                            </span>
+                                        )}
+                                    </div>
                                 </th>
-                                <th>Package</th>
+                                <th className='dashboard__table-header'>Package</th>
                                 <th
-                                    onClick={() =>
-                                        handleSortTour('passenger_count')
-                                    }
+                                    onClick={() => handleSortTour('passenger_count')}
+                                    className='dashboard__table-header dashboard__table-header--sortable'
                                 >
-                                    Passengers{' '}
-                                    {sortTour.key === 'passenger_count'
-                                        ? sortTour.direction === 'asc'
-                                            ? '↑'
-                                            : '↓'
-                                        : ''}
+                                    <div className='dashboard__table-header-content'>
+                                        <span>Passengers</span>
+                                        {sortTour.key === 'passenger_count' && (
+                                            <span className='dashboard__sort-indicator'>
+                                                {sortTour.direction === 'asc' ? '↑' : '↓'}
+                                            </span>
+                                        )}
+                                    </div>
                                 </th>
-                                <th>Lead</th>
-                                <th
-                                    onClick={() =>
-                                        handleSortTour('total_amount')
-                                    }
+                                <th className='dashboard__table-header'>Lead</th>
+                                <th 
+                                    onClick={() => handleSortTour('total_amount')}
+                                    className='dashboard__table-header dashboard__table-header--sortable'
                                 >
-                                    Amount{' '}
-                                    {sortTour.key === 'total_amount'
-                                        ? sortTour.direction === 'asc'
-                                            ? '↑'
-                                            : '↓'
-                                        : ''}
+                                    <div className='dashboard__table-header-content'>
+                                        <span>Amount</span>
+                                        {sortTour.key === 'total_amount' && (
+                                            <span className='dashboard__sort-indicator'>
+                                                {sortTour.direction === 'asc' ? '↑' : '↓'}
+                                            </span>
+                                        )}
+                                    </div>
                                 </th>
+                                <th className='dashboard__table-header'>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {sortedTourBookings.map((booking) => (
-                                <tr key={booking.id}>
-                                    <td>
-                                        <Link to={`/admin/tours/${booking.id}`}>
+                                <tr key={booking.id} className='dashboard__table-row'>
+                                    <td className='dashboard__table-cell dashboard__table-cell--reference'>
+                                        <Link 
+                                            to={`/admin/tours/${booking.id}`}
+                                            className='dashboard__booking-link'
+                                        >
                                             {booking.booking_reference}
                                         </Link>
                                     </td>
-                                    <td
-                                        className={`dashboard__status dashboard__status--${booking.status.toLowerCase()}`}
-                                    >
-                                        {booking.status}
+                                    <td className='dashboard__table-cell'>
+                                        <span className={`dashboard__status dashboard__status--${booking.status === 'TICKETED' ? 'confirmed' : booking.status.toLowerCase()}`}>
+                                        {booking.status === 'TICKETED' ? 'Confirmed' : booking.status}
+                                        </span>
                                     </td>
-                                    <td>
-                                        {getNestedValue(
-                                            booking,
-                                            'package_dates.tour_packages.title'
-                                        ) || 'Unknown'}
+                                    <td className='dashboard__table-cell'>
+                                        <div className='dashboard__package-info'>
+                                            <span className='dashboard__package-name'>
+                                                {getNestedValue(booking, 'package_dates.tour_packages.title') || 'Unknown'}
+                                            </span>
+                                        </div>
                                     </td>
-                                    <td>{booking.passenger_count}</td>
-                                    <td>{`${booking.lead_first_name} ${booking.lead_last_name}`}</td>
-                                    <td>
-                                        ₱
-                                        {(
-                                            booking.total_amount || 0
-                                        ).toLocaleString()}
+                                    <td className='dashboard__table-cell'>
+                                        <div className='dashboard__passenger-count'>
+                                            <FiUsers size={16} />
+                                            <span>{booking.passenger_count}</span>
+                                        </div>
+                                    </td>
+                                    <td className='dashboard__table-cell'>
+                                        <div className='dashboard__lead-info'>
+                                            <FiUser size={16} />
+                                            <span>{`${booking.lead_first_name} ${booking.lead_last_name}`}</span>
+                                        </div>
+                                    </td>
+                                    <td className='dashboard__table-cell dashboard__table-cell--amount'>
+                                        <div className='dashboard__amount'>
+                                            <span className='dashboard__amount-value'>
+                                                ₱{(booking.total_amount || 0).toLocaleString()}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td className='dashboard__table-cell dashboard__table-cell--actions'>
+                                        <div className='dashboard__actions'>
+                                            <Link 
+                                                to={`/admin/tours/${booking.id}`}
+                                                className='dashboard__action-btn dashboard__action-btn--view'
+                                                title='View Details'
+                                            >
+                                                <FiEye size={16} />
+                                            </Link>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
+                
+                <div className='dashboard__pagination-container'>
                 <ReactPaginate
-                    previousLabel={'←'}
-                    nextLabel={'→'}
+                        previousLabel={'← Previous'}
+                        nextLabel={'Next →'}
                     pageCount={Math.ceil(tourTotal / pageSize)}
                     onPageChange={({ selected }) => setTourPage(selected)}
                     containerClassName={'dashboard__pagination'}
                     activeClassName={'dashboard__pagination--active'}
                     forcePage={tourPage}
+                        breakLabel={'...'}
+                        pageRangeDisplayed={3}
+                        marginPagesDisplayed={1}
                 />
+                </div>
             </div>
 
-            <div className='flex'>
-                <div className='dashboard__section'>
+            <div className='dashboard__charts'>
+                <div className='dashboard__section dashboard__section--chart'>
+                    <div className='dashboard__section-header'>
+                        <div className='dashboard__section-title'>
+                            <FiSun size={24} />
                     <h2>Weather (Manila)</h2>
-                    <div className='dashboard__weather'>
-                        <FiCloud
-                            size={32}
-                            color='#f7d100'
-                        />
-                        <div>
-                            <p>
-                                {weather
-                                    ? `${weather.main.temp}°C, ${weather.weather[0]?.description}`
-                                    : '0°C, Partly Cloudy'}
-                            </p>
-                            <p>
-                                {weather
-                                    ? `Wind: ${
-                                          weather.wind.speed
-                                      } m/s | Sunrise: ${new Date(
-                                          weather.sys.sunrise * 1000
-                                      ).toLocaleTimeString()}`
-                                    : 'Wind: 0 m/s | Sunrise: 05:00 AM'}
-                            </p>
                         </div>
                     </div>
+                    <div className='dashboard__weather'>
+                        <div className='dashboard__weather-icon'>
+                            <FiCloud size={32} />
+                        </div>
+                        <div className='dashboard__weather-info'>
+                            <div className='dashboard__weather-main'>
+                                <span className='dashboard__weather-temp'>
+                                    {weather ? `${weather.main.temp}°C` : '0°C'}
+                                </span>
+                                <span className='dashboard__weather-desc'>
+                                    {weather ? weather.weather[0]?.description : 'Partly Cloudy'}
+                                </span>
+                            </div>
+                            <div className='dashboard__weather-details'>
+                                <div className='dashboard__weather-detail'>
+                                    <FiWind size={16} />
+                                    <span>{weather ? `${weather.wind.speed} m/s` : '0 m/s'}</span>
+                                </div>
+                                <div className='dashboard__weather-detail'>
+                                    <FiSunrise size={16} />
+                                    <span>
+                                {weather
+                                            ? new Date(weather.sys.sunrise * 1000).toLocaleTimeString()
+                                            : '05:00 AM'
+                                        }
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className='dashboard__chart-container'>
                     <Line
                         data={weatherData}
                         options={{
                             responsive: true,
+                                maintainAspectRatio: false,
                             plugins: { legend: { display: false } },
-                            scales: { y: { beginAtZero: true } },
+                                scales: { 
+                                    y: { beginAtZero: true },
+                                    x: { display: false }
+                                },
                         }}
                     />
+                    </div>
                 </div>
 
-                <div className='dashboard__section'>
-                    <h2>Bookings by Type</h2>
+                <div className='dashboard__section dashboard__section--chart'>
+                    <div className='dashboard__section-header'>
+                    <div className='dashboard__section-title'>
+                        <FiBarChart2 size={24} />
+                        <h2>Bookings by Type</h2>
+                        </div>
+                    </div>
+                    <div className='dashboard__chart-container'>
                     <Bar
                         data={bookingStatsData}
                         options={{
                             responsive: true,
+                                maintainAspectRatio: false,
                             plugins: { legend: { display: false } },
-                            scales: { y: { beginAtZero: true } },
+                                scales: { 
+                                    y: { beginAtZero: true },
+                                    x: { display: true }
+                                },
                         }}
                     />
+                    </div>
                 </div>
-                <div className='dashboard__section'>
+
+                <div className='dashboard__section dashboard__section--chart'>
+                    <div className='dashboard__section-header'>
+                        <div className='dashboard__section-title'>
+                            <FiActivity size={24} />
                     <h2>Revenue Trend</h2>
+                        </div>
+                    </div>
+                    <div className='dashboard__chart-container'>
                     <Line
                         data={profitData}
                         options={{
                             responsive: true,
+                                maintainAspectRatio: false,
                             plugins: { legend: { display: false } },
-                            scales: { y: { beginAtZero: true } },
+                                scales: { 
+                                    y: { beginAtZero: true },
+                                    x: { display: true }
+                                },
                         }}
                     />
+                    </div>
                 </div>
             </div>
 

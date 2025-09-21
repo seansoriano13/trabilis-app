@@ -1,47 +1,126 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import axios from 'axios'
+import { IoPersonCircle } from 'react-icons/io5'
 import './TourBooking.css'
 import flightsHeroDesktop from '/images/flights-hero-desktop.jpg'
+import { PassengerForm } from './PassengerDetails.jsx'
+
+const PrimaryButton = ({ onClick, className, buttonText, isBold, loading }) => (
+    <button
+        type='button'
+        onClick={onClick}
+        className={`w-full py-3 px-4 bg-yellow-500 text-black font-${
+            isBold ? 'semibold' : 'medium'
+        } rounded-md shadow hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors ${className}`}
+        disabled={loading}
+    >
+        {loading ? 'Processing...' : buttonText}
+    </button>
+)
 
 function TourBooking() {
     useEffect(() => {
         window.scrollTo(0, 0)
     }, [])
+
     const { state } = useLocation()
     const { selectedDateId, passengers, selectedDate, title } = state
+    const totalPassengers = passengers.adults + passengers.children
 
+    // passengers data like flights (but no documents)
     const [formData, setFormData] = useState({
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
+        passengers: Array.from({ length: totalPassengers }, (_, i) => ({
+            id: `${i + 1}`,
+            type: i < passengers.adults ? 'Adult' : 'Child',
+            title: 'mr',
+            name: {
+                firstName: '',
+                lastName: '',
+            },
+            gender: 'MALE',
+            dateOfBirth: '',
+            contact: {
+                emailAddress: i === 0 ? '' : undefined, // only lead passenger has contact info
+                phones: [
+                    {
+                        deviceType: 'MOBILE',
+                        countryCallingCode: '63',
+                        number: i === 0 ? '' : undefined,
+                    },
+                ],
+            },
+            documents: [], // tour booking doesn't need passport documents
+        })),
         payment_type: 'FULL',
     })
+
     const [error, setError] = useState(null)
     const [loading, setLoading] = useState(false)
     const reservation_per_pax = state.dates[0].reservation_fee_per_pax
 
-    const validateForm = () => {
-        if (!formData.firstName.trim()) return 'First name is required'
-        if (!formData.lastName.trim()) return 'Last name is required'
-        if (!formData.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))
-            return 'Valid email is required'
-        if (!formData.phone.match(/^\+?\d{10,15}$/))
-            return 'Valid phone number is required'
-        if (!['FULL', 'RESERVATION'].includes(formData.payment_type))
-            return 'Invalid payment type'
-        if (!Number.isInteger(selectedDateId) || selectedDateId <= 0)
-            return 'Invalid tour date'
-        if (!Number.isInteger(passengers) || passengers <= 0)
-            return 'Invalid number of passengers'
-        return null
+    const handlePassengerChange = (index, field, value) => {
+        setFormData((prev) => {
+            const updated = [...prev.passengers]
+            const keys = field.split('.')
+            let target = updated[index]
+            
+            // Handle nested field updates (like 'name.firstName', 'contact.emailAddress', etc.)
+            for (let i = 0; i < keys.length - 1; i++) {
+                if (keys[i].includes('[') && keys[i].includes(']')) {
+                    // Handle array access like 'phones[0]'
+                    const arrayName = keys[i].split('[')[0]
+                    const arrayIndex = parseInt(keys[i].split('[')[1].split(']')[0])
+                    target = target[arrayName] = target[arrayName] || []
+                    target = target[arrayIndex] = target[arrayIndex] || {}
+                } else {
+                    target = target[keys[i]] = target[keys[i]] || {}
+                }
+            }
+            
+            const finalKey = keys[keys.length - 1]
+            if (finalKey.includes('[') && finalKey.includes(']')) {
+                // Handle array access for final key
+                const arrayName = finalKey.split('[')[0]
+                const arrayIndex = parseInt(finalKey.split('[')[1].split(']')[0])
+                target[arrayName] = target[arrayName] || []
+                target[arrayName][arrayIndex] = value
+            } else {
+                target[finalKey] = value
+            }
+            
+            return { ...prev, passengers: updated }
+        })
+        setError(null)
     }
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target
-        setFormData((prev) => ({ ...prev, [name]: value }))
-        setError(null)
+    const handlePaymentTypeChange = (e) => {
+        const { value } = e.target
+        setFormData((prev) => ({ ...prev, payment_type: value }))
+    }
+
+    const validateForm = () => {
+        const lead = formData.passengers[0]
+        
+        // Validate lead passenger (required for booking)
+        if (!lead.name.firstName?.trim())
+            return 'Lead passenger first name is required'
+        if (!lead.name.lastName?.trim())
+            return 'Lead passenger last name is required'
+        if (!lead.contact.emailAddress?.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))
+            return 'Valid email is required for lead passenger'
+        if (!lead.contact.phones[0]?.number?.match(/^\d{10,15}$/))
+            return 'Valid phone number is required for lead passenger'
+
+        // Validate other passengers (just need names)
+        for (let i = 1; i < formData.passengers.length; i++) {
+            const passenger = formData.passengers[i]
+            if (!passenger.name.firstName?.trim())
+                return `First name is required for passenger ${i + 1}`
+            if (!passenger.name.lastName?.trim())
+                return `Last name is required for passenger ${i + 1}`
+        }
+        return null
     }
 
     const handleSubmit = async (e) => {
@@ -57,25 +136,27 @@ function TourBooking() {
         }
 
         try {
+            // Extract lead passenger info (first passenger)
+            const leadPassenger = formData.passengers[0]
+            
             const response = await axios.post(
                 `${
                     import.meta.env.VITE_BACKEND_URL
                 }/api/v1/destinations/tour/booking`,
                 {
                     package_date_id: selectedDateId,
-                    num_pax: passengers,
+                    num_pax: totalPassengers,
                     lead_booker_details: {
-                        firstName: formData.firstName,
-                        lastName: formData.lastName,
-                        email: formData.email,
-                        phone: formData.phone,
+                        firstName: leadPassenger.name.firstName,
+                        lastName: leadPassenger.name.lastName,
+                        email: leadPassenger.contact.emailAddress,
+                        phone: leadPassenger.contact.phones[0].number,
                     },
                     payment_type: formData.payment_type,
                 },
                 { headers: { 'Content-Type': 'application/json' } }
             )
 
-            // Redirect to Stripe checkout URL
             if (response.data.checkoutUrl) {
                 window.location.href = response.data.checkoutUrl
             } else {
@@ -86,187 +167,97 @@ function TourBooking() {
                 err.response?.data?.error ||
                 'Failed to initiate booking. Please try again.'
             setError(errorMessage)
-            if (err.response?.status === 404) {
-                setError('Selected tour date is not available.')
-            } else if (err.response?.status === 409) {
-                setError('Not enough slots available for this tour.')
-            }
         } finally {
             setLoading(false)
         }
     }
 
     return (
-        <div className='max-w-lg mx-auto px-6 pb-6 mt-30 mb-4 pt-8 bg-white rounded-lg shadow-md'>
-            <div className='text-3xl font-extrabold mb-6 text-gray-900'>
-                Lead Passenger Details
+        <div className='passenger-details pt-[var(--default-padding-top)] lg:pt-25 md:pt-35'>
+            <div className='hero-background'>
+                <img
+                    className='hero-image'
+                    src={flightsHeroDesktop}
+                    alt='Tour Hero'
+                />
             </div>
 
-            <img
-                className='flights__hero-mobile'
-                src={flightsHeroDesktop}
-                alt='flightsHeroDesktop'
-            />
+            <div className='bg-white rounded-lg text-center p-10 grid gap-4 max-w-[1200px] mx-auto w-screen'>
+                <h3 className='passenger-details__origin'>
+                    <b>Tour Package:</b> {title}
+                </h3>
+                <p className='passenger-details__dates'>
+                    <b>Date: </b>{' '}
+                    {new Date(selectedDate.start_date).toLocaleDateString()} -{' '}
+                    {new Date(selectedDate.end_date).toLocaleDateString()}
+                </p>
+                <p className='passenger-details__count'>
+                    <b>Pax: </b>
+                    {totalPassengers} Passenger{totalPassengers > 1 ? 's' : ''}
+                </p>
+            </div>
 
-            <form
-                onSubmit={handleSubmit}
-                className='space-y-4'
-            >
-                {/* Tour */}
-                <div>
-                    <label className='block text-sm font-medium text-gray-700'>
-                        Tour Package Name
-                    </label>
-                    <div className='mt-1 text-lg text-gray-900'>{title}</div>
-                </div>
+            <div className='passenger-details__form-wrapper'>
+                <h2 className='passenger-details__form-title'>
+                    <IoPersonCircle />
+                    Passenger Information
+                </h2>
+                <PassengerForm
+                    passengers={formData.passengers}
+                    handleChange={handlePassengerChange}
+                    validationErrors={[]}
+                    setValidationErrors={() => {}}
+                />
 
-                {/* Date */}
-                <div>
-                    <label className='block text-sm font-medium text-gray-700'>
-                        Date
-                    </label>
-                    <p className='mt-1 text-gray-900'>
-                        {new Date(selectedDate.start_date).toLocaleDateString()}{' '}
-                        - {new Date(selectedDate.end_date).toLocaleDateString()}
-                    </p>
-                </div>
-
-                {/* Passengers */}
-                <div>
-                    <label className='block text-sm font-medium text-gray-700'>
-                        Passengers
-                    </label>
-                    <p className='mt-1 text-gray-900'>{passengers}</p>
-                </div>
-
-                {/* First Name */}
-                <div>
-                    <label
-                        htmlFor='firstName'
-                        className='block text-sm font-medium text-gray-700'
-                    >
-                        First Name
-                    </label>
-                    <input
-                        type='text'
-                        id='firstName'
-                        name='firstName'
-                        value={formData.firstName}
-                        onChange={handleInputChange}
-                        className='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm'
-                        required
-                        disabled={loading}
-                    />
-                </div>
-
-                {/* Last Name */}
-                <div>
-                    <label
-                        htmlFor='lastName'
-                        className='block text-sm font-medium text-gray-700'
-                    >
-                        Last Name
-                    </label>
-                    <input
-                        type='text'
-                        id='lastName'
-                        name='lastName'
-                        value={formData.lastName}
-                        onChange={handleInputChange}
-                        className='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm'
-                        required
-                        disabled={loading}
-                    />
-                </div>
-
-                {/* Email */}
-                <div>
-                    <label
-                        htmlFor='email'
-                        className='block text-sm font-medium text-gray-700'
-                    >
-                        Email
-                    </label>
-                    <input
-                        type='email'
-                        id='email'
-                        name='email'
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        className='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm'
-                        required
-                        disabled={loading}
-                    />
-                </div>
-
-                {/* Phone */}
-                <div>
-                    <label
-                        htmlFor='phone'
-                        className='block text-sm font-medium text-gray-700'
-                    >
-                        Phone
-                    </label>
-                    <input
-                        type='tel'
-                        id='phone'
-                        name='phone'
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        className='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm'
-                        required
-                        disabled={loading}
-                    />
-                </div>
-
-                {/* Payment Type */}
-                <div>
-                    <label
-                        htmlFor='payment_type'
-                        className='block text-sm font-medium text-gray-700'
-                    >
-                        Payment Type
-                    </label>
-                    <select
-                        id='payment_type'
-                        name='payment_type'
-                        value={formData.payment_type}
-                        onChange={handleInputChange}
-                        className='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm'
-                        disabled={loading}
-                    >
-                        <option value='FULL'>Full Payment</option>
-                        <option value='RESERVATION'>Reservation</option>
-                    </select>
-                </div>
-
-                {/* Reservation Fee */}
-                {formData.payment_type === 'RESERVATION' && (
+                <form
+                    className='space-y-6 mt-6'
+                    onSubmit={handleSubmit}
+                >
+                    {/* Payment Type */}
                     <div>
                         <label className='block text-sm font-medium text-gray-700'>
-                            Reservation Fee Per Pax
+                            Payment Type
                         </label>
-                        <input
-                            type='text'
-                            disabled
-                            defaultValue={`PHP ${reservation_per_pax}`}
-                            className='mt-1 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm sm:text-sm'
-                        />
+                        <select
+                            value={formData.payment_type}
+                            onChange={handlePaymentTypeChange}
+                            className='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2 px-3'
+                            disabled={loading}
+                        >
+                            <option value='FULL'>Full Payment</option>
+                            <option value='RESERVATION'>Reservation</option>
+                        </select>
                     </div>
-                )}
 
-                {/* Error */}
-                {error && <p className='text-red-600 text-sm'>{error}</p>}
+                    {formData.payment_type === 'RESERVATION' && (
+                        <div>
+                            <label className='block text-sm font-medium text-gray-700'>
+                                Reservation Fee Per Pax
+                            </label>
+                            <input
+                                type='text'
+                                disabled
+                                defaultValue={`PHP ${reservation_per_pax}`}
+                                className='mt-1 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm sm:text-sm py-2 px-3'
+                            />
+                        </div>
+                    )}
 
-                {/* Submit */}
-                <button
-                    type='submit'
-                    className='w-full py-2 px-4 bg-[var(--color-yellow)] text-black font-medium rounded-md shadow hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary'
-                    disabled={loading}
-                >
-                    {loading ? 'Processing...' : 'Confirm & Proceed to Payment'}
-                </button>
-            </form>
+                    {error && (
+                        <p className='text-red-600 text-sm font-medium'>
+                            {error}
+                        </p>
+                    )}
+                </form>
+            </div>
+
+            <PrimaryButton
+                onClick={handleSubmit}
+                className='passenger-details__btn'
+                buttonText='Proceed To Payment'
+                isBold={true}
+                loading={loading}
+            />
         </div>
     )
 }

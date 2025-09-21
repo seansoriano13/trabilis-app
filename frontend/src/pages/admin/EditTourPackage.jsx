@@ -826,7 +826,7 @@ function EditTourPackage() {
 
             <AdminPrimaryButton
                 className='tour-edit__button-save'
-                buttonText='Save'
+                buttonText={isSubmitting ? 'Saving...' : 'Save'}
                 onClick={handleSubmit}
                 disabled={isSubmitting}
             />

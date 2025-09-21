@@ -33,6 +33,8 @@ import TourBooking from './pages/client/TourBooking'
 import AdminTours from './pages/admin/AdminTour'
 import AdminUsers from './pages/admin/AdminUsers'
 import TrackBooking from './pages/client/TrackBooking'
+import FlightBookingDetail from './pages/admin/FlightBookingDetail'
+import TourBookingDetail from './pages/admin/TourBookingDetail'
 
 Modal.setAppElement('#root')
 
@@ -164,8 +166,16 @@ function App() {
                             element={<AdminTours />}
                         />
                         <Route
+                            path='tour-sales/:id'
+                            element={<TourBookingDetail />}
+                        />
+                        <Route
                             path='flights'
                             element={<AdminFlights />}
+                        />
+                        <Route
+                            path='flights/:id'
+                            element={<FlightBookingDetail />}
                         />
                         <Route
                             path='users'

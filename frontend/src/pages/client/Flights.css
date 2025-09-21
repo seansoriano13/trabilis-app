@@ -7,6 +7,51 @@
     border-radius: 8px;
 }
 
+.tour-booking-container {
+    position: relative;
+    min-height: 100vh;
+    background-color: black; /* Fallback background color */
+}
+
+.hero-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh; /* Full viewport height */
+    overflow: hidden;
+    z-index: -1;
+}
+
+.hero-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Ensures image covers the area without distortion */
+    filter: brightness(40%); /* Slightly brighter for better contrast */
+}
+
+.form-container {
+    position: relative;
+    z-index: 1;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+    background-color: rgba(
+        255,
+        255,
+        255,
+        0.95
+    ); /* Slightly transparent for overlay effect */
+    max-width: 32rem; /* 512px */
+}
+
+@media (max-width: 640px) {
+    .form-container {
+        margin-left: 1rem;
+        margin-right: 1rem;
+        padding: 1.5rem;
+    }
+}
+
 .flights {
     height: 100vh;
     padding: var(--default-padding-top) 1rem 0;

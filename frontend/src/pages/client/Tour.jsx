@@ -19,7 +19,10 @@ function Tour() {
     const [isDescHidden, setIsDescHidden] = useState({})
     const [selectedTab, setSelectedTab] = useState('inclusions')
     const [selectedDateId, setSelectedDateId] = useState(0)
-    const [passengers, setPassengers] = useState(1)
+    const [passengers, setPassengers] = useState({
+        adults: 1,
+        children: 0,
+    })
 
     const tourDates = tour.dates || []
     const selectedDate = tourDates.find((date) => date.id === selectedDateId)
@@ -58,7 +61,7 @@ function Tour() {
 
     const handleDateClick = (dateId) => {
         setSelectedDateId(selectedDateId === dateId ? null : dateId)
-        setPassengers(1)
+        setPassengers({ adults: 1, children: 0 })
     }
 
     const navigate = useNavigate()
@@ -309,37 +312,83 @@ function Tour() {
                     </div>
                 </div>
             </div>
-            <div className='max-w-[1200px] mx-auto flex items-center gap-4 border-t justify-center border-gray-300 pt-4'>
-                <span className='font-medium'>Passengers</span>
+            <div className='max-w-[1200px] mx-auto flex items-center gap-4 border-t justify-center border-gray-300 pt-4 px-4'>
+                <span className='font-medium'>Adults</span>
                 <div className='flex items-center gap-2'>
                     <button
-                        onClick={() => setPassengers((p) => Math.max(1, p - 1))}
+                        type='button'
+                        onClick={() =>
+                            setPassengers((p) => ({
+                                ...p,
+                                adults: Math.max(1, p.adults - 1),
+                            }))
+                        }
                         className='px-3 py-1 bg-gray-200 rounded'
                     >
                         -
                     </button>
-                    <span>{passengers}</span>
+                    <span>{passengers.adults}</span>
                     <button
+                        type='button'
                         onClick={() =>
-                            setPassengers((p) =>
-                                p < availableSlots ? p + 1 : p
-                            )
+                            setPassengers((p) => ({
+                                ...p,
+                                adults:
+                                    p.adults < availableSlots
+                                        ? p.adults + 1
+                                        : p.adults,
+                            }))
                         }
                         className='px-3 py-1 bg-gray-200 rounded'
                     >
                         +
                     </button>
                 </div>
+
+                <span className='font-medium'>Children</span>
+                <div className='flex items-center gap-2'>
+                    <button
+                        type='button'
+                        onClick={() =>
+                            setPassengers((p) => ({
+                                ...p,
+                                children: Math.max(0, p.children - 1),
+                            }))
+                        }
+                        className='px-3 py-1 bg-gray-200 rounded'
+                    >
+                        -
+                    </button>
+                    <span>{passengers.children}</span>
+                    <button
+                        type='button'
+                        onClick={() =>
+                            setPassengers((p) => ({
+                                ...p,
+                                children:
+                                    p.adults + p.children < availableSlots
+                                        ? p.children + 1
+                                        : p.children,
+                            }))
+                        }
+                        className='px-3 py-1 bg-gray-200 rounded'
+                    >
+                        +
+                    </button>
+                </div>
+
                 {passengers === availableSlots && (
                     <div className='text-red-600'>Max Passengers Reached.</div>
                 )}
+                <PrimaryButton
+                    onClick={handleBookClick}
+                    className='tour-card__btn max-w-[1200px] mx-auto'
+                    buttonText='Book Now'
+                    disabled={
+                        !selectedDate?.available_slots || passengers === 0
+                    }
+                />
             </div>
-            <PrimaryButton
-                onClick={handleBookClick}
-                className='tour-card__btn max-w-[1200px] mx-auto'
-                buttonText='Book Now'
-                disabled={!selectedDate?.available_slots || passengers === 0}
-            />
         </div>
     )
 }

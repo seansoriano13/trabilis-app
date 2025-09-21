@@ -159,6 +159,7 @@ export const handleStripeWebhook = async (req, res) => {
                             type: 'payment_confirmed_tour',
                             message: `Tour payment confirmed for ${booking_reference}.`,
                             booking_reference: booking_reference,
+                            booking_type: 'tour',
                             created_at: new Date().toISOString(),
                         },
                     ])
@@ -169,6 +170,7 @@ export const handleStripeWebhook = async (req, res) => {
 
                 await pusher.trigger('admin-notifications', 'new-booking', {
                     bookingReference: booking_reference,
+                    bookingType: 'tour',
                     pnr: null,
                 })
             } catch (notifyErr) {

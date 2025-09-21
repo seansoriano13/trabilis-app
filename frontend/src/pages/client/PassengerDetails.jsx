@@ -18,7 +18,7 @@ import nationalities from '../../data/nationalities.json'
 import { FaArrowRightArrowLeft } from 'react-icons/fa6'
 import { FaArrowRight } from 'react-icons/fa6'
 
-function PassengerForm({
+export function PassengerForm({
     passengers,
     handleChange,
     validationErrors,

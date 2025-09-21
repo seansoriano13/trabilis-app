@@ -7,114 +7,183 @@
             body {
                 margin: 0;
                 padding: 0;
-                font-family: Arial, Helvetica, sans-serif;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
                 font-size: 11px;
-                color: #333;
-                background-color: #fff;
+                color: #2c3e50;
+                background-color: #f8f9fa;
+                line-height: 1.4;
+                font-weight: 400;
             }
             .container {
                 max-width: 8.5in;
                 min-height: 11in;
-                margin: auto;
-                padding: 40px;
+                margin: 10px auto;
+                padding: 20px;
+                background-color: #fff;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
             }
             .header {
                 display: flex;
                 justify-content: space-between;
                 align-items: flex-start;
-                margin-bottom: 20px;
+                margin-bottom: 15px;
+                padding-bottom: 10px;
+                border-bottom: 2px solid #e21e25;
             }
             .logo-section {
                 display: flex;
                 align-items: center;
             }
             .logo-section img {
-                height: 40px;
-                margin-right: 15px;
+                height: 45px;
+                margin-right: 20px;
+            }
+            .logo-section h3 {
+                font-size: 18px;
+                font-weight: 700;
+                color: #e21e25;
+                margin: 0;
+                letter-spacing: -0.5px;
+            }
+            .logo-section p {
+                font-size: 10px;
+                color: #6c757d;
+                margin: 0;
+                font-weight: 500;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
             }
             .contact-info {
                 text-align: right;
             }
+            .contact-info h4 {
+                font-size: 14px;
+                font-weight: 600;
+                color: #2c3e50;
+                margin: 0 0 5px 0;
+            }
             .contact-info a {
-                color: #007bff;
+                color: #e21e25;
                 text-decoration: none;
+                font-weight: 500;
+            }
+            .contact-info a:hover {
+                text-decoration: underline;
             }
             .itinerary-section {
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                margin-bottom: 20px;
+                border: none;
+                border-radius: 8px;
+                margin-bottom: 15px;
+                background-color: #fff;
+                box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+                overflow: hidden;
+            }
+            .itinerary-section p{
+                padding: 12px;
+                margin: 0;
+                line-height: 1.5;
+                font-size: 11px;
+                color: #495057;
             }
             .itinerary-header {
                 background-color: #e21e25;
                 color: white;
                 padding: 8px 12px;
-                font-weight: bold;
-                border-radius: 4px 4px 0 0;
+                font-weight: 600;
+                font-size: 12px;
+                letter-spacing: 0.3px;
+                text-transform: uppercase;
             }
             .itinerary-details-row {
                 display: flex;
                 align-items: center;
-                padding: 15px 12px;
-                border-bottom: 1px solid #eee;
+                padding: 10px;
+                border-bottom: 1px solid #f1f3f4;
+                background-color: #fafbfc;
             }
             .itinerary-details-row:last-child {
                 border-bottom: none;
             }
             .itinerary-col {
                 flex: 1;
-                padding: 0 10px;
+                padding: 0 8px;
             }
             .itinerary-col h4 {
-                margin: 0 0 2px 0;
-                font-size: 14px;
+                margin: 0 0 3px 0;
+                font-size: 10px;
+                font-weight: 600;
+                color: #2c3e50;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
             }
             .itinerary-col p {
                 margin: 0;
-                color: #666;
+                color: #495057;
+                font-weight: 500;
+                font-size: 11px;
             }
             .passenger-details {
                 width: 100%;
                 border-collapse: collapse;
-                margin-bottom: 20px;
+                margin-bottom: 15px;
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
             }
             .passenger-details th,
             .passenger-details td {
                 text-align: left;
-                padding: 10px 8px;
-                border-bottom: 1px solid #eee;
+                padding: 8px 10px;
+                border-bottom: 1px solid #f1f3f4;
                 vertical-align: top;
             }
             .passenger-details th {
-                background-color: #343a40;
+                background-color: #2c3e50;
                 color: white;
-                font-size: 12px;
+                font-size: 10px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            .passenger-details td {
+                background-color: #fff;
+                color: #495057;
+                font-weight: 500;
+                font-size: 11px;
             }
             .bottom-section {
                 display: flex;
                 justify-content: space-between;
-                margin-bottom: 20px;
+                margin-bottom: 15px;
+                gap: 15px;
             }
             .details-box {
                 flex: 1;
-                border: 1px solid #ddd;
-                border-radius: 4px;
-            }
-            .details-box:first-child {
-                margin-right: 20px;
+                border: none;
+                border-radius: 8px;
+                background-color: #fff;
+                box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+                overflow: hidden;
             }
             .details-box-header {
                 display: flex;
                 align-items: center;
                 background-color: #f8f9fa;
                 padding: 8px 12px;
-                font-weight: bold;
-                border-bottom: 1px solid #ddd;
+                font-weight: 600;
+                font-size: 11px;
+                color: #2c3e50;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e9ecef;
             }
             .details-box-header svg {
                 margin-right: 8px;
+                opacity: 0.8;
             }
             .details-box-content {
-                padding: 15px;
+                padding: 12px;
             }
             .payment-details table,
             .inclusions-details p {
@@ -122,34 +191,99 @@
                 margin: 0;
             }
             .payment-details td {
-                padding: 6px 0;
+                padding: 4px 0;
+                color: #495057;
+                font-weight: 500;
+                font-size: 11px;
             }
             .payment-details .total td {
-                font-weight: bold;
-                border-top: 1px solid #ccc;
-                padding-top: 10px;
+                font-weight: 700;
+                border-top: 2px solid #e21e25;
+                padding-top: 8px;
+                color: #2c3e50;
+                font-size: 12px;
             }
             .inclusions-details h5 {
                 margin: 0 0 5px 0;
-                font-size: 12px;
+                font-size: 11px;
+                font-weight: 600;
+                color: #2c3e50;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            .inclusions-details p {
+                margin: 0 0 8px 0;
+                line-height: 1.4;
+                font-size: 10px;
+                color: #495057;
+            }
+            .flight-details {
+                padding: 12px;
+            }
+            .flight-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 10px;
+                border-radius: 6px;
+                overflow: hidden;
+            }
+            .flight-table th,
+            .flight-table td {
+                text-align: left;
+                padding: 6px 8px;
+                border-bottom: 1px solid #f1f3f4;
+                vertical-align: top;
+            }
+            .flight-table th {
+                background-color: #2c3e50;
+                color: white;
+                font-weight: 600;
+                font-size: 10px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            .flight-table td {
+                background-color: #fff;
+                color: #495057;
+                font-weight: 500;
+            }
+            .flight-table tbody tr:last-child td {
+                border-bottom: none;
             }
             .important-info {
-                border-top: 1px solid #ccc;
-                padding-top: 15px;
+                border-top: 2px solid #e21e25;
+                padding-top: 12px;
+                margin-top: 15px;
+                background-color: #fff;
+                border-radius: 8px;
+                padding: 12px;
+                box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
             }
             .important-info h4 {
                 margin-top: 0;
+                margin-bottom: 8px;
+                font-size: 12px;
+                font-weight: 600;
+                color: #2c3e50;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
             }
             .important-info p {
-                line-height: 1.6;
-                color: #555;
+                line-height: 1.4;
+                color: #495057;
+                font-size: 10px;
+                margin: 0;
             }
             .footer {
-                text-align: right;
-                border-top: 1px solid #ccc;
-                padding-top: 15px;
-                color: #666;
-                font-size: 10px;
+                text-align: center;
+                border-top: 2px solid #e21e25;
+                padding-top: 10px;
+                margin-top: 15px;
+                color: #6c757d;
+                font-size: 9px;
+                font-weight: 500;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
             }
         </style>
     </head>
@@ -160,16 +294,16 @@
                 <div class="logo-section">
                     <!-- <img src="YOUR_LOGO_URL" alt="Logo"> -->
                     <div>
-                        <p style="margin: 0; font-weight: bold">Booking ID:</p>
-                        <h3 style="margin: 0">{{bookingReference}}</h3>
+                        <p>Booking ID</p>
+                        <h3>{{bookingReference}}</h3>
                     </div>
                 </div>
                 <div class="contact-info">
-                    <h4 style="margin: 0 0 5px 0">{{companyName}}</h4>
-                    <p style="margin: 0 0 5px 0">
+                    <h4>{{companyName}}</h4>
+                    <p>
                         <a href="mailto:{{companyEmail}}">{{companyEmail}}</a>
                     </p>
-                    <p style="margin: 0">
+                    <p>
                         <strong>Booking Date:</strong> {{bookingDate}}
                     </p>
                 </div>
@@ -197,6 +331,43 @@
                     </div>
                 </div>
             </div>
+            <!-- Flight Details Section -->
+            <div class="itinerary-section">
+                <div class="itinerary-header">Flight Details</div>
+                <div class="flight-details">
+                    <table class="flight-table">
+                        <thead>
+                            <tr>
+                                <th>Route</th>
+                                <th>Airline</th>
+                                <th>Flight No.</th>
+                                <th>Departure</th>
+                                <th>Arrival</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Outbound</td>
+                                <td>TBA</td>
+                                <td>TBA</td>
+                                <td>TBA</td>
+                                <td>TBA</td>
+                                <td>TBA</td>
+                            </tr>
+                            <tr>
+                                <td>Return</td>
+                                <td>TBA</td>
+                                <td>TBA</td>
+                                <td>TBA</td>
+                                <td>TBA</td>
+                                <td>TBA</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
 
             <!-- Itinerary Section -->
             <div class="itinerary-section">
@@ -291,6 +462,7 @@
                 </div>
             </div>
 
+            
             <!-- Tour Description -->
             <div class="itinerary-section">
                 <div class="itinerary-header">Tour Description</div>

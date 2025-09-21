@@ -120,6 +120,12 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
                     <span><svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M6.428 1.151C6.708.591 7.213 0 7.86 0h.28c.646 0 1.151.59 1.43 1.151l.445 1.039L14.73 4c.626.284.829.986.545 1.591l-2.155 4.223L13 14.85c.165.632-.22 1.252-.88 1.252h-.28c-.66 0-1.045-.62-1.21-1.252L10 11.691 7.918 7.073 5.5 11.691l-.21 1.252c-.165.632-.54 1.252-1.21 1.252h-.28c-.66 0-1.045-.62-.88-1.252l.21-1.252 2.155-4.223L1.724 5.591c-.284-.605-.081-1.307.545-1.591L6 2.19l.428-1.039z"/></svg> ${headerTitle}</span>
                     <span class="non-refundable">Non-Refundable</span>
                 </div>
+                <div class="flight-column-headers">
+                    <div class="flight-col airline">Airline & Flight</div>
+                    <div class="flight-col departing">Departure</div>
+                    <div class="flight-col arriving">Arrival</div>
+                    <div class="flight-col duration">Duration</div>
+                </div>
                 ${segmentsHtml}
             </div>
         `

@@ -1,7 +1,24 @@
 // AdminUsers.jsx
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FiUsers } from 'react-icons/fi'
+import { 
+    FiUsers, 
+    FiUserPlus, 
+    FiEdit3, 
+    FiTrash2, 
+    FiRefreshCw,
+    FiShield,
+    FiUserCheck,
+    FiUserX,
+    FiMail,
+    FiUser,
+    FiKey,
+    FiFilter,
+    FiSearch,
+    FiEye,
+    FiSave,
+    FiX
+} from 'react-icons/fi'
 import ReactPaginate from 'react-paginate'
 import './AdminUsers.css'
 import adminClient from '../../api/adminClient.js'
@@ -190,108 +207,164 @@ const AdminUsers = () => {
     return (
         <div className='users'>
             <div className='users__header'>
-                <FiUsers
-                    size={32}
-                    color='black'
-                />
-                <h1>User Management</h1>
+                <div className='users__header-content'>
+                    <div className='users__header-icon'>
+                        <FiUsers size={32} />
+                    </div>
+                    <div className='users__header-text'>
+                        <h1>User Management</h1>
+                        <p>Manage admin and accounting user accounts</p>
+                    </div>
+                </div>
+                <div className='users__header-actions'>
+                    <button className='users__action-btn users__action-btn--refresh'>
+                        <FiRefreshCw size={16} />
+                        Refresh
+                    </button>
+                </div>
             </div>
 
             <div className='users__summary'>
-                <div className='users__summary-card'>
-                    <h3>Total Users</h3>
-                    <p>{userStats.total_users || 0}</p>
+                <div className='users__summary-card users__summary-card--total'>
+                    <div className='users__summary-icon'>
+                        <FiUsers size={24} />
+                    </div>
+                    <div className='users__summary-content'>
+                        <h3>Total Users</h3>
+                        <p>{userStats.total_users || 0}</p>
+                        <span className='users__summary-label'>All accounts</span>
+                    </div>
                 </div>
-                <div className='users__summary-card'>
-                    <h3>Admin Users</h3>
-                    <p>{userStats.admin_count || 0}</p>
+                <div className='users__summary-card users__summary-card--admin'>
+                    <div className='users__summary-icon'>
+                        <FiShield size={24} />
+                    </div>
+                    <div className='users__summary-content'>
+                        <h3>Admin Users</h3>
+                        <p>{userStats.admin_count || 0}</p>
+                        <span className='users__summary-label'>Full access</span>
+                    </div>
                 </div>
-                <div className='users__summary-card'>
-                    <h3>Accounting Users</h3>
-                    <p>{userStats.accounting_count || 0}</p>
+                <div className='users__summary-card users__summary-card--accounting'>
+                    <div className='users__summary-icon'>
+                        <FiUserCheck size={24} />
+                    </div>
+                    <div className='users__summary-content'>
+                        <h3>Accounting Users</h3>
+                        <p>{userStats.accounting_count || 0}</p>
+                        <span className='users__summary-label'>Limited access</span>
+                    </div>
                 </div>
             </div>
 
             <div className='users__form-container'>
-                <h2>Create New User</h2>
+                <div className='users__form-header'>
+                    <div className='users__form-title'>
+                        <FiUserPlus size={24} />
+                        <h2>Create New User</h2>
+                    </div>
+                </div>
                 <form
                     onSubmit={handleSubmit}
                     className='users__form'
                 >
-                    <label className='flex items-center gap-4'>
-                        <span className='w-1/3'>First Name</span>
-                        <input
-                            type='text'
-                            name='first_name'
-                            value={formData.first_name}
-                            onChange={handleFormChange}
-                            placeholder='First Name'
-                            required
-                            className='flex-1'
-                        />
-                    </label>
+                    <div className='users__form-grid'>
+                        <div className='users__form-group'>
+                            <label className='users__form-label'>
+                                <FiUser size={16} />
+                                First Name
+                            </label>
+                            <input
+                                type='text'
+                                name='first_name'
+                                value={formData.first_name}
+                                onChange={handleFormChange}
+                                placeholder='Enter first name'
+                                required
+                                className='users__form-input'
+                            />
+                        </div>
 
-                    <label className='flex items-center gap-4'>
-                        <span className='w-1/3'>Last Name</span>
-                        <input
-                            type='text'
-                            name='last_name'
-                            value={formData.last_name}
-                            onChange={handleFormChange}
-                            placeholder='Last Name'
-                            required
-                            className='flex-1'
-                        />
-                    </label>
+                        <div className='users__form-group'>
+                            <label className='users__form-label'>
+                                <FiUser size={16} />
+                                Last Name
+                            </label>
+                            <input
+                                type='text'
+                                name='last_name'
+                                value={formData.last_name}
+                                onChange={handleFormChange}
+                                placeholder='Enter last name'
+                                required
+                                className='users__form-input'
+                            />
+                        </div>
 
-                    <label className='flex items-center gap-4'>
-                        <span className='w-1/3'>Email</span>
-                        <input
-                            type='email'
-                            name='email'
-                            value={formData.email}
-                            onChange={handleFormChange}
-                            placeholder='Email'
-                            required
-                            className='flex-1'
-                        />
-                    </label>
+                        <div className='users__form-group'>
+                            <label className='users__form-label'>
+                                <FiMail size={16} />
+                                Email Address
+                            </label>
+                            <input
+                                type='email'
+                                name='email'
+                                value={formData.email}
+                                onChange={handleFormChange}
+                                placeholder='Enter email address'
+                                required
+                                className='users__form-input'
+                            />
+                        </div>
 
-                    <label className='flex items-center gap-4'>
-                        <span className='w-1/3'>Password</span>
-                        <input
-                            type='password'
-                            name='password'
-                            value={formData.password}
-                            onChange={handleFormChange}
-                            placeholder='Password'
-                            required
-                            className='flex-1'
-                        />
-                    </label>
+                        <div className='users__form-group'>
+                            <label className='users__form-label'>
+                                <FiKey size={16} />
+                                Password
+                            </label>
+                            <input
+                                type='password'
+                                name='password'
+                                value={formData.password}
+                                onChange={handleFormChange}
+                                placeholder='Enter password (min 8 characters)'
+                                required
+                                className='users__form-input'
+                            />
+                        </div>
 
-                    <label className='flex items-center gap-4'>
-                        <span className='w-1/3'>Role</span>
-                        <select
-                            name='role'
-                            value={formData.role}
-                            onChange={handleFormChange}
-                            required
-                            className='flex-1'
+                        <div className='users__form-group'>
+                            <label className='users__form-label'>
+                                <FiShield size={16} />
+                                User Role
+                            </label>
+                            <select
+                                name='role'
+                                value={formData.role}
+                                onChange={handleFormChange}
+                                required
+                                className='users__form-select'
+                            >
+                                <option value='admin'>Admin - Full Access</option>
+                                <option value='accounting'>Accounting - Limited Access</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className='users__form-actions'>
+                        <button
+                            type='submit'
+                            className='users__form-submit'
                         >
-                            <option value='admin'>Admin</option>
-                            <option value='accounting'>Accounting</option>
-                        </select>
-                    </label>
-
-                    <button
-                        type='submit'
-                        className='users__form-submit'
-                    >
-                        Create User
-                    </button>
+                            <FiUserPlus size={16} />
+                            Create User
+                        </button>
+                    </div>
                     {formError && (
-                        <p className='users__form-error'>{formError}</p>
+                        <div className='users__form-error'>
+                            <FiX size={16} />
+                            {formError}
+                        </div>
                     )}
                 </form>
             </div>
@@ -299,39 +372,71 @@ const AdminUsers = () => {
             {editingUser && (
                 <div className='users__modal'>
                     <div className='users__modal-content'>
-                        <h2>Edit User</h2>
-                        <form onSubmit={handleUpdate}>
-                            <p>Email: {editingUser.email}</p>
-                            <select
-                                name='role'
-                                value={editingUser.role}
-                                onChange={(e) =>
-                                    setEditingUser({
-                                        ...editingUser,
-                                        role: e.target.value,
-                                    })
-                                }
+                        <div className='users__modal-header'>
+                            <div className='users__modal-title'>
+                                <FiEdit3 size={24} />
+                                <h2>Edit User Role</h2>
+                            </div>
+                            <button
+                                className='users__modal-close'
+                                onClick={() => setEditingUser(null)}
                             >
-                                <option value='admin'>Admin</option>
-                                <option value='accounting'>Accounting</option>
-                            </select>
-                            <div className='users__modal-buttons'>
+                                <FiX size={20} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleUpdate} className='users__modal-form'>
+                            <div className='users__modal-user-info'>
+                                <div className='users__modal-user-email'>
+                                    <FiMail size={16} />
+                                    <span>{editingUser.email}</span>
+                                </div>
+                                <div className='users__modal-user-name'>
+                                    <FiUser size={16} />
+                                    <span>{editingUser.first_name} {editingUser.last_name}</span>
+                                </div>
+                            </div>
+                            <div className='users__modal-form-group'>
+                                <label className='users__modal-label'>
+                                    <FiShield size={16} />
+                                    User Role
+                                </label>
+                                <select
+                                    name='role'
+                                    value={editingUser.role}
+                                    onChange={(e) =>
+                                        setEditingUser({
+                                            ...editingUser,
+                                            role: e.target.value,
+                                        })
+                                    }
+                                    className='users__modal-select'
+                                >
+                                    <option value='admin'>Admin - Full Access</option>
+                                    <option value='accounting'>Accounting - Limited Access</option>
+                                </select>
+                            </div>
+                            <div className='users__modal-actions'>
                                 <button
                                     type='submit'
-                                    className='users__form-submit'
+                                    className='users__modal-save'
                                 >
-                                    Update
+                                    <FiSave size={16} />
+                                    Update Role
                                 </button>
                                 <button
                                     type='button'
                                     className='users__modal-cancel'
                                     onClick={() => setEditingUser(null)}
                                 >
+                                    <FiX size={16} />
                                     Cancel
                                 </button>
                             </div>
                             {formError && (
-                                <p className='users__form-error'>{formError}</p>
+                                <div className='users__modal-error'>
+                                    <FiX size={16} />
+                                    {formError}
+                                </div>
                             )}
                         </form>
                     </div>
@@ -339,83 +444,163 @@ const AdminUsers = () => {
             )}
 
             <div className='users__filter'>
-                <select
-                    name='role'
-                    value={filters.role}
-                    onChange={handleFilterChange}
-                >
-                    <option value='All'>All Roles</option>
-                    <option value='admin'>Admin</option>
-                    <option value='accounting'>Accounting</option>
-                </select>
+                <div className='users__filter-header'>
+                    <div className='users__filter-title'>
+                        <FiFilter size={20} />
+                        <h3>Filter Users</h3>
+                    </div>
+                </div>
+                <div className='users__filter-content'>
+                    <div className='users__filter-group'>
+                        <label className='users__filter-label'>
+                            <FiShield size={16} />
+                            User Role
+                        </label>
+                        <select
+                            name='role'
+                            value={filters.role}
+                            onChange={handleFilterChange}
+                            className='users__filter-select'
+                        >
+                            <option value='All'>All Roles</option>
+                            <option value='admin'>Admin Users</option>
+                            <option value='accounting'>Accounting Users</option>
+                        </select>
+                    </div>
+                </div>
             </div>
 
             <div className='users__section'>
-                <h2>Users</h2>
+                <div className='users__section-header'>
+                    <div className='users__section-title'>
+                        <FiUsers size={24} />
+                        <h2>User Accounts</h2>
+                        <span className='users__section-count'>({total} total)</span>
+                    </div>
+                </div>
+                
                 <div className='users__table-container'>
                     <table className='users__table'>
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>First Name</th>
-                                <th>Last Name</th>
-                                <th onClick={() => handleSort('email')}>
-                                    Email{' '}
-                                    {sort.key === 'email'
-                                        ? sort.direction === 'asc'
-                                            ? '↑'
-                                            : '↓'
-                                        : ''}
+                                <th className='users__table-header users__table-header--sortable'>
+                                    <div className='users__table-header-content'>
+                                        <span>User ID</span>
+                                    </div>
                                 </th>
-                                <th onClick={() => handleSort('role')}>
-                                    Role{' '}
-                                    {sort.key === 'role'
-                                        ? sort.direction === 'asc'
-                                            ? '↑'
-                                            : '↓'
-                                        : ''}
+                                <th className='users__table-header users__table-header--sortable'>
+                                    <div className='users__table-header-content'>
+                                        <span>Name</span>
+                                    </div>
                                 </th>
-                                <th>Actions</th>
+                                <th 
+                                    onClick={() => handleSort('email')}
+                                    className='users__table-header users__table-header--sortable'
+                                >
+                                    <div className='users__table-header-content'>
+                                        <span>Email</span>
+                                        {sort.key === 'email' && (
+                                            <span className='users__sort-indicator'>
+                                                {sort.direction === 'asc' ? '↑' : '↓'}
+                                            </span>
+                                        )}
+                                    </div>
+                                </th>
+                                <th 
+                                    onClick={() => handleSort('role')}
+                                    className='users__table-header users__table-header--sortable'
+                                >
+                                    <div className='users__table-header-content'>
+                                        <span>Role</span>
+                                        {sort.key === 'role' && (
+                                            <span className='users__sort-indicator'>
+                                                {sort.direction === 'asc' ? '↑' : '↓'}
+                                            </span>
+                                        )}
+                                    </div>
+                                </th>
+                                <th className='users__table-header'>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {sortedUsers.map((user) => (
-                                <tr key={user.id}>
-                                    <td>{user.id.slice(0, 8)}</td>
-                                    <td>{user.first_name || '-'}</td>
-                                    <td>{user.last_name || '-'}</td>
-                                    <td>{user.email}</td>
-                                    <td>{user.role}</td>
-                                    <td>
-                                        <button
-                                            className='users__action-edit'
-                                            onClick={() => handleEdit(user)}
-                                        >
-                                            Edit
-                                        </button>
-                                        <button
-                                            className='users__action-delete'
-                                            onClick={() =>
-                                                handleDelete(user.id)
-                                            }
-                                        >
-                                            Delete
-                                        </button>
+                                <tr key={user.id} className='users__table-row'>
+                                    <td className='users__table-cell users__table-cell--id'>
+                                        <div className='users__user-id'>
+                                            <span>{user.id.slice(0, 8)}...</span>
+                                        </div>
+                                    </td>
+                                    <td className='users__table-cell'>
+                                        <div className='users__user-info'>
+                                            <div className='users__user-avatar'>
+                                                <FiUser size={16} />
+                                            </div>
+                                            <div className='users__user-details'>
+                                                <span className='users__user-name'>
+                                                    {user.first_name || '-'} {user.last_name || '-'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className='users__table-cell'>
+                                        <div className='users__user-email'>
+                                            <FiMail size={16} />
+                                            <span>{user.email}</span>
+                                        </div>
+                                    </td>
+                                    <td className='users__table-cell'>
+                                        <span className={`users__user-role users__user-role--${user.role}`}>
+                                            {user.role === 'admin' ? (
+                                                <>
+                                                    <FiShield size={14} />
+                                                    Admin
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <FiUserCheck size={14} />
+                                                    Accounting
+                                                </>
+                                            )}
+                                        </span>
+                                    </td>
+                                    <td className='users__table-cell users__table-cell--actions'>
+                                        <div className='users__actions'>
+                                            <button
+                                                className='users__action-btn users__action-btn--edit'
+                                                onClick={() => handleEdit(user)}
+                                                title='Edit User Role'
+                                            >
+                                                <FiEdit3 size={16} />
+                                            </button>
+                                            <button
+                                                className='users__action-btn users__action-btn--delete'
+                                                onClick={() => handleDelete(user.id)}
+                                                title='Delete User'
+                                            >
+                                                <FiTrash2 size={16} />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
-                <ReactPaginate
-                    previousLabel={'←'}
-                    nextLabel={'→'}
-                    pageCount={Math.ceil(total / pageSize)}
-                    onPageChange={({ selected }) => setPage(selected)}
-                    containerClassName={'users__pagination'}
-                    activeClassName={'users__pagination--active'}
-                    forcePage={page}
-                />
+                
+                <div className='users__pagination-container'>
+                    <ReactPaginate
+                        previousLabel={'← Previous'}
+                        nextLabel={'Next →'}
+                        pageCount={Math.ceil(total / pageSize)}
+                        onPageChange={({ selected }) => setPage(selected)}
+                        containerClassName={'users__pagination'}
+                        activeClassName={'users__pagination--active'}
+                        forcePage={page}
+                        breakLabel={'...'}
+                        pageRangeDisplayed={3}
+                        marginPagesDisplayed={1}
+                    />
+                </div>
             </div>
         </div>
     )

@@ -1,5 +1,6 @@
 import express from 'express'
 import { adminAuthMiddleware } from '../middlewares/adminAuthMIddleware.js'
+import { pdfAuthMiddleware } from '../middlewares/pdfAuthMiddleware.js'
 import {
     createTour,
     deleteTour,
@@ -21,6 +22,21 @@ import {
     getUserStats,
     updateUser,
 } from '../controllers/admin/dashboardController.js'
+import { 
+    generateFlightPDF,
+    generateFlightPDFAdmin,
+    viewFlightBookingHTML,
+    viewFlightBookingPrint
+} from '../controllers/admin/flightController.js'
+import { generateTourPDF, generateTourPDFAdmin, viewTourBookingHTML, viewTourBookingPrint } from '../controllers/admin/tourController.js'
+import {
+    getAccountingStaff,
+    assignTourBooking,
+    assignFlightBooking,
+    updateAssignmentStatus,
+    getAssignedBookings,
+    reassignBooking
+} from '../controllers/admin/appointmentController.js'
 
 const router = express.Router()
 
@@ -49,11 +65,31 @@ router.get('/dashboard/revenue', getRevenue)
 router.get('/dashboard/flight_stats', getFlightStats)
 router.get('/dashboard/tour_stats', getTourStats)
 
+// Flight PDF (using special PDF auth middleware)
+router.get('/flights/:id/pdf', pdfAuthMiddleware, generateFlightPDF)
+router.get('/flights/:id/pdf-admin', pdfAuthMiddleware, generateFlightPDFAdmin)
+router.get('/flights/:id/html', pdfAuthMiddleware, viewFlightBookingHTML)
+router.get('/flights/:id/print', pdfAuthMiddleware, viewFlightBookingPrint)
+
+// Tour PDF (using special PDF auth middleware)
+router.get('/tours/:id/pdf', pdfAuthMiddleware, generateTourPDF)
+router.get('/tours/:id/pdf-admin', pdfAuthMiddleware, generateTourPDFAdmin)
+router.get('/tours/:id/html', pdfAuthMiddleware, viewTourBookingHTML)
+router.get('/tours/:id/print', pdfAuthMiddleware, viewTourBookingPrint)
+
 // Users
 router.get('/users', getUsers)
 router.post('/users/create', createUser)
 router.put('/users/:id', updateUser)
 router.delete('/users/:id', deleteUser)
 router.get('/users/stats', getUserStats)
+
+// Appointment System
+router.get('/appointments/staff', getAccountingStaff)
+router.post('/appointments/assign-tour', assignTourBooking)
+router.post('/appointments/assign-flight', assignFlightBooking)
+router.put('/appointments/status', updateAssignmentStatus)
+router.get('/appointments/assigned', getAssignedBookings)
+router.post('/appointments/reassign', reassignBooking)
 
 export default router
