@@ -309,12 +309,9 @@ const FlightBookingDetail = () => {
                 </div>
 
                 <div className="booking-detail__actions">
-                    <button className="btn btn-secondary" onClick={handlePrint}>
-                        <BsPrinter /> Print
-                    </button>
-                    <button className="btn btn-warning" onClick={handleEdit}>
+                    {/* <button className="btn btn-warning" onClick={handleEdit}>
                         <BsPencil /> Edit
-                    </button>
+                    </button> */}
                     <button className="btn btn-danger" onClick={handleCancel}>
                         <BsXCircle /> Cancel
                     </button>
@@ -574,7 +571,7 @@ const FlightBookingDetail = () => {
                             ))}
 
                             {/* Contact Information */}
-                            {passengerDetails?.contacts && (
+                            {/* {passengerDetails?.contacts && (
                                 <div className="contact-card">
                                     <div className="contact-header">
                                         <BsTelephone className="contact-icon" />
@@ -607,7 +604,7 @@ const FlightBookingDetail = () => {
                                         </div>
                                     </div>
                                 </div>
-                            )}
+                            )} */}
                         </div>
                     </div>
                 )}

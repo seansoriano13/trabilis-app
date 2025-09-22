@@ -304,12 +304,9 @@ const TourBookingDetail = () => {
                 </div>
 
                 <div className="tour-booking-detail__actions">
-                    <button className="btn btn-secondary" onClick={handlePrint}>
-                        <FiPrinter /> Print
-                    </button>
-                    <button className="btn btn-warning" onClick={handleEdit}>
+                    {/* <button className="btn btn-warning" onClick={handleEdit}>
                         <FiEdit /> Edit
-                    </button>
+                    </button> */}
                     <button className="btn btn-danger" onClick={handleCancel}>
                         <FiXCircle /> Cancel
                     </button>

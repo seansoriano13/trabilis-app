@@ -17,7 +17,8 @@ import {
     FiSearch,
     FiEye,
     FiSave,
-    FiX
+    FiX,
+    FiNavigation
 } from 'react-icons/fi'
 import ReactPaginate from 'react-paginate'
 import './AdminUsers.css'
@@ -347,6 +348,7 @@ const AdminUsers = () => {
                             >
                                 <option value='admin'>Admin - Full Access</option>
                                 <option value='accounting'>Accounting - Limited Access</option>
+                                <option value='travel_consultant'>Travel Consultant - Visa & Tours</option>
                             </select>
                         </div>
                     </div>
@@ -413,6 +415,7 @@ const AdminUsers = () => {
                                 >
                                     <option value='admin'>Admin - Full Access</option>
                                     <option value='accounting'>Accounting - Limited Access</option>
+                                    <option value='travel_consultant'>Travel Consultant - Visa & Tours</option>
                                 </select>
                             </div>
                             <div className='users__modal-actions'>
@@ -465,6 +468,7 @@ const AdminUsers = () => {
                             <option value='All'>All Roles</option>
                             <option value='admin'>Admin Users</option>
                             <option value='accounting'>Accounting Users</option>
+                            <option value='travel_consultant'>Travel Consultants</option>
                         </select>
                     </div>
                 </div>
@@ -555,10 +559,15 @@ const AdminUsers = () => {
                                                     <FiShield size={14} />
                                                     Admin
                                                 </>
-                                            ) : (
+                                            ) : user.role === 'accounting' ? (
                                                 <>
                                                     <FiUserCheck size={14} />
                                                     Accounting
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <FiNavigation size={14} />
+                                                    Travel Consultant
                                                 </>
                                             )}
                                         </span>

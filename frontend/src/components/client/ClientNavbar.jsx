@@ -90,6 +90,14 @@ function ClientNavbar() {
                         <li>
                             <Link
                                 onClick={handleLinkClick}
+                                to='/immigration-visa-consultancy'
+                            >
+                                Immigration Visa Consultancy
+                            </Link>
+                        </li>
+                        <li>
+                            <Link
+                                onClick={handleLinkClick}
                                 to='/flights'
                             >
                                 Flights
@@ -117,7 +125,7 @@ function ClientNavbar() {
                 {/* Book button */}
                 <div>
                     <PrimaryButton
-                        buttonText='Track My Booking'
+                        buttonText='Track Me'
                         isBold={true}
                         onClick={() => handleBookNowClick()}
                     />

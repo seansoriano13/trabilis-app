@@ -576,20 +576,7 @@ const AdminTours = () => {
                                             >
                                                 <FiEdit size={16} />
                                             </button>
-                                            <button 
-                                                className='tours__action-btn tours__action-btn--pdf-preview'
-                                                title='Preview PDF'
-                                                onClick={() => handlePreviewPDF(booking.id)}
-                                            >
-                                                <FiFileText size={16} />
-                                            </button>
-                                            <button 
-                                                className='tours__action-btn tours__action-btn--pdf-download'
-                                                title='Download PDF'
-                                                onClick={() => handleDownloadPDF(booking.id)}
-                                            >
-                                                <FiDownload size={16} />
-                                            </button>
+                                           
                                             <button 
                                                 className='tours__action-btn tours__action-btn--delete'
                                                 title='Cancel Booking'

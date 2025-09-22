@@ -33,6 +33,30 @@ export const getAccountingStaff = async (req, res) => {
     }
 }
 
+// Get all staff members (for assignment purposes)
+export const getAllStaff = async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('admins')
+            .select('id, email, first_name, last_name, role')
+            .in('role', ['accounting', 'travel_consultant'])
+            .order('first_name')
+
+        if (error) throw error
+
+        res.json({
+            success: true,
+            data: data || []
+        })
+    } catch (error) {
+        console.error('Error fetching all staff:', error)
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch staff members'
+        })
+    }
+}
+
 // Assign tour booking to accounting staff
 export const assignTourBooking = async (req, res) => {
     try {

@@ -117,8 +117,14 @@ const AdminFlights = () => {
                     supabase.rpc('get_flight_stats'),
                 ])
 
-                if (bookingsRes.error || statsRes.error) {
-                    throw new Error('Failed to fetch data')
+                if (bookingsRes.error) {
+                    console.error('Flight bookings error:', bookingsRes.error)
+                    throw new Error(`Failed to fetch flight bookings: ${bookingsRes.error.message}`)
+                }
+                
+                if (statsRes.error) {
+                    console.error('Flight stats error:', statsRes.error)
+                    throw new Error(`Failed to fetch flight stats: ${statsRes.error.message}`)
                 }
 
                 setFlightBookings(bookingsRes.data)
@@ -568,26 +574,26 @@ const AdminFlights = () => {
                                                     <FiUserPlus size={16} />
                                                 </button>
                                             )}
-                                            <button 
+                                            {/* <button 
                                                 className='flights__action-btn flights__action-btn--edit'
                                                 title='Edit Booking'
                                             >
                                                 <FiEdit size={16} />
-                                            </button>
-                                            <button 
+                                            </button> */}
+                                            {/* <button 
                                                 className='flights__action-btn flights__action-btn--pdf-preview'
                                                 title='Preview PDF'
                                                 onClick={() => handlePreviewPDF(booking.id)}
                                             >
                                                 <FiFileText size={16} />
-                                            </button>
-                                            <button 
+                                            </button> */}
+                                            {/* <button 
                                                 className='flights__action-btn flights__action-btn--pdf-download'
                                                 title='Download PDF'
                                                 onClick={() => handleDownloadPDF(booking.id)}
                                             >
                                                 <FiDownload size={16} />
-                                            </button>
+                                            </button> */}
                                             <button 
                                                 className='flights__action-btn flights__action-btn--delete'
                                                 title='Cancel Booking'

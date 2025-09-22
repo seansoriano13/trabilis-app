@@ -212,7 +212,11 @@ export const createUser = async (req, res) => {
 
         if (insertError) {
             // Rollback: Delete user from auth.users if admins insert fails
-            await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
+            try {
+                await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
+            } catch (rollbackError) {
+                console.error('Rollback failed:', rollbackError)
+            }
             throw insertError
         }
 

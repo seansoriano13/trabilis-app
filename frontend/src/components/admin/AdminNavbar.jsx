@@ -9,6 +9,7 @@ import {
     FiTrendingUp,
     FiNavigation,
     FiUsers,
+    FiShield,
     FiBell,
     FiUser,
     FiLogOut,
@@ -47,70 +48,107 @@ function AdminNavbar() {
     const PROD = true
 
     useEffect(() => {
+        let pusher = null
+        let channel = null
+
         const fetchNotifications = async () => {
             const { data, error } = await supabase
                 .from('admin_notifications')
                 .select('*')
                 .order('created_at', { ascending: false })
-                .limit(10)
-            if (!error && data) setNotifications(data)
+                .limit(50)
+            if (!error && data) {
+
+                const normalizeType = (rawType) => {
+                    if (!rawType) return rawType
+                    switch (rawType) {
+                        case 'booking_assigned':
+                            return 'assignment'
+                        case 'booking_reassigned':
+                            return 'reassignment'
+                        case 'new_tour_booking':
+                            return 'new_booking'
+                        case 'payment_confirmed_tour':
+                            return 'payment_confirmed'
+                        default:
+                            return rawType
+                    }
+                }
+
+                const normalized = data.map((n) => ({
+                    ...n,
+                    // Map snake_case booking_type to camelCase bookingType used in UI
+                    bookingType: n.bookingType || n.booking_type || n.bookingtype,
+                    type: normalizeType(n.type)
+                }))
+
+                setNotifications(normalized)
+            } else {
+                console.error('Error fetching notifications:', error)
+            }
+        }
+
+        const setupPusher = () => {
+            try {
+                pusher = new Pusher('371c6201af1a663a4f58', {
+                    cluster: 'ap1',
+                    forceTLS: true,
+                })
+                channel = pusher.subscribe('admin-notifications')
+                
+                // Refresh notifications when Pusher connects
+                channel.bind('pusher:subscription_succeeded', () => {
+                    fetchNotifications()
+                })
+
+                channel.bind('new-booking', (data) => {
+                    // Refresh notifications from database instead of just adding to local state
+                    fetchNotifications()
+                    if (!isNotificationsOpen) setIsNotificationsOpen(true)
+                })
+
+                channel.bind('booking-assigned', (data) => {
+                    // Refresh notifications from database instead of just adding to local state
+                    fetchNotifications()
+                    if (!isNotificationsOpen) setIsNotificationsOpen(true)
+                })
+
+                // Also listen for the actual event name from database
+                channel.bind('booking_assigned', (data) => {
+                    // Refresh notifications from database instead of just adding to local state
+                    fetchNotifications()
+                    if (!isNotificationsOpen) setIsNotificationsOpen(true)
+                })
+
+                channel.bind('booking-reassigned', (data) => {
+                    // Refresh notifications from database instead of just adding to local state
+                    fetchNotifications()
+                    if (!isNotificationsOpen) setIsNotificationsOpen(true)
+                })
+
+                channel.bind('visa-inquiry-assigned', (data) => {
+                    // Refresh notifications from database instead of just adding to local state
+                    fetchNotifications()
+                    if (!isNotificationsOpen) setIsNotificationsOpen(true)
+                })
+            } catch (error) {
+                console.error('Pusher setup error:', error)
+            }
         }
 
         fetchNotifications()
-
-        // Setup Pusher
-        const pusher = new Pusher('371c6201af1a663a4f58', {
-            cluster: 'ap1',
-            forceTLS: true,
-        })
-        const channel = pusher.subscribe('admin-notifications')
-
-        channel.bind('new-booking', (data) => {
-            setNotifications((prev) => [
-                {
-                    booking_reference: data.bookingReference,
-                    created_at: new Date().toISOString(),
-                    type: 'new_booking',
-                    bookingType: data.bookingType || 'tour',
-                },
-                ...prev,
-            ])
-            if (!isNotificationsOpen) setIsNotificationsOpen(true)
-        })
-
-        channel.bind('booking-assigned', (data) => {
-            setNotifications((prev) => [
-                {
-                    booking_reference: data.bookingReference,
-                    created_at: new Date().toISOString(),
-                    type: 'assignment',
-                    bookingType: data.bookingType,
-                    booking_id: data.bookingId,
-                },
-                ...prev,
-            ])
-            if (!isNotificationsOpen) setIsNotificationsOpen(true)
-        })
-
-        channel.bind('booking-reassigned', (data) => {
-            setNotifications((prev) => [
-                {
-                    booking_reference: data.bookingReference,
-                    created_at: new Date().toISOString(),
-                    type: 'reassignment',
-                    bookingType: data.bookingType,
-                    booking_id: data.bookingId,
-                },
-                ...prev,
-            ])
-            if (!isNotificationsOpen) setIsNotificationsOpen(true)
-        })
+        setupPusher()
 
         return () => {
-            channel.unbind_all()
-            channel.unsubscribe()
+            if (channel) {
+                channel.unbind_all()
+                channel.unsubscribe()
+            }
+            if (pusher) {
+                pusher.disconnect()
+            }
         }
-    }, [])
+    }, [isNotificationsOpen])
 
     useEffect(() => {
         const saved = localStorage.getItem('admin_notifications')
@@ -164,7 +202,6 @@ function AdminNavbar() {
 
     const toggleMenu = () => {
         setMenuOpen((prev) => !prev)
-        console.log(isMenuOpen)
         setProfileOpen(false)
     }
 
@@ -188,6 +225,11 @@ function AdminNavbar() {
             } else if (notif.bookingType === 'flight') {
                 return `/admin/flights/${notif.booking_id || notif.booking_reference}`
             }
+        }
+        
+        // For visa inquiry assignment notifications
+        if (notif.type === 'visa_inquiry_assigned') {
+            return `/admin/visa-inquiries`
         }
         
         // For new booking notifications, route based on booking type
@@ -265,7 +307,7 @@ function AdminNavbar() {
                                     <span>Dashboard</span>
                                 </NavLink>
                             </li>
-                            {userRole === 'admin' && (
+                            {(userRole === 'admin' || userRole === 'travel_consultant') && (
                                 <li className='admin-nav__nav-item'>
                                     <NavLink
                                         to='tours'
@@ -282,9 +324,43 @@ function AdminNavbar() {
                                     </NavLink>
                                 </li>
                             )}
+                           {userRole !== 'travel_consultant' && (
+                                <li className='admin-nav__nav-item'>
+                                    <NavLink
+                                        to='tour-sales'
+                                        className={({ isActive }) =>
+                                            clsx(
+                                                'admin-nav__nav-link',
+                                                isActive && 'admin-nav__nav-link--active'
+                                            )
+                                        }
+                                        onClick={() => setMenuOpen(false)}
+                                    >
+                                        <FiTrendingUp size={18} />
+                                        <span>Tour Sales</span>
+                                    </NavLink>
+                                </li>
+                            )}
+                            {userRole !== 'travel_consultant' && (
+                                <li className='admin-nav__nav-item'>
+                                    <NavLink
+                                        to='flights'
+                                        className={({ isActive }) =>
+                                            clsx(
+                                                'admin-nav__nav-link',
+                                                isActive && 'admin-nav__nav-link--active'
+                                            )
+                                        }
+                                        onClick={() => setMenuOpen(false)}
+                                    >
+                                        <FiNavigation size={18} />
+                                        <span>Flight Sales</span>
+                                    </NavLink>
+                                </li>
+                            )}
                             <li className='admin-nav__nav-item'>
                                 <NavLink
-                                    to='tour-sales'
+                                    to='visa-inquiries'
                                     className={({ isActive }) =>
                                         clsx(
                                             'admin-nav__nav-link',
@@ -293,23 +369,8 @@ function AdminNavbar() {
                                     }
                                     onClick={() => setMenuOpen(false)}
                                 >
-                                    <FiTrendingUp size={18} />
-                                    <span>Tour Sales</span>
-                                </NavLink>
-                            </li>
-                            <li className='admin-nav__nav-item'>
-                                <NavLink
-                                    to='flights'
-                                    className={({ isActive }) =>
-                                        clsx(
-                                            'admin-nav__nav-link',
-                                            isActive && 'admin-nav__nav-link--active'
-                                        )
-                                    }
-                                    onClick={() => setMenuOpen(false)}
-                                >
-                                    <FiNavigation size={18} />
-                                    <span>Flight Sales</span>
+                                    <FiShield size={18} />
+                                    <span>Visa Inquiries</span>
                                 </NavLink>
                             </li>
                             {userRole === 'admin' && (
@@ -362,7 +423,7 @@ function AdminNavbar() {
                                         {adminEmail?.split('@')[0] || 'Admin'}
                                     </span>
                                     <span className='admin-nav__profile-role'>
-                                        {userRole === 'admin' ? 'Administrator' : 'Accounting'}
+                                        {userRole === 'admin' ? 'Administrator' : userRole === 'accounting' ? 'Accounting' : 'Travel Consultant'}
                                     </span>
                                 </div>
                                 <FiChevronDown 
@@ -425,13 +486,18 @@ function AdminNavbar() {
                                                     ? `Booking Assigned - ${notif.bookingType === 'tour' ? 'Tour' : 'Flight'}`
                                                     : notif.type === 'reassignment'
                                                     ? `Booking Reassigned - ${notif.bookingType === 'tour' ? 'Tour' : 'Flight'}`
+                                                    : notif.type === 'visa_inquiry_assigned'
+                                                    ? 'Visa Inquiry Assigned'
                                                     : notif.type === 'new_booking'
                                                     ? `New ${notif.bookingType === 'tour' ? 'Tour' : 'Flight'} Booking`
                                                     : 'New Booking Received'
                                                 }
                                             </p>
                                             <p className='admin-nav__notification-desc'>
-                                                Booking reference: {notif.booking_reference}
+                                                {notif.type === 'visa_inquiry_assigned' 
+                                                    ? `Inquiry reference: ${notif.booking_reference}`
+                                                    : `Booking reference: ${notif.booking_reference}`
+                                                }
                                             </p>
                                             <span className='admin-nav__notification-time'>
                                                 {new Date(notif.created_at).toLocaleString()}
@@ -462,7 +528,7 @@ function AdminNavbar() {
                         </h3>
                         <p className='admin-nav__profile-email'>{adminEmail}</p>
                         <span className='admin-nav__profile-role-badge'>
-                            {userRole === 'admin' ? 'Administrator' : 'Accounting User'}
+                            {userRole === 'admin' ? 'Administrator' : userRole === 'accounting' ? 'Accounting User' : 'Travel Consultant'}
                         </span>
                     </div>
                 </div>

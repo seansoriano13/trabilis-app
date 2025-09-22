@@ -549,7 +549,7 @@
 .passenger-avatar-large {
     width: 4rem;
     height: 4rem;
-    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    background: linear-gradient(135deg, #f7d100, #e6c200);
     color: white;
     border-radius: 50%;
     display: flex;

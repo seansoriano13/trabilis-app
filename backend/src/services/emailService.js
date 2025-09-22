@@ -587,3 +587,93 @@ export const sendTourFailureEmail = async ({
         nodemailer.getTestMessageUrl(info)
     )
 }
+
+export const sendVisaInquiryConfirmationEmail = async ({
+    inquiryReference,
+    visa_type,
+    destination,
+    full_name,
+    email_address,
+    message
+}) => {
+    if (!email_address) throw new Error('Recipient email is required.')
+
+    const mailOptions = {
+        from: process.env.GMAIL_SMTP_FROM,
+        to: email_address,
+        subject: 'Visa Inquiry Received - Lindela Immigration Visa Consultancy',
+        html: `
+      <html>
+        <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f7fa; margin:0; padding:0;">
+          <div style="max-width: 600px; margin: 30px auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="color: #f7d100; font-size: 2rem; margin: 0; font-weight: 900;">
+                🛂 Lindela Immigration Visa Consultancy
+              </h1>
+              <p style="color: #666; margin: 10px 0 0 0; font-size: 1.1rem;">
+                Your Trusted Partner in Dream Destinations
+              </p>
+            </div>
+            
+            <h2 style="color: #333; text-align: center; margin-bottom: 20px;">
+              ✅ Visa Inquiry Received Successfully!
+            </h2>
+            
+            <p style="font-size: 16px; color: #333; line-height: 1.6; margin-bottom: 20px;">
+              Dear <strong>${full_name}</strong>,
+            </p>
+            
+            <p style="font-size: 16px; color: #333; line-height: 1.6; margin-bottom: 20px;">
+              Thank you for your interest in our visa consultation services! We have successfully received your inquiry and our team of expert visa consultants will review your request shortly.
+            </p>
+            
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f7d100;">
+              <h3 style="color: #333; margin-top: 0; font-size: 1.2rem;">Inquiry Details:</h3>
+              <p style="margin: 5px 0; color: #555;"><strong>Reference Number:</strong> ${inquiryReference}</p>
+              <p style="margin: 5px 0; color: #555;"><strong>Visa Type:</strong> ${visa_type}</p>
+              <p style="margin: 5px 0; color: #555;"><strong>Destination:</strong> ${destination}</p>
+              <p style="margin: 5px 0; color: #555;"><strong>Your Message:</strong> ${message}</p>
+            </div>
+            
+            <div style="background-color: #e8f4fd; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="color: #0066cc; margin-top: 0; font-size: 1.1rem;">What happens next?</h3>
+              <ul style="color: #333; line-height: 1.6; margin: 10px 0; padding-left: 20px;">
+                <li>Our visa consultant will review your inquiry within 24 hours</li>
+                <li>We will contact you via phone or email to discuss your requirements</li>
+                <li>We will provide you with a detailed consultation and next steps</li>
+                <li>Our team will guide you through the entire visa application process</li>
+              </ul>
+            </div>
+            
+            <p style="font-size: 16px; color: #333; line-height: 1.6; margin: 20px 0;">
+              With our <strong>12 years of experience</strong> and <strong>high approval rate</strong>, we are confident that we can help you achieve your travel dreams. Our knowledgeable and professional team is committed to providing you with the best possible service.
+            </p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <p style="color: #666; font-size: 14px; margin: 0;">
+                Need immediate assistance? Contact us at:
+              </p>
+              <p style="margin: 10px 0;">
+                <a href="mailto:${process.env.GMAIL_SMTP_FROM}" style="color: #f7d100; text-decoration: none; font-weight: bold;">
+                  ${process.env.GMAIL_SMTP_FROM}
+                </a>
+              </p>
+            </div>
+            
+            <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
+              <p style="color: #888; font-size: 12px; margin: 0;">
+                This is an automated message. Please do not reply to this email.
+              </p>
+              <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
+                © 2024 Lindela Immigration Visa Consultancy - Trabilis. All rights reserved.
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+    }
+
+    const info = await transporter.sendMail(mailOptions)
+    console.log('Visa inquiry confirmation email sent! Preview URL:', nodemailer.getTestMessageUrl(info))
+}

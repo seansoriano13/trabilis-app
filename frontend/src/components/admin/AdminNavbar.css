@@ -437,7 +437,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--color-white);
+    color: var(--color-bg-dark);
     flex-shrink: 0;
 }
 

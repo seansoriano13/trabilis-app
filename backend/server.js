@@ -9,11 +9,23 @@ import adminRoutes from './src/routes/adminRoutes.js'
 import tourRoutes from './src/routes/tourRoutes.js'
 import chatbotRoutes from './src/routes/chatbotRoutes.js'
 import proxyRoutes from './src/routes/proxyRoutes.js'
+import visaRoutes from './src/routes/visaRoutes.js'
 import { viewTourBookingHTML, viewTourBookingPrint } from './src/controllers/admin/tourController.js'
 import { viewFlightBookingHTML, viewFlightBookingPrint } from './src/controllers/admin/flightController.js'
 
 const app = express()
 const port = process.env.PORT || 5000
+
+// Global error handlers to prevent crashes
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason)
+    // Don't exit the process, just log the error
+})
+
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error)
+    // Don't exit the process, just log the error
+})
 
 // const allowedOrigins = process.env.ALLOWED_ORIGINS || ''
 
@@ -29,6 +41,7 @@ app.use('/api/v1/destinations', tourRoutes)
 app.use('/api/v1/test', testRoutes)
 app.use('/api/v1/chatbot', chatbotRoutes)
 app.use('/api/v1/proxy', proxyRoutes)
+app.use('/api/v1/visa', visaRoutes)
 
 // Admin
 app.use('/api/v1/admin', adminRoutes)

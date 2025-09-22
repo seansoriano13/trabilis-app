@@ -11,6 +11,10 @@
 }
 
 .tour-edit__header {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     margin-bottom: 20px;
 }
 
@@ -19,16 +23,16 @@
     align-items: center;
     gap: 8px;
     cursor: pointer;
-    color: #000000;
-    filter: opacity(80%);
+    color: #f7d100;
+    text-decoration: none;
 }
 
 .tour-edit__header-back-button:hover {
-    filter: opacity(100%);
+    text-decoration: underline;
 }
 
 .tour-edit__header-back-text {
-    font-size: 16px;
+    font-size: 14px;
     margin: 0;
 }
 

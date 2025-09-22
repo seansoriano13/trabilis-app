@@ -49,6 +49,13 @@ export const generateFlightPDF = async (req, res) => {
         // Generate PDF
         const pdfBuffer = await generateFlightItineraryPDF(bookingDetails)
 
+        if (!pdfBuffer || !Buffer.isBuffer(pdfBuffer)) {
+            return res.status(500).json({ 
+                error: 'Failed to generate PDF - invalid buffer returned',
+                message: 'PDF generation failed' 
+            })
+        }
+
         // Set response headers for PDF
         res.setHeader('Content-Type', 'application/pdf')
         res.setHeader('Content-Disposition', `inline; filename="Flight-Itinerary-${booking.booking_reference}.pdf"`)

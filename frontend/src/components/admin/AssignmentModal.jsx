@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { FiX, FiUser, FiCheck, FiAlertCircle } from 'react-icons/fi'
+import Select from 'react-select'
 import adminClient from '../../api/adminClient'
 import './AssignmentModal.css'
 
@@ -12,7 +13,7 @@ const AssignmentModal = ({
     onSuccess 
 }) => {
     const [staff, setStaff] = useState([])
-    const [selectedStaff, setSelectedStaff] = useState('')
+    const [selectedStaff, setSelectedStaff] = useState(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
 
@@ -20,23 +21,37 @@ const AssignmentModal = ({
         if (isOpen) {
             fetchAccountingStaff()
         }
-    }, [isOpen])
+    }, [isOpen, bookingType])
 
     const fetchAccountingStaff = async () => {
         try {
-            const response = await adminClient.get('/appointments/staff')
+            // Use different endpoints based on booking type
+            const endpoint = bookingType === 'visa' ? '/appointments/all-staff' : '/appointments/staff'
+            const response = await adminClient.get(endpoint)
+
+            
             if (response.data.success) {
-                setStaff(response.data.data)
+                // Filter for travel consultants only when booking type is visa
+                if (bookingType === 'visa') {
+                   
+                    const travelConsultants = response.data.data.filter(member => 
+                        member.role === 'travel_consultant'
+                    )
+                 
+                    setStaff(travelConsultants)
+                } else {
+                    setStaff(response.data.data)
+                }
             }
         } catch (err) {
             console.error('Error fetching staff:', err)
-            setError('Failed to load accounting staff')
+            setError('Failed to load staff members')
         }
     }
 
     const handleAssign = async () => {
         if (!selectedStaff) {
-            setError('Please select an accounting staff member')
+            setError(`Please select a ${bookingType === 'visa' ? 'travel consultant' : 'staff member'}`)
             return
         }
 
@@ -58,13 +73,24 @@ const AssignmentModal = ({
 
             const endpoint = bookingType === 'tour' 
                 ? '/appointments/assign-tour' 
-                : '/appointments/assign-flight'
+                : bookingType === 'flight'
+                ? '/appointments/assign-flight'
+                : '/visa/inquiries/assign'
 
-            const response = await adminClient.post(endpoint, {
-                bookingId,
-                assignedTo: selectedStaff,
-                assignedBy: assignedBy
-            })
+            // Use different parameter names based on booking type
+            const requestData = bookingType === 'visa' 
+                ? {
+                    inquiryId: bookingId,
+                    assignedTo: selectedStaff.value,
+                    assignedBy: assignedBy
+                  }
+                : {
+                    bookingId: bookingId,
+                    assignedTo: selectedStaff.value,
+                    assignedBy: assignedBy
+                  }
+
+            const response = await adminClient.post(endpoint, requestData)
 
             if (response.data.success) {
                 onSuccess(response.data.data)
@@ -81,7 +107,7 @@ const AssignmentModal = ({
     }
 
     const handleClose = () => {
-        setSelectedStaff('')
+        setSelectedStaff(null)
         setError('')
         onClose()
     }
@@ -94,7 +120,7 @@ const AssignmentModal = ({
                 <div className="assignment-modal-header">
                     <div className="assignment-modal-title">
                         <FiUser size={20} />
-                        <h3>Assign Booking</h3>
+                        <h3>Assign Inquiry</h3>
                     </div>
                     <button 
                         className="assignment-modal-close"
@@ -106,8 +132,8 @@ const AssignmentModal = ({
 
                 <div className="assignment-modal-content">
                     <div className="assignment-modal-info">
-                        <p><strong>Booking Reference:</strong> {bookingReference}</p>
-                        <p><strong>Type:</strong> {bookingType === 'tour' ? 'Tour' : 'Flight'} Booking</p>
+                        <p><strong>Inquiry Reference:</strong> {bookingReference}</p>
+                        <p><strong>Type:</strong> {bookingType === 'tour' ? 'Tour' : bookingType === 'flight' ? 'Flight' : 'Visa'} {bookingType === 'visa' ? 'Inquiry' : 'Booking'}</p>
                     </div>
 
                     {error && (
@@ -120,20 +146,23 @@ const AssignmentModal = ({
                     <div className="assignment-modal-form">
                         <label className="assignment-modal-label">
                             <FiUser size={16} />
-                            Select Accounting Staff
+                            {bookingType === 'visa' ? 'Select Travel Consultant' : 'Select Staff Member'}
                         </label>
-                        <select
+                        <Select
                             value={selectedStaff}
-                            onChange={(e) => setSelectedStaff(e.target.value)}
+                            onChange={setSelectedStaff}
+                            options={staff.map(member => ({
+                                value: member.id,
+                                label: `${member.first_name} ${member.last_name} (${member.email})`,
+                                role: member.role
+                            }))}
+                            placeholder={bookingType === 'visa' ? 'Choose travel consultant...' : 'Choose staff member...'}
                             className="assignment-modal-select"
-                        >
-                            <option value="">Choose accounting staff...</option>
-                            {staff.map((member) => (
-                                <option key={member.id} value={member.id}>
-                                    {member.first_name} {member.last_name} ({member.email})
-                                </option>
-                            ))}
-                        </select>
+                            classNamePrefix="assignment-select"
+                            isSearchable
+                            isClearable
+                            noOptionsMessage={() => "No staff members found"}
+                        />
                     </div>
                 </div>
 
@@ -158,7 +187,7 @@ const AssignmentModal = ({
                         ) : (
                             <>
                                 <FiCheck size={16} />
-                                Assign Booking
+                                Assign Inquiry
                             </>
                         )}
                     </button>

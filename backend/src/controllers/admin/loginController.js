@@ -20,7 +20,7 @@ export const adminLogin = async (req, res) => {
         .eq('email', email)
         .single()
 
-    if (roleError || !['admin', 'accounting'].includes(adminData.role)) {
+    if (roleError || !['admin', 'accounting', 'travel_consultant'].includes(adminData.role)) {
         return res.status(403).json({ error: 'Access denied: Invalid role' })
     }
 

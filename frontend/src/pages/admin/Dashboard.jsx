@@ -176,7 +176,7 @@ const Dashboard = () => {
         }
 
         fetchData()
-    }, [flightPage, tourPage, notifPage, sortFlight, sortTour, jwt])
+    }, [flightPage, tourPage, notifPage, sortFlight, sortTour])
 
     const getNestedValue = (obj, path) => {
         return path.split('.').reduce((o, k) => o?.[k], obj) || ''

@@ -1,0 +1,837 @@
+/* Admin Visa Inquiries Styles */
+.admin-visa-inquiries {
+    padding: 2rem;
+    background-color: #f8fafc;
+    min-height: 100vh;
+}
+
+.admin-visa-inquiries__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    background: white;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.admin-visa-inquiries__title {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.admin-visa-inquiries__header-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f7d100, #e6c200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: black;
+    font-size: 24px;
+}
+
+.admin-visa-inquiries__header-text h1 {
+    margin: 0 0 5px 0;
+    color: #333;
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.admin-visa-inquiries__header-text p {
+    margin: 0;
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.refresh-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background-color: #f7d100;
+    color: #000;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.refresh-btn:hover {
+    background-color: #e0c100;
+}
+
+.refresh-btn:disabled {
+    background-color: #d1d5db;
+    cursor: not-allowed;
+}
+
+.spinning {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.stat-icon {
+    width: 3rem;
+    height: 3rem;
+    background-color: #f7d100;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #000;
+}
+
+.stat-content h3 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+}
+
+.stat-content p {
+    color: #6b7280;
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+/* Filters Section */
+.filters-section {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    background: white;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+}
+
+.search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6b7280;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: #f7d100;
+    box-shadow: 0 0 0 3px rgba(247, 209, 0, 0.1);
+}
+
+.filter-group select {
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    background: white;
+}
+
+.filter-group select:focus {
+    outline: none;
+    border-color: #f7d100;
+    box-shadow: 0 0 0 3px rgba(247, 209, 0, 0.1);
+}
+
+/* Error Message */
+.error-message {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    background-color: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+/* Table Styles */
+.inquiries-table-container {
+    background: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.inquiries-table-container {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    margin-bottom: 2rem;
+    /* Custom scrollbar for webkit browsers */
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+.inquiries-table-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.inquiries-table-container::-webkit-scrollbar-track {
+    background: #f7fafc;
+    border-radius: 4px;
+}
+
+.inquiries-table-container::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 4px;
+}
+
+.inquiries-table-container::-webkit-scrollbar-thumb:hover {
+    background: #a0aec0;
+}
+
+.inquiries-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1200px; /* Ensure minimum width for all columns */
+}
+
+.inquiries-table th {
+    background-color: #f9fafb;
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 1px solid #e5e7eb;
+    cursor: pointer;
+    user-select: none;
+}
+
+.inquiries-table th:hover {
+    background-color: #f3f4f6;
+}
+
+.sort-indicator {
+    margin-left: 0.5rem;
+    color: #f7d100;
+}
+
+.inquiries-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: top;
+}
+
+.inquiries-table tr:hover {
+    background-color: #f9fafb;
+}
+
+.reference-code {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: #1f2937;
+    background-color: #f3f4f6;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+}
+
+.client-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.client-name {
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.client-email,
+.client-phone {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.visa-type {
+    background-color: #dbeafe;
+    color: #1e40af;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.destination {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: #374151;
+}
+
+.status-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-icon {
+    font-size: 1rem;
+}
+
+.status-pending {
+    color: #f59e0b;
+}
+
+.status-in-progress {
+    color: #3b82f6;
+}
+
+.status-completed {
+    color: #10b981;
+}
+
+.status-cancelled {
+    color: #ef4444;
+}
+
+.status-text {
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.date {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-btn {
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.view-btn {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.view-btn:hover {
+    background-color: #bfdbfe;
+}
+
+.edit-btn {
+    background-color: #fef3c7;
+    color: #d97706;
+}
+
+.edit-btn:hover {
+    background-color: #fde68a;
+}
+
+/* No Data State */
+.no-data {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    color: #6b7280;
+}
+
+.no-data svg {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 2rem;
+    list-style: none;
+    padding: 0;
+}
+
+.pagination li {
+    cursor: pointer;
+}
+
+.pagination a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.25rem;
+    color: #374151;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.pagination a:hover {
+    background-color: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.pagination .active a {
+    background-color: #f7d100;
+    border-color: #f7d100;
+    color: #000;
+    font-weight: 600;
+}
+
+.pagination .disabled a {
+    color: #9ca3af;
+    cursor: not-allowed;
+}
+
+/* Modal Styles - Consistent with AdminUsers */
+.visa-inquiries__modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.visa-inquiries__modal-content {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from { 
+        opacity: 0;
+        transform: scale(0.9) translateY(-20px);
+    }
+    to { 
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.visa-inquiries__modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 25px 30px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.visa-inquiries__modal-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.visa-inquiries__modal-title h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+}
+
+.visa-inquiries__modal-close {
+    background: none;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.visa-inquiries__modal-close:hover {
+    background-color: #f3f4f6;
+    color: #374151;
+}
+
+.visa-inquiries__modal-body {
+    padding: 30px;
+}
+
+.visa-inquiries__modal-section {
+    margin-bottom: 25px;
+}
+
+.visa-inquiries__modal-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #374151;
+    margin: 0 0 15px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.visa-inquiries__modal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.visa-inquiries__modal-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.visa-inquiries__modal-item label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #6b7280;
+}
+
+.visa-inquiries__modal-item span {
+    color: #1f2937;
+    font-weight: 500;
+}
+
+.visa-inquiries__status-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+.visa-inquiries__message-content {
+    display: flex;
+    gap: 12px;
+    padding: 20px;
+    background-color: #f9fafb;
+    border-radius: 8px;
+    border-left: 4px solid #f7d100;
+}
+
+.visa-inquiries__message-content svg {
+    color: #6b7280;
+    margin-top: 4px;
+    flex-shrink: 0;
+}
+
+.visa-inquiries__message-content p {
+    margin: 0;
+    color: #374151;
+    line-height: 1.6;
+}
+
+.visa-inquiries__notes-content {
+    padding: 20px;
+    background-color: #fef3c7;
+    border-radius: 8px;
+    border-left: 4px solid #f59e0b;
+}
+
+.visa-inquiries__notes-content p {
+    margin: 0;
+    color: #92400e;
+    line-height: 1.6;
+}
+
+/* Modal Form Styles */
+.visa-inquiries__modal-form {
+    padding: 30px;
+}
+
+.visa-inquiries__modal-form-group {
+    margin-bottom: 20px;
+}
+
+.visa-inquiries__modal-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 8px;
+}
+
+.visa-inquiries__modal-select,
+.visa-inquiries__modal-textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+.visa-inquiries__modal-select:focus,
+.visa-inquiries__modal-textarea:focus {
+    outline: none;
+    border-color: #f7d100;
+    box-shadow: 0 0 0 3px rgba(247, 209, 0, 0.1);
+}
+
+.visa-inquiries__modal-textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.visa-inquiries__modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.visa-inquiries__modal-save,
+.visa-inquiries__modal-cancel {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.visa-inquiries__modal-save {
+    background-color: #f7d100;
+    color: #000;
+}
+
+.visa-inquiries__modal-save:hover {
+    background-color: #e0c100;
+    transform: translateY(-1px);
+}
+
+.visa-inquiries__modal-cancel {
+    background-color: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.visa-inquiries__modal-cancel:hover {
+    background-color: #e5e7eb;
+    transform: translateY(-1px);
+}
+
+.visa-inquiries__modal-save:disabled,
+.visa-inquiries__modal-cancel:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.visa-inquiries__modal-save:disabled:hover,
+.visa-inquiries__modal-cancel:disabled:hover {
+    background-color: inherit;
+    transform: none;
+}
+
+/* Loading State */
+.visa-inquiries__loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    text-align: center;
+}
+
+.visa-inquiries__loading::before {
+    content: '';
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e3e3e3;
+    border-top: 4px solid #f7d100;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .admin-visa-inquiries {
+        padding: 1rem;
+    }
+    
+    .admin-visa-inquiries__header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .filters-section {
+        flex-direction: column;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .inquiries-table {
+        font-size: 0.875rem;
+        min-width: 1000px; /* Slightly smaller on mobile */
+    }
+    
+    .inquiries-table th,
+    .inquiries-table td {
+        padding: 0.75rem 0.5rem;
+    }
+    
+    .inquiries-table-container {
+        margin: 0 -1rem; /* Extend to screen edges on mobile */
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 1rem;
+    }
+    
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Assignment Styles */
+.assign-btn {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.assign-btn:hover {
+    background-color: #e1bee7;
+}
+
+.assignment-cell {
+    min-width: 200px;
+}
+
+.assignment-assigned {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.assignment-staff {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.assignment-staff-name {
+    font-weight: 500;
+    color: #333;
+    font-size: 13px;
+}
+
+.assignment-staff-email {
+    font-size: 11px;
+    color: #666;
+}
+
+.assignment-status {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: capitalize;
+    width: fit-content;
+}
+
+.assignment-status--pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.assignment-status--in_progress {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.assignment-status--completed {
+    background: #d4edda;
+    color: #155724;
+}
+
+.assignment-date {
+    font-size: 11px;
+    color: #888;
+}
+
+.assignment-unassigned {
+    color: #999;
+    font-style: italic;
+    font-size: 13px;
+}

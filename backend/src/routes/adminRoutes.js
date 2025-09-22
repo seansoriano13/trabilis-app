@@ -31,12 +31,14 @@ import {
 import { generateTourPDF, generateTourPDFAdmin, viewTourBookingHTML, viewTourBookingPrint } from '../controllers/admin/tourController.js'
 import {
     getAccountingStaff,
+    getAllStaff,
     assignTourBooking,
     assignFlightBooking,
     updateAssignmentStatus,
     getAssignedBookings,
     reassignBooking
 } from '../controllers/admin/appointmentController.js'
+import { getVisaInquiries, updateVisaInquiryStatus, assignVisaInquiry, updateVisaAssignmentStatus, getAssignedVisaInquiries } from '../controllers/visaInquiryController.js'
 
 const router = express.Router()
 
@@ -86,10 +88,18 @@ router.get('/users/stats', getUserStats)
 
 // Appointment System
 router.get('/appointments/staff', getAccountingStaff)
+router.get('/appointments/all-staff', getAllStaff)
 router.post('/appointments/assign-tour', assignTourBooking)
 router.post('/appointments/assign-flight', assignFlightBooking)
 router.put('/appointments/status', updateAssignmentStatus)
 router.get('/appointments/assigned', getAssignedBookings)
 router.post('/appointments/reassign', reassignBooking)
+
+// Visa Inquiries
+router.get('/visa/inquiries', getVisaInquiries)
+router.put('/visa/inquiries/:id/status', updateVisaInquiryStatus)
+router.post('/visa/inquiries/assign', assignVisaInquiry)
+router.put('/visa/inquiries/assignment-status', updateVisaAssignmentStatus)
+router.get('/visa/inquiries/assigned', getAssignedVisaInquiries)
 
 export default router
