@@ -56,12 +56,15 @@ const Dashboard = () => {
     const [tourBookings, setTourBookings] = useState([])
     const [notifications, setNotifications] = useState([])
     const [revenueData, setRevenueData] = useState([])
+    const [totalRevenue, setTotalRevenue] = useState(0)
     const [flightPage, setFlightPage] = useState(0)
     const [tourPage, setTourPage] = useState(0)
     const [notifPage, setNotifPage] = useState(0)
     const [flightTotal, setFlightTotal] = useState(0)
     const [tourTotal, setTourTotal] = useState(0)
     const [notifTotal, setNotifTotal] = useState(0)
+    const [thisMonthRevenue, setThisMonthRevenue] = useState(0)
+    const currentMonthLabelLong = new Date().toLocaleString('en-US', { month: 'long' })
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [sortFlight, setSortFlight] = useState({
@@ -103,7 +106,7 @@ const Dashboard = () => {
 
                 const revenuePromise = supabase.rpc('get_monthly_revenue', {
                     p_start_date: '2025-01-01',
-                    p_end_date: '2025-06-30',
+                    p_end_date: '2025-12-31',
                 })
 
                 const weatherPromise = axios.get(
@@ -162,7 +165,85 @@ const Dashboard = () => {
                 setFlightBookings(flightRes.data)
                 setTourBookings(tourDataRes.data)
                 setNotifications(notifRes.data)
-                setRevenueData(revenueRes.data || [])
+                // Normalize revenue data to expected shape { month, total }
+                const rawRevenue = revenueRes.data || []
+                const normalizedRevenue = rawRevenue.map((r) => ({
+                    month: r.month || r.month_name || r.m || r.month_label || '',
+                    total: Number(r.total) || 0,
+                }))
+                setRevenueData(normalizedRevenue)
+                // Try to compute total revenue from RPC across a wide range first
+                try {
+                    const allTimeRes = await supabase.rpc('get_monthly_revenue', {
+                        p_start_date: '2000-01-01',
+                        p_end_date: '2100-12-31',
+                    })
+                    const allRows = allTimeRes.data || []
+                    const totalFromRpc = allRows.reduce((s, r) => s + (Number(r.total) || 0), 0)
+                    if (totalFromRpc > 0) setTotalRevenue(totalFromRpc)
+                } catch (_) {}
+
+                // If no revenue data from RPC, fallback to client-side aggregation
+                const aggregateMonth = async (date) => {
+                    const start = new Date(date.getFullYear(), date.getMonth(), 1)
+                    const nextMonthStart = new Date(date.getFullYear(), date.getMonth() + 1, 1)
+                    const [flightAgg, tourAgg] = await Promise.all([
+                        supabase
+                            .from('flight_bookings')
+                            .select('total_amount')
+                            .gte('created_at', start.toISOString())
+                            .lt('created_at', nextMonthStart.toISOString()),
+                        supabase
+                            .from('tour_bookings')
+                            .select('total_amount')
+                            .gte('created_at', start.toISOString())
+                            .lt('created_at', nextMonthStart.toISOString()),
+                    ])
+                    const flightSum = (flightAgg.data || []).reduce((s, r) => s + (Number(r.total_amount) || 0), 0)
+                    const tourSum = (tourAgg.data || []).reduce((s, r) => s + (Number(r.total_amount) || 0), 0)
+                    return flightSum + tourSum
+                }
+                if (!normalizedRevenue.length) {
+                    const monthsBack = 6
+                    const now = new Date()
+                    const monthPromises = []
+                    for (let i = monthsBack - 1; i >= 0; i--) {
+                        const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+                        monthPromises.push(
+                            aggregateMonth(d).then((sum) => ({
+                                month: d.toLocaleString('en-US', { month: 'short' }),
+                                total: sum,
+                            }))
+                        )
+                    }
+                    const computed = await Promise.all(monthPromises)
+                    setRevenueData(computed)
+                    const currentMonthSum = await aggregateMonth(now)
+                    setThisMonthRevenue(currentMonthSum)
+                    // Fallback all-time totals by summing all rows from both tables
+                    const [allFlights, allTours] = await Promise.all([
+                        supabase.from('flight_bookings').select('total_amount'),
+                        supabase.from('tour_bookings').select('total_amount'),
+                    ])
+                    const totalAll = (allFlights.data || []).reduce((s, r) => s + (Number(r.total_amount) || 0), 0)
+                        + (allTours.data || []).reduce((s, r) => s + (Number(r.total_amount) || 0), 0)
+                    setTotalRevenue(totalAll)
+                } else {
+                    const now = new Date()
+                    const thisShort = now.toLocaleString('en-US', { month: 'short' })
+                    // Try to match by short month label, numeric month, or full string includes
+                    const mm = (now.getMonth() + 1).toString().padStart(2, '0')
+                    const found = normalizedRevenue.find((r) =>
+                        (r.month || '').toString().toLowerCase() === thisShort.toLowerCase() ||
+                        (r.month || '').toString().includes(mm)
+                    )
+                    if (found) {
+                        setThisMonthRevenue(Number(found.total) || 0)
+                    } else {
+                        const fallback = await aggregateMonth(now)
+                        setThisMonthRevenue(fallback)
+                    }
+                }
                 setFlightTotal(flightRes.count || 0)
                 setTourTotal(tourCountRes.count || 0)
                 setNotifTotal(notifRes.count || 0)
@@ -224,30 +305,58 @@ const Dashboard = () => {
             {
                 label: 'Bookings by Type',
                 data: [flightTotal, tourTotal],
-                backgroundColor: '#f7d100',
-                borderColor: '#f7d100',
+                backgroundColor: 'rgba(247, 209, 0, 0.85)',
+                borderColor: '#e6c200',
                 borderWidth: 1,
+                borderRadius: 8,
+                hoverBackgroundColor: 'rgba(255, 212, 0, 0.95)',
+                hoverBorderColor: '#d4b300',
             },
         ],
     }
 
+    const getRecentMonthLabels = (count = 6) => {
+        const labels = []
+        const now = new Date()
+        for (let i = count - 1; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+            labels.push(d.toLocaleString('en-US', { month: 'short' }))
+        }
+        return labels
+    }
+
+    const currency = (v) => `₱${Number(v || 0).toLocaleString()}`
+
+    const profitLabels = revenueData.length
+        ? revenueData.map((r) => r.month || '')
+        : getRecentMonthLabels(6)
+    const profitValues = revenueData.length
+        ? revenueData.map((r) => r.total)
+        : new Array(profitLabels.length).fill(0)
+
     const profitData = {
-        labels: revenueData.map((r) => r.month) || [
-            'Jan',
-            'Feb',
-            'Mar',
-            'Apr',
-            'May',
-            'Jun',
-        ],
+        labels: profitLabels,
         datasets: [
             {
                 label: 'Revenue (₱)',
-                data: revenueData.map((r) => r.total) || [0, 0, 0, 0, 0, 0],
-                borderColor: '#f7d100',
-                backgroundColor: 'rgba(247, 209, 0, 0.2)',
+                data: profitValues,
+                borderColor: '#e6c200',
+                backgroundColor: (ctx) => {
+                    const { chart } = ctx
+                    const { ctx: c, chartArea } = chart || {}
+                    if (!chartArea) return 'rgba(247,209,0,0.2)'
+                    const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
+                    gradient.addColorStop(0, 'rgba(247, 209, 0, 0.35)')
+                    gradient.addColorStop(1, 'rgba(247, 209, 0, 0.05)')
+                    return gradient
+                },
+                pointBackgroundColor: '#f7d100',
+                pointBorderColor: '#2d3748',
+                pointRadius: 3,
+                pointHoverRadius: 5,
                 fill: true,
-                tension: 0.4,
+                tension: 0.35,
+                borderWidth: 2,
             },
         ],
     }
@@ -260,10 +369,12 @@ const Dashboard = () => {
                 data: weather
                     ? new Array(7).fill(weather.main.temp)
                     : [0, 0, 0, 0, 0, 0, 0],
-                borderColor: '#f7d100',
-                backgroundColor: 'rgba(247, 209, 0, 0.2)',
+                borderColor: '#e6c200',
+                backgroundColor: 'rgba(247, 209, 0, 0.15)',
                 fill: true,
-                tension: 0.4,
+                tension: 0.35,
+                borderWidth: 2,
+                pointRadius: 2,
             },
         ],
     }
@@ -330,14 +441,14 @@ const Dashboard = () => {
                         <span className='dashboard__summary-label'>Active bookings</span>
                     </div>
                 </div>
-                <div className='dashboard__summary-card dashboard__summary-card--notifications'>
+                <div className='dashboard__summary-card dashboard__summary-card--revenue-month'>
                     <div className='dashboard__summary-icon'>
-                        <FiBell size={24} />
+                        <FiDollarSign size={24} />
                     </div>
                     <div className='dashboard__summary-content'>
-                    <h3>Notifications</h3>
-                    <p>{notifTotal}</p>
-                        <span className='dashboard__summary-label'>Unread alerts</span>
+                        <h3>{currentMonthLabelLong} Revenue</h3>
+                        <p>₱{Number(thisMonthRevenue || 0).toLocaleString()}</p>
+                        <span className='dashboard__summary-label'>Month to date</span>
                     </div>
                 </div>
                 <div className='dashboard__summary-card dashboard__summary-card--revenue'>
@@ -346,19 +457,7 @@ const Dashboard = () => {
                     </div>
                     <div className='dashboard__summary-content'>
                     <h3>Total Revenue</h3>
-                    <p>
-                        ₱
-                        {(
-                            flightBookings.reduce(
-                                (sum, b) => sum + (b.total_amount || 0),
-                                0
-                            ) +
-                            tourBookings.reduce(
-                                (sum, b) => sum + (b.total_amount || 0),
-                                0
-                            )
-                        ).toLocaleString()}
-                    </p>
+                    <p>₱{Number(totalRevenue || 0).toLocaleString()}</p>
                         <span className='dashboard__summary-label'>All time</span>
                     </div>
                 </div>
@@ -713,12 +812,23 @@ const Dashboard = () => {
                         data={weatherData}
                         options={{
                             responsive: true,
-                                maintainAspectRatio: false,
-                            plugins: { legend: { display: false } },
-                                scales: { 
-                                    y: { beginAtZero: true },
-                                    x: { display: false }
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: (ctx) => `${ctx.parsed.y} °C`,
+                                    },
                                 },
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: { color: 'rgba(0,0,0,0.06)' },
+                                },
+                                x: { display: false, grid: { display: false } },
+                            },
+                            animation: { duration: 600, easing: 'easeOutQuart' },
                         }}
                     />
                     </div>
@@ -736,12 +846,23 @@ const Dashboard = () => {
                         data={bookingStatsData}
                         options={{
                             responsive: true,
-                                maintainAspectRatio: false,
-                            plugins: { legend: { display: false } },
-                                scales: { 
-                                    y: { beginAtZero: true },
-                                    x: { display: true }
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: (ctx) => `${ctx.parsed.y} bookings`,
+                                    },
                                 },
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: { color: 'rgba(0,0,0,0.06)' },
+                                },
+                                x: { grid: { display: false } },
+                            },
+                            animation: { duration: 500 },
                         }}
                     />
                     </div>
@@ -759,12 +880,27 @@ const Dashboard = () => {
                         data={profitData}
                         options={{
                             responsive: true,
-                                maintainAspectRatio: false,
-                            plugins: { legend: { display: false } },
-                                scales: { 
-                                    y: { beginAtZero: true },
-                                    x: { display: true }
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: (ctx) => `Revenue: ${currency(ctx.parsed.y)}`,
+                                    },
                                 },
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        callback: (v) => currency(v),
+                                    },
+                                    grid: { color: 'rgba(0,0,0,0.06)' },
+                                },
+                                x: { grid: { display: false } },
+                            },
+                            interaction: { mode: 'index', intersect: false },
+                            animation: { duration: 700, easing: 'easeOutQuart' },
                         }}
                     />
                     </div>

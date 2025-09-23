@@ -14,13 +14,12 @@
     border-radius: 10px;
     background-color: #212121;
     color: #eee;
-    width: var(--container_width);
-    overflow: hidden;
+    width: auto;
     border: 2px solid #fff;
 }
 
 .radio-input label {
-    width: 100%;
+    flex: 1 1 0;
     padding: 10px;
     cursor: pointer;
     display: flex;
@@ -32,37 +31,13 @@
     font-size: 14px;
 }
 
-.selection {
-    display: none;
-    position: absolute;
-    height: 100%;
-    width: calc(var(--container_width) / 2);
-    z-index: 0;
-    left: 0;
-    top: 0;
-    transition: 0.15s ease;
+.radio-input label {
+    transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.radio-input label:nth-child(1):has(input:checked) {
-    color: black;
-}
-.radio-input label:nth-child(2):has(input:checked) {
+.radio-input label:has(input:checked) {
+    background-color: var(--color-yellow);
     color: #212121;
-}
-.radio-input label:nth-child(1):has(input:checked) ~ .selection {
-    background-color: var(--color-yellow);
-    display: inline-block;
-}
-.radio-input label:nth-child(2):has(input:checked) ~ .selection {
-    background-color: var(--color-yellow);
-    display: inline-block;
-}
-.radio-input label:nth-child(1):has(input:checked) ~ .selection {
-    transform: translateX(calc(var(--container_width) * 0 / 2));
-}
-
-.radio-input label:nth-child(2):has(input:checked) ~ .selection {
-    transform: translateX(calc(var(--container_width) * 1 / 2));
 }
 
 .flight-card .dot {

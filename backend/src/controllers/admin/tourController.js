@@ -1,4 +1,5 @@
 import { supabase } from '../../config/supabaseClient.js'
+import Pusher from 'pusher'
 import { generateTourSummaryPDF } from '../../services/emailService.js'
 
 // Helper function to generate itinerary HTML
@@ -54,6 +55,7 @@ export const createTour = async (req, res) => {
                 payment_terms,
                 requirements,
                 notes,
+                inclusion_groups, // ignore on insert; handled post-create via admin endpoints
                 ...dateData
             } = d
 
@@ -428,6 +430,12 @@ export const viewTourBookingHTML = async (req, res) => {
         const packageDate = booking.package_dates
         const tourPackage = packageDate?.tour_packages
         
+        const flight = booking.flight_details || {}
+        const outboundSegs = Array.isArray(flight.outbound) ? flight.outbound : (flight.outbound ? [flight.outbound] : [])
+        const inboundSegs = Array.isArray(flight.return || flight.inbound) ? (flight.return || flight.inbound) : ((flight.return || flight.inbound) ? [ (flight.return || flight.inbound) ] : [])
+        const firstOutbound = outboundSegs[0] || {}
+        const lastInbound = inboundSegs[inboundSegs.length - 1] || {}
+
         const bookingDetails = {
             // Basic booking info
             bookingReference: booking.booking_reference,
@@ -457,7 +465,19 @@ export const viewTourBookingHTML = async (req, res) => {
             tourDescription: tourPackage?.description || '-',
             
             // Itinerary (generate from actual data)
-            itinerary: generateItineraryHTML(packageDate?.package_itineraries || [])
+            itinerary: generateItineraryHTML(packageDate?.package_itineraries || []),
+
+            // Flight placeholders
+            outboundAirline: firstOutbound.airline || 'TBA',
+            outboundFlightNo: firstOutbound.flight_no || firstOutbound.flightNo || 'TBA',
+            outboundDeparture: firstOutbound.departure || 'TBA',
+            outboundArrival: firstOutbound.arrival || 'TBA',
+            outboundDate: firstOutbound.date || 'TBA',
+            returnAirline: lastInbound.airline || 'TBA',
+            returnFlightNo: lastInbound.flight_no || lastInbound.flightNo || 'TBA',
+            returnDeparture: lastInbound.departure || 'TBA',
+            returnArrival: lastInbound.arrival || 'TBA',
+            returnDate: lastInbound.date || 'TBA'
         }
 
         // Read and populate the HTML template
@@ -500,6 +520,16 @@ export const viewTourBookingHTML = async (req, res) => {
             .replace(/{{requirements}}/g, bookingDetails.requirements)
             .replace(/{{paymentTerms}}/g, bookingDetails.paymentTerms)
             .replace(/{{tourDescription}}/g, bookingDetails.tourDescription)
+            .replace(/{{outboundAirline}}/g, bookingDetails.outboundAirline)
+            .replace(/{{outboundFlightNo}}/g, bookingDetails.outboundFlightNo)
+            .replace(/{{outboundDeparture}}/g, bookingDetails.outboundDeparture)
+            .replace(/{{outboundArrival}}/g, bookingDetails.outboundArrival)
+            .replace(/{{outboundDate}}/g, bookingDetails.outboundDate)
+            .replace(/{{returnAirline}}/g, bookingDetails.returnAirline)
+            .replace(/{{returnFlightNo}}/g, bookingDetails.returnFlightNo)
+            .replace(/{{returnDeparture}}/g, bookingDetails.returnDeparture)
+            .replace(/{{returnArrival}}/g, bookingDetails.returnArrival)
+            .replace(/{{returnDate}}/g, bookingDetails.returnDate)
 
         // Send HTML response
         res.setHeader('Content-Type', 'text/html')
@@ -559,6 +589,12 @@ export const viewTourBookingPrint = async (req, res) => {
         const tourPackage = packageDate?.tour_packages
 
         // Prepare booking details for template
+        const flight = booking.flight_details || {}
+        const outboundSegs = Array.isArray(flight.outbound) ? flight.outbound : (flight.outbound ? [flight.outbound] : [])
+        const inboundSegs = Array.isArray(flight.return || flight.inbound) ? (flight.return || flight.inbound) : ((flight.return || flight.inbound) ? [ (flight.return || flight.inbound) ] : [])
+        const firstOutbound = outboundSegs[0] || {}
+        const lastInbound = inboundSegs[inboundSegs.length - 1] || {}
+
         const bookingDetails = {
             bookingReference: booking.booking_reference,
             leadFirstName: booking.lead_first_name,
@@ -582,7 +618,17 @@ export const viewTourBookingPrint = async (req, res) => {
             tourDescription: tourPackage?.description || '-',
             
             // Itinerary (generate from actual data)
-            itinerary: generateItineraryHTML(packageDate?.package_itineraries || [])
+            itinerary: generateItineraryHTML(packageDate?.package_itineraries || []),
+            outboundAirline: firstOutbound.airline || 'TBA',
+            outboundFlightNo: firstOutbound.flight_no || firstOutbound.flightNo || 'TBA',
+            outboundDeparture: firstOutbound.departure || 'TBA',
+            outboundArrival: firstOutbound.arrival || 'TBA',
+            outboundDate: firstOutbound.date || 'TBA',
+            returnAirline: lastInbound.airline || 'TBA',
+            returnFlightNo: lastInbound.flight_no || lastInbound.flightNo || 'TBA',
+            returnDeparture: lastInbound.departure || 'TBA',
+            returnArrival: lastInbound.arrival || 'TBA',
+            returnDate: lastInbound.date || 'TBA'
         }
 
         // Read and populate the HTML template
@@ -703,6 +749,10 @@ export const generateTourPDFAdmin = async (req, res) => {
         const packageDate = booking.package_dates
         const tourPackage = packageDate?.tour_packages
         
+        const flight = booking.flight_details || {}
+        const outbound = flight.outbound || {}
+        const inbound = flight.return || flight.inbound || {}
+
         const bookingDetails = {
             // Basic booking info
             bookingReference: booking.booking_reference,
@@ -732,7 +782,17 @@ export const generateTourPDFAdmin = async (req, res) => {
             tourDescription: tourPackage?.description || '-',
             
             // Itinerary (generate from actual data)
-            itinerary: generateItineraryHTML(packageDate?.package_itineraries || [])
+            itinerary: generateItineraryHTML(packageDate?.package_itineraries || []),
+            outboundAirline: outbound.airline || 'TBA',
+            outboundFlightNo: outbound.flight_no || outbound.flightNo || 'TBA',
+            outboundDeparture: outbound.departure || 'TBA',
+            outboundArrival: outbound.arrival || 'TBA',
+            outboundDate: outbound.date || 'TBA',
+            returnAirline: inbound.airline || 'TBA',
+            returnFlightNo: inbound.flight_no || inbound.flightNo || 'TBA',
+            returnDeparture: inbound.departure || 'TBA',
+            returnArrival: inbound.arrival || 'TBA',
+            returnDate: inbound.date || 'TBA'
         }
 
         // Read and populate the HTML template
@@ -775,6 +835,16 @@ export const generateTourPDFAdmin = async (req, res) => {
             .replace(/{{requirements}}/g, bookingDetails.requirements)
             .replace(/{{paymentTerms}}/g, bookingDetails.paymentTerms)
             .replace(/{{tourDescription}}/g, bookingDetails.tourDescription)
+            .replace(/{{outboundAirline}}/g, bookingDetails.outboundAirline)
+            .replace(/{{outboundFlightNo}}/g, bookingDetails.outboundFlightNo)
+            .replace(/{{outboundDeparture}}/g, bookingDetails.outboundDeparture)
+            .replace(/{{outboundArrival}}/g, bookingDetails.outboundArrival)
+            .replace(/{{outboundDate}}/g, bookingDetails.outboundDate)
+            .replace(/{{returnAirline}}/g, bookingDetails.returnAirline)
+            .replace(/{{returnFlightNo}}/g, bookingDetails.returnFlightNo)
+            .replace(/{{returnDeparture}}/g, bookingDetails.returnDeparture)
+            .replace(/{{returnArrival}}/g, bookingDetails.returnArrival)
+            .replace(/{{returnDate}}/g, bookingDetails.returnDate)
 
         // Add comprehensive print optimization and admin styling
         const adminStyles = `
@@ -1084,5 +1154,187 @@ export const generateTourPDFAdmin = async (req, res) => {
             error: 'Failed to generate PDF for admin',
             message: error.message 
         })
+    }
+}
+
+const pusher = new Pusher({
+    appId: '2048372',
+    key: '371c6201af1a663a4f58',
+    secret: 'b4a5985ecd6d27690c8b',
+    cluster: 'ap1',
+    useTLS: true,
+})
+
+// Edit Tour Booking (status/assignment updates)
+export const editTourBooking = async (req, res) => {
+    try {
+        const { id } = req.params
+        const { status, assigned_to, assignment_status, flight_details } = req.body || {}
+
+        // Fetch existing booking for comparison and reference
+        const { data: existingBooking, error: fetchError } = await supabase
+            .from('tour_bookings')
+            .select('*')
+            .eq('id', id)
+            .single()
+
+        if (fetchError || !existingBooking) {
+            return res.status(404).json({ error: 'Booking not found' })
+        }
+
+        // Build update payload
+        const updateData = {}
+        if (typeof status !== 'undefined') updateData.status = status
+        if (typeof assignment_status !== 'undefined') updateData.assignment_status = assignment_status
+
+        // Allow storing flight_details JSON
+        if (typeof flight_details !== 'undefined') {
+            updateData.flight_details = flight_details
+        }
+
+        if (typeof assigned_to === 'number' || assigned_to === null) {
+            updateData.assigned_to = assigned_to
+            updateData.assigned_at = assigned_to ? new Date().toISOString() : null
+        }
+
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({ error: 'No valid fields to update' })
+        }
+
+        const { data, error } = await supabase
+            .from('tour_bookings')
+            .update(updateData)
+            .eq('id', id)
+            .select()
+            .single()
+
+        if (error) {
+            return res.status(400).json({ error: error.message })
+        }
+
+        // Notifications
+        if (status && status !== existingBooking.status) {
+            await supabase
+                .from('admin_notifications')
+                .insert({
+                    type: 'booking_status_changed',
+                    message: `Tour booking ${existingBooking.booking_reference} status changed from ${existingBooking.status} to ${status}`,
+                    booking_reference: existingBooking.booking_reference,
+                    booking_type: 'tour',
+                    booking_id: null,
+                    created_at: new Date().toISOString()
+                })
+            await pusher.trigger('admin-notifications', 'booking-status-changed', {
+                bookingReference: existingBooking.booking_reference,
+                bookingType: 'tour',
+                bookingId: id,
+                status,
+            })
+        }
+
+        if (assigned_to !== undefined && assigned_to !== existingBooking.assigned_to) {
+            const isReassign = !!existingBooking.assigned_to && !!assigned_to
+            const notifType = isReassign ? 'booking_reassigned' : 'booking_assigned'
+            // Resolve assigner and assignee names for readable message
+            let assignerName = req.user?.email || 'System'
+            let assigneeName = assigned_to
+            try {
+                if (req.user?.email) {
+                    const { data: assigner } = await supabase
+                        .from('admins')
+                        .select('first_name, last_name, email')
+                        .eq('email', req.user.email)
+                        .single()
+                    if (assigner) {
+                        assignerName = `${assigner.first_name || ''} ${assigner.last_name || ''}`.trim() || assigner.email
+                    }
+                }
+                if (assigned_to) {
+                    const { data: assignee } = await supabase
+                        .from('admins')
+                        .select('first_name, last_name, email')
+                        .eq('id', assigned_to)
+                        .single()
+                    if (assignee) {
+                        assigneeName = `${assignee.first_name || ''} ${assignee.last_name || ''}`.trim() || assignee.email
+                    }
+                }
+            } catch (_) {}
+
+            const message = isReassign
+                ? `Tour booking ${existingBooking.booking_reference} reassigned by ${assignerName} to ${assigneeName}`
+                : `Tour booking ${existingBooking.booking_reference} assigned by ${assignerName} to ${assigneeName}`
+
+            await supabase
+                .from('admin_notifications')
+                .insert({
+                    type: notifType,
+                    message,
+                    booking_reference: existingBooking.booking_reference,
+                    booking_type: 'tour',
+                    booking_id: null,
+                    assigned_to: assigned_to || null,
+                    assigned_by: req.user?.id || null,
+                    created_at: new Date().toISOString()
+                })
+            await pusher.trigger('admin-notifications', notifType, {
+                bookingReference: existingBooking.booking_reference,
+                bookingType: 'tour',
+                bookingId: id,
+            })
+        }
+
+        if (assignment_status && assignment_status !== existingBooking.assignment_status) {
+            await supabase
+                .from('admin_notifications')
+                .insert({
+                    type: 'assignment_status_updated',
+                    message: `Tour booking ${existingBooking.booking_reference} assignment status: ${assignment_status}`,
+                    booking_reference: existingBooking.booking_reference,
+                    booking_type: 'tour',
+                    booking_id: null,
+                    created_at: new Date().toISOString()
+                })
+            await pusher.trigger('admin-notifications', 'assignment-status-updated', {
+                bookingReference: existingBooking.booking_reference,
+                bookingType: 'tour',
+                bookingId: id,
+                status: assignment_status,
+            })
+        }
+
+        return res.json({ success: true, data })
+    } catch (err) {
+        console.error('Error editing tour booking:', err)
+        return res.status(500).json({ error: 'Failed to edit tour booking' })
+    }
+}
+
+// Cancel Tour Booking
+export const cancelTourBooking = async (req, res) => {
+    try {
+        const { id } = req.params
+        const { reason } = req.body || {}
+
+        const { data, error } = await supabase
+            .from('tour_bookings')
+            .update({
+                status: 'CANCELLED',
+                cancellation_reason: reason || null,
+                cancelled_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', id)
+            .select()
+            .single()
+
+        if (error) {
+            return res.status(400).json({ error: error.message })
+        }
+
+        return res.json({ success: true, data })
+    } catch (err) {
+        console.error('Error cancelling tour booking:', err)
+        return res.status(500).json({ error: 'Failed to cancel tour booking' })
     }
 }

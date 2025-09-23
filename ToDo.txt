@@ -1,19 +1,6 @@
 bug: email is not sent to specific email
 
 General Admin Concerns: 
-- add travel consultant role
-
-Visa Concerns:
-- visa form inquiry - accept inquiry and compose email
-- add separate tab that view the inquiry details in admin
-
-Tour Package Concerns:
-- Make the inclusions untickable
-- Make Itinerary Also clearable (if inalis yung day na yun, magiging rest day)
-- Add Customized Option like slidebar from trackbooking
-- Add Price sa tour package when customized is clicked
-- Add custom capability in tour package 
-- add editable pdf in admin side na malalagyan ng flights na input yung pdf para masend uli sa client para sa updated, and for the mean time, make the flight status TBA for now
 
 Flights Concerns:
 - Ilagay yung date price katulad nung sa pal na may price between
@@ -25,14 +12,11 @@ Payment Process Concerns:
 - refund system pag nag cancel yung booking 
 
 Tour and Flight:
-- apply pdf generation method from admin if kaya pa ng time
-
-Book Tracking Concerns:
-- add tour package function (pre-requisite: need muna tapusin function nung tour package)
+- apply pdf generation method from admin sa client side if kaya pa ng time
 
 Mobile Concerns:
 - create navbar for mobile app
 
- 
-
-Future Concerns: Make comments for whole code base to make it more readable
+Future Concerns: 
+- Make comments for whole code base to make it more readable
+- also intindihin buong codebase

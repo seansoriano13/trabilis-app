@@ -10,6 +10,7 @@ const TourBookingController = {
                 num_pax,
                 lead_booker_details,
                 payment_type = 'FULL',
+                customization, // optional: { enabled, removedInclusionGroupIds: number[], restDayNumbers: number[], clientTotals? }
             } = req.body
 
             if (
@@ -36,7 +37,8 @@ const TourBookingController = {
             const { data: packageData, error: packageError } = await supabase
                 .from('package_dates')
                 .select(
-                    'available_slots, reservation_fee_per_pax, rate_per_pax, tour_packages (title)'
+                    `available_slots, reservation_fee_per_pax, rate_per_pax, fee_rules, 
+                     tour_packages (title)`
                 )
                 .eq('id', package_date_id)
                 .single()
@@ -54,9 +56,84 @@ const TourBookingController = {
             const booking_reference = `TRB-TOUR-${uuidv4()
                 .slice(0, 8)
                 .toUpperCase()}`
-            const total_reservation_fee =
-                packageData.reservation_fee_per_pax * num_pax
-            const total_amount = packageData.rate_per_pax * num_pax
+            const base_total_amount = packageData.rate_per_pax * num_pax
+            const total_reservation_fee = packageData.reservation_fee_per_pax * num_pax
+
+            // Compute customization fee if provided
+            let customization_fee = 0
+            let removedGroupIdsToPersist = []
+            let restDayNumbersToPersist = []
+
+            if (customization && customization.enabled === true) {
+                // Load inclusion groups for validation
+                const { data: groupsData, error: groupsError } = await supabase
+                    .from('package_inclusion_groups')
+                    .select('id, removable')
+                    .eq('package_date_id', package_date_id)
+
+                if (groupsError) {
+                    return res.status(500).json({ error: 'Failed to load inclusion groups' })
+                }
+
+                const validGroupMap = new Map((groupsData || []).map(g => [g.id, g]))
+                const requestedRemovedIds = Array.isArray(customization.removedInclusionGroupIds)
+                    ? customization.removedInclusionGroupIds.filter((v) => Number.isInteger(v))
+                    : []
+
+                // Filter only valid and removable groups
+                removedGroupIdsToPersist = requestedRemovedIds.filter((groupId) => {
+                    const g = validGroupMap.get(groupId)
+                    return g && g.removable === true
+                })
+
+                if (requestedRemovedIds.length && removedGroupIdsToPersist.length !== requestedRemovedIds.length) {
+                    // Some requested groups are invalid or not removable
+                    return res.status(400).json({ error: 'One or more inclusion groups are invalid or not removable' })
+                }
+
+                // Validate itinerary rest days by day_number existing
+                const { data: itinData, error: itinError } = await supabase
+                    .from('package_itineraries')
+                    .select('day_number')
+                    .eq('package_date_id', package_date_id)
+
+                if (itinError) {
+                    return res.status(500).json({ error: 'Failed to load itineraries' })
+                }
+
+                const validDayNumbers = new Set((itinData || []).map((i) => i.day_number))
+                const requestedRestDays = Array.isArray(customization.restDayNumbers)
+                    ? customization.restDayNumbers.filter((v) => Number.isInteger(v))
+                    : []
+                restDayNumbersToPersist = requestedRestDays.filter((d) => validDayNumbers.has(d))
+
+                if (requestedRestDays.length && restDayNumbersToPersist.length !== requestedRestDays.length) {
+                    return res.status(400).json({ error: 'One or more rest day numbers are invalid' })
+                }
+
+                // Fee rules with defaults
+                const DEFAULT_FEE_RULES = {
+                    perRemovedGroup: 5000,
+                    perRestDay: 3000,
+                    minFee: 5000,
+                    maxFee: 50000,
+                }
+                const fee_rules = packageData.fee_rules && typeof packageData.fee_rules === 'object'
+                    ? { ...DEFAULT_FEE_RULES, ...packageData.fee_rules }
+                    : { ...DEFAULT_FEE_RULES }
+
+                const perGroup = Number(fee_rules.perRemovedGroup) || 0
+                const perRest = Number(fee_rules.perRestDay) || 0
+                const minFee = Number(fee_rules.minFee) || 0
+                const maxFee = Number(fee_rules.maxFee) || Number.MAX_SAFE_INTEGER
+
+                customization_fee = (removedGroupIdsToPersist.length * perGroup) + (restDayNumbersToPersist.length * perRest)
+                if (customization_fee > 0 && customization_fee < minFee) customization_fee = minFee
+                if (customization_fee > maxFee) customization_fee = maxFee
+            }
+
+            // Grand total reflects customization for FULL payments; reservation fee unchanged
+            const total_amount = base_total_amount + customization_fee
 
             const { data: bookingData, error: bookingError } = await supabase
                 .from('tour_bookings')
@@ -84,9 +161,30 @@ const TourBookingController = {
                     .json({ error: 'Failed to create booking' })
             }
 
+            // Persist customization if any
+            if (customization && customization.enabled === true && (removedGroupIdsToPersist.length > 0 || restDayNumbersToPersist.length > 0)) {
+                const snapshot = {
+                    clientTotals: customization.clientTotals || null,
+                }
+                const { error: custError } = await supabase
+                    .from('tour_booking_customizations')
+                    .insert({
+                        tour_booking_id: bookingData.id,
+                        removed_inclusion_group_ids: JSON.stringify(removedGroupIdsToPersist),
+                        rest_day_ids: JSON.stringify(restDayNumbersToPersist),
+                        customization_fee,
+                        client_snapshot: snapshot,
+                    })
+
+                if (custError) {
+                    console.error('Error saving booking customization:', custError)
+                    return res.status(500).json({ error: 'Failed to save booking customization' })
+                }
+            }
+
             const amount =
                 payment_type === 'RESERVATION'
-                    ? total_reservation_fee
+                    ? (total_reservation_fee + customization_fee)
                     : total_amount
             if (!amount || amount <= 0) {
                 return res

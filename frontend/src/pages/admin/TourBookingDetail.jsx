@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import Select from 'react-select'
+import AsyncSelect from 'react-select/async'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { 
     FiMap, 
@@ -22,6 +24,12 @@ import {
 } from 'react-icons/fi'
 import { supabase } from '../../api/supabaseClient'
 import adminClient from '../../api/adminClient'
+import ReactFlatpickr from 'react-flatpickr'
+import 'flatpickr/dist/themes/material_red.css'
+import airlines from '../../data/airlines.json'
+import { useAirports } from '../../context/AirportContext'
+import { loadOptions } from '../../utils/airportOptionsLoader'
+import { defaultAirportOptionsData } from '../../utils/defaultAirportOptions'
 import './TourBookingDetail.css'
 
 const TourBookingDetail = () => {
@@ -33,6 +41,40 @@ const TourBookingDetail = () => {
     const [error, setError] = useState(null)
     const [activeTab, setActiveTab] = useState('overview')
     const [printLoading, setPrintLoading] = useState(false)
+    const [showEditModal, setShowEditModal] = useState(false)
+    const [editLoading, setEditLoading] = useState(false)
+    const [editForm, setEditForm] = useState({
+        status: '',
+        assigned_to: '',
+        assignment_status: 'pending',
+        flight_details: {
+            outbound: [ { airline: '', flight_no: '', departure: '', arrival: '', date: '' } ],
+            return: [ { airline: '', flight_no: '', departure: '', arrival: '', date: '' } ]
+        }
+    })
+    const [adminOptions, setAdminOptions] = useState([])
+    const [loadingAdmins, setLoadingAdmins] = useState(false)
+    const [assignedAdminName, setAssignedAdminName] = useState('')
+    const [tripType, setTripType] = useState('round-trip')
+    const { airports } = useAirports()
+    const { asyncLoader, defaultOptions } = loadOptions(airports, defaultAirportOptionsData)
+
+    const airlineOptions = (airlines || [])
+        .filter(a => a && a.name)
+        .map(a => ({ value: a.name, label: a.name, logo: a.logo }))
+
+    // Status options for tours
+    const statusOptions = [
+        { value: 'CONFIRMED', label: 'Confirmed', color: '#28a745' },
+        { value: 'PENDING_PAYMENT', label: 'Pending Payment', color: '#fd7e14' },
+        { value: 'CANCELLED', label: 'Cancelled', color: '#dc3545' }
+    ]
+
+    const assignmentStatusOptions = [
+        { value: 'pending', label: 'Pending' },
+        { value: 'in_progress', label: 'In Progress' },
+        { value: 'completed', label: 'Completed' }
+    ]
 
     const jwt = localStorage.getItem('adminToken')
 
@@ -75,9 +117,14 @@ const TourBookingDetail = () => {
                     throw new Error('Booking not found')
                 }
 
-                console.log('Booking data received:', data)
+                // console.log('Booking data received:', data)
                 setBooking(data)
                 setPackageDetails(data.package_dates)
+
+                // Fetch assigned admin name if assigned_to exists
+                if (data.assigned_to) {
+                    fetchAssignedAdminName(data.assigned_to)
+                }
                 setLoading(false)
             } catch (err) {
                 console.error(err)
@@ -90,6 +137,42 @@ const TourBookingDetail = () => {
             fetchBooking()
         }
     }, [id, jwt])
+
+    // Admin options for assignment
+    const fetchAdminOptions = async () => {
+        setLoadingAdmins(true)
+        try {
+            const response = await adminClient.get('/appointments/all-staff')
+            if (response.data.success) {
+                const options = response.data.data.map(admin => ({
+                    value: admin.id,
+                    label: `${admin.first_name} ${admin.last_name} (${admin.email})`,
+                    email: admin.email,
+                    name: `${admin.first_name} ${admin.last_name}`
+                }))
+                setAdminOptions(options)
+            }
+        } catch (error) {
+            console.error('Error fetching admin options:', error)
+        } finally {
+            setLoadingAdmins(false)
+        }
+    }
+
+    const fetchAssignedAdminName = async (adminId) => {
+        if (!adminId) return
+        try {
+            const response = await adminClient.get('/appointments/all-staff')
+            if (response.data.success) {
+                const admin = response.data.data.find(a => a.id === adminId)
+                if (admin) {
+                    setAssignedAdminName(`${admin.first_name} ${admin.last_name}`)
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching assigned admin name:', error)
+        }
+    }
 
     const formatDate = (dateString) => {
         if (!dateString) return '-'
@@ -226,16 +309,153 @@ const TourBookingDetail = () => {
         }
     }
 
+    const handleEdit = async () => {
+        await fetchAdminOptions()
+        setEditForm({
+            status: booking.status,
+            assigned_to: booking.assigned_to || '',
+            assignment_status: booking.assignment_status || 'pending',
+            flight_details: (() => {
+                const fd = booking.flight_details || {}
+                const normalizeLeg = (leg) => {
+                    if (!leg) return [ { airline: '', flight_no: '', departure: '', arrival: '', date: '' } ]
+                    if (Array.isArray(leg)) return leg.length ? leg : [ { airline: '', flight_no: '', departure: '', arrival: '', date: '' } ]
+                    return [ leg ]
+                }
+                return {
+                    outbound: normalizeLeg(fd.outbound || fd.outboundSegments),
+                    return: normalizeLeg(fd.return || fd.inbound || fd.returnSegments)
+                }
+            })()
+        })
+        setShowEditModal(true)
+    }
 
-    const handleEdit = () => {
-        // TODO: Implement edit functionality
-        console.log('Edit booking:', booking.id)
+    const handleCloseEditModal = () => {
+        setShowEditModal(false)
+        setEditForm({
+            status: '',
+            assigned_to: '',
+            assignment_status: 'pending',
+            flight_details: {
+                outbound: { airline: '', flight_no: '', departure: '', arrival: '', date: '' },
+                return: { airline: '', flight_no: '', departure: '', arrival: '', date: '' }
+            }
+        })
+    }
+
+    const handleEditFormChange = (field, value) => {
+        setEditForm(prev => ({ ...prev, [field]: value }))
+    }
+
+    const handleFlightChange = (direction, field, value, index = 0) => {
+        setEditForm(prev => ({
+            ...prev,
+            flight_details: {
+                ...prev.flight_details,
+                [direction]: (prev.flight_details?.[direction] || []).map((seg, i) => i === index ? { ...seg, [field]: value } : seg)
+            }
+        }))
+    }
+
+    const addSegment = (direction) => {
+        setEditForm(prev => ({
+            ...prev,
+            flight_details: {
+                ...prev.flight_details,
+                [direction]: [
+                    ...(prev.flight_details?.[direction] || []),
+                    { airline: '', flight_no: '', departure: '', arrival: '', date: '' }
+                ]
+            }
+        }))
+    }
+
+    const removeSegment = (direction, index) => {
+        setEditForm(prev => ({
+            ...prev,
+            flight_details: {
+                ...prev.flight_details,
+                [direction]: (prev.flight_details?.[direction] || []).filter((_, i) => i !== index)
+            }
+        }))
+    }
+
+    const handleEditSubmit = async (e) => {
+        e.preventDefault()
+        setEditLoading(true)
+        try {
+            const submitData = {
+                status: editForm.status,
+                assigned_to: editForm.assigned_to || null,
+                assignment_status: editForm.assignment_status,
+                flight_details: {
+                    outbound: editForm.flight_details?.outbound || [],
+                    return: tripType === 'round-trip' ? (editForm.flight_details?.return || []) : []
+                }
+            }
+            const response = await adminClient.put(`/tours/${booking.id}/edit`, submitData)
+            if (response.data.success) {
+                setBooking(prev => ({
+                    ...prev,
+                    ...submitData,
+                    updated_at: new Date().toISOString()
+                }))
+                if (submitData.assigned_to && submitData.assigned_to !== booking.assigned_to) {
+                    fetchAssignedAdminName(submitData.assigned_to)
+                } else if (!submitData.assigned_to) {
+                    setAssignedAdminName('')
+                }
+                handleCloseEditModal()
+                alert('Booking updated successfully!')
+            } else {
+                alert('Failed to update booking')
+            }
+        } catch (error) {
+            console.error('Error updating booking:', error)
+            if (error.response?.data?.error) {
+                alert(`Error: ${error.response.data.error}`)
+            } else {
+                alert('Error updating booking. Please try again.')
+            }
+        } finally {
+            setEditLoading(false)
+        }
     }
 
     const handleCancel = () => {
-        // TODO: Implement cancel functionality
-        if (window.confirm('Are you sure you want to cancel this booking?')) {
-            console.log('Cancel booking:', booking.id)
+        if (booking.status === 'CANCELLED') {
+            alert('This booking is already cancelled.')
+            return
+        }
+        const reason = prompt('Please provide a reason for cancellation (optional):', '')
+        if (window.confirm(`Are you sure you want to cancel this booking?\n\nBooking Reference: ${booking.booking_reference}\n${reason ? `Reason: ${reason}` : ''}`)) {
+            cancelBooking(reason)
+        }
+    }
+
+    const cancelBooking = async (reason) => {
+        try {
+            const response = await adminClient.put(`/tours/${booking.id}/cancel`, { reason: reason || null })
+            if (response.data.success) {
+                setBooking(prev => ({
+                    ...prev,
+                    status: 'CANCELLED',
+                    cancelled_at: new Date().toISOString(),
+                    cancellation_reason: reason || null,
+                    updated_at: new Date().toISOString()
+                }))
+                alert('Booking cancelled successfully!')
+            } else {
+                alert('Failed to cancel booking')
+            }
+        } catch (error) {
+            console.error('Error cancelling booking:', error)
+            if (error.response?.data?.error) {
+                alert(`Error: ${error.response.data.error}`)
+            } else {
+                alert('Error cancelling booking. Please try again.')
+            }
         }
     }
 
@@ -303,25 +523,61 @@ const TourBookingDetail = () => {
                     <h1>Tour Booking Details</h1>
                 </div>
 
-                <div className="tour-booking-detail__actions">
-                    {/* <button className="btn btn-warning" onClick={handleEdit}>
+                <div className="booking-detail__actions">
+                    <button 
+                        className="btn btn-warning" 
+                        onClick={handleEdit}
+                        disabled={booking.status === 'CANCELLED'}
+                        title={booking.status === 'CANCELLED' ? 'Cannot edit cancelled booking' : 'Edit booking details'}
+                    >
                         <FiEdit /> Edit
-                    </button> */}
-                    <button className="btn btn-danger" onClick={handleCancel}>
-                        <FiXCircle /> Cancel
                     </button>
+                    {/* <button 
+                        className="btn btn-danger" 
+                        onClick={handleCancel}
+                        disabled={booking.status === 'CANCELLED'}
+                    >
+                        <FiXCircle /> {booking.status === 'CANCELLED' ? 'Cancelled' : 'Cancel'}
+                    </button> */}
                 </div>
             </div>
 
-            {/* Status Banner */}
-            <div className={`tour-booking-detail__status ${getStatusColor(booking.status)}`}>
+            {/* Status Banner (reusing flight styles) */}
+            <div className={`booking-detail__status ${getStatusColor(booking.status)}`}>
                 <div className="status-content">
                     {getStatusIcon(booking.status)}
                     <div>
                         <h3>Booking Status: {booking.status}</h3>
                         <p>Reference: {booking.booking_reference}</p>
+                        {booking.status === 'CANCELLED' && booking.cancelled_at && (
+                            <p>Cancelled on: {formatDateTime(booking.cancelled_at)}</p>
+                        )}
+                        {booking.cancellation_reason && (
+                            <p>Reason: {booking.cancellation_reason}</p>
+                        )}
                     </div>
                 </div>
+                {/* Assignment Status */}
+                {booking.assignment_status && (
+                    <div className="assignment-status">
+                        <div className="assignment-status__content">
+                            <div className="assignment-status__icon">
+                                {booking.assignment_status === 'completed' && <FiCheckCircle />}
+                                {booking.assignment_status === 'in_progress' && <FiClock />}
+                                {booking.assignment_status === 'pending' && <FiClock />}
+                            </div>
+                            <div className="assignment-status__details">
+                                <h4>Assignment Status: {booking.assignment_status.charAt(0).toUpperCase() + booking.assignment_status.slice(1).replace('_', ' ')}</h4>
+                                {booking.assigned_to && (
+                                    <p>Assigned to: {assignedAdminName || 'Loading...'}</p>
+                                )}
+                                {booking.assigned_at && (
+                                    <p>Assigned on: {formatDateTime(booking.assigned_at)}</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Tabs */}
@@ -525,7 +781,7 @@ const TourBookingDetail = () => {
                             <p>Lead contact information and passenger details</p>
                         </div>
                         
-                        <div className="passenger-details">
+                        <div className="passenger-details passenger-details--tour">
                             <div className="passenger-card">
                                 <div className="passenger-card-header">
                                     <div className="passenger-avatar-large">
@@ -742,6 +998,260 @@ const TourBookingDetail = () => {
                     </div>
                 )}
             </div>
+            {/* Edit Modal */}
+            {showEditModal && (
+                <div className="modal-overlay" onClick={handleCloseEditModal}>
+                    <div className="modal-content modal-wide" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3>Edit Tour Booking</h3>
+                            <button 
+                                className="modal-close" 
+                                onClick={handleCloseEditModal}
+                                disabled={editLoading}
+                                aria-label="Close"
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleEditSubmit} className="edit-form">
+                            <div className="form-group">
+                                <label htmlFor="status">Status</label>
+                                <Select
+                                    value={statusOptions.find(option => option.value === editForm.status)}
+                                    onChange={(selectedOption) => 
+                                        handleEditFormChange('status', selectedOption?.value || '')
+                                    }
+                                    options={statusOptions}
+                                    placeholder="Select status"
+                                    isSearchable={false}
+                                    className="react-select-container"
+                                    classNamePrefix="react-select"
+                                    formatOptionLabel={(option) => (
+                                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                                            <div 
+                                                style={{
+                                                    width: 12,
+                                                    height: 12,
+                                                    borderRadius: '50%',
+                                                    backgroundColor: option.color,
+                                                    marginRight: 8
+                                                }}
+                                            />
+                                            {option.label}
+                                        </div>
+                                    )}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="assigned_to">Assigned To</label>
+                                <Select
+                                    value={adminOptions.find(option => option.value === editForm.assigned_to)}
+                                    onChange={(selectedOption) => 
+                                        handleEditFormChange('assigned_to', selectedOption?.value || '')
+                                    }
+                                    options={adminOptions}
+                                    placeholder={loadingAdmins ? 'Loading admins...' : 'Select admin'}
+                                    isSearchable={true}
+                                    isLoading={loadingAdmins}
+                                    isClearable={true}
+                                    className="react-select-container"
+                                    classNamePrefix="react-select"
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="assignment_status">Assignment Status</label>
+                                <Select
+                                    value={assignmentStatusOptions.find(option => option.value === editForm.assignment_status)}
+                                    onChange={(selectedOption) => 
+                                        handleEditFormChange('assignment_status', selectedOption?.value || 'pending')
+                                    }
+                                    options={assignmentStatusOptions}
+                                    placeholder="Select assignment status"
+                                    isSearchable={false}
+                                    className="react-select-container"
+                                    classNamePrefix="react-select"
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="trip_type">Trip Type</label>
+                                <Select
+                                    value={{ value: tripType, label: tripType === 'round-trip' ? 'Round-trip' : 'One-way' }}
+                                    onChange={(opt) => setTripType(opt?.value || 'round-trip')}
+                                    options={[{ value: 'round-trip', label: 'Round-trip' }, { value: 'one-way', label: 'One-way' }]}
+                                    isSearchable={false}
+                                    className="react-select-container"
+                                    classNamePrefix="react-select"
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Flight Details (Optional)</label>
+                                <div className="flight-details-grid">
+                                    <div className="flight-group">
+                                        <h5>Outbound</h5>
+                                        {(editForm.flight_details?.outbound || []).map((seg, idx) => (
+                                            <div key={`outbound-${idx}`} className="grid-2">
+                                            <Select
+                                                className="react-select-container"
+                                                classNamePrefix="react-select"
+                                                placeholder="Airline"
+                                                options={airlineOptions}
+                                                value={airlineOptions.find(o => o.label === (seg?.airline || '')) || null}
+                                                onChange={(opt) => handleFlightChange('outbound', 'airline', opt?.label || '', idx)}
+                                                isClearable
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="Flight No."
+                                                value={seg?.flight_no || ''}
+                                                onChange={(e) => handleFlightChange('outbound', 'flight_no', e.target.value, idx)}
+                                            />
+                                            <AsyncSelect
+                                                className="react-select-container"
+                                                classNamePrefix="react-select"
+                                                placeholder="Departure Airport"
+                                                cacheOptions
+                                                defaultOptions={(defaultOptions || []).slice(0, 10)}
+                                                loadOptions={asyncLoader}
+                                                value={seg?.departure ? { label: seg.departure, value: seg.departure } : null}
+                                                onChange={(opt) => handleFlightChange('outbound', 'departure', opt?.label || '', idx)}
+                                                isClearable
+                                            />
+                                            <AsyncSelect
+                                                className="react-select-container"
+                                                classNamePrefix="react-select"
+                                                placeholder="Arrival Airport"
+                                                cacheOptions
+                                                defaultOptions={(defaultOptions || []).slice(0, 10)}
+                                                loadOptions={asyncLoader}
+                                                value={seg?.arrival ? { label: seg.arrival, value: seg.arrival } : null}
+                                                onChange={(opt) => handleFlightChange('outbound', 'arrival', opt?.label || '', idx)}
+                                                isClearable
+                                            />
+                                            <ReactFlatpickr
+                                                options={{ enableTime: true, dateFormat: 'Y-m-d H:i' }}
+                                                value={seg?.date || ''}
+                                                onChange={(dates) => handleFlightChange('outbound', 'date', dates?.[0] ? dates[0].toISOString() : '', idx)}
+                                                style={{
+                                                    background: '#fff',
+                                                    border: '1px solid #ced4da',
+                                                    borderRadius: 4,
+                                                    padding: '7px 10px',
+                                                    height: 38,
+                                                    width: '100%'
+                                                }}
+                                            />
+                                            <div className="segment-actions">
+                                                <button type="button" className="btn btn-secondary" onClick={() => addSegment('outbound')}>+ Segment</button>
+                                                {(editForm.flight_details?.outbound?.length || 1) > 1 && (
+                                                    <button type="button" className="btn btn-danger" onClick={() => removeSegment('outbound', idx)}>Remove</button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        ))}
+                                    </div>
+                                    {tripType === 'round-trip' && (
+                                    <div className="flight-group">
+                                        <h5>Return</h5>
+                                        {(editForm.flight_details?.return || []).map((seg, idx) => (
+                                        <div key={`return-${idx}`} className="grid-2">
+                                            <Select
+                                                className="react-select-container"
+                                                classNamePrefix="react-select"
+                                                placeholder="Airline"
+                                                options={airlineOptions}
+                                                value={airlineOptions.find(o => o.label === (seg?.airline || '')) || null}
+                                                onChange={(opt) => handleFlightChange('return', 'airline', opt?.label || '', idx)}
+                                                isClearable
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="Flight No."
+                                                value={seg?.flight_no || ''}
+                                                onChange={(e) => handleFlightChange('return', 'flight_no', e.target.value, idx)}
+                                            />
+                                            <AsyncSelect
+                                                className="react-select-container"
+                                                classNamePrefix="react-select"
+                                                placeholder="Departure Airport"
+                                                cacheOptions
+                                                defaultOptions={(defaultOptions || []).slice(0, 10)}
+                                                loadOptions={asyncLoader}
+                                                value={seg?.departure ? { label: seg.departure, value: seg.departure } : null}
+                                                onChange={(opt) => handleFlightChange('return', 'departure', opt?.label || '', idx)}
+                                                isClearable
+                                            />
+                                            <AsyncSelect
+                                                className="react-select-container"
+                                                classNamePrefix="react-select"
+                                                placeholder="Arrival Airport"
+                                                cacheOptions
+                                                defaultOptions={(defaultOptions || []).slice(0, 10)}
+                                                loadOptions={asyncLoader}
+                                                value={seg?.arrival ? { label: seg.arrival, value: seg.arrival } : null}
+                                                onChange={(opt) => handleFlightChange('return', 'arrival', opt?.label || '', idx)}
+                                                isClearable
+                                            />
+                                            <ReactFlatpickr
+                                                options={{ enableTime: true, dateFormat: 'Y-m-d H:i' }}
+                                                value={seg?.date || ''}
+                                                onChange={(dates) => handleFlightChange('return', 'date', dates?.[0] ? dates[0].toISOString() : '', idx)}
+                                                style={{
+                                                    background: '#fff',
+                                                    border: '1px solid #ced4da',
+                                                    borderRadius: 4,
+                                                    padding: '7px 10px',
+                                                    height: 38,
+                                                    width: '100%'
+                                                }}
+                                            />
+                                            <div className="segment-actions">
+                                                <button type="button" className="btn btn-secondary" onClick={() => addSegment('return')}>+ Segment</button>
+                                                {(editForm.flight_details?.return?.length || 1) > 1 && (
+                                                    <button type="button" className="btn btn-danger" onClick={() => removeSegment('return', idx)}>Remove</button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        ))}
+                                    </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="modal-actions">
+                                <button 
+                                    type="button" 
+                                    className="btn btn-secondary"
+                                    onClick={handleCloseEditModal}
+                                    disabled={editLoading}
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="btn btn-primary"
+                                    disabled={editLoading}
+                                >
+                                    {editLoading ? (
+                                        <>
+                                            <div className="loading-spinner-small"></div>
+                                            Updating...
+                                        </>
+                                    ) : (
+                                        <>
+                                            Update Booking
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

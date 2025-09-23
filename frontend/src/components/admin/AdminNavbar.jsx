@@ -82,7 +82,40 @@ function AdminNavbar() {
                     type: normalizeType(n.type)
                 }))
 
-                setNotifications(normalized)
+                // Hydrate assigned_by/assigned_to names for display
+                const ids = Array.from(new Set(
+                    normalized.flatMap((n) => [n.assigned_to, n.assigned_by].filter(Boolean))
+                ))
+
+                let idToAdmin = {}
+                if (ids.length > 0) {
+                    const { data: admins, error: adminsError } = await supabase
+                        .from('admins')
+                        .select('id, first_name, last_name, email')
+                        .in('id', ids)
+                    if (!adminsError && admins) {
+                        idToAdmin = Object.fromEntries(
+                            admins.map(a => [a.id, a])
+                        )
+                    }
+                }
+
+                const withNames = normalized.map((n) => {
+                    const by = idToAdmin[n.assigned_by]
+                    const to = idToAdmin[n.assigned_to]
+                    const formatName = (a) => {
+                        if (!a) return null
+                        const full = `${a.first_name || ''} ${a.last_name || ''}`.trim()
+                        return full || a.email || null
+                    }
+                    return {
+                        ...n,
+                        assigned_by_name: formatName(by),
+                        assigned_to_name: formatName(to)
+                    }
+                })
+
+                setNotifications(withNames)
             } else {
                 console.error('Error fetching notifications:', error)
             }
@@ -218,31 +251,76 @@ function AdminNavbar() {
     }
 
     const getNotificationRoute = (notif) => {
-        // If it's an assignment or reassignment notification, route to the specific booking detail
+        // For assignment or reassignment, go to detail only if we have a numeric ID.
         if (notif.type === 'assignment' || notif.type === 'reassignment') {
             if (notif.bookingType === 'tour') {
-                return `/admin/tour-sales/${notif.booking_id || notif.booking_reference}`
+                return notif.booking_id ? `/admin/tour-sales/${notif.booking_id}` : `/admin/tour-sales${notif.booking_reference ? `?ref=${encodeURIComponent(notif.booking_reference)}` : ''}`
             } else if (notif.bookingType === 'flight') {
-                return `/admin/flights/${notif.booking_id || notif.booking_reference}`
+                return notif.booking_id ? `/admin/flights/${notif.booking_id}` : `/admin/flights${notif.booking_reference ? `?ref=${encodeURIComponent(notif.booking_reference)}` : ''}`
             }
         }
-        
+
         // For visa inquiry assignment notifications
         if (notif.type === 'visa_inquiry_assigned') {
             return `/admin/visa-inquiries`
         }
-        
-        // For new booking notifications, route based on booking type
+
+        // For new booking notifications, route based on booking type to the list
         if (notif.type === 'new_booking') {
             if (notif.bookingType === 'tour') {
-                return `/admin/tour-sales`
+                return `/admin/tour-sales${notif.booking_reference ? `?ref=${encodeURIComponent(notif.booking_reference)}` : ''}`
             } else if (notif.bookingType === 'flight') {
-                return `/admin/flights`
+                return `/admin/flights${notif.booking_reference ? `?ref=${encodeURIComponent(notif.booking_reference)}` : ''}`
             }
         }
-        
+
         // Default fallback - go to tour sales page
-        return `/admin/tour-sales`
+        return `/admin/tour-sales${notif.booking_reference ? `?ref=${encodeURIComponent(notif.booking_reference)}` : ''}`
+    }
+
+    const handleNotificationClick = async (notif, index) => {
+        // Optimistic read: remove from local list and close dropdown
+        setNotifications((prev) => prev.filter((_, i) => i !== index))
+        setIsNotificationsOpen(false)
+
+        // Persist read status if schema supports it
+        try {
+            if (notif?.id) {
+                await supabase
+                    .from('admin_notifications')
+                    .update({ read_at: new Date().toISOString() })
+                    .eq('id', notif.id)
+            }
+        } catch (err) {
+            console.error('Failed to mark notification as read:', err)
+        }
+
+        // If we only have a reference, resolve to numeric id to deep-link
+        if (!notif.booking_id && notif.booking_reference) {
+            try {
+                const token = localStorage.getItem('adminToken')
+                const res = await fetch('/api/v1/admin/dashboard/resolve?ref=' + encodeURIComponent(notif.booking_reference), {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+                const payload = await res.json()
+                if (payload?.success) {
+                    if (payload.type === 'flight') {
+                        window.location.href = `/admin/flights/${payload.id}`
+                        return
+                    }
+                    if (payload.type === 'tour') {
+                        window.location.href = `/admin/tour-sales/${payload.id}`
+                        return
+                    }
+                    if (payload.type === 'visa') {
+                        window.location.href = `/admin/visa-inquiries?ref=${encodeURIComponent(notif.booking_reference)}`
+                        return
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to resolve booking reference:', e)
+            }
+        }
     }
 
     if (loading) {
@@ -475,23 +553,24 @@ function AdminNavbar() {
                                     <Link
                                         to={getNotificationRoute(notif)}
                                         className='admin-nav__notification-link'
-                                        onClick={() => setIsNotificationsOpen(false)}
+                                        onClick={() => handleNotificationClick(notif, index)}
                                     >
                                         <div className='admin-nav__notification-icon'>
                                             <FiBell size={16} />
                                         </div>
                                         <div className='admin-nav__notification-content'>
                                             <p className='admin-nav__notification-title'>
-                                                {notif.type === 'assignment' 
-                                                    ? `Booking Assigned - ${notif.bookingType === 'tour' ? 'Tour' : 'Flight'}`
-                                                    : notif.type === 'reassignment'
-                                                    ? `Booking Reassigned - ${notif.bookingType === 'tour' ? 'Tour' : 'Flight'}`
-                                                    : notif.type === 'visa_inquiry_assigned'
-                                                    ? 'Visa Inquiry Assigned'
-                                                    : notif.type === 'new_booking'
-                                                    ? `New ${notif.bookingType === 'tour' ? 'Tour' : 'Flight'} Booking`
-                                                    : 'New Booking Received'
-                                                }
+                                                {notif.type === 'assignment' && (
+                                                    `Assigned by ${notif.assigned_by_name || 'Someone'} to ${notif.assigned_to_name || 'staff'}`
+                                                )}
+                                                {notif.type === 'reassignment' && (
+                                                    `Reassigned by ${notif.assigned_by_name || 'Someone'} to ${notif.assigned_to_name || 'staff'}`
+                                                )}
+                                                {notif.type === 'visa_inquiry_assigned' && 'Visa Inquiry Assigned'}
+                                                {notif.type === 'new_booking' && `New ${notif.bookingType === 'tour' ? 'Tour' : 'Flight'} Booking`}
+                                                {![
+                                                    'assignment', 'reassignment', 'visa_inquiry_assigned', 'new_booking'
+                                                ].includes(notif.type) && 'New Booking Received'}
                                             </p>
                                             <p className='admin-nav__notification-desc'>
                                                 {notif.type === 'visa_inquiry_assigned' 

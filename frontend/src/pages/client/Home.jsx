@@ -68,7 +68,7 @@ export default function Home() {
                     Travel and Tours
                 </h2>
 
-                <div className='lg:flex gap-8 grid'>
+                <div className='lg:flex gap-8 flex'>
                     <img
                         className='rounded-lg'
                         src='/client/lindela-reception.jpg'
@@ -157,31 +157,58 @@ export default function Home() {
                     >
                         {tours.map((tour) => (
                             <SwiperSlide key={tour.id}>
-                                <div className='relative'>
+                                <div className='relative group'>
                                     <img
                                         className='rounded-lg w-full h-[352px] object-cover'
                                         src={tour.main_image_url}
                                         alt={tour.title}
                                     />
-                                    <div
-                                        className='cursor-pointer absolute bottom-0 text-white w-full text-center bg-[#18181ab3] p-2'
-                                        onClick={() =>
-                                            navigate(
-                                                `/destinations/tour/${tour.id}`,
-                                                {
-                                                    state: tour,
-                                                }
-                                            )
-                                        }
-                                    >
-                                        <h4 className='text-sm'>
+                                    
+                                    {/* Overlay with gradient for better text readability */}
+                                    <div className='absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent rounded-lg'></div>
+                                    
+                                    {/* Tour Info */}
+                                    <div className='bg-[#18181ab3] absolute bottom-0 text-white w-full p-6 flex items-center justify-between gap-2'>
+                                        <h4 className='text-sm font-semibold mb-1'>
                                             {tour.title.toUpperCase()}
                                         </h4>
-                                        <p className='text-2xl font-bold'>
+                                        <p className='text-2xl font-bold mb-3'>
                                             {tour.dates?.[0]?.rate_per_pax
                                                 ? `PHP ${tour.dates[0].rate_per_pax.toLocaleString()}`
                                                 : 'Price N/A'}
                                         </p>
+                                        
+                                        {/* Action Buttons */}
+                                        <div className='flex gap-2'>
+                                            {/* <div>
+                                            <button
+                                                className='flex-1 bg-[#f7d100] text-black font-bold py-2 px-4 rounded-md hover:bg-[#ffe347] transition-colors text-sm'
+                                                onClick={() =>
+                                                    navigate(
+                                                        `/destinations/tour/${tour.id}`,
+                                                        {
+                                                            state: tour,
+                                                        }
+                                                    )
+                                                }
+                                            >
+                                                Book Now
+                                            </button>
+                                            </div> */}
+                                            <button
+                                                className='bg-transparent border border-white text-white font-bold py-2 px-4 rounded-md hover:bg-white hover:text-black transition-colors text-sm'
+                                                onClick={() =>
+                                                    navigate(
+                                                        `/destinations/tour/${tour.id}`,
+                                                        {
+                                                            state: tour,
+                                                        }
+                                                    )
+                                                }
+                                            >
+                                                View Details
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </SwiperSlide>

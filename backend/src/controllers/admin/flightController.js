@@ -1,11 +1,21 @@
 import { query } from '../../config/db.js'
 import { generateFlightItineraryPDF } from '../../services/emailService.js'
+import { supabase } from '../../config/supabaseClient.js'
+import Pusher from 'pusher'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+
+const pusher = new Pusher({
+    appId: '2048372',
+    key: '371c6201af1a663a4f58',
+    secret: 'b4a5985ecd6d27690c8b',
+    cluster: 'ap1',
+    useTLS: true,
+})
 
 export const generateFlightPDF = async (req, res) => {
     try {
@@ -973,6 +983,293 @@ export const generateFlightPDFAdmin = async (req, res) => {
         console.error('Error generating flight PDF for admin:', error)
         res.status(500).json({ 
             error: 'Failed to generate PDF for admin',
+            message: error.message 
+        })
+    }
+}
+
+// Edit flight booking
+export const editFlightBooking = async (req, res) => {
+    try {
+        const { id } = req.params
+        const { 
+            status, 
+            pnr, 
+            e_ticket_numbers, 
+            assigned_to,
+            assignment_status 
+        } = req.body
+
+        // Validate required fields
+        if (!id) {
+            return res.status(400).json({ 
+                success: false,
+                error: 'Booking ID is required' 
+            })
+        }
+
+        // Check if booking exists
+        const { data: existingBooking, error: fetchError } = await supabase
+            .from('flight_bookings')
+            .select('*')
+            .eq('id', id)
+            .single()
+
+        if (fetchError || !existingBooking) {
+            return res.status(404).json({ 
+                success: false,
+                error: 'Booking not found' 
+            })
+        }
+
+        // Prepare update data
+        const updateData = {
+            updated_at: new Date().toISOString()
+        }
+
+        // Only update fields that are provided
+        if (status !== undefined) {
+            updateData.status = status
+        }
+        if (pnr !== undefined) {
+            updateData.pnr = pnr
+        }
+        if (e_ticket_numbers !== undefined) {
+            updateData.e_ticket_numbers = e_ticket_numbers
+        }
+        if (assigned_to !== undefined) {
+            updateData.assigned_to = assigned_to
+        }
+        if (assignment_status !== undefined) {
+            // Validate assignment status against allowed values
+            const validStatuses = ['pending', 'in_progress', 'completed']
+            if (!validStatuses.includes(assignment_status)) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Invalid assignment status. Must be one of: pending, in_progress, completed'
+                })
+            }
+            updateData.assignment_status = assignment_status
+        }
+
+        // Update booking
+        const { data: updatedBooking, error: updateError } = await supabase
+            .from('flight_bookings')
+            .update(updateData)
+            .eq('id', id)
+            .select('*')
+            .single()
+
+        if (updateError) {
+            throw updateError
+        }
+
+        // Create admin notification for status changes
+        if (status && status !== existingBooking.status) {
+            await supabase
+                .from('admin_notifications')
+                .insert({
+                    type: 'booking_status_changed',
+                    message: `Flight booking ${existingBooking.booking_reference} status changed from ${existingBooking.status} to ${status}`,
+                    booking_reference: existingBooking.booking_reference,
+                    booking_type: 'flight',
+                    booking_id: null,
+                    created_at: new Date().toISOString()
+                })
+        }
+
+        // Create admin notification for assignment changes
+        if (assigned_to !== undefined && assigned_to !== existingBooking.assigned_to) {
+            const isReassign = !!existingBooking.assigned_to && !!assigned_to
+            const notifType = isReassign ? 'booking_reassigned' : 'booking_assigned'
+            // Resolve assigner and assignee names for readable message
+            let assignerName = req.user?.email || 'System'
+            let assigneeName = assigned_to
+            try {
+                // Lookup assigner by email if available
+                if (req.user?.email) {
+                    const { data: assigner } = await supabase
+                        .from('admins')
+                        .select('first_name, last_name, email')
+                        .eq('email', req.user.email)
+                        .single()
+                    if (assigner) {
+                        assignerName = `${assigner.first_name || ''} ${assigner.last_name || ''}`.trim() || assigner.email
+                    }
+                }
+                // Lookup assignee by id
+                if (assigned_to) {
+                    const { data: assignee } = await supabase
+                        .from('admins')
+                        .select('first_name, last_name, email')
+                        .eq('id', assigned_to)
+                        .single()
+                    if (assignee) {
+                        assigneeName = `${assignee.first_name || ''} ${assignee.last_name || ''}`.trim() || assignee.email
+                    }
+                }
+            } catch (_) {}
+
+            const message = isReassign
+                ? `Flight booking ${existingBooking.booking_reference} reassigned by ${assignerName} to ${assigneeName}`
+                : `Flight booking ${existingBooking.booking_reference} assigned by ${assignerName} to ${assigneeName}`
+
+            await supabase
+                .from('admin_notifications')
+                .insert({
+                    type: notifType,
+                    message,
+                    booking_reference: existingBooking.booking_reference,
+                    booking_type: 'flight',
+                    booking_id: null,
+                    assigned_to: assigned_to || null,
+                    assigned_by: req.user?.id || null,
+                    created_at: new Date().toISOString()
+                })
+
+            // Trigger realtime event via Pusher
+            await pusher.trigger('admin-notifications', notifType, {
+                bookingReference: existingBooking.booking_reference,
+                bookingType: 'flight',
+                bookingId: id,
+            })
+        }
+
+        // Create admin notification for assignment status updates
+        if (assignment_status && assignment_status !== existingBooking.assignment_status) {
+            await supabase
+                .from('admin_notifications')
+                .insert({
+                    type: 'assignment_status_updated',
+                    message: `Flight booking ${existingBooking.booking_reference} assignment status: ${assignment_status}`,
+                    booking_reference: existingBooking.booking_reference,
+                    booking_type: 'flight',
+                    booking_id: null,
+                    created_at: new Date().toISOString()
+                })
+
+            await pusher.trigger('admin-notifications', 'assignment-status-updated', {
+                bookingReference: existingBooking.booking_reference,
+                bookingType: 'flight',
+                bookingId: id,
+                status: assignment_status,
+            })
+        }
+
+        res.json({
+            success: true,
+            message: 'Booking updated successfully',
+            data: updatedBooking
+        })
+
+    } catch (error) {
+        console.error('Error editing flight booking:', error)
+        res.status(500).json({ 
+            success: false,
+            error: 'Failed to update booking',
+            message: error.message 
+        })
+    }
+}
+
+// Cancel flight booking
+export const cancelFlightBooking = async (req, res) => {
+    try {
+        const { id } = req.params
+        const { reason, refund_amount } = req.body
+
+        if (!id) {
+            return res.status(400).json({ 
+                success: false,
+                error: 'Booking ID is required' 
+            })
+        }
+
+        // Check if booking exists and get current status
+        const { data: existingBooking, error: fetchError } = await supabase
+            .from('flight_bookings')
+            .select('*')
+            .eq('id', id)
+            .single()
+
+        if (fetchError || !existingBooking) {
+            return res.status(404).json({ 
+                success: false,
+                error: 'Booking not found' 
+            })
+        }
+
+        // Check if booking can be cancelled
+        if (existingBooking.status === 'CANCELLED') {
+            return res.status(400).json({ 
+                success: false,
+                error: 'Booking is already cancelled' 
+            })
+        }
+
+        if (existingBooking.status === 'TICKETED') {
+            return res.status(400).json({ 
+                success: false,
+                error: 'Cannot cancel ticketed booking. Please contact support for assistance.' 
+            })
+        }
+
+        // Prepare cancellation data
+        const updateData = {
+            status: 'CANCELLED',
+            cancelled_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        }
+
+        if (reason) {
+            updateData.cancellation_reason = reason
+        }
+        if (refund_amount !== undefined) {
+            updateData.refund_amount = refund_amount
+        }
+
+        // Update booking status
+        const { data: cancelledBooking, error: updateError } = await supabase
+            .from('flight_bookings')
+            .update(updateData)
+            .eq('id', id)
+            .select('*')
+            .single()
+
+        if (updateError) {
+            throw updateError
+        }
+
+        // Create admin notification
+        await supabase
+            .from('admin_notifications')
+            .insert({
+                type: 'booking_cancelled',
+                message: `Flight booking ${existingBooking.booking_reference} has been cancelled${reason ? ` - Reason: ${reason}` : ''}`,
+                booking_reference: existingBooking.booking_reference,
+                booking_type: 'flight',
+                booking_id: null,
+                created_at: new Date().toISOString()
+            })
+
+        // TODO: Process refund if payment was made
+        // This would integrate with Stripe or other payment processor
+        if (existingBooking.stripe_checkout_id && refund_amount) {
+            console.log(`Refund processing needed for booking ${existingBooking.booking_reference}: ${refund_amount}`)
+            // Implement refund logic here
+        }
+
+        res.json({
+            success: true,
+            message: 'Booking cancelled successfully',
+            data: cancelledBooking
+        })
+
+    } catch (error) {
+        console.error('Error cancelling flight booking:', error)
+        res.status(500).json({ 
+            success: false,
+            error: 'Failed to cancel booking',
             message: error.message 
         })
     }

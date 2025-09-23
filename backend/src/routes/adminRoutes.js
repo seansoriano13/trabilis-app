@@ -21,14 +21,18 @@ import {
     getUsers,
     getUserStats,
     updateUser,
+    backfillNotificationAssignees,
+    resolveBookingByReference,
 } from '../controllers/admin/dashboardController.js'
 import { 
     generateFlightPDF,
     generateFlightPDFAdmin,
     viewFlightBookingHTML,
-    viewFlightBookingPrint
+    viewFlightBookingPrint,
+    editFlightBooking,
+    cancelFlightBooking
 } from '../controllers/admin/flightController.js'
-import { generateTourPDF, generateTourPDFAdmin, viewTourBookingHTML, viewTourBookingPrint } from '../controllers/admin/tourController.js'
+import { generateTourPDF, generateTourPDFAdmin, viewTourBookingHTML, viewTourBookingPrint, editTourBooking, cancelTourBooking } from '../controllers/admin/tourController.js'
 import {
     getAccountingStaff,
     getAllStaff,
@@ -39,6 +43,7 @@ import {
     reassignBooking
 } from '../controllers/admin/appointmentController.js'
 import { getVisaInquiries, updateVisaInquiryStatus, assignVisaInquiry, updateVisaAssignmentStatus, getAssignedVisaInquiries } from '../controllers/visaInquiryController.js'
+import { listInclusionGroups, createInclusionGroup, updateInclusionGroup, deleteInclusionGroup, listInclusionGroupItems, createInclusionGroupItem, updateInclusionGroupItem, deleteInclusionGroupItem, updateFeeRules } from '../controllers/admin/inclusionGroupController.js'
 
 const router = express.Router()
 
@@ -59,10 +64,28 @@ router.get('/tours/:id', getTour)
 router.put('/tours/:id', updateTour)
 router.delete('/tours/:id', deleteTour)
 
+// Inclusion Groups Management
+router.get('/tours/dates/:dateId/inclusion-groups', listInclusionGroups)
+router.post('/tours/dates/:dateId/inclusion-groups', createInclusionGroup)
+router.put('/tours/inclusion-groups/:groupId', updateInclusionGroup)
+router.delete('/tours/inclusion-groups/:groupId', deleteInclusionGroup)
+
+// Inclusion Group Items
+router.get('/tours/inclusion-groups/:groupId/items', listInclusionGroupItems)
+router.post('/tours/inclusion-groups/:groupId/items', createInclusionGroupItem)
+router.put('/tours/items/:itemId', updateInclusionGroupItem)
+router.delete('/tours/items/:itemId', deleteInclusionGroupItem)
+
+// Fee Rules
+router.put('/tours/dates/:dateId/fee-rules', updateFeeRules)
+
 // Dashboard
 router.get('/dashboard/flight_bookings', getFlightBookings)
 router.get('/dashboard/tour_bookings', getTourBookings)
 router.get('/dashboard/admin_notifications', getAdminNotifications)
+router.get('/dashboard/resolve', resolveBookingByReference)
+// One-time backfill endpoint
+router.post('/dashboard/admin_notifications/backfill', backfillNotificationAssignees)
 router.get('/dashboard/revenue', getRevenue)
 router.get('/dashboard/flight_stats', getFlightStats)
 router.get('/dashboard/tour_stats', getTourStats)
@@ -73,11 +96,19 @@ router.get('/flights/:id/pdfadmin', pdfAuthMiddleware, generateFlightPDFAdmin)
 router.get('/flights/:id/html', pdfAuthMiddleware, viewFlightBookingHTML)
 router.get('/flights/:id/print', pdfAuthMiddleware, viewFlightBookingPrint)
 
+// Flight booking management
+router.put('/flights/:id/edit', editFlightBooking)
+router.put('/flights/:id/cancel', cancelFlightBooking)
+
 // Tour PDF (using special PDF auth middleware)
 router.get('/tours/:id/pdf', pdfAuthMiddleware, generateTourPDF)
 router.get('/tours/:id/pdfadmin', pdfAuthMiddleware, generateTourPDFAdmin)
 router.get('/tours/:id/html', pdfAuthMiddleware, viewTourBookingHTML)
 router.get('/tours/:id/print', pdfAuthMiddleware, viewTourBookingPrint)
+
+// Tour booking management
+router.put('/tours/:id/edit', editTourBooking)
+router.put('/tours/:id/cancel', cancelTourBooking)
 
 // Users
 router.get('/users', getUsers)

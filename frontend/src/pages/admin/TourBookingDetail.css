@@ -527,8 +527,16 @@
 }
 
 .passenger-details {
-    max-width: 600px;
+    /* max-width: 600px; */
     margin: 0 auto;
+    background: black !important;
+    padding-bottom: 5rem;
+    padding-top: 10rem;
+}
+
+.passenger-details--tour{
+    padding-top: 0;
+    background: white !important;
 }
 
 .passenger-card {
@@ -627,7 +635,7 @@
 .price-icon {
     width: 1.25rem;
     height: 1.25rem;
-    color: #3b82f6;
+    color: #f7d100;
 }
 
 .payment-card-header h4,
@@ -716,12 +724,12 @@
 }
 
 .btn-warning {
-    background: #f59e0b;
-    color: white;
+    background: #f7d100;
+    color: black;
 }
 
 .btn-warning:hover {
-    background: #d97706;
+    background: #e6c200;
 }
 
 .btn-danger {
@@ -953,4 +961,139 @@
         max-width: 200px;
     }
 }
+
+/* Borrowed from Flight detail - actions & status */
+.booking-detail__actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.booking-detail__status {
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+}
+.booking-detail__status.status-confirmed {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+.booking-detail__status.status-pending {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+}
+.booking-detail__status.status-cancelled {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+/* Assignment status styles */
+.assignment-status {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    min-width: 250px;
+    border-left: 4px solid rgba(255, 255, 255, 0.3);
+}
+.assignment-status__content { display: flex; gap: 12px; }
+.assignment-status__icon { font-size: 1.5rem; flex-shrink: 0; opacity: 0.9; }
+.assignment-status__details h4 { margin: 0 0 5px 0; font-size: 1rem; font-weight: 600; opacity: 0.95; }
+.assignment-status__details p { margin: 0 0 3px 0; font-size: 0.85rem; opacity: 0.8; }
+.assignment-status__details p:last-child { margin-bottom: 0; }
+
+/* Modal & Select styles adapted from flight */
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+.modal-content { background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; animation: modalSlideIn 0.3s ease-out; }
+@keyframes modalSlideIn { from { opacity: 0; transform: translateY(-20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #e9ecef; background: #f8f9fa; border-radius: 12px 12px 0 0; }
+.modal-header h3 { margin: 0; color: #2c3e50; font-size: 1.25rem; font-weight: 600; }
+.modal-close { background: none; border: none; font-size: 1.5rem; color: #6c757d; cursor: pointer; padding: 4px; border-radius: 4px; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; }
+.modal-close:hover { background: #e9ecef; color: #495057; }
+.modal-close:disabled { opacity: 0.5; cursor: not-allowed; }
+.edit-form { padding: 24px; }
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; margin-bottom: 6px; font-weight: 500; color: #2c3e50; font-size: 0.9rem; }
+.form-group label[for="status"]::after { content: " *"; color: #dc3545; }
+.form-input, .form-textarea { width: 100%; padding: 10px 12px; border: 1px solid #ced4da; border-radius: 6px; font-size: 0.9rem; transition: all 0.2s ease; background: white; }
+.form-input:focus, .form-textarea:focus { outline: none; border-color: #f7d100; box-shadow: 0 0 0 3px rgba(247, 209, 0, 0.1); }
+.form-textarea { resize: vertical; min-height: 80px; font-family: inherit; }
+.form-help { display: block; margin-top: 4px; font-size: 0.8rem; color: #6c757d; }
+.react-select-container { width: 100%; }
+.react-select__control { min-height: 42px; border: 1px solid #ced4da !important; border-radius: 6px !important; box-shadow: none !important; transition: all 0.2s ease !important; }
+.react-select__control--is-focused { border-color: #f7d100 !important; box-shadow: 0 0 0 3px rgba(247, 209, 0, 0.1) !important; }
+.react-select__value-container { padding: 2px 8px !important; }
+.react-select__input-container { margin: 0 !important; padding: 0 !important; }
+.react-select__placeholder { color: #6c757d !important; font-size: 0.9rem !important; }
+.react-select__single-value { color: #2c3e50 !important; font-size: 0.9rem !important; }
+.react-select__option { padding: 10px 12px !important; font-size: 0.9rem !important; color: #2c3e50 !important; }
+.react-select__option--is-focused { background-color: #f8f9fa !important; }
+.react-select__option--is-selected { background-color: #f7d100 !important; color: #2c3e50 !important; }
+.react-select__indicator-separator { background-color: #ced4da !important; }
+.react-select__dropdown-indicator { color: #6c757d !important; }
+.react-select__dropdown-indicator:hover { color: #495057 !important; }
+.modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; padding-top: 20px; border-top: 1px solid #e9ecef; }
+.modal-actions .btn { min-width: 100px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+
+/* Flight details layout */
+.flight-details-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
+.flight-group h5 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+/* Align text inputs with react-select height */
+.edit-form .grid-2 input[type="text"],
+.edit-form .grid-2 input[type="number"] {
+    height: 38px;
+    padding: 7px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background: #fff;
+    color: #2c3e50;
+}
+
+/* Flatpickr input alignment */
+.edit-form .flatpickr-input[readonly] {
+    height: 38px;
+    padding: 7px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background: #fff;
+}
+
+/* Ensure react-select takes full width in grid */
+.react-select-container {
+    width: 100%;
+}
+
+/* Responsive stack */
+@media (max-width: 768px) {
+    .grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Wider edit modal for flight details */
+.modal-content.modal-wide { width: 90vw; max-width: none; max-height: 90vh; overflow: auto; }
+@media (max-width: 1024px) { .modal-content.modal-wide { width: 95vw; max-height: 92vh; } }
+
+.segment-actions { grid-column: 1 / -1; display: flex; gap: 8px; }
 

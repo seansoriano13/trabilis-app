@@ -4,6 +4,11 @@
     margin: 0 auto;
 }
 
+/* Add bottom padding to avoid save bar overlap */
+.tour-edit-container {
+    padding-bottom: 100px; /* space for sticky save bar */
+}
+
 .tour-edit__button-save {
     width: 100%;
     margin-top: 1rem;
@@ -133,10 +138,26 @@
     filter: opacity(100%);
 }
 
-.tour-edit__loading,
 .tour-edit__error {
     text-align: center;
     font-size: 18px;
     color: #000000;
     filter: opacity(80%);
+}
+
+/* Sticky Save Bar */
+.sticky-save-bar {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.85) 30%, #ffffff 100%);
+    backdrop-filter: blur(6px);
+    border-top: 1px solid #e5e7eb;
+}
+
+.sticky-save-bar__inner {
+    max-width: 800px;
+    margin: 0 auto;
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { IoIosArrowUp } from 'react-icons/io'
 import { IoIosArrowDown } from 'react-icons/io'
-import { FaCheck } from 'react-icons/fa6'
+import { FaCheck, FaCircleXmark, FaRegFileLines, FaCreditCard, FaCircleCheck } from 'react-icons/fa6'
 import axios from 'axios'
 import './Tour.css'
 import PrimaryButton from '../../components/client/PrimaryButton'
@@ -23,6 +23,11 @@ function Tour() {
         adults: 1,
         children: 0,
     })
+
+    // Customization state
+    const [customizeEnabled, setCustomizeEnabled] = useState(false)
+    const [removedGroupIds, setRemovedGroupIds] = useState(new Set())
+    const [restDayNumbers, setRestDayNumbers] = useState(new Set())
 
     const tourDates = tour.dates || []
     const selectedDate = tourDates.find((date) => date.id === selectedDateId)
@@ -62,11 +67,43 @@ function Tour() {
     const handleDateClick = (dateId) => {
         setSelectedDateId(selectedDateId === dateId ? null : dateId)
         setPassengers({ adults: 1, children: 0 })
+        // Reset customization when switching dates
+        setCustomizeEnabled(false)
+        setRemovedGroupIds(new Set())
+        setRestDayNumbers(new Set())
     }
 
     const navigate = useNavigate()
 
     const handleBookClick = () => {
+        const paxCount = passengers.adults + passengers.children
+        const baseTotal = (selectedDate?.rate_per_pax || 0) * paxCount
+        const feeRules = selectedDate?.fee_rules || {
+            perRemovedGroup: 5000,
+            perRestDay: 3000,
+            minFee: 5000,
+            maxFee: 50000,
+        }
+
+        const customizationFeeUncapped = removedGroupIds.size * (feeRules.perRemovedGroup || 0) +
+            restDayNumbers.size * (feeRules.perRestDay || 0)
+        let customizationFee = customizationFeeUncapped
+        if (customizationFee > 0 && customizationFee < (feeRules.minFee || 0)) customizationFee = feeRules.minFee || 0
+        if (customizationFee > (feeRules.maxFee || Number.MAX_SAFE_INTEGER)) customizationFee = feeRules.maxFee
+
+        const customizationPayload = customizeEnabled
+            ? {
+                  enabled: true,
+                  removedInclusionGroupIds: Array.from(removedGroupIds),
+                  restDayNumbers: Array.from(restDayNumbers),
+                  clientTotals: {
+                      baseTotal,
+                      customizationFee,
+                      grandTotal: baseTotal + customizationFee,
+                  },
+              }
+            : undefined
+
         navigate('booking', {
             state: {
                 ...tour,
@@ -74,6 +111,7 @@ function Tour() {
                 passengers,
                 selectedDate,
                 title: tour.title,
+                customization: customizationPayload,
             },
         })
     }
@@ -96,6 +134,7 @@ function Tour() {
 
     const itineraries = selectedDate?.itineraries?.map((itinerary) => {
         const isCollapsed = isDescHidden[itinerary.id]
+        const isRest = restDayNumbers.has(itinerary.day_number)
         return (
             <div
                 key={itinerary.id}
@@ -106,6 +145,23 @@ function Tour() {
                         Day {itinerary.day_number}
                     </div>
                     <div className='font-bold'>{itinerary.title}</div>
+                    {customizeEnabled && (
+                        <label className='flex items-center gap-2 text-xs text-gray-600'>
+                            <input
+                                type='checkbox'
+                                checked={isRest}
+                                onChange={(e) => {
+                                    setRestDayNumbers((prev) => {
+                                        const next = new Set(prev)
+                                        if (e.target.checked) next.add(itinerary.day_number)
+                                        else next.delete(itinerary.day_number)
+                                        return next
+                                    })
+                                }}
+                            />
+                            Make this a Rest Day
+                        </label>
+                    )}
                     <button
                         onClick={() => handleCardClose(itinerary.id)}
                         className='cursor-pointer'
@@ -119,64 +175,118 @@ function Tour() {
                         </div>
                     </button>
                     <div className={isCollapsed ? 'hidden' : ''}>
-                        {itinerary.description}
+                        {isRest ? (
+                            <div className='italic text-gray-500'>Rest Day</div>
+                        ) : (
+                            itinerary.description
+                        )}
                     </div>
                 </div>
             </div>
         )
     })
 
-    const inclusions = selectedDate?.inclusions?.map((inclusion, idx) =>
-        inclusion?.trim() ? (
-            <div
-                key={idx}
-                className='flex items-center gap-1'
-            >
+    // Legacy inclusions rendering (fallback)
+    const sanitizeText = (val) => {
+        if (val == null) return ''
+        const str = String(val)
+        return str.replace(/^"+|"+$/g, '').trim()
+    }
+
+    const legacyInclusions = selectedDate?.inclusions?.map((inclusion, idx) => {
+        const text = sanitizeText(inclusion)
+        return text ? (
+            <div key={idx} className='flex items-center gap-1'>
                 <FaCheck className='text-green-700' />
-                <div className='text-sm'>{inclusion}</div>
+                <div className='text-sm'>{text}</div>
             </div>
         ) : null
-    )
+    })
 
-    const exclusions = selectedDate?.exclusions?.map((exclusion, idx) => (
-        <div
-            key={idx}
-            className='flex items-center gap-1'
-        >
-            <FaCheck className='text-green-700' />
-            <div className='text-sm'>{exclusion}</div>
-        </div>
-    ))
+    // New grouped inclusions rendering
+    const groupedInclusions = selectedDate?.inclusion_groups?.map((group) => {
+        const isRemoved = removedGroupIds.has(group.id)
+        const titleText = sanitizeText(group.title)
+        const itemsSanitized = (group.items || []).map((it) => sanitizeText(it)).filter(Boolean)
+        const showList = itemsSanitized.length > 1 || (itemsSanitized.length === 1 && itemsSanitized[0] !== titleText)
+        return (
+            <div key={group.id} className={`border border-gray-400 rounded-lg px-4 py-3 ${isRemoved ? 'bg-gray-50' : 'bg-white'}`}>
+                <div className='flex items-center gap-3'>
+                <FaCheck className='text-green-700' />
+                    <div className='font-semibold text-sm text-gray-800'>{titleText}</div>
+                    {customizeEnabled ? (
+                        <label className='flex items-center gap-2 text-xs text-gray-700'>
+                            <input
+                                type='checkbox'
+                                checked={!isRemoved}
+                                disabled={!group.removable}
+                                onChange={(e) => {
+                                    setRemovedGroupIds((prev) => {
+                                        const next = new Set(prev)
+                                        if (e.target.checked) next.delete(group.id)
+                                        else next.add(group.id)
+                                        return next
+                                    })
+                                }}
+                            />
+                            {group.removable ? (
+                                <span>Include</span>
+                            ) : (
+                                <span className='bg-gray-200 text-gray-700 px-2 py-0.5 rounded-sm'>Required</span>
+                            )}
+                        </label>
+                    ) : null}
+                </div>
+                {showList && (
+                    <ul className={`mt-2 list-disc pl-5 ${isRemoved ? 'opacity-60' : ''}`}>
+                        {itemsSanitized.map((item, idx) => (
+                            <li key={idx} className='text-xs lg:text-sm text-gray-700'>{item}</li>
+                        ))}
+                    </ul>
+                )}
+            </div>
+        )
+    })
 
-    const notes = selectedDate?.notes?.map((note, idx) => (
-        <div
-            key={idx}
-            className='flex items-center gap-1'
-        >
-            <FaCheck className='text-green-700' />
-            <div className='text-sm'>{note}</div>
-        </div>
-    ))
+    const exclusions = selectedDate?.exclusions?.map((exclusion, idx) => {
+        const text = sanitizeText(exclusion)
+        return text ? (
+            <div key={idx} className='flex items-center gap-1'>
+                <FaCircleXmark className='text-red-600' />
+                <div className='text-sm'>{text}</div>
+            </div>
+        ) : null
+    })
 
-    const payment_terms = selectedDate?.payment_terms?.map((term, idx) => (
-        <div
-            key={idx}
-            className='flex items-center gap-1'
-        >
-            <FaCheck className='text-green-700' />
-            <div className='text-sm'>{term}</div>
-        </div>
-    ))
+    const notes = selectedDate?.notes?.map((note, idx) => {
+        const text = sanitizeText(note)
+        return text ? (
+            <div key={idx} className='flex items-center gap-1'>
+                <FaRegFileLines className='text-gray-700' />
+                <div className='text-sm'>{text}</div>
+            </div>
+        ) : null
+    })
 
-    const requirements = selectedDate?.requirements?.map((requirement, idx) => (
-        <div
-            key={idx}
-            className='flex items-center gap-1'
-        >
-            <FaCheck className='text-green-700' />
-            <div className='text-sm'>{requirement}</div>
-        </div>
-    ))
+    const payment_terms = selectedDate?.payment_terms?.map((term, idx) => {
+        const text = sanitizeText(term)
+        return text ? (
+            <div key={idx} className='flex items-center gap-1'>
+                <FaCreditCard className='text-indigo-700' />
+                <div className='text-sm'>{text}</div>
+            </div>
+        ) : null
+    })
+
+    const requirements = selectedDate?.requirements?.map((requirement, idx) => {
+        const text = sanitizeText(requirement)
+        return text ? (
+            <div key={idx} className='flex items-center gap-1'>
+                <FaCircleCheck className='text-green-700' />
+                <div className='text-sm'>{text}</div>
+            </div>
+        ) : null
+    })
 
     return (
         <div className='tour-container'>
@@ -207,7 +317,7 @@ function Tour() {
                             </button>
                         )}
                     </p>
-                    <div className='grid gap-2'>
+                    <div className='grid gap-3'>
                         <div className='text-sm text-gray-600'>
                             Available Dates
                         </div>
@@ -223,6 +333,60 @@ function Tour() {
                                     : 'N/A'}
                             </div>
                         )}
+                        {/* Customize Tour controls */}
+                        <div className='mt-2 border border-gray-300 rounded-lg p-4 bg-white shadow-sm'>
+                            <div className='flex items-center justify-between'>
+                                <div>
+                                    <div className='font-medium text-gray-800'>Customize this tour</div>
+                                    <div className='text-xs text-gray-500'>Remove inclusion groups or mark rest days</div>
+                                </div>
+                                <button
+                                    type='button'
+                                    role='switch'
+                                    aria-checked={customizeEnabled}
+                                    onClick={() => {
+                                        const next = !customizeEnabled
+                                        setCustomizeEnabled(next)
+                                        if (!next) {
+                                            setRemovedGroupIds(new Set())
+                                            setRestDayNumbers(new Set())
+                                        }
+                                    }}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${customizeEnabled ? 'bg-[#f7d100] focus:ring-[#f7d100]' : 'bg-gray-300 focus:ring-gray-400'}`}
+                                >
+                                    <span
+                                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${customizeEnabled ? 'translate-x-5' : 'translate-x-1'}`}
+                                    />
+                                </button>
+                            </div>
+
+                            <div className='mt-3 flex items-center gap-3 text-xs'>
+                                <span className='px-2 py-0.5 rounded-full bg-gray-100 text-gray-700'>Removed: {removedGroupIds.size}</span>
+                                <span className='px-2 py-0.5 rounded-full bg-gray-100 text-gray-700'>Rest days: {restDayNumbers.size}</span>
+                            </div>
+
+                            {/* Pricing summary */}
+                            <div className='mt-3 text-sm text-gray-700'>
+                                {(() => {
+                                    const paxCount = passengers.adults + passengers.children
+                                    const base = (selectedDate?.rate_per_pax || 0) * paxCount
+                                    const rules = selectedDate?.fee_rules || { perRemovedGroup: 5000, perRestDay: 3000, minFee: 5000, maxFee: 50000 }
+                                    const uncapped = removedGroupIds.size * (rules.perRemovedGroup || 0) + restDayNumbers.size * (rules.perRestDay || 0)
+                                    let fee = uncapped
+                                    if (fee > 0 && fee < (rules.minFee || 0)) fee = rules.minFee || 0
+                                    if (fee > (rules.maxFee || Number.MAX_SAFE_INTEGER)) fee = rules.maxFee
+                                    const total = base + fee
+                                    return (
+                                        <div className='space-y-1'>
+                                            <div className='flex justify-between'><span>Base Total</span><span className='font-medium'>PHP {base.toLocaleString()}</span></div>
+                                            <div className='flex justify-between'><span>Customization Fee</span><span className='font-medium'>PHP {fee.toLocaleString()}</span></div>
+                                            <div className='pt-1 mt-1 border-t border-gray-200 flex justify-between font-semibold'><span>Grand Total</span><span>PHP {total.toLocaleString()}</span></div>
+                                        </div>
+                                    )
+                                })()}
+                            </div>
+                        </div>
+                       
                     </div>
                     <div className='border-b py-4 border-gray-400'>
                         <div className='font-bold flex items-start gap-2 text-sm lg:text-base text-[#646466]'>
@@ -298,7 +462,11 @@ function Tour() {
                         </button>
                     </div>
                     <div className='grid gap-2'>
-                        {selectedTab === 'inclusions' && inclusions}
+                        {selectedTab === 'inclusions' && (
+                            selectedDate?.inclusion_groups?.length
+                                ? groupedInclusions
+                                : legacyInclusions
+                        )}
                         {selectedTab === 'exclusions' && exclusions}
                         {selectedTab === 'notes' && notes}
                         {selectedTab === 'payment_terms' && payment_terms}
@@ -312,7 +480,8 @@ function Tour() {
                     </div>
                 </div>
             </div>
-            <div className='max-w-[1200px] mx-auto flex items-center gap-4 border-t justify-center border-gray-300 pt-4 px-4'>
+            <div className='max-w-[1200px] mx-auto flex flex-col gap-3 border-t justify-center border-gray-300 pt-4 px-4'>
+                <div className='flex items-center gap-4 flex-wrap'>
                 <span className='font-medium'>Adults</span>
                 <div className='flex items-center gap-2'>
                     <button
@@ -388,6 +557,7 @@ function Tour() {
                         !selectedDate?.available_slots || passengers === 0
                     }
                 />
+                </div>
             </div>
         </div>
     )

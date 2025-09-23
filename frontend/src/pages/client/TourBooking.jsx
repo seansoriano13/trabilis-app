@@ -172,8 +172,28 @@ function TourBooking() {
         }
     }
 
+    const paxCount = totalPassengers
+    const perPax = selectedDate?.rate_per_pax || 0
+    const baseTotal = perPax * paxCount
+    const rules = selectedDate?.fee_rules || { perRemovedGroup: 5000, perRestDay: 3000, minFee: 5000, maxFee: 50000 }
+    const customization = state?.customization
+    let customizationFee = 0
+    if (customization?.enabled) {
+        // Prefer clientTotals from previous screen if present
+        customizationFee = customization?.clientTotals?.customizationFee ?? 0
+        if (!customization?.clientTotals) {
+            const groups = customization?.removedInclusionGroupIds?.length || 0
+            const rests = customization?.restDayNumbers?.length || 0
+            const uncapped = groups * (rules.perRemovedGroup || 0) + rests * (rules.perRestDay || 0)
+            customizationFee = uncapped
+            if (customizationFee > 0 && customizationFee < (rules.minFee || 0)) customizationFee = rules.minFee || 0
+            if (customizationFee > (rules.maxFee || Number.MAX_SAFE_INTEGER)) customizationFee = rules.maxFee
+        }
+    }
+    const grandTotal = baseTotal + customizationFee
+
     return (
-        <div className='passenger-details pt-[var(--default-padding-top)] lg:pt-25 md:pt-35'>
+        <div className='passenger-details passenger-details--tour pt-[var(--default-padding-top)] lg:pt-25 md:pt-35'>
             <div className='hero-background'>
                 <img
                     className='hero-image'
@@ -182,82 +202,90 @@ function TourBooking() {
                 />
             </div>
 
-            <div className='bg-white rounded-lg text-center p-10 grid gap-4 max-w-[1200px] mx-auto w-screen'>
-                <h3 className='passenger-details__origin'>
-                    <b>Tour Package:</b> {title}
-                </h3>
-                <p className='passenger-details__dates'>
-                    <b>Date: </b>{' '}
-                    {new Date(selectedDate.start_date).toLocaleDateString()} -{' '}
-                    {new Date(selectedDate.end_date).toLocaleDateString()}
-                </p>
-                <p className='passenger-details__count'>
-                    <b>Pax: </b>
-                    {totalPassengers} Passenger{totalPassengers > 1 ? 's' : ''}
-                </p>
-            </div>
+            <div className='max-w-[1200px] mx-auto w-screen px-4 lg:px-0'>
+                <div className='grid lg:grid-cols-3 gap-6'>
+                    <div className='lg:col-span-2'>
+                        <div className='bg-white rounded-lg p-6 shadow-sm border border-gray-200'>
+                            <h2 className='passenger-details__form-title'>
+                                <IoPersonCircle />
+                                Passenger Information
+                            </h2>
+                            <PassengerForm
+                                passengers={formData.passengers}
+                                handleChange={handlePassengerChange}
+                                validationErrors={[]}
+                                setValidationErrors={() => {}}
+                            />
 
-            <div className='passenger-details__form-wrapper'>
-                <h2 className='passenger-details__form-title'>
-                    <IoPersonCircle />
-                    Passenger Information
-                </h2>
-                <PassengerForm
-                    passengers={formData.passengers}
-                    handleChange={handlePassengerChange}
-                    validationErrors={[]}
-                    setValidationErrors={() => {}}
-                />
+                            <div className='mt-6'>
+                                <label className='block text-sm font-medium text-gray-700 mb-2'>Payment Type</label>
+                                <div className='inline-flex rounded-md border border-gray-300 overflow-hidden'>
+                                    <button
+                                        type='button'
+                                        className={`px-4 py-2 text-sm ${formData.payment_type === 'FULL' ? 'bg-[#f7d100] text-black' : 'bg-white text-gray-700'}`}
+                                        onClick={() => setFormData((p) => ({ ...p, payment_type: 'FULL' }))}
+                                        disabled={loading}
+                                    >
+                                        Full Payment
+                                    </button>
+                                    <button
+                                        type='button'
+                                        className={`px-4 py-2 text-sm border-l border-gray-300 ${formData.payment_type === 'RESERVATION' ? 'bg-[#f7d100] text-black' : 'bg-white text-gray-700'}`}
+                                        onClick={() => setFormData((p) => ({ ...p, payment_type: 'RESERVATION' }))}
+                                        disabled={loading}
+                                    >
+                                        Reservation
+                                    </button>
+                                </div>
 
-                <form
-                    className='space-y-6 mt-6'
-                    onSubmit={handleSubmit}
-                >
-                    {/* Payment Type */}
-                    <div>
-                        <label className='block text-sm font-medium text-gray-700'>
-                            Payment Type
-                        </label>
-                        <select
-                            value={formData.payment_type}
-                            onChange={handlePaymentTypeChange}
-                            className='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2 px-3'
-                            disabled={loading}
-                        >
-                            <option value='FULL'>Full Payment</option>
-                            <option value='RESERVATION'>Reservation</option>
-                        </select>
+                                {formData.payment_type === 'RESERVATION' && (
+                                    <div className='mt-3'>
+                                        <label className='block text-sm font-medium text-gray-700'>Reservation Fee Per Pax</label>
+                                        <input
+                                            type='text'
+                                            disabled
+                                            defaultValue={`PHP ${reservation_per_pax}`}
+                                            className='mt-1 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm sm:text-sm py-2 px-3'
+                                        />
+                                    </div>
+                                )}
+
+                                {error && (
+                                    <p className='mt-3 text-red-600 text-sm font-medium'>{error}</p>
+                                )}
+                            </div>
+                        </div>
                     </div>
+                    <aside className='lg:col-span-1'>
+                        <div className='bg-white rounded-lg p-6 shadow-sm border border-gray-200 sticky top-24'>
+                            <h3 className='text-base font-semibold text-gray-800'>Booking Summary</h3>
+                            <div className='mt-3 space-y-2 text-sm text-gray-700'>
+                                <div className='flex justify-between'><span>Tour</span><span className='font-medium text-right max-w-[60%]'>{title}</span></div>
+                                <div className='flex justify-between'><span>Dates</span><span className='font-medium'>{new Date(selectedDate.start_date).toLocaleDateString()} - {new Date(selectedDate.end_date).toLocaleDateString()}</span></div>
+                                <div className='flex justify-between'><span>Passengers</span><span className='font-medium'>{totalPassengers}</span></div>
+                                {perPax > 0 && (
+                                    <div className='flex justify-between'><span>Rate per Pax</span><span className='font-medium'>PHP {perPax.toLocaleString()}</span></div>
+                                )}
+                            </div>
+                            <div className='mt-4 border-t border-gray-200 pt-4 space-y-2 text-sm'>
+                                <div className='flex justify-between'><span>Base Total</span><span className='font-semibold'>PHP {baseTotal.toLocaleString()}</span></div>
+                                {customization?.enabled && (
+                                    <div className='flex justify-between'><span>Customization Fee</span><span className='font-semibold'>PHP {customizationFee.toLocaleString()}</span></div>
+                                )}
+                                <div className='flex justify-between text-base font-bold pt-1 mt-1 border-t border-gray-200'><span>Grand Total</span><span>PHP {grandTotal.toLocaleString()}</span></div>
+                            </div>
 
-                    {formData.payment_type === 'RESERVATION' && (
-                        <div>
-                            <label className='block text-sm font-medium text-gray-700'>
-                                Reservation Fee Per Pax
-                            </label>
-                            <input
-                                type='text'
-                                disabled
-                                defaultValue={`PHP ${reservation_per_pax}`}
-                                className='mt-1 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm sm:text-sm py-2 px-3'
+                            <PrimaryButton
+                                onClick={handleSubmit}
+                                className='mt-6'
+                                buttonText='Proceed To Payment'
+                                isBold={true}
+                                loading={loading}
                             />
                         </div>
-                    )}
-
-                    {error && (
-                        <p className='text-red-600 text-sm font-medium'>
-                            {error}
-                        </p>
-                    )}
-                </form>
+                    </aside>
+                </div>
             </div>
-
-            <PrimaryButton
-                onClick={handleSubmit}
-                className='passenger-details__btn'
-                buttonText='Proceed To Payment'
-                isBold={true}
-                loading={loading}
-            />
         </div>
     )
 }

@@ -29,11 +29,24 @@ export const trackBookingStatus = async (req, res) => {
     try {
         const { bookingReference, bookingType } = req.query
 
+        const isFlight = bookingType === 'flight'
+
         const { data, error } = await supabase
-            .from(
-                bookingType === 'flight' ? 'flight_bookings' : 'tour_bookings'
+            .from(isFlight ? 'flight_bookings' : 'tour_bookings')
+            .select(
+                isFlight
+                    ? '*'
+                    : `
+                        *,
+                        package_dates (
+                            start_date,
+                            end_date,
+                            tour_packages (
+                                title
+                            )
+                        )
+                    `
             )
-            .select('*')
             .eq('booking_reference', bookingReference)
             .single()
 
@@ -41,11 +54,13 @@ export const trackBookingStatus = async (req, res) => {
             return res.status(404).json({ error: 'Booking not found' })
         }
 
-        const airlineCode = data.amadeus_flight_offer.validatingAirlineCodes[0]
+        const airlineCode = isFlight
+            ? data.amadeus_flight_offer?.validatingAirlineCodes?.[0]
+            : null
 
         let bookingData = null
 
-        if (bookingType === 'flight') {
+        if (isFlight) {
             const flightOffer =
                 typeof data.amadeus_flight_offer === 'string'
                     ? JSON.parse(data.amadeus_flight_offer)
@@ -74,7 +89,23 @@ export const trackBookingStatus = async (req, res) => {
                 }
             }
         } else if (bookingType === 'tour') {
-            // TODO: handle tour booking status
+            bookingData = {
+                tour: {
+                    title: data.package_dates?.tour_packages?.title || null,
+                    start_date: data.package_dates?.start_date || null,
+                    end_date: data.package_dates?.end_date || null,
+                    status: data.status || null,
+                    passenger_count: data.passenger_count || null,
+                    total_amount: data.total_amount || null,
+                    payment_type: data.payment_type || null,
+                    flight_details: data.flight_details || null,
+                    booking_reference: data.booking_reference || null,
+                    lead_first_name: data.lead_first_name || null,
+                    lead_last_name: data.lead_last_name || null,
+                    lead_email: data.lead_email || null,
+                    lead_phone: data.lead_phone || null,
+                },
+            }
         }
 
         res.status(200).json({ bookingReference, bookingData, airlineCode })

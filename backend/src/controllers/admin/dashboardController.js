@@ -110,6 +110,64 @@ export const getAdminNotifications = async (req, res) => {
     }
 }
 
+// Backfill assigned_to/assigned_by into admin_notifications for existing rows
+export const backfillNotificationAssignees = async (req, res) => {
+    try {
+        // Flights
+        const { data: flightNotifs } = await supabase
+            .from('admin_notifications')
+            .select('id, booking_reference')
+            .is('assigned_to', null)
+            .eq('booking_type', 'flight')
+            .in('type', ['booking_assigned', 'booking_reassigned'])
+
+        if (flightNotifs && flightNotifs.length) {
+            for (const n of flightNotifs) {
+                const { data: fb } = await supabase
+                    .from('flight_bookings')
+                    .select('assigned_to, assigned_by')
+                    .eq('booking_reference', n.booking_reference)
+                    .single()
+                if (fb) {
+                    await supabase
+                        .from('admin_notifications')
+                        .update({ assigned_to: fb.assigned_to || null, assigned_by: fb.assigned_by || null })
+                        .eq('id', n.id)
+                }
+            }
+        }
+
+        // Tours
+        const { data: tourNotifs } = await supabase
+            .from('admin_notifications')
+            .select('id, booking_reference')
+            .is('assigned_to', null)
+            .eq('booking_type', 'tour')
+            .in('type', ['booking_assigned', 'booking_reassigned'])
+
+        if (tourNotifs && tourNotifs.length) {
+            for (const n of tourNotifs) {
+                const { data: tb } = await supabase
+                    .from('tour_bookings')
+                    .select('assigned_to, assigned_by')
+                    .eq('booking_reference', n.booking_reference)
+                    .single()
+                if (tb) {
+                    await supabase
+                        .from('admin_notifications')
+                        .update({ assigned_to: tb.assigned_to || null, assigned_by: tb.assigned_by || null })
+                        .eq('id', n.id)
+                }
+            }
+        }
+
+        return res.json({ success: true })
+    } catch (error) {
+        console.error('Backfill failed:', error)
+        return res.status(500).json({ success: false, error: 'Backfill failed' })
+    }
+}
+
 export const getRevenue = async (req, res) => {
     try {
         const { data, error } = await supabase.rpc('get_monthly_revenue', {
@@ -260,7 +318,58 @@ export const deleteUser = async (req, res) => {
     }
 
     try {
-        // Delete from admins table
+        // Delete from auth.users first (must use service role client)
+        const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(id)
+
+        // If user not found in auth, continue to clean up admins table
+        if (authError && authError.status !== 404) {
+            throw authError
+        }
+
+        // Nullify foreign key references before deleting admin to satisfy FKs
+        const { error: tourAssignedToNullErr } = await supabase
+            .from('tour_bookings')
+            .update({ assigned_to: null })
+            .eq('assigned_to', id)
+
+        if (tourAssignedToNullErr) throw tourAssignedToNullErr
+
+        const { error: tourAssignedByNullErr } = await supabase
+            .from('tour_bookings')
+            .update({ assigned_by: null })
+            .eq('assigned_by', id)
+
+        if (tourAssignedByNullErr) throw tourAssignedByNullErr
+
+        const { error: flightAssignedToNullErr } = await supabase
+            .from('flight_bookings')
+            .update({ assigned_to: null })
+            .eq('assigned_to', id)
+
+        if (flightAssignedToNullErr) throw flightAssignedToNullErr
+
+        const { error: flightAssignedByNullErr } = await supabase
+            .from('flight_bookings')
+            .update({ assigned_by: null })
+            .eq('assigned_by', id)
+
+        if (flightAssignedByNullErr) throw flightAssignedByNullErr
+
+        const { error: notifAssignedToNullErr } = await supabase
+            .from('admin_notifications')
+            .update({ assigned_to: null })
+            .eq('assigned_to', id)
+
+        if (notifAssignedToNullErr) throw notifAssignedToNullErr
+
+        const { error: notifAssignedByNullErr } = await supabase
+            .from('admin_notifications')
+            .update({ assigned_by: null })
+            .eq('assigned_by', id)
+
+        if (notifAssignedByNullErr) throw notifAssignedByNullErr
+
+        // Delete from admins table regardless
         const { error: adminError } = await supabase
             .from('admins')
             .delete()
@@ -268,14 +377,10 @@ export const deleteUser = async (req, res) => {
 
         if (adminError) throw adminError
 
-        // Delete from auth.users
-        const { error: authError } = await supabase.auth.admin.deleteUser(id)
-
-        if (authError) throw authError
-
         res.json({ message: 'User deleted successfully' })
     } catch (error) {
-        res.status(500).json({ error: 'Failed to delete user' })
+        console.error('Delete user failed:', error)
+        res.status(500).json({ error: `Failed to delete user: ${error.message || 'Unknown error'}` })
     }
 }
 
@@ -288,5 +393,42 @@ export const getUserStats = async (req, res) => {
         res.json(data[0])
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch user stats' })
+    }
+}
+
+// Resolve a booking reference to type and numeric id
+export const resolveBookingByReference = async (req, res) => {
+    try {
+        const ref = (req.query.ref || '').toString().trim()
+        if (!ref) return res.status(400).json({ success: false, error: 'ref is required' })
+
+        // Try flight first
+        const { data: flight } = await supabase
+            .from('flight_bookings')
+            .select('id')
+            .eq('booking_reference', ref)
+            .single()
+        if (flight) return res.json({ success: true, type: 'flight', id: flight.id })
+
+        // Then tour
+        const { data: tour } = await supabase
+            .from('tour_bookings')
+            .select('id')
+            .eq('booking_reference', ref)
+            .single()
+        if (tour) return res.json({ success: true, type: 'tour', id: tour.id })
+
+        // Then visa
+        const { data: visa } = await supabase
+            .from('visa_inquiries')
+            .select('id')
+            .eq('inquiry_reference', ref)
+            .single()
+        if (visa) return res.json({ success: true, type: 'visa', id: visa.id })
+
+        return res.status(404).json({ success: false, error: 'Reference not found' })
+    } catch (error) {
+        console.error('Resolve booking error:', error)
+        return res.status(500).json({ success: false, error: 'Failed to resolve reference' })
     }
 }

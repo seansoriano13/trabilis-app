@@ -1,8 +1,11 @@
 .passenger-details {
     display: grid;
     gap: 1rem;
-    background-color: rgb(24, 25, 26);
     justify-content: center;
+}
+
+.passenger-details--client-flight{
+    background-color: rgb(24, 25, 26);
 }
 
 .error-message {

@@ -946,7 +946,7 @@ function PassengerDetails() {
     }
 
     return (
-        <div className='passenger-details pt-[var(--default-padding-top)] lg:pt-25 md:pt-35'>
+        <div className='passenger-details passenger-details--client-flight pt-[var(--default-padding-top)] lg:pt-25 md:pt-35'>
             <div className='passenger-details__travel-info max-w-[1200px] mx-auto w-screen'>
                 <div className='passenger-details__route'>
                     <h3 className='passenger-details__origin'>{origin}</h3>

@@ -16,8 +16,10 @@ import {
     BsClock,
     BsFileEarmarkPdf,
     BsDownload,
-    BsEye
+    BsEye,
+    BsX
 } from 'react-icons/bs'
+import Select from 'react-select'
 import { supabase } from '../../api/supabaseClient'
 import adminClient from '../../api/adminClient'
 import './FlightBookingDetail.css'
@@ -31,6 +33,33 @@ const FlightBookingDetail = () => {
     const [activeTab, setActiveTab] = useState('overview')
     const [printLoading, setPrintLoading] = useState(false)
     const [previewLoading, setPreviewLoading] = useState(false)
+    const [showEditModal, setShowEditModal] = useState(false)
+    const [editLoading, setEditLoading] = useState(false)
+    const [editForm, setEditForm] = useState({
+        status: '',
+        pnr: '',
+        e_ticket_numbers: '',
+        assigned_to: '',
+        assignment_status: 'pending'
+    })
+    const [adminOptions, setAdminOptions] = useState([])
+    const [loadingAdmins, setLoadingAdmins] = useState(false)
+    const [assignedAdminName, setAssignedAdminName] = useState('')
+
+    // Status options for dropdown
+    const statusOptions = [
+        { value: 'PENDING', label: 'Pending', color: '#ffc107' },
+        { value: 'PENDING_PAYMENT', label: 'Pending Payment', color: '#fd7e14' },
+        { value: 'TICKETED', label: 'Confirmed', color: '#28a745' },
+        { value: 'CANCELLED', label: 'Cancelled', color: '#dc3545' }
+    ]
+
+    // Assignment status options
+    const assignmentStatusOptions = [
+        { value: 'pending', label: 'Pending' },
+        { value: 'in_progress', label: 'In Progress' },
+        { value: 'completed', label: 'Completed' }
+    ]
 
     const jwt = localStorage.getItem('adminToken')
 
@@ -40,6 +69,43 @@ const FlightBookingDetail = () => {
             supabase.auth.setSession({ access_token: jwt })
         }
     }, [jwt])
+
+    // Fetch admin options for assignment dropdown
+    const fetchAdminOptions = async () => {
+        setLoadingAdmins(true)
+        try {
+            const response = await adminClient.get('/appointments/all-staff')
+            if (response.data.success) {
+                const options = response.data.data.map(admin => ({
+                    value: admin.id,
+                    label: `${admin.first_name} ${admin.last_name} (${admin.email})`,
+                    email: admin.email,
+                    name: `${admin.first_name} ${admin.last_name}`
+                }))
+                setAdminOptions(options)
+            }
+        } catch (error) {
+            console.error('Error fetching admin options:', error)
+        } finally {
+            setLoadingAdmins(false)
+        }
+    }
+
+    // Fetch assigned admin name
+    const fetchAssignedAdminName = async (adminId) => {
+        if (!adminId) return
+        try {
+            const response = await adminClient.get('/appointments/all-staff')
+            if (response.data.success) {
+                const admin = response.data.data.find(a => a.id === adminId)
+                if (admin) {
+                    setAssignedAdminName(`${admin.first_name} ${admin.last_name}`)
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching assigned admin name:', error)
+        }
+    }
 
     // Fetch booking data
     useEffect(() => {
@@ -60,8 +126,14 @@ const FlightBookingDetail = () => {
                     throw new Error('Booking not found')
                 }
 
-                console.log('Booking data received:', data)
+                // console.log('Booking data received:', data)
                 setBooking(data)
+                
+                // Fetch assigned admin name if assigned_to exists
+                if (data.assigned_to) {
+                    fetchAssignedAdminName(data.assigned_to)
+                }
+                
                 setLoading(false)
             } catch (err) {
                 console.error(err)
@@ -154,15 +226,144 @@ const FlightBookingDetail = () => {
         }
     }
 
-    const handleEdit = () => {
-        // TODO: Implement edit functionality
-        console.log('Edit booking:', booking.id)
+    const handleEdit = async () => {
+        // Fetch admin options first
+        await fetchAdminOptions()
+        
+        // Populate form with current booking data
+        setEditForm({
+            status: booking.status,
+            pnr: booking.pnr || '',
+            e_ticket_numbers: Array.isArray(booking.e_ticket_numbers) 
+                ? booking.e_ticket_numbers.join(', ') 
+                : booking.e_ticket_numbers || '',
+            assigned_to: booking.assigned_to || '',
+            assignment_status: booking.assignment_status || 'pending'
+        })
+        setShowEditModal(true)
+    }
+
+    const handleCloseEditModal = () => {
+        setShowEditModal(false)
+        setEditForm({
+            status: '',
+            pnr: '',
+            e_ticket_numbers: '',
+            assigned_to: '',
+            assignment_status: 'pending'
+        })
+    }
+
+    const handleEditFormChange = (field, value) => {
+        setEditForm(prev => ({
+            ...prev,
+            [field]: value
+        }))
+    }
+
+    const handleEditSubmit = async (e) => {
+        e.preventDefault()
+        setEditLoading(true)
+
+        try {
+            // Prepare data for submission
+            const submitData = {
+                status: editForm.status,
+                pnr: editForm.pnr || null,
+                assigned_to: editForm.assigned_to || null,
+                assignment_status: editForm.assignment_status
+            }
+
+            // Handle e_ticket_numbers - convert string back to array if needed
+            if (editForm.e_ticket_numbers) {
+                submitData.e_ticket_numbers = editForm.e_ticket_numbers
+                    .split(',')
+                    .map(ticket => ticket.trim())
+                    .filter(ticket => ticket.length > 0)
+            }
+
+            const response = await adminClient.put(`/flights/${booking.id}/edit`, submitData)
+
+            if (response.data.success) {
+                // Update local state
+                setBooking(prev => ({
+                    ...prev,
+                    ...submitData,
+                    e_ticket_numbers: submitData.e_ticket_numbers || prev.e_ticket_numbers,
+                    updated_at: new Date().toISOString()
+                }))
+                
+                // Update assigned admin name if assignment changed
+                if (submitData.assigned_to && submitData.assigned_to !== booking.assigned_to) {
+                    fetchAssignedAdminName(submitData.assigned_to)
+                } else if (!submitData.assigned_to) {
+                    setAssignedAdminName('')
+                }
+                
+                handleCloseEditModal()
+                alert('Booking updated successfully!')
+            } else {
+                alert('Failed to update booking')
+            }
+        } catch (error) {
+            console.error('Error updating booking:', error)
+            if (error.response?.data?.error) {
+                alert(`Error: ${error.response.data.error}`)
+            } else {
+                alert('Error updating booking. Please try again.')
+            }
+        } finally {
+            setEditLoading(false)
+        }
     }
 
     const handleCancel = () => {
-        // TODO: Implement cancel functionality
-        if (window.confirm('Are you sure you want to cancel this booking?')) {
-            console.log('Cancel booking:', booking.id)
+        // Check if booking can be cancelled
+        if (booking.status === 'CANCELLED') {
+            alert('This booking is already cancelled.')
+            return
+        }
+
+        if (booking.status === 'TICKETED') {
+            alert('Cannot cancel ticketed booking. Please contact support for assistance.')
+            return
+        }
+
+        // Get cancellation reason
+        const reason = prompt('Please provide a reason for cancellation (optional):', '')
+        
+        if (window.confirm(`Are you sure you want to cancel this booking?\n\nBooking Reference: ${booking.booking_reference}\n${reason ? `Reason: ${reason}` : ''}`)) {
+            cancelBooking(reason)
+        }
+    }
+
+    const cancelBooking = async (reason) => {
+        try {
+            const response = await adminClient.put(`/flights/${booking.id}/cancel`, {
+                reason: reason || null
+            })
+
+            if (response.data.success) {
+                // Update local state
+                setBooking(prev => ({
+                    ...prev,
+                    status: 'CANCELLED',
+                    cancelled_at: new Date().toISOString(),
+                    cancellation_reason: reason || null,
+                    updated_at: new Date().toISOString()
+                }))
+                
+                alert('Booking cancelled successfully!')
+            } else {
+                alert('Failed to cancel booking')
+            }
+        } catch (error) {
+            console.error('Error cancelling booking:', error)
+            if (error.response?.data?.error) {
+                alert(`Error: ${error.response.data.error}`)
+            } else {
+                alert('Error cancelling booking. Please try again.')
+            }
         }
     }
 
@@ -309,12 +510,27 @@ const FlightBookingDetail = () => {
                 </div>
 
                 <div className="booking-detail__actions">
-                    {/* <button className="btn btn-warning" onClick={handleEdit}>
-                        <BsPencil /> Edit
-                    </button> */}
-                    <button className="btn btn-danger" onClick={handleCancel}>
-                        <BsXCircle /> Cancel
+                    <button 
+                        className="btn btn-warning" 
+                        onClick={handleEdit}
+                        disabled={booking.status === 'CANCELLED'}
+                        title={booking.status === 'CANCELLED' ? 'Cannot edit cancelled booking' : 'Edit booking details'}
+                    >
+                        <BsPencil /> {booking.status === 'CANCELLED' ? 'Cannot edit cancelled booking' : 'Edit booking details'}
                     </button>
+                    {/* <button 
+                        className="btn btn-danger" 
+                        onClick={handleCancel}
+                        disabled={booking.status === 'CANCELLED' || booking.status === 'TICKETED'}
+                        title={
+                            booking.status === 'CANCELLED' ? 'Booking already cancelled' :
+                            booking.status === 'TICKETED' ? 'Cannot cancel ticketed booking' :
+                            'Cancel this booking'
+                        }
+                    >
+                        <BsXCircle /> 
+                        {booking.status === 'CANCELLED' ? 'Cancelled' : 'Cancel'}
+                    </button> */}
                 </div>
             </div>
 
@@ -325,8 +541,36 @@ const FlightBookingDetail = () => {
                     <div>
                         <h3>Booking Status: {booking.status === 'TICKETED' ? 'Confirmed' : booking.status}</h3>
                         <p>Reference: {booking.booking_reference}</p>
+                        {booking.status === 'CANCELLED' && booking.cancelled_at && (
+                            <p>Cancelled on: {formatDate(booking.cancelled_at)}</p>
+                        )}
+                        {booking.cancellation_reason && (
+                            <p>Reason: {booking.cancellation_reason}</p>
+                        )}
                     </div>
                 </div>
+                
+                {/* Assignment Status */}
+                {booking.assignment_status && (
+                    <div className="assignment-status">
+                        <div className="assignment-status__content">
+                            <div className="assignment-status__icon">
+                                {booking.assignment_status === 'completed' && <BsCheckCircle />}
+                                {booking.assignment_status === 'in_progress' && <BsClock />}
+                                {booking.assignment_status === 'pending' && <BsClock />}
+                            </div>
+                            <div className="assignment-status__details">
+                                <h4>Assignment Status: {booking.assignment_status.charAt(0).toUpperCase() + booking.assignment_status.slice(1).replace('_', ' ')}</h4>
+                                {booking.assigned_to && (
+                                    <p>Assigned to: {assignedAdminName || 'Loading...'}</p>
+                                )}
+                                {booking.assigned_at && (
+                                    <p>Assigned on: {formatDate(booking.assigned_at)}</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Tabs */}
@@ -464,7 +708,7 @@ const FlightBookingDetail = () => {
                             <p>Complete passenger information and travel documents</p>
                         </div>
                         
-                        <div className="passenger-details">
+                        <div className="passenger-details passenger-details-flight">
                             {passengerDetails?.travelers?.map((traveler, index) => (
                                 <div key={index} className="passenger-card">
                                     <div className="passenger-card-header">
@@ -892,7 +1136,6 @@ const FlightBookingDetail = () => {
                             <div className="pdf-notes">
                                 <h4>Notes</h4>
                                 <ul>
-                                    <li>This admin version uses print-optimized HTML instead of PDFShift for faster generation</li>
                                     <li>The document contains the complete flight itinerary with all passenger and flight details</li>
                                     <li>This is the official admin receipt that can be used for internal records and printing</li>
                                     <li>Click "Generate PDF" to open a print dialog where you can save as PDF</li>
@@ -905,6 +1148,142 @@ const FlightBookingDetail = () => {
                     </div>
                 )}
             </div>
+
+            {/* Edit Modal */}
+            {showEditModal && (
+                <div className="modal-overlay" onClick={handleCloseEditModal}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3>Edit Flight Booking</h3>
+                            <button 
+                                className="modal-close" 
+                                onClick={handleCloseEditModal}
+                                disabled={editLoading}
+                            >
+                                <BsX />
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleEditSubmit} className="edit-form">
+                            <div className="form-group">
+                                <label htmlFor="status">Status</label>
+                                <Select
+                                    value={statusOptions.find(option => option.value === editForm.status)}
+                                    onChange={(selectedOption) => 
+                                        handleEditFormChange('status', selectedOption?.value || '')
+                                    }
+                                    options={statusOptions}
+                                    placeholder="Select status"
+                                    isSearchable={false}
+                                    className="react-select-container"
+                                    classNamePrefix="react-select"
+                                    formatOptionLabel={(option) => (
+                                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                                            <div 
+                                                style={{
+                                                    width: 12,
+                                                    height: 12,
+                                                    borderRadius: '50%',
+                                                    backgroundColor: option.color,
+                                                    marginRight: 8
+                                                }}
+                                            />
+                                            {option.label}
+                                        </div>
+                                    )}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="pnr">PNR</label>
+                                <input
+                                    type="text"
+                                    id="pnr"
+                                    value={editForm.pnr}
+                                    onChange={(e) => handleEditFormChange('pnr', e.target.value)}
+                                    placeholder="Enter PNR"
+                                    className="form-input"
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="e_ticket_numbers">E-Ticket Numbers</label>
+                                <input
+                                    type="text"
+                                    id="e_ticket_numbers"
+                                    value={editForm.e_ticket_numbers}
+                                    onChange={(e) => handleEditFormChange('e_ticket_numbers', e.target.value)}
+                                    placeholder="Enter ticket numbers (comma-separated)"
+                                    className="form-input"
+                                />
+                                <small className="form-help">Separate multiple ticket numbers with commas</small>
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="assigned_to">Assigned To</label>
+                                <Select
+                                    
+                                    value={adminOptions.find(option => option.value === editForm.assigned_to)}
+                                    onChange={(selectedOption) => 
+                                        handleEditFormChange('assigned_to', selectedOption?.value || '')
+                                    }
+                                    options={adminOptions}
+                                    placeholder={loadingAdmins ? "Loading admins..." : "Select admin"}
+                                    isSearchable={true}
+                                    isLoading={loadingAdmins}
+                                    isClearable={true}
+                                    className="react-select-container"
+                                    classNamePrefix="react-select"
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="assignment_status">Assignment Status</label>
+                                <Select
+                                    value={assignmentStatusOptions.find(option => option.value === editForm.assignment_status)}
+                                    onChange={(selectedOption) => 
+                                        handleEditFormChange('assignment_status', selectedOption?.value || 'pending')
+                                    }
+                                    options={assignmentStatusOptions}
+                                    placeholder="Select assignment status"
+                                    isSearchable={false}
+                                    className="react-select-container"
+                                    classNamePrefix="react-select"
+                                />
+                            </div>
+
+
+                            <div className="modal-actions">
+                                <button 
+                                    type="button" 
+                                    className="btn btn-secondary"
+                                    onClick={handleCloseEditModal}
+                                    disabled={editLoading}
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="btn btn-primary"
+                                    disabled={editLoading}
+                                >
+                                    {editLoading ? (
+                                        <>
+                                            <div className="loading-spinner-small"></div>
+                                            Updating...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <BsPencil />
+                                            Update Booking
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

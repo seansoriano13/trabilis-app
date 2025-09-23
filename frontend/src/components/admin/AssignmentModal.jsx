@@ -152,7 +152,8 @@ const AssignmentModal = ({
                             value={selectedStaff}
                             onChange={setSelectedStaff}
                             options={staff.map(member => ({
-                                value: member.id,
+                                // Prefer UUID if available; fallback to numeric id
+                                value: member.user_id || member.id,
                                 label: `${member.first_name} ${member.last_name} (${member.email})`,
                                 role: member.role
                             }))}
@@ -161,6 +162,14 @@ const AssignmentModal = ({
                             classNamePrefix="assignment-select"
                             isSearchable
                             isClearable
+                            menuPortalTarget={document.body}
+                            menuPosition="fixed"
+                            menuPlacement="auto"
+                            menuShouldScrollIntoView={false}
+                            styles={{
+                                menuPortal: base => ({ ...base, zIndex: 9999 }),
+                                menu: base => ({ ...base, zIndex: 9999 })
+                            }}
                             noOptionsMessage={() => "No staff members found"}
                         />
                     </div>

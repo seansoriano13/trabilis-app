@@ -60,6 +60,8 @@
     border: 1px solid #f0f0f0;
     overflow: hidden;
     transition: all 0.3s ease;
+    /* Offset for sticky top navbar when scrolling into view */
+    scroll-margin-top: calc(var(--default-padding-top, 64px) + 16px);
 }
 
 .accordion-section:hover {
@@ -101,6 +103,10 @@
     padding: 2rem;
     background: #fafafa;
     border-top: 1px solid #e5e7eb;
+}
+
+.accordion-scroll-top {
+    padding: 0 2rem 1.5rem 2rem;
 }
 
 .date-group {
@@ -232,8 +238,8 @@
 }
 
 .button-link {
-    color: #f7d100;
-    background: linear-gradient(135deg, rgba(247, 209, 0, 0.1), rgba(230, 194, 0, 0.1));
+    color: black;
+    background: linear-gradient(135deg, #f7d100, #e6c200);
     border: 2px solid #f7d100;
     border-radius: 8px;
     cursor: pointer;
@@ -245,13 +251,14 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+    box-shadow: 0 4px 15px rgba(247, 209, 0, 0.3);
 }
 
 .button-link:hover {
-    background: linear-gradient(135deg, #f7d100, #e6c200);
+    background: linear-gradient(135deg, #ffd400, #f0c500);
     color: black;
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(247, 209, 0, 0.3);
+    box-shadow: 0 6px 20px rgba(247, 209, 0, 0.4);
 }
 
 .button-link--remove {

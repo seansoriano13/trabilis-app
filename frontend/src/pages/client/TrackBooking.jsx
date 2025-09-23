@@ -22,13 +22,21 @@ function TrackBooking() {
         e.preventDefault()
         setIsLoading(true)
         try {
-            const res = await axios.get(
-                `${
-                    import.meta.env.VITE_BACKEND_URL
-                }/api/v1/bookings/track-booking?bookingReference=${bookingRef}&bookingType=${bookingType}`
-            )
-            console.log(res.data)
-            setResult(res.data)
+            if (bookingType === 'visa') {
+                const res = await axios.get(
+                    `${
+                        import.meta.env.VITE_BACKEND_URL
+                    }/api/v1/visa/inquiries/track?inquiryReference=${bookingRef}`
+                )
+                setResult({ type: 'visa', inquiry: res.data })
+            } else {
+                const res = await axios.get(
+                    `${
+                        import.meta.env.VITE_BACKEND_URL
+                    }/api/v1/bookings/track-booking?bookingReference=${bookingRef}&bookingType=${bookingType}`
+                )
+                setResult({ type: 'booking', ...res.data })
+            }
         } catch (err) {
             console.error(err)
         } finally {
@@ -111,7 +119,18 @@ function TrackBooking() {
                                     />
                                     <span>Tour Package</span>
                                 </label>
-                                <span className='selection'></span>
+                                <label>
+                                    <input
+                                        type='radio'
+                                        name='value-radio'
+                                        value='visa'
+                                        checked={bookingType === 'visa'}
+                                        onChange={(e) =>
+                                            setBookingType(e.target.value)
+                                        }
+                                    />
+                                    <span>Visa Inquiry</span>
+                                </label>
                             </div>
                             <div className=''>
                                 <input
@@ -123,9 +142,8 @@ function TrackBooking() {
                                         setBookingRef(e.target.value)
                                     }
                                 />
-                                <div className='text-xs text-gray-400 italic absolute'>
-                                    TRB-FLT for Flight / TRB-TOUR for Tour
-                                    Package
+                                <div className='text-xs text-gray-400 italic'>
+                                    TRB-FLT for Flight / TRB-TOUR for Tour Package / TRB-VISA for Visa
                                 </div>
                             </div>
                         </div>
@@ -133,7 +151,7 @@ function TrackBooking() {
                         <div>
                             <PrimaryButton
                                 buttonText={
-                                    isLoading ? 'Checking...' : 'Check Status'
+                                    isLoading ? 'Checking...' : 'Track Me'
                                 }
                                 isBold={true}
                                 className='px-4 py-4'
@@ -141,7 +159,7 @@ function TrackBooking() {
                         </div>
                     </div>
                 </form>
-                {result && (
+                {result?.type === 'booking' && bookingType === 'flight' && result?.bookingData?.outbound && (
                     <div className='max-w-[1200px] mx-auto flight-card shadow-md rounded-lg border border-gray-200 p-6 bg-white mt-8'>
                         {/* Route */}
                         <div className='text-lg font-semibold text-gray-800 mb-4'>
@@ -330,6 +348,159 @@ function TrackBooking() {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                )}
+                {result?.type === 'visa' && result?.inquiry && (
+                    <div className='max-w-[1200px] mx-auto shadow-md rounded-lg border border-gray-200 p-6 bg-white mt-8'>
+                        <div className='text-lg font-semibold text-gray-800 mb-4'>
+                            Visa Inquiry Status
+                        </div>
+                        <div className='grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700'>
+                            <div>
+                                <div className='text-gray-500'>Reference</div>
+                                <div className='font-medium'>{result.inquiry.inquiry_reference}</div>
+                            </div>
+                            <div>
+                                <div className='text-gray-500'>Status</div>
+                                <div className='font-medium'>{result.inquiry.status}</div>
+                            </div>
+                            <div>
+                                <div className='text-gray-500'>Full Name</div>
+                                <div className='font-medium'>{result.inquiry.full_name}</div>
+                            </div>
+                            <div>
+                                <div className='text-gray-500'>Email</div>
+                                <div className='font-medium'>{result.inquiry.email_address}</div>
+                            </div>
+                            <div>
+                                <div className='text-gray-500'>Mobile</div>
+                                <div className='font-medium'>{result.inquiry.mobile_number}</div>
+                            </div>
+                            <div>
+                                <div className='text-gray-500'>Visa Type</div>
+                                <div className='font-medium'>{result.inquiry.visa_type}</div>
+                            </div>
+                            <div>
+                                <div className='text-gray-500'>Destination</div>
+                                <div className='font-medium'>{result.inquiry.destination}</div>
+                            </div>
+                            <div>
+                                <div className='text-gray-500'>Submitted</div>
+                                <div className='font-medium'>{new Date(result.inquiry.created_at).toLocaleString()}</div>
+                            </div>
+                        </div>
+                        {result.inquiry.message && (
+                            <div className='mt-4'>
+                                <div className='text-gray-500 text-sm mb-1'>Message</div>
+                                <div className='text-gray-700 text-sm whitespace-pre-line'>{result.inquiry.message}</div>
+                            </div>
+                        )}
+                    </div>
+                )}
+                {result?.type === 'booking' && bookingType === 'tour' && result?.bookingData?.tour && (
+                    <div className='max-w-[1200px] mx-auto shadow-md rounded-lg border border-gray-200 p-6 bg-white mt-8'>
+						<div className='flex items-center justify-between mb-4'>
+							<div className='text-lg font-semibold text-gray-800'>
+								Tour Booking Details
+							</div>
+							<span className='inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200'>
+								{result.bookingData.tour.status}
+							</span>
+						</div>
+                        <div className='grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700 mb-6'>
+							<div>
+								<div className='text-gray-500'>Reference</div>
+								<div className='font-medium'>
+									<span className='font-mono text-[13px] px-2 py-1 rounded-md bg-gray-50 border border-gray-200'>
+										{result.bookingData.tour.booking_reference || result.bookingReference}
+									</span>
+								</div>
+							</div>
+                            <div>
+                                <div className='text-gray-500'>Status</div>
+                                <div className='font-medium'>{result.bookingData.tour.status}</div>
+                            </div>
+                            <div>
+                                <div className='text-gray-500'>Title</div>
+                                <div className='font-medium'>{result.bookingData.tour.title}</div>
+                            </div>
+                            <div>
+                                <div className='text-gray-500'>Travel Dates</div>
+                                <div className='font-medium'>
+                                    {result.bookingData.tour.start_date} - {result.bookingData.tour.end_date}
+                                </div>
+                            </div>
+                            <div>
+                                <div className='text-gray-500'>Passengers</div>
+                                <div className='font-medium'>{result.bookingData.tour.passenger_count}</div>
+                            </div>
+							<div>
+								<div className='text-gray-500'>Payment Type</div>
+								<div>
+									<span className='inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200'>
+										{result.bookingData.tour.payment_type}
+									</span>
+								</div>
+							</div>
+							<div>
+								<div className='text-gray-500'>Total Amount</div>
+								<div className='font-semibold text-green-700 text-base'>₱ {Number(result.bookingData.tour.total_amount || 0).toLocaleString()}</div>
+							</div>
+							<div className='md:col-span-2'>
+								<div className='text-gray-500'>Lead Contact</div>
+								<div className='font-medium bg-gray-50 border border-gray-200 rounded-md p-3'>
+									{result.bookingData.tour.lead_first_name} {result.bookingData.tour.lead_last_name} · {result.bookingData.tour.lead_email} · {result.bookingData.tour.lead_phone}
+								</div>
+							</div>
+                        </div>
+
+                        {/* Flight Details (if provided by admin) */}
+                        {(() => {
+                            const fd = result.bookingData.tour.flight_details
+                            if (!fd) return null
+                            const outbound = Array.isArray(fd.outbound) ? fd.outbound : (fd.outbound ? [fd.outbound] : [])
+                            const inbound = Array.isArray(fd.return) ? fd.return : (fd.return ? [fd.return] : [])
+							const renderSeg = (seg, idx) => (
+								<div key={idx} className='grid grid-cols-1 md:grid-cols-5 gap-2 py-2 border-b text-sm text-gray-700'>
+									<div className='font-medium text-gray-800'>{seg.airline || '-'}</div>
+									<div className='text-gray-600'>{seg.flight_no || '-'}</div>
+									<div className='text-gray-600'>{seg.departure || '-'}</div>
+									<div className='text-gray-600'>{seg.arrival || '-'}</div>
+									<div className='text-gray-600'>{seg.date ? new Date(seg.date).toLocaleString() : '-'}</div>
+								</div>
+							)
+							return (
+								<div className='mt-6 rounded-md border border-gray-200 bg-gray-50 p-4'>
+									<div className='text-md font-semibold text-gray-800 mb-2'>Flight Details</div>
+                                    {outbound.length > 0 && (
+                                        <div className='mb-4'>
+                                            <div className='text-gray-600 font-medium mb-1'>Outbound</div>
+											<div className='text-[11px] uppercase tracking-wide text-gray-500 grid grid-cols-1 md:grid-cols-5 gap-2 pb-2 border-b'>
+                                                <div>Airline</div>
+                                                <div>Flight No.</div>
+                                                <div>Departure</div>
+                                                <div>Arrival</div>
+                                                <div>Date</div>
+                                            </div>
+                                            {outbound.map(renderSeg)}
+                                        </div>
+                                    )}
+                                    {inbound.length > 0 && (
+                                        <div>
+                                            <div className='text-gray-600 font-medium mb-1'>Return</div>
+											<div className='text-[11px] uppercase tracking-wide text-gray-500 grid grid-cols-1 md:grid-cols-5 gap-2 pb-2 border-b'>
+                                                <div>Airline</div>
+                                                <div>Flight No.</div>
+                                                <div>Departure</div>
+                                                <div>Arrival</div>
+                                                <div>Date</div>
+                                            </div>
+                                            {inbound.map(renderSeg)}
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        })()}
                     </div>
                 )}
             </div>

@@ -92,9 +92,14 @@ const AdminFlights = () => {
                         )
                     `, { count: 'exact' })
                     .range(page * pageSize, (page + 1) * pageSize - 1)
-                    .order('search_criteria->>outboundDeparture', {
-                        ascending: true,
-                    })
+
+                // Apply server-side ordering when sorting by updated_at
+                if (sort.key === 'updated_at') {
+                    query = query.order('updated_at', { ascending: sort.direction === 'asc' })
+                } else {
+                    // Default list order (by outboundDeparture asc) to keep pagination stable
+                    query = query.order('search_criteria->>outboundDeparture', { ascending: true })
+                }
 
                 if (filters.status && filters.status !== 'All') {
                     query = query.eq('status', filters.status)
@@ -139,24 +144,27 @@ const AdminFlights = () => {
         }
 
         fetchData()
-    }, [page, filters, jwt])
+    }, [page, filters, sort, jwt])
 
     // Sorting logic
     const sortData = (data, sort) => {
+        const isDateKey = sort.key === 'updated_at'
+        const getComparable = (val) => {
+            if (val == null) return ''
+            if (isDateKey) return new Date(val).getTime() || 0
+            return val
+        }
         return [...data].sort((a, b) => {
-            const valA = sort.key.includes('.')
-                ? sort.key.split('.').reduce((o, k) => o?.[k], a) || ''
-                : a[sort.key] || ''
-            const valB = sort.key.includes('.')
-                ? sort.key.split('.').reduce((o, k) => o?.[k], b) || ''
-                : b[sort.key] || ''
-            return sort.direction === 'asc'
-                ? valA > valB
-                    ? 1
-                    : -1
-                : valA < valB
-                ? 1
-                : -1
+            const rawA = sort.key.includes('.')
+                ? sort.key.split('.').reduce((o, k) => o?.[k], a)
+                : a[sort.key]
+            const rawB = sort.key.includes('.')
+                ? sort.key.split('.').reduce((o, k) => o?.[k], b)
+                : b[sort.key]
+            const valA = getComparable(rawA)
+            const valB = getComparable(rawB)
+            if (valA === valB) return 0
+            return sort.direction === 'asc' ? (valA > valB ? 1 : -1) : (valA < valB ? 1 : -1)
         })
     }
 
@@ -359,6 +367,24 @@ const AdminFlights = () => {
                             className='flights__filter-input'
                         />
                     </div>
+                    <div className='flights__filter-group'>
+                        <label className='flights__filter-label'>
+                            <FiFilter size={16} />
+                            Sort by Date
+                        </label>
+                        <select
+                            name='order'
+                            value={sort.key === 'updated_at' ? sort.direction : 'desc'}
+                            onChange={(e) => {
+                                setSort({ key: 'updated_at', direction: e.target.value })
+                                setPage(0)
+                            }}
+                            className='flights__filter-select'
+                        >
+                            <option value='desc'>Newest first</option>
+                            <option value='asc'>Oldest first</option>
+                        </select>
+                    </div>
                     <div className='flights__filter-actions'>
                         <button
                             className='flights__filter-clear'
@@ -398,6 +424,19 @@ const AdminFlights = () => {
                                     <div className='flights__table-header-content'>
                                         <span>Reference</span>
                                         {sort.key === 'booking_reference' && (
+                                            <span className='flights__sort-indicator'>
+                                                {sort.direction === 'asc' ? '↑' : '↓'}
+                                            </span>
+                                        )}
+                                    </div>
+                                </th>
+                                <th
+                                    onClick={() => handleSort('updated_at')}
+                                    className='flights__table-header flights__table-header--sortable'
+                                >
+                                    <div className='flights__table-header-content'>
+                                        <span>Booked</span>
+                                        {sort.key === 'updated_at' && (
                                             <span className='flights__sort-indicator'>
                                                 {sort.direction === 'asc' ? '↑' : '↓'}
                                             </span>
@@ -474,6 +513,9 @@ const AdminFlights = () => {
                                         >
                                             {booking.booking_reference}
                                         </Link>
+                                    </td>
+                                    <td className='flights__table-cell'>
+                                        {booking.updated_at ? new Date(booking.updated_at).toLocaleDateString() : '-'}
                                     </td>
                                     <td className='flights__table-cell'>
                                         <span className={`flights__status flights__status--${booking.status === 'TICKETED' ? 'confirmed' : booking.status.toLowerCase()}`}>
@@ -594,12 +636,12 @@ const AdminFlights = () => {
                                             >
                                                 <FiDownload size={16} />
                                             </button> */}
-                                            <button 
+                                            {/* <button 
                                                 className='flights__action-btn flights__action-btn--delete'
                                                 title='Cancel Booking'
                                             >
                                                 <FiTrash2 size={16} />
-                                            </button>
+                                            </button> */}
                                         </div>
                                     </td>
                                 </tr>

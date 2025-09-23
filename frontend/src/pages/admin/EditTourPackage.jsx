@@ -4,11 +4,25 @@ import { IoChevronBack } from 'react-icons/io5'
 import AdminPrimaryButton from '../../components/admin/AdminPrimaryButton'
 import adminClient from '../../api/adminClient.js'
 import './EditTourPackage.css'
+import './CreateTourPackage.css'
 import { AccordionSection, DateGroup } from './CreateTourPackage.jsx'
 
 function EditTourPackage() {
     const { id } = useParams()
     const navigate = useNavigate()
+    const CATEGORY_OPTIONS = [
+        'Air Travel',
+        'Transfers',
+        'Accommodation',
+        'Meals',
+        'Guided Tours / Activities',
+        'Entrance Fees / Tickets',
+        'Visa / Documentation',
+        'Insurance',
+        'Taxes / Surcharges',
+        'Miscellaneous / Others',
+        'Custom…',
+    ]
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -26,6 +40,8 @@ function EditTourPackage() {
     const [openSections, setOpenSections] = useState({
         general: true,
         dates: false,
+        fee_rules: false,
+        inclusion_groups: false,
         itinerary: false,
         inclusions: false,
         exclusions: false,
@@ -44,28 +60,75 @@ function EditTourPackage() {
             try {
                 const response = await adminClient.get(`/tours/${id}`)
                 const tour = response.data
+                // Build base dates
+                const baseDates = tour.dates.map((date) => ({
+                        id: date.id,
+                        tour_package_id: date.tour_package_id,
+                        start_date: date.start_date || '',
+                        end_date: date.end_date || '',
+                        rate_per_pax: date.rate_per_pax || 0,
+                    reservation_fee_per_pax: date.reservation_fee_per_pax || 0,
+                        total_slots: date.total_slots || 0,
+                        available_slots: date.available_slots || 0,
+                    // legacy flat fields retained
+                        inclusions: date.inclusions || [''],
+                        exclusions: date.exclusions || [''],
+                        payment_terms: date.payment_terms || [''],
+                        requirements: date.requirements || [''],
+                        notes: date.notes || [''],
+                    // phase 2 fields (to be fetched)
+                    fee_rules: {
+                        perRemovedGroup: Number(date.fee_rules?.perRemovedGroup) || 0,
+                        perRestDay: Number(date.fee_rules?.perRestDay) || 0,
+                        minFee: Number(date.fee_rules?.minFee) || 0,
+                        maxFee: Number(date.fee_rules?.maxFee) || 0,
+                    },
+                    inclusion_groups: [],
+                }))
+
+                // Fetch fee rules and inclusion groups per date
+                const datesWithExtras = await Promise.all(
+                    baseDates.map(async (d) => {
+                        try {
+                            // inclusion groups
+                            const groupsRes = await adminClient.get(`/tours/dates/${d.id}/inclusion-groups`)
+                            const groups = Array.isArray(groupsRes?.data) ? groupsRes.data : []
+                            const groupsWithItems = []
+                            for (const g of groups) {
+                                // listInclusionGroups already returns items; fallback to fetch if absent
+                                let items = Array.isArray(g.items)
+                                    ? g.items.map((it) => it.content || '')
+                                    : []
+                                if (items.length === 0) {
+                                    const itemsRes = await adminClient.get(`/tours/inclusion-groups/${g.id}/items`)
+                                    items = (itemsRes?.data || []).map((it) => it.content || '')
+                                }
+                                // map category
+                                const matchedCategory = CATEGORY_OPTIONS.includes(g.title) ? g.title : 'Custom…'
+                                groupsWithItems.push({
+                                    title: matchedCategory === 'Custom…' ? (g.title || '') : g.title,
+                                    category: matchedCategory,
+                                    removable: g.removable !== false,
+                                    items: items.length ? items : [''],
+                                })
+                            }
+                            return {
+                                ...d,
+                                inclusion_groups: groupsWithItems,
+                            }
+                        } catch (_) {
+                            return d
+                        }
+                    })
+                )
+
                 setFormData({
                     title: tour.title || '',
                     description: tour.description || '',
                     main_image_url: tour.main_image_url || '',
                     panellum_url: tour.panellum_url || '',
                     status: tour.status || 'DRAFT',
-                    dates: tour.dates.map((date) => ({
-                        id: date.id,
-                        tour_package_id: date.tour_package_id,
-                        start_date: date.start_date || '',
-                        end_date: date.end_date || '',
-                        rate_per_pax: date.rate_per_pax || 0,
-                        reservation_fee_per_pax:
-                            date.reservation_fee_per_pax || null,
-                        total_slots: date.total_slots || 0,
-                        available_slots: date.available_slots || 0,
-                        inclusions: date.inclusions || [''],
-                        exclusions: date.exclusions || [''],
-                        payment_terms: date.payment_terms || [''],
-                        requirements: date.requirements || [''],
-                        notes: date.notes || [''],
-                    })),
+                    dates: datesWithExtras,
                     itineraries: tour.dates.flatMap((date) =>
                         date.itineraries.map((it) => ({
                             id: it.id,
@@ -125,24 +188,171 @@ function EditTourPackage() {
         })
     }
 
-    const addDateGroup = () => {
+    // Fee rules per date
+    const updateFeeRule = (dateIdx, field, value) => {
+        setFormData((prev) => {
+            const newDates = [...prev.dates]
+            const fr = { ...(newDates[dateIdx].fee_rules || {}) }
+            fr[field] = value
+            newDates[dateIdx] = { ...newDates[dateIdx], fee_rules: fr }
+            return { ...prev, dates: newDates }
+        })
+    }
+
+    // Inclusion groups per date
+    const addInclusionGroupForDate = (dateIdx) => {
+        setFormData((prev) => {
+            const newDates = [...prev.dates]
+            const groups = [...(newDates[dateIdx].inclusion_groups || [])]
+            groups.push({ title: '', category: CATEGORY_OPTIONS[0], removable: true, items: [''] })
+            newDates[dateIdx] = { ...newDates[dateIdx], inclusion_groups: groups }
+            return { ...prev, dates: newDates }
+        })
+    }
+
+    const duplicateInclusionGroup = (dateIdx, groupIdx) => {
+        setFormData((prev) => {
+            const newDates = [...prev.dates]
+            const groups = [...(newDates[dateIdx].inclusion_groups || [])]
+            const clone = JSON.parse(JSON.stringify(groups[groupIdx]))
+            groups.splice(groupIdx + 1, 0, clone)
+            newDates[dateIdx] = { ...newDates[dateIdx], inclusion_groups: groups }
+            return { ...prev, dates: newDates }
+        })
+    }
+
+    const updateInclusionGroup = (dateIdx, groupIdx, field, value) => {
+        setFormData((prev) => {
+            const newDates = [...prev.dates]
+            const groups = [...(newDates[dateIdx].inclusion_groups || [])]
+            const group = { ...(groups[groupIdx] || {}) }
+            if (field === 'category') {
+                group.category = value
+                if (value !== 'Custom…') {
+                    group.title = value
+                }
+            } else {
+                group[field] = value
+            }
+            groups[groupIdx] = group
+            newDates[dateIdx] = { ...newDates[dateIdx], inclusion_groups: groups }
+            return { ...prev, dates: newDates }
+        })
+    }
+
+    const removeInclusionGroup = (dateIdx, groupIdx) => {
+        setFormData((prev) => {
+            const newDates = [...prev.dates]
+            const groups = [...(newDates[dateIdx].inclusion_groups || [])]
+            newDates[dateIdx] = {
+                ...newDates[dateIdx],
+                inclusion_groups: groups.filter((_, i) => i !== groupIdx),
+            }
+            return { ...prev, dates: newDates }
+        })
+    }
+
+    const addInclusionGroupItem = (dateIdx, groupIdx) => {
+        setFormData((prev) => {
+            const newDates = [...prev.dates]
+            const groups = [...(newDates[dateIdx].inclusion_groups || [])]
+            const group = { ...(groups[groupIdx] || {}) }
+            const items = [...(group.items || [])]
+            items.push('')
+            group.items = items
+            groups[groupIdx] = group
+            newDates[dateIdx] = { ...newDates[dateIdx], inclusion_groups: groups }
+            return { ...prev, dates: newDates }
+        })
+    }
+
+    const duplicateInclusionItem = (dateIdx, groupIdx, itemIdx) => {
+        setFormData((prev) => {
+            const newDates = [...prev.dates]
+            const groups = [...(newDates[dateIdx].inclusion_groups || [])]
+            const group = { ...(groups[groupIdx] || {}) }
+            const items = [...(group.items || [])]
+            const clone = items[itemIdx]
+            items.splice(itemIdx + 1, 0, clone)
+            group.items = items
+            groups[groupIdx] = group
+            newDates[dateIdx] = { ...newDates[dateIdx], inclusion_groups: groups }
+            return { ...prev, dates: newDates }
+        })
+    }
+
+    const updateInclusionGroupItem = (dateIdx, groupIdx, itemIdx, value) => {
+        setFormData((prev) => {
+            const newDates = [...prev.dates]
+            const groups = [...(newDates[dateIdx].inclusion_groups || [])]
+            const group = { ...(groups[groupIdx] || {}) }
+            const items = [...(group.items || [])]
+            items[itemIdx] = value
+            group.items = items
+            groups[groupIdx] = group
+            newDates[dateIdx] = { ...newDates[dateIdx], inclusion_groups: groups }
+            return { ...prev, dates: newDates }
+        })
+    }
+
+    const removeInclusionGroupItem = (dateIdx, groupIdx, itemIdx) => {
+        setFormData((prev) => {
+            const newDates = [...prev.dates]
+            const groups = [...(newDates[dateIdx].inclusion_groups || [])]
+            const group = { ...(groups[groupIdx] || {}) }
+            group.items = (group.items || []).filter((_, i) => i !== itemIdx)
+            groups[groupIdx] = group
+            newDates[dateIdx] = { ...newDates[dateIdx], inclusion_groups: groups }
+            return { ...prev, dates: newDates }
+        })
+    }
+
+    const addDateGroup = (duplicatePricingFromPrevious = false) => {
         setFormData((prev) => ({
             ...prev,
             dates: [
                 ...prev.dates,
-                {
+                (() => {
+                    const last = prev.dates[prev.dates.length - 1]
+                    return {
                     start_date: '',
                     end_date: '',
-                    rate_per_pax: 0,
-                    reservation_fee_per_pax: null,
-                    total_slots: 0,
-                    available_slots: 0,
+                        rate_per_pax:
+                            duplicatePricingFromPrevious && last
+                                ? last.rate_per_pax || 0
+                                : 0,
+                        reservation_fee_per_pax:
+                            duplicatePricingFromPrevious && last
+                                ? last.reservation_fee_per_pax || 0
+                                : 0,
+                        total_slots:
+                            duplicatePricingFromPrevious && last
+                                ? last.total_slots || 0
+                                : 0,
+                        available_slots:
+                            duplicatePricingFromPrevious && last
+                                ? last.total_slots || 0
+                                : 0,
                     inclusions: [''],
                     exclusions: [''],
                     payment_terms: [''],
                     requirements: [''],
                     notes: [''],
-                },
+                        fee_rules:
+                            duplicatePricingFromPrevious && last && last.fee_rules
+                                ? { ...last.fee_rules }
+                                : { perRemovedGroup: 0, perRestDay: 0, minFee: 0, maxFee: 0 },
+                        inclusion_groups:
+                            duplicatePricingFromPrevious && last && Array.isArray(last.inclusion_groups)
+                                ? last.inclusion_groups.map((g) => ({
+                                      title: g.title || '',
+                                      category: g.category || 'Custom…',
+                                      removable: g.removable !== false,
+                                      items: Array.isArray(g.items) ? [...g.items] : [''],
+                                  }))
+                                : [],
+                    }
+                })(),
             ],
         }))
     }
@@ -359,6 +569,40 @@ function EditTourPackage() {
                 })),
             }
             const response = await adminClient.put(`/tours/${id}`, payload)
+
+            // After base update, apply fee rules and create inclusion groups/items per date
+            const tourRes = await adminClient.get(`/tours/${id}`)
+            const createdDates = tourRes?.data?.dates || []
+            for (let dIdx = 0; dIdx < formData.dates.length; dIdx++) {
+                const createdDateId = createdDates[dIdx]?.id
+                if (!createdDateId) continue
+
+                // Apply fee rules if present
+                const fr = formData.dates[dIdx].fee_rules
+                if (fr) {
+                    await adminClient.put(`/tours/dates/${createdDateId}/fee-rules`, fr)
+                }
+
+                // Create inclusion groups and items
+                const groups = formData.dates[dIdx].inclusion_groups || []
+                for (const g of groups) {
+                    const title = g.category && g.category !== 'Custom…' ? g.category : (g.title || '')
+                    if (!title) continue
+                    const groupRes = await adminClient.post(`/tours/dates/${createdDateId}/inclusion-groups`, {
+                        title,
+                        removable: g.removable !== false,
+                    })
+                    const newGroupId = groupRes?.data?.id
+                    if (newGroupId) {
+                        for (const item of g.items || []) {
+                            const content = (item || '').trim()
+                            if (!content) continue
+                            await adminClient.post(`/tours/inclusion-groups/${newGroupId}/items`, { content })
+                        }
+                    }
+                }
+            }
+
             if (response.data.message === 'Tour updated successfully') {
                 navigate('/admin/tours')
             } else {
@@ -373,18 +617,15 @@ function EditTourPackage() {
         }
     }
 
-    if (isLoading) return <div className='tour-edit__loading'>Loading...</div>
-    if (error) return <div className='tour-edit__error'>{error}</div>
+    if (isLoading) return <div className='loading'>Loading...</div>
+    if (error) return <div className='loading'>{error}</div>
 
     return (
-        <div className='tour-edit'>
-            <div className='tour-edit__header'>
-                <div
-                    onClick={handleBackClick}
-                    className='tour-edit__header-back-button'
-                >
+        <div className='container tour-edit-container'>
+            <div className='header'>
+                <div onClick={handleBackClick} className='header__back-button'>
                     <IoChevronBack size={24} />
-                    <p className='tour-edit__header-back-text'>Back to Tours</p>
+                    <p className='header__back-text'>Back to Tours</p>
                 </div>
             </div>
 
@@ -393,21 +634,21 @@ function EditTourPackage() {
                 isOpen={openSections.general}
                 toggle={() => toggleSection('general')}
             >
-                <div className='tour-edit__form-fields'>
-                    <div className='tour-edit__form-field'>
-                        <label className='tour-edit__label'>Title *</label>
+                <div className='form__fields'>
+                    <div className='date-group__form-field'>
+                        <label className='form-label'>Title *</label>
                         <input
                             type='text'
                             value={formData.title}
                             onChange={(e) =>
                                 updateFormData('title', e.target.value)
                             }
-                            className='tour-edit__input'
+                            className='form-input'
                             required
                         />
                     </div>
-                    <div className='tour-edit__form-field'>
-                        <label className='tour-edit__label'>
+                    <div className='date-group__form-field'>
+                        <label className='form-label'>
                             Description *
                         </label>
                         <textarea
@@ -415,31 +656,31 @@ function EditTourPackage() {
                             onChange={(e) =>
                                 updateFormData('description', e.target.value)
                             }
-                            className='tour-edit__textarea'
+                            className='form-textarea'
                             rows='4'
                             required
                         />
                     </div>
-                    <div className='tour-edit__form-field'>
-                        <label className='tour-edit__label'>Main Image *</label>
+                    <div className='date-group__form-field'>
+                        <label className='form-label'>Main Image *</label>
                         <input
                             type='file'
                             accept='image/jpeg,image/png,image/gif,image/webp'
                             onChange={(e) =>
                                 handleImageChange(e, 'main_image_url')
                             }
-                            className='tour-edit__input'
+                            className='form-input'
                         />
                         {mainImagePreview && (
                             <img
                                 src={mainImagePreview}
                                 alt='Main Image Preview'
-                                className='tour-edit__image-preview'
+                                className='image-preview'
                             />
                         )}
                     </div>
-                    <div className='tour-edit__form-field'>
-                        <label className='tour-edit__label'>
+                    <div className='date-group__form-field'>
+                        <label className='form-label'>
                             Panellum Image *
                         </label>
                         <input
@@ -448,24 +689,24 @@ function EditTourPackage() {
                             onChange={(e) =>
                                 handleImageChange(e, 'panellum_url')
                             }
-                            className='tour-edit__input'
+                            className='form-input'
                         />
                         {panellumImagePreview && (
                             <img
                                 src={panellumImagePreview}
                                 alt='Panellum Image Preview'
-                                className='tour-edit__image-preview'
+                                className='image-preview'
                             />
                         )}
                     </div>
-                    <div className='tour-edit__form-field'>
-                        <label className='tour-edit__label'>Status *</label>
+                    <div className='date-group__form-field'>
+                        <label className='form-label'>Status *</label>
                         <select
                             value={formData.status}
                             onChange={(e) =>
                                 updateFormData('status', e.target.value)
                             }
-                            className='tour-edit__select'
+                            className='form-select'
                             required
                         >
                             <option value='DRAFT'>Draft</option>
@@ -480,7 +721,7 @@ function EditTourPackage() {
                 isOpen={openSections.dates}
                 toggle={() => toggleSection('dates')}
             >
-                <div className='tour-edit__form-fields'>
+                <div className='form__fields'>
                     {formData.dates.map((dateGroup, index) => (
                         <DateGroup
                             key={dateGroup.id || `date-${index}`}
@@ -491,12 +732,105 @@ function EditTourPackage() {
                             autofillDateGroup={autofillDateGroup}
                         />
                     ))}
-                    <button
-                        onClick={addDateGroup}
-                        className='tour-edit__button-link'
-                    >
-                        + Add another travel date
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button onClick={() => addDateGroup(false)} className='button-link'>+ Add another travel date</button>
+                        <button onClick={() => addDateGroup(true)} className='button-link'>+ Add date (duplicate pricing)</button>
+                    </div>
+                </div>
+            </AccordionSection>
+
+            <AccordionSection
+                title='Fee Rules'
+                isOpen={openSections.fee_rules}
+                toggle={() => toggleSection('fee_rules')}
+            >
+                <div className='form__fields'>
+                    {formData.dates.map((dateGroup, dIdx) => (
+                        <div key={dIdx} className='date-group'>
+                            <h3 className='date-group__title'>Date {dIdx + 1}</h3>
+                            <div className='form__fields'>
+                                <div className='date-group__form-field'>
+                                    <label className='form-label'>Per Removed Group (PHP)</label>
+                                    <input type='number' className='form-input' min='0' value={dateGroup.fee_rules?.perRemovedGroup || 0} onChange={(e) => updateFeeRule(dIdx, 'perRemovedGroup', Number(e.target.value))} />
+                                </div>
+                                <div className='date-group__form-field'>
+                                    <label className='form-label'>Per Rest Day (PHP)</label>
+                                    <input type='number' className='form-input' min='0' value={dateGroup.fee_rules?.perRestDay || 0} onChange={(e) => updateFeeRule(dIdx, 'perRestDay', Number(e.target.value))} />
+                                </div>
+                                <div className='date-group__form-field'>
+                                    <label className='form-label'>Minimum Fee (PHP)</label>
+                                    <input type='number' className='form-input' min='0' value={dateGroup.fee_rules?.minFee || 0} onChange={(e) => updateFeeRule(dIdx, 'minFee', Number(e.target.value))} />
+                                </div>
+                                <div className='date-group__form-field'>
+                                    <label className='form-label'>Maximum Fee (PHP)</label>
+                                    <input type='number' className='form-input' min='0' value={dateGroup.fee_rules?.maxFee || 0} onChange={(e) => updateFeeRule(dIdx, 'maxFee', Number(e.target.value))} />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </AccordionSection>
+
+            <AccordionSection
+                title='Inclusions'
+                isOpen={openSections.inclusion_groups}
+                toggle={() => toggleSection('inclusion_groups')}
+            >
+                <div className='form__fields'>
+                    {formData.dates.map((dateGroup, dIdx) => (
+                        <div key={dIdx} className='date-group'>
+                            <h3 className='date-group__title'>Date {dIdx + 1}</h3>
+                            <div className='grid gap-4'>
+                                {(dateGroup.inclusion_groups || []).map((group, gIdx) => (
+                                    <div key={gIdx} className='border rounded-md p-3 border-gray-300'>
+                                        <div className='date-group__form-field'>
+                                            <label className='form-label'>Group Title</label>
+                                            <select className='form-select' value={group.category || 'Custom…'} onChange={(e) => updateInclusionGroup(dIdx, gIdx, 'category', e.target.value)}>
+                                                {CATEGORY_OPTIONS.map((opt) => (
+                                                    <option key={opt} value={opt}>{opt}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        {group.category === 'Custom…' && (
+                                            <div className='date-group__form-field'>
+                                                <label className='form-label'>Custom Group Title</label>
+                                                <input type='text' className='form-input' value={group.title || ''} onChange={(e) => updateInclusionGroup(dIdx, gIdx, 'title', e.target.value)} />
+                                            </div>
+                                        )}
+                                        <div className='date-group__form-field'>
+                                            <label className='form-label'>Removable?</label>
+                                            <select className='form-select' value={group.removable ? 'yes' : 'no'} onChange={(e) => updateInclusionGroup(dIdx, gIdx, 'removable', e.target.value === 'yes')}>
+                                                <option value='yes'>Yes</option>
+                                                <option value='no'>No (Required)</option>
+                                            </select>
+                                        </div>
+                                        <div className='form__fields'>
+                                            <label className='form-label'>Items</label>
+                                            {(group.items || []).map((item, iIdx) => (
+                                                <div key={iIdx} className='flex items-center gap-2'>
+                                                    <input type='text' className='form-input' value={item} onChange={(e) => updateInclusionGroupItem(dIdx, gIdx, iIdx, e.target.value)} placeholder='e.g., Roundtrip international airfare on economy class' />
+                                                    {(group.items || []).length > 0 && (
+                                                        <>
+                                                            <button onClick={() => duplicateInclusionItem(dIdx, gIdx, iIdx)} className='button-link'>Duplicate</button>
+                                                            {(group.items || []).length > 1 && (
+                                                                <button onClick={() => removeInclusionGroupItem(dIdx, gIdx, iIdx)} className='button-link button-link--remove'>Remove</button>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            <button onClick={() => addInclusionGroupItem(dIdx, gIdx)} className='button-link'>+ Add another item</button>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                            <button onClick={() => duplicateInclusionGroup(dIdx, gIdx)} className='button-link'>Duplicate Group</button>
+                                            <button onClick={() => removeInclusionGroup(dIdx, gIdx)} className='button-link button-link--remove'>Remove Group</button>
+                                        </div>
+                                    </div>
+                                ))}
+                                <button onClick={() => addInclusionGroupForDate(dIdx)} className='button-link'>+ Add inclusion group</button>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </AccordionSection>
 
@@ -505,14 +839,14 @@ function EditTourPackage() {
                 isOpen={openSections.itinerary}
                 toggle={() => toggleSection('itinerary')}
             >
-                <div className='tour-edit__form-fields'>
+                <div className='form__fields'>
                     {formData.itineraries.map((itinerary, itinIndex) => (
                         <div
                             key={itinerary.id || `itinerary-${itinIndex}`}
-                            className='tour-edit__itinerary-day'
+                            className='itinerary__day'
                         >
-                            <div className='tour-edit__form-field'>
-                                <label className='tour-edit__label'>
+                            <div className='date-group__form-field'>
+                                <label className='form-label'>
                                     Day Number *
                                 </label>
                                 <input
@@ -525,13 +859,13 @@ function EditTourPackage() {
                                             Number(e.target.value)
                                         )
                                     }
-                                    className='tour-edit__input'
+                                    className='form-input'
                                     min='1'
                                     required
                                 />
                             </div>
-                            <div className='tour-edit__form-field'>
-                                <label className='tour-edit__label'>
+                            <div className='date-group__form-field'>
+                                <label className='form-label'>
                                     Title *
                                 </label>
                                 <input
@@ -544,13 +878,13 @@ function EditTourPackage() {
                                             e.target.value
                                         )
                                     }
-                                    className='tour-edit__input'
+                                    className='form-input'
                                     required
                                     placeholder='e.g., Arrival to Amman'
                                 />
                             </div>
-                            <div className='tour-edit__form-field'>
-                                <label className='tour-edit__label'>
+                            <div className='date-group__form-field'>
+                                <label className='form-label'>
                                     Description *
                                 </label>
                                 <textarea
@@ -562,7 +896,7 @@ function EditTourPackage() {
                                             e.target.value
                                         )
                                     }
-                                    className='tour-edit__textarea'
+                                    className='form-textarea'
                                     rows='3'
                                     required
                                     placeholder='e.g., Airport pickup, transfer to hotel'
@@ -571,7 +905,7 @@ function EditTourPackage() {
                             {formData.itineraries.length > 1 && (
                                 <button
                                     onClick={() => removeItinerary(itinIndex)}
-                                    className='tour-edit__button-link tour-edit__button-link--remove'
+                                    className='button-link button-link--remove'
                                 >
                                     Remove Itinerary
                                 </button>
@@ -580,7 +914,7 @@ function EditTourPackage() {
                     ))}
                     <button
                         onClick={addItinerary}
-                        className='tour-edit__button-link'
+                        className='button-link'
                     >
                         + Add another itinerary day
                     </button>
@@ -592,14 +926,14 @@ function EditTourPackage() {
                 isOpen={openSections.inclusions}
                 toggle={() => toggleSection('inclusions')}
             >
-                <div className='tour-edit__form-fields'>
+                <div className='form__fields'>
                     {formData.inclusions.map((inclusion, incIndex) => (
                         <div
                             key={`inclusion-${incIndex}`}
-                            className='tour-edit__inclusions-item'
+                            className='inclusions__item'
                         >
-                            <div className='tour-edit__form-field'>
-                                <label className='tour-edit__label'>
+                            <div className='date-group__form-field'>
+                                <label className='form-label'>
                                     Inclusion *
                                 </label>
                                 <input
@@ -611,7 +945,7 @@ function EditTourPackage() {
                                             e.target.value
                                         )
                                     }
-                                    className='tour-edit__input'
+                                    className='form-input'
                                     required
                                     placeholder='e.g., Round trip airfare'
                                 />
@@ -619,7 +953,7 @@ function EditTourPackage() {
                             {formData.inclusions.length > 1 && (
                                 <button
                                     onClick={() => removeInclusion(incIndex)}
-                                    className='tour-edit__button-link tour-edit__button-link--remove'
+                                    className='button-link button-link--remove'
                                 >
                                     Remove Inclusion
                                 </button>
@@ -628,7 +962,7 @@ function EditTourPackage() {
                     ))}
                     <button
                         onClick={addInclusion}
-                        className='tour-edit__button-link'
+                        className='button-link'
                     >
                         + Add another inclusion
                     </button>
@@ -640,14 +974,14 @@ function EditTourPackage() {
                 isOpen={openSections.exclusions}
                 toggle={() => toggleSection('exclusions')}
             >
-                <div className='tour-edit__form-fields'>
+                <div className='form__fields'>
                     {formData.exclusions.map((exclusion, excIndex) => (
                         <div
                             key={`exclusion-${excIndex}`}
-                            className='tour-edit__exclusions-item'
+                            className='exclusions__item'
                         >
-                            <div className='tour-edit__form-field'>
-                                <label className='tour-edit__label'>
+                            <div className='date-group__form-field'>
+                                <label className='form-label'>
                                     Exclusion *
                                 </label>
                                 <input
@@ -659,7 +993,7 @@ function EditTourPackage() {
                                             e.target.value
                                         )
                                     }
-                                    className='tour-edit__input'
+                                    className='form-input'
                                     required
                                     placeholder='e.g., Hotel quarantine if required'
                                 />
@@ -667,7 +1001,7 @@ function EditTourPackage() {
                             {formData.exclusions.length > 1 && (
                                 <button
                                     onClick={() => removeExclusion(excIndex)}
-                                    className='tour-edit__button-link tour-edit__button-link--remove'
+                                    className='button-link button-link--remove'
                                 >
                                     Remove Exclusion
                                 </button>
@@ -676,7 +1010,7 @@ function EditTourPackage() {
                     ))}
                     <button
                         onClick={addExclusion}
-                        className='tour-edit__button-link'
+                        className='button-link'
                     >
                         + Add another exclusion
                     </button>
@@ -688,14 +1022,14 @@ function EditTourPackage() {
                 isOpen={openSections.payment_terms}
                 toggle={() => toggleSection('payment_terms')}
             >
-                <div className='tour-edit__form-fields'>
+                <div className='form__fields'>
                     {formData.payment_terms.map((term, termIndex) => (
                         <div
                             key={`payment-term-${termIndex}`}
-                            className='tour-edit__payment-terms-item'
+                            className='payment-terms__item'
                         >
-                            <div className='tour-edit__form-field'>
-                                <label className='tour-edit__label'>
+                            <div className='date-group__form-field'>
+                                <label className='form-label'>
                                     Payment Term *
                                 </label>
                                 <input
@@ -707,7 +1041,7 @@ function EditTourPackage() {
                                             e.target.value
                                         )
                                     }
-                                    className='tour-edit__input'
+                                    className='form-input'
                                     required
                                     placeholder='e.g., Reservation fee: PHP 30,000'
                                 />
@@ -715,7 +1049,7 @@ function EditTourPackage() {
                             {formData.payment_terms.length > 1 && (
                                 <button
                                     onClick={() => removePaymentTerm(termIndex)}
-                                    className='tour-edit__button-link tour-edit__button-link--remove'
+                                    className='button-link button-link--remove'
                                 >
                                     Remove Payment Term
                                 </button>
@@ -724,7 +1058,7 @@ function EditTourPackage() {
                     ))}
                     <button
                         onClick={addPaymentTerm}
-                        className='tour-edit__button-link'
+                        className='button-link'
                     >
                         + Add another payment term
                     </button>
@@ -736,14 +1070,14 @@ function EditTourPackage() {
                 isOpen={openSections.requirements}
                 toggle={() => toggleSection('requirements')}
             >
-                <div className='tour-edit__form-fields'>
+                <div className='form__fields'>
                     {formData.requirements.map((requirement, reqIndex) => (
                         <div
                             key={`requirement-${reqIndex}`}
-                            className='tour-edit__requirements-item'
+                            className='requirements__item'
                         >
-                            <div className='tour-edit__form-field'>
-                                <label className='tour-edit__label'>
+                            <div className='date-group__form-field'>
+                                <label className='form-label'>
                                     Requirement *
                                 </label>
                                 <input
@@ -755,7 +1089,7 @@ function EditTourPackage() {
                                             e.target.value
                                         )
                                     }
-                                    className='tour-edit__input'
+                                    className='form-input'
                                     required
                                     placeholder='e.g., Full vaccination'
                                 />
@@ -763,7 +1097,7 @@ function EditTourPackage() {
                             {formData.requirements.length > 1 && (
                                 <button
                                     onClick={() => removeRequirement(reqIndex)}
-                                    className='tour-edit__button-link tour-edit__button-link--remove'
+                                    className='button-link button-link--remove'
                                 >
                                     Remove Requirement
                                 </button>
@@ -772,7 +1106,7 @@ function EditTourPackage() {
                     ))}
                     <button
                         onClick={addRequirement}
-                        className='tour-edit__button-link'
+                        className='button-link'
                     >
                         + Add another requirement
                     </button>
@@ -784,14 +1118,14 @@ function EditTourPackage() {
                 isOpen={openSections.notes}
                 toggle={() => toggleSection('notes')}
             >
-                <div className='tour-edit__form-fields'>
+                <div className='form__fields'>
                     {formData.notes.map((note, noteIndex) => (
                         <div
                             key={`note-${noteIndex}`}
-                            className='tour-edit__notes-item'
+                            className='notes__item'
                         >
-                            <div className='tour-edit__form-field'>
-                                <label className='tour-edit__label'>
+                            <div className='date-group__form-field'>
+                                <label className='form-label'>
                                     Note *
                                 </label>
                                 <input
@@ -800,7 +1134,7 @@ function EditTourPackage() {
                                     onChange={(e) =>
                                         updateNote(noteIndex, e.target.value)
                                     }
-                                    className='tour-edit__input'
+                                    className='form-input'
                                     required
                                     placeholder='e.g., Illegal entry subject to deportation'
                                 />
@@ -808,7 +1142,7 @@ function EditTourPackage() {
                             {formData.notes.length > 1 && (
                                 <button
                                     onClick={() => removeNote(noteIndex)}
-                                    className='tour-edit__button-link tour-edit__button-link--remove'
+                                    className='button-link button-link--remove'
                                 >
                                     Remove Note
                                 </button>
@@ -817,19 +1151,23 @@ function EditTourPackage() {
                     ))}
                     <button
                         onClick={addNote}
-                        className='tour-edit__button-link'
+                        className='button-link'
                     >
                         + Add another note
                     </button>
                 </div>
             </AccordionSection>
 
+            <div className='sticky-save-bar'>
+                <div className='sticky-save-bar__inner'>
             <AdminPrimaryButton
-                className='tour-edit__button-save'
+                        className='admin-primary-button'
                 buttonText={isSubmitting ? 'Saving...' : 'Save'}
                 onClick={handleSubmit}
                 disabled={isSubmitting}
             />
+                </div>
+            </div>
         </div>
     )
 }

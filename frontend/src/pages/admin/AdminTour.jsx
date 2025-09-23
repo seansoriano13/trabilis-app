@@ -342,6 +342,24 @@ const AdminTours = () => {
                             className='tours__filter-input'
                         />
                     </div>
+                    <div className='tours__filter-group'>
+                        <label className='tours__filter-label'>
+                            <FiFilter size={16} />
+                            Sort by Date
+                        </label>
+                        <select
+                            name='order'
+                            value={sort.key === 'created_at' ? sort.direction : 'desc'}
+                            onChange={(e) => {
+                                setSort({ key: 'created_at', direction: e.target.value })
+                                setPage(0)
+                            }}
+                            className='tours__filter-select'
+                        >
+                            <option value='desc'>Newest first</option>
+                            <option value='asc'>Oldest first</option>
+                        </select>
+                    </div>
                     <div className='tours__filter-actions'>
                         <button
                             className='tours__filter-clear'
@@ -380,6 +398,19 @@ const AdminTours = () => {
                                     <div className='tours__table-header-content'>
                                         <span>Reference</span>
                                         {sort.key === 'booking_reference' && (
+                                            <span className='tours__sort-indicator'>
+                                                {sort.direction === 'asc' ? '↑' : '↓'}
+                                            </span>
+                                        )}
+                                    </div>
+                                </th>
+                                <th
+                                    onClick={() => handleSort('created_at')}
+                                    className='tours__table-header tours__table-header--sortable'
+                                >
+                                    <div className='tours__table-header-content'>
+                                        <span>Booked</span>
+                                        {sort.key === 'created_at' && (
                                             <span className='tours__sort-indicator'>
                                                 {sort.direction === 'asc' ? '↑' : '↓'}
                                             </span>
@@ -479,6 +510,9 @@ const AdminTours = () => {
                                         >
                                             {booking.booking_reference}
                                         </Link>
+                                    </td>
+                                    <td className='tours__table-cell'>
+                                        {booking.created_at ? new Date(booking.created_at).toLocaleDateString() : '-'}
                                     </td>
                                     <td className='tours__table-cell'>
                                         <span className={`tours__status tours__status--${booking.status.toLowerCase()}`}>

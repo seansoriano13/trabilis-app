@@ -106,7 +106,9 @@
     border-radius: 8px;
     margin-bottom: 20px;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
 }
 
 .booking-detail__status.status-confirmed {
@@ -146,6 +148,43 @@
     margin: 0;
     font-size: 14px;
     opacity: 0.8;
+}
+
+/* Assignment Status */
+.assignment-status {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    /* padding: 15px; */
+    min-width: 250px;
+    border-left: 4px solid rgba(255, 255, 255, 0.3);
+}
+
+.assignment-status__content {
+    display: flex;
+    gap: 12px;
+}
+
+.assignment-status__icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    opacity: 0.9;
+}
+
+.assignment-status__details h4 {
+    margin: 0 0 5px 0;
+    font-size: 1rem;
+    font-weight: 600;
+    opacity: 0.95;
+}
+
+.assignment-status__details p {
+    margin: 0 0 3px 0;
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+.assignment-status__details p:last-child {
+    margin-bottom: 0;
 }
 
 /* Tabs */
@@ -289,6 +328,10 @@
     color: #333;
     font-weight: 500;
     text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
 }
 
 .info-item .value.amount {
@@ -379,8 +422,11 @@
 .passenger-details {
     display: flex;
     flex-direction: column;
-    background-color: white !important;
     gap: 25px;
+}
+
+.passenger-details-flight{
+    background-color: white;
 }
 
 .passenger-card {
@@ -712,7 +758,7 @@
     z-index: 1;
 }
 
-.flight-path::after {
+/* .flight-path::after {
     content: '✈';
     position: absolute;
     top: 50%;
@@ -722,7 +768,7 @@
     padding: 0 10px;
     z-index: 2;
     color: #f7d100;
-}
+} */
 
 .flight-duration {
     font-weight: 600;
@@ -995,7 +1041,7 @@
 
 .ticket-status {
     background: #28a745;
-    color: black;
+    color: white;
     padding: 4px 8px;
     border-radius: 4px;
     font-size: 12px;
@@ -1061,6 +1107,11 @@
 
 .pricing-item:last-child {
     margin-bottom: 0;
+}
+
+.pricing-item-header{
+    display: flex;
+    gap: 1rem;
 }
 
 .pricing-header {
@@ -1146,6 +1197,8 @@
 }
 
 .ticket-item {
+    display: flex;
+    gap: 1rem;
     background: white;
     padding: 10px 15px;
     border-radius: 6px;
@@ -1198,7 +1251,7 @@
 }
 
 .btn-warning {
-    background: #ffc107;
+    background: #f7d100;
     color: #212529;
 }
 
@@ -1235,6 +1288,17 @@
     
     .booking-detail__tabs {
         flex-direction: column;
+    }
+    
+    .booking-detail__status {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+    
+    .assignment-status {
+        min-width: auto;
+        width: 100%;
     }
     
     .tab {
@@ -1476,5 +1540,259 @@
     
     .pdf-iframe-container {
         height: 800px;
+    }
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e9ecef;
+    background: #f8f9fa;
+    border-radius: 12px 12px 0 0;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    background: #e9ecef;
+    color: #495057;
+}
+
+.modal-close:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Edit Form Styles */
+.edit-form {
+    padding: 24px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: #2c3e50;
+    font-size: 0.9rem;
+}
+
+.form-group label[for="status"]::after {
+    content: " *";
+    color: #dc3545;
+}
+
+.form-input,
+.form-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: #f7d100;
+    box-shadow: 0 0 0 3px rgba(247, 209, 0, 0.1);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 80px;
+    font-family: inherit;
+}
+
+.form-help {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+/* React Select Customization */
+.react-select-container {
+    width: 100%;
+}
+
+.react-select__control {
+    min-height: 42px;
+    border: 1px solid #ced4da !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+    transition: all 0.2s ease !important;
+}
+
+.react-select__control:hover {
+    border-color: #ced4da !important;
+}
+
+.react-select__control--is-focused {
+    border-color: #f7d100 !important;
+    box-shadow: 0 0 0 3px rgba(247, 209, 0, 0.1) !important;
+}
+
+.react-select__value-container {
+    padding: 2px 8px !important;
+}
+
+.react-select__input-container {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.react-select__placeholder {
+    color: #6c757d !important;
+    font-size: 0.9rem !important;
+}
+
+.react-select__single-value {
+    color: #2c3e50 !important;
+    font-size: 0.9rem !important;
+}
+
+.react-select__option {
+    padding: 10px 12px !important;
+    font-size: 0.9rem !important;
+    color: #2c3e50 !important;
+}
+
+.react-select__option--is-focused {
+    background-color: #f8f9fa !important;
+}
+
+.react-select__option--is-selected {
+    background-color: #f7d100 !important;
+    color: #2c3e50 !important;
+}
+
+.react-select__indicator-separator {
+    background-color: #ced4da !important;
+}
+
+.react-select__dropdown-indicator {
+    color: #6c757d !important;
+}
+
+.react-select__dropdown-indicator:hover {
+    color: #495057 !important;
+}
+
+/* Modal Actions */
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+.modal-actions .btn {
+    min-width: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+/* Loading Spinner Small */
+.loading-spinner-small {
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Mobile Responsive for Modal */
+@media (max-width: 768px) {
+    .modal-overlay {
+        padding: 10px;
+    }
+    
+    .modal-content {
+        max-height: 95vh;
+    }
+    
+    .modal-header {
+        padding: 16px 20px;
+    }
+    
+    .edit-form {
+        padding: 20px;
+    }
+    
+    .modal-actions {
+        flex-direction: column;
+    }
+    
+    .modal-actions .btn {
+        width: 100%;
     }
 }

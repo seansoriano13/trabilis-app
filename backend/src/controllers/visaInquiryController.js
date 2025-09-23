@@ -1,6 +1,5 @@
-import { query } from '../config/db.js'
 import { sendVisaInquiryConfirmationEmail } from '../services/emailService.js'
-import { supabase } from '../config/supabaseClient.js'
+import { supabase, supabaseAdmin } from '../config/supabaseClient.js'
 import Pusher from 'pusher'
 
 const pusher = new Pusher({
@@ -35,30 +34,24 @@ export const submitVisaInquiry = async (req, res) => {
         // Generate inquiry reference
         const inquiryReference = `TRB-VISA-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`
 
-        // Insert inquiry into database
-        const insertQuery = `
-            INSERT INTO visa_inquiries (
-                inquiry_reference,
+        // Insert inquiry into database (Supabase)
+        const { error: insertError } = await supabaseAdmin
+            .from('visa_inquiries')
+            .insert([{
+                inquiry_reference: inquiryReference,
                 visa_type,
                 destination,
                 full_name,
                 mobile_number,
                 email_address,
                 message,
-                status,
-                created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', NOW())
-        `
+                status: 'PENDING',
+                created_at: new Date().toISOString(),
+            }])
 
-        await query(insertQuery, [
-            inquiryReference,
-            visa_type,
-            destination,
-            full_name,
-            mobile_number,
-            email_address,
-            message
-        ])
+        if (insertError) {
+            throw insertError
+        }
 
         // Send confirmation email to client
         try {
@@ -95,86 +88,63 @@ export const getVisaInquiries = async (req, res) => {
         const { page = 1, limit = 10, status = 'ALL', search = '' } = req.query
         const offset = (page - 1) * limit
 
-        let whereClause = ''
-        let queryParams = []
-        const whereParts = []
+        const trimmedSearch = (search || '').toString().trim()
+
+        let q = supabaseAdmin
+            .from('visa_inquiries')
+            .select('*', { count: 'exact' })
 
         if (status !== 'ALL') {
-            whereParts.push('vi.status = ?')
-            queryParams.push(status)
+            q = q.eq('status', status)
         }
 
-        const trimmedSearch = (search || '').toString().trim()
         if (trimmedSearch) {
-            const searchPattern = `%${trimmedSearch}%`
-            whereParts.push(`(
-                vi.inquiry_reference ILIKE ? OR 
-                vi.full_name ILIKE ? OR 
-                vi.email_address ILIKE ? OR 
-                vi.mobile_number ILIKE ? OR 
-                vi.visa_type ILIKE ? OR 
-                vi.destination ILIKE ?
-            )`)
-            // Push pattern for each placeholder above
-            queryParams.push(
-                searchPattern,
-                searchPattern,
-                searchPattern,
-                searchPattern,
-                searchPattern,
-                searchPattern
+            const s = `%${trimmedSearch}%`
+            q = q.or(
+                [
+                    `inquiry_reference.ilike.${s}`,
+                    `full_name.ilike.${s}`,
+                    `email_address.ilike.${s}`,
+                    `mobile_number.ilike.${s}`,
+                    `visa_type.ilike.${s}`,
+                    `destination.ilike.${s}`,
+                ].join(',')
             )
         }
 
-        if (whereParts.length > 0) {
-            whereClause = `WHERE ${whereParts.join(' AND ')}`
+        q = q.order('created_at', { ascending: false })
+            .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1)
+
+        const { data: inquiries, error, count } = await q
+
+        if (error) {
+            throw error
         }
 
-        // Get inquiries with pagination and assignment info
-        const inquiriesQuery = `
-            SELECT 
-                vi.id,
-                vi.inquiry_reference,
-                vi.visa_type,
-                vi.destination,
-                vi.full_name,
-                vi.mobile_number,
-                vi.email_address,
-                vi.message,
-                vi.status,
-                vi.notes,
-                vi.assigned_to,
-                vi.assigned_by,
-                vi.assigned_at,
-                vi.assignment_status,
-                vi.created_at,
-                vi.updated_at,
-                COALESCE(assigned_staff.first_name, '') as assigned_staff_first_name,
-                COALESCE(assigned_staff.last_name, '') as assigned_staff_last_name,
-                COALESCE(assigned_staff.email, '') as assigned_staff_email
-            FROM visa_inquiries vi
-            LEFT JOIN admins assigned_staff ON vi.assigned_to::text = assigned_staff.id::text
-            ${whereClause}
-            ORDER BY vi.created_at DESC
-            LIMIT ? OFFSET ?
-        `
+        // Enrich with assigned staff info
+        let enriched = inquiries
+        const assignedIds = Array.from(new Set(inquiries.map(i => i.assigned_to).filter(Boolean)))
+        if (assignedIds.length > 0) {
+            const { data: staffList, error: staffErr } = await supabaseAdmin
+                .from('admins')
+                .select('id, first_name, last_name, email')
+                .in('id', assignedIds)
+            if (!staffErr && staffList) {
+                const map = new Map(staffList.map(s => [s.id, s]))
+                enriched = inquiries.map(i => ({
+                    ...i,
+                    assigned_staff_first_name: map.get(i.assigned_to)?.first_name || '',
+                    assigned_staff_last_name: map.get(i.assigned_to)?.last_name || '',
+                    assigned_staff_email: map.get(i.assigned_to)?.email || '',
+                }))
+            }
+        }
 
-        const countQuery = `
-            SELECT COUNT(*) as total 
-            FROM visa_inquiries vi
-            ${whereClause}
-        `
-
-        const [inquiries, countResult] = await Promise.all([
-            query(inquiriesQuery, [...queryParams, parseInt(limit), parseInt(offset)]),
-            query(countQuery, queryParams)
-        ])
-
-        const total = countResult.rows[0].total
+        const total = count || 0
 
         res.status(200).json({
             success: true,
-            data: inquiries.rows,
+            data: enriched,
             pagination: {
                 page: parseInt(page),
                 limit: parseInt(limit),
@@ -212,15 +182,17 @@ export const updateVisaInquiryStatus = async (req, res) => {
             })
         }
 
-        const updateQuery = `
-            UPDATE visa_inquiries 
-            SET status = ?, notes = ?, updated_at = NOW()
-            WHERE id = ?
-        `
+        const { data: updated, error: updErr } = await supabaseAdmin
+            .from('visa_inquiries')
+            .update({ status, notes: notes || null, updated_at: new Date().toISOString() })
+            .eq('id', id)
+            .select('id')
 
-        const result = await query(updateQuery, [status, notes || null, id])
+        if (updErr) {
+            throw updErr
+        }
 
-        if (result.affectedRows === 0) {
+        if (!updated || updated.length === 0) {
             return res.status(404).json({
                 success: false,
                 message: 'Visa inquiry not found'
@@ -237,6 +209,42 @@ export const updateVisaInquiryStatus = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to update visa inquiry status'
+        })
+    }
+}
+
+// Public: Track a visa inquiry by reference
+export const trackVisaInquiry = async (req, res) => {
+    try {
+        const { inquiryReference } = req.query
+        if (!inquiryReference) {
+            return res.status(400).json({
+                success: false,
+                message: 'inquiryReference is required'
+            })
+        }
+
+        const { data, error } = await supabaseAdmin
+            .from('visa_inquiries')
+            .select(
+                'inquiry_reference, status, full_name, email_address, mobile_number, visa_type, destination, message, created_at'
+            )
+            .eq('inquiry_reference', inquiryReference)
+            .single()
+
+        if (error || !data) {
+            return res.status(404).json({
+                success: false,
+                message: 'Visa inquiry not found'
+            })
+        }
+
+        return res.status(200).json(data)
+    } catch (err) {
+        console.error('Error tracking visa inquiry:', err)
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch visa inquiry'
         })
     }
 }
@@ -271,16 +279,24 @@ export const assignVisaInquiry = async (req, res) => {
             assignedById = admin.id
         }
 
-        // Update visa inquiry assignment
-        const updateQuery = `
-            UPDATE visa_inquiries 
-            SET assigned_to = ?, assigned_by = ?, assigned_at = NOW(), assignment_status = 'pending'
-            WHERE id = ?
-        `
+        // Update visa inquiry assignment (Supabase)
+        const { data: updatedAssign, error: assignErr } = await supabaseAdmin
+            .from('visa_inquiries')
+            .update({
+                assigned_to: assignedTo,
+                assigned_by: assignedById,
+                assigned_at: new Date().toISOString(),
+                assignment_status: 'pending',
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', inquiryId)
+            .select('id')
 
-        const result = await query(updateQuery, [assignedTo, assignedById, inquiryId])
+        if (assignErr) {
+            throw assignErr
+        }
 
-        if (result.affectedRows === 0) {
+        if (!updatedAssign || updatedAssign.length === 0) {
             return res.status(404).json({
                 success: false,
                 message: 'Visa inquiry not found'
@@ -288,13 +304,15 @@ export const assignVisaInquiry = async (req, res) => {
         }
 
         // Get inquiry details for notification
-        const inquiryQuery = `
-            SELECT inquiry_reference, visa_type, destination, full_name 
-            FROM visa_inquiries 
-            WHERE id = ?
-        `
-        const inquiryResult = await query(inquiryQuery, [inquiryId])
-        const inquiry = inquiryResult.rows[0]
+        const { data: inquiryList, error: inquiryErr } = await supabaseAdmin
+            .from('visa_inquiries')
+            .select('inquiry_reference, visa_type, destination, full_name')
+            .eq('id', inquiryId)
+            .limit(1)
+        if (inquiryErr || !inquiryList || inquiryList.length === 0) {
+            throw inquiryErr || new Error('Inquiry not found after update')
+        }
+        const inquiry = inquiryList[0]
 
         // Get assigned staff details
         const { data: staff, error: staffError } = await supabase
@@ -336,29 +354,12 @@ export const assignVisaInquiry = async (req, res) => {
         })
 
         // Get updated inquiry data with assignment info
-        const updatedInquiryQuery = `
-            SELECT 
-                id,
-                inquiry_reference,
-                visa_type,
-                destination,
-                full_name,
-                mobile_number,
-                email_address,
-                message,
-                status,
-                notes,
-                assigned_to,
-                assigned_by,
-                assigned_at,
-                assignment_status,
-                created_at,
-                updated_at
-            FROM visa_inquiries 
-            WHERE id = ?
-        `
-        const updatedInquiryResult = await query(updatedInquiryQuery, [inquiryId])
-        const updatedInquiry = updatedInquiryResult.rows[0]
+        const { data: updatedInquiryList } = await supabaseAdmin
+            .from('visa_inquiries')
+            .select('*')
+            .eq('id', inquiryId)
+            .limit(1)
+        const updatedInquiry = updatedInquiryList ? updatedInquiryList[0] : null
 
         res.status(200).json({
             success: true,
@@ -395,15 +396,17 @@ export const updateVisaAssignmentStatus = async (req, res) => {
             })
         }
 
-        const updateQuery = `
-            UPDATE visa_inquiries 
-            SET assignment_status = ?, updated_at = NOW()
-            WHERE id = ?
-        `
+        const { data: updated, error: updErr } = await supabaseAdmin
+            .from('visa_inquiries')
+            .update({ assignment_status: status, updated_at: new Date().toISOString() })
+            .eq('id', inquiryId)
+            .select('id')
 
-        const result = await query(updateQuery, [status, inquiryId])
+        if (updErr) {
+            throw updErr
+        }
 
-        if (result.affectedRows === 0) {
+        if (!updated || updated.length === 0) {
             return res.status(404).json({
                 success: false,
                 message: 'Visa inquiry not found'
@@ -438,54 +441,28 @@ export const getAssignedVisaInquiries = async (req, res) => {
             })
         }
 
-        let whereClause = 'WHERE assigned_to = ?'
-        let queryParams = [userId]
+        let q = supabaseAdmin
+            .from('visa_inquiries')
+            .select('*', { count: 'exact' })
+            .eq('assigned_to', userId)
 
         if (status && status !== 'All') {
-            whereClause += ' AND assignment_status = ?'
-            queryParams.push(status)
+            q = q.eq('assignment_status', status)
         }
 
-        const inquiriesQuery = `
-            SELECT 
-                id,
-                inquiry_reference,
-                visa_type,
-                destination,
-                full_name,
-                mobile_number,
-                email_address,
-                message,
-                status,
-                notes,
-                assigned_to,
-                assigned_by,
-                assigned_at,
-                assignment_status,
-                created_at,
-                updated_at
-            FROM visa_inquiries 
-            ${whereClause}
-            ORDER BY assigned_at DESC
-            LIMIT ? OFFSET ?
-        `
+        q = q.order('assigned_at', { ascending: false })
+            .range(page * pageSize, page * pageSize + pageSize - 1)
 
-        const countQuery = `
-            SELECT COUNT(*) as total 
-            FROM visa_inquiries 
-            ${whereClause}
-        `
+        const { data, error, count } = await q
+        if (error) {
+            throw error
+        }
 
-        const [inquiries, countResult] = await Promise.all([
-            query(inquiriesQuery, [...queryParams, pageSize, page * pageSize]),
-            query(countQuery, queryParams)
-        ])
-
-        const total = countResult.rows[0].total
+        const total = count || 0
 
         res.status(200).json({
             success: true,
-            data: inquiries.rows,
+            data,
             pagination: {
                 page,
                 pageSize,

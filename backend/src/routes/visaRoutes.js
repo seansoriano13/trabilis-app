@@ -1,11 +1,12 @@
 import express from 'express'
-import { submitVisaInquiry, getVisaInquiries, updateVisaInquiryStatus } from '../controllers/visaInquiryController.js'
+import { submitVisaInquiry, getVisaInquiries, updateVisaInquiryStatus, trackVisaInquiry } from '../controllers/visaInquiryController.js'
 import { adminAuthMiddleware } from '../middlewares/adminAuthMIddleware.js'
 
 const router = express.Router()
 
 // Public route for submitting visa inquiries
 router.post('/inquiry', submitVisaInquiry)
+router.get('/inquiries/track', trackVisaInquiry)
 
 // Protected admin routes
 router.use(adminAuthMiddleware)

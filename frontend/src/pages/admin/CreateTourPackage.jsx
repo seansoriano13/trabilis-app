@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { IoChevronBack, IoChevronDown, IoChevronUp } from 'react-icons/io5'
 import adminClient from '../../api/adminClient.js'
 import axios from 'axios'
@@ -15,18 +15,42 @@ const AdminPrimaryButton = ({ buttonText, onClick, disabled }) => (
     </button>
 )
 
-export const AccordionSection = ({ title, isOpen, toggle, children }) => (
-    <div className='accordion-section'>
-        <button
-            className='accordion-section__button'
-            onClick={toggle}
-        >
-            <span className='accordion-section__title'>{title}</span>
-            {isOpen ? <IoChevronUp size={20} /> : <IoChevronDown size={20} />}
-        </button>
-        {isOpen && <div className='accordion-section__content'>{children}</div>}
-    </div>
-)
+export const AccordionSection = ({ title, isOpen, toggle, children }) => {
+    const headerRef = useRef(null)
+    const scrollToHeader = () => {
+        try {
+            if (headerRef.current) {
+                headerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                // If the environment doesn't respect scroll-margin-top, apply manual offset
+                setTimeout(() => {
+                    const offset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--default-padding-top')) || 64
+                    window.scrollBy({ top: -16, left: 0, behavior: 'instant' })
+                }, 300)
+            } else {
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+            }
+        } catch (_) {}
+    }
+    return (
+        <div className='accordion-section' ref={headerRef}>
+            <button
+                className='accordion-section__button'
+                onClick={toggle}
+            >
+                <span className='accordion-section__title'>{title}</span>
+                {isOpen ? <IoChevronUp size={20} /> : <IoChevronDown size={20} />}
+            </button>
+            {isOpen && (
+                <>
+                    <div className='accordion-section__content'>{children}</div>
+                    <div className='accordion-scroll-top'>
+                        <button className='button-link' onClick={scrollToHeader}>↑ Scroll to header</button>
+                    </div>
+                </>
+            )}
+        </div>
+    )
+}
 
 export const DateGroup = ({
     index,
@@ -134,6 +158,20 @@ export const DateGroup = ({
 )
 
 function CreateTourPackage() {
+    const CATEGORY_OPTIONS = [
+        'Air Travel',
+        'Transfers',
+        'Accommodation',
+        'Meals',
+        'Guided Tours / Activities',
+        'Entrance Fees / Tickets',
+        'Visa / Documentation',
+        'Insurance',
+        'Taxes / Surcharges',
+        'Miscellaneous / Others',
+        'Custom…',
+    ]
+
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -148,6 +186,11 @@ function CreateTourPackage() {
                 reservation_fee_per_pax: 0,
                 total_slots: 0,
                 available_slots: 0,
+                // Phase 2 additions
+                fee_rules: { perRemovedGroup: 5000, perRestDay: 3000, minFee: 5000, maxFee: 50000 },
+                inclusion_groups: [
+                    // { title: 'Air Travel', category: 'Air Travel', removable: true, items: [''] }
+                ],
             },
         ],
         itineraries: [{ day_number: 1, title: '', description: '' }],
@@ -161,6 +204,8 @@ function CreateTourPackage() {
     const [openSections, setOpenSections] = useState({
         general: true,
         dates: false,
+        fee_rules: false,
+        inclusion_groups: false,
         itinerary: false,
         inclusions: false,
         exclusions: false,
@@ -189,6 +234,99 @@ function CreateTourPackage() {
         setFormData((prev) => {
             const newDates = [...prev.dates]
             newDates[index] = { ...newDates[index], [field]: value }
+            return { ...prev, dates: newDates }
+        })
+    }
+
+    // Fee rules per date
+    const updateFeeRule = (dateIdx, field, value) => {
+        setFormData((prev) => {
+            const newDates = [...prev.dates]
+            const fr = { ...(newDates[dateIdx].fee_rules || {}) }
+            fr[field] = value
+            newDates[dateIdx] = { ...newDates[dateIdx], fee_rules: fr }
+            return { ...prev, dates: newDates }
+        })
+    }
+
+    // Inclusion groups per date
+    const addInclusionGroupForDate = (dateIdx) => {
+        setFormData((prev) => {
+            const newDates = [...prev.dates]
+            const groups = [...(newDates[dateIdx].inclusion_groups || [])]
+            groups.push({ title: '', category: CATEGORY_OPTIONS[0], removable: true, items: [''] })
+            newDates[dateIdx] = { ...newDates[dateIdx], inclusion_groups: groups }
+            return { ...prev, dates: newDates }
+        })
+    }
+
+    const updateInclusionGroup = (dateIdx, groupIdx, field, value) => {
+        setFormData((prev) => {
+            const newDates = [...prev.dates]
+            const groups = [...(newDates[dateIdx].inclusion_groups || [])]
+            const group = { ...(groups[groupIdx] || {}) }
+            if (field === 'category') {
+                group.category = value
+                if (value !== 'Custom…') {
+                    group.title = value
+                }
+            } else {
+                group[field] = value
+            }
+            groups[groupIdx] = group
+            newDates[dateIdx] = { ...newDates[dateIdx], inclusion_groups: groups }
+            return { ...prev, dates: newDates }
+        })
+    }
+
+    const removeInclusionGroup = (dateIdx, groupIdx) => {
+        setFormData((prev) => {
+            const newDates = [...prev.dates]
+            const groups = [...(newDates[dateIdx].inclusion_groups || [])]
+            newDates[dateIdx] = {
+                ...newDates[dateIdx],
+                inclusion_groups: groups.filter((_, i) => i !== groupIdx),
+            }
+            return { ...prev, dates: newDates }
+        })
+    }
+
+    const addInclusionGroupItem = (dateIdx, groupIdx) => {
+        setFormData((prev) => {
+            const newDates = [...prev.dates]
+            const groups = [...(newDates[dateIdx].inclusion_groups || [])]
+            const group = { ...(groups[groupIdx] || {}) }
+            const items = [...(group.items || [])]
+            items.push('')
+            group.items = items
+            groups[groupIdx] = group
+            newDates[dateIdx] = { ...newDates[dateIdx], inclusion_groups: groups }
+            return { ...prev, dates: newDates }
+        })
+    }
+
+    const updateInclusionGroupItem = (dateIdx, groupIdx, itemIdx, value) => {
+        setFormData((prev) => {
+            const newDates = [...prev.dates]
+            const groups = [...(newDates[dateIdx].inclusion_groups || [])]
+            const group = { ...(groups[groupIdx] || {}) }
+            const items = [...(group.items || [])]
+            items[itemIdx] = value
+            group.items = items
+            groups[groupIdx] = group
+            newDates[dateIdx] = { ...newDates[dateIdx], inclusion_groups: groups }
+            return { ...prev, dates: newDates }
+        })
+    }
+
+    const removeInclusionGroupItem = (dateIdx, groupIdx, itemIdx) => {
+        setFormData((prev) => {
+            const newDates = [...prev.dates]
+            const groups = [...(newDates[dateIdx].inclusion_groups || [])]
+            const group = { ...(groups[groupIdx] || {}) }
+            group.items = (group.items || []).filter((_, i) => i !== itemIdx)
+            groups[groupIdx] = group
+            newDates[dateIdx] = { ...newDates[dateIdx], inclusion_groups: groups }
             return { ...prev, dates: newDates }
         })
     }
@@ -442,11 +580,14 @@ function CreateTourPackage() {
             if (itinerary.day_number <= 0)
                 return 'Itinerary Day Number must be greater than 0.'
         }
-        if (
-            formData.inclusions.length === 0 ||
-            formData.inclusions.every((inc) => !inc.trim())
+        // Validate inclusions: allow either legacy inclusions OR new inclusion_groups with at least one non-empty item
+        const hasLegacyInclusions = Array.isArray(formData.inclusions) && formData.inclusions.some((inc) => (inc || '').trim())
+        const hasGroupedInclusions = (formData.dates || []).some((d) =>
+            Array.isArray(d.inclusion_groups) && d.inclusion_groups.some((g) => Array.isArray(g.items) && g.items.some((it) => (it || '').trim()))
         )
+        if (!hasLegacyInclusions && !hasGroupedInclusions) {
             return 'At least one non-empty inclusion is required.'
+        }
         if (
             formData.exclusions.length === 0 ||
             formData.exclusions.every((exc) => !exc.trim())
@@ -490,7 +631,46 @@ function CreateTourPackage() {
                     notes: formData.notes,
                 })),
             }
-            await adminClient.post('/tours/create', payload)
+            const createRes = await adminClient.post('/tours/create', payload)
+
+            // Phase 2: Post-create, create inclusion groups/items and apply fee rules per date via admin endpoints
+            const tourId = createRes?.data?.tour?.id
+            if (tourId) {
+                // Fetch created package_dates to get their ids
+                const tourRes = await adminClient.get(`/tours/${tourId}`)
+                const createdDates = tourRes?.data?.dates || []
+
+                for (let dIdx = 0; dIdx < formData.dates.length; dIdx++) {
+                    const createdDateId = createdDates[dIdx]?.id
+                    if (!createdDateId) continue
+
+                    // Apply fee rules if present
+                    const fr = formData.dates[dIdx].fee_rules
+                    if (fr) {
+                        await adminClient.put(`/tours/dates/${createdDateId}/fee-rules`, fr)
+                    }
+
+                    // Create inclusion groups and items
+                    const groups = formData.dates[dIdx].inclusion_groups || []
+                    for (const g of groups) {
+                        const title = g.category && g.category !== 'Custom…' ? g.category : (g.title || '')
+                        if (!title) continue
+                        const groupRes = await adminClient.post(`/tours/dates/${createdDateId}/inclusion-groups`, {
+                            title,
+                            removable: g.removable !== false,
+                        })
+                        const newGroupId = groupRes?.data?.id
+                        if (newGroupId) {
+                            for (const item of g.items || []) {
+                                const content = (item || '').trim()
+                                if (!content) continue
+                                await adminClient.post(`/tours/inclusion-groups/${newGroupId}/items`, { content })
+                            }
+                        }
+                    }
+                }
+            }
+
             alert('Tour package created successfully!')
             navigate('/admin/tours')
         } catch (error) {
@@ -517,6 +697,7 @@ function CreateTourPackage() {
                 </div>
             </div>
 
+           
             <AccordionSection
                 title='General Information'
                 isOpen={openSections.general}
@@ -713,6 +894,93 @@ function CreateTourPackage() {
             </AccordionSection>
 
             <AccordionSection
+                title='Fee Rules'
+                isOpen={openSections.fee_rules}
+                toggle={() => toggleSection('fee_rules')}
+            >
+                <div className='form__fields'>
+                    {formData.dates.map((dateGroup, dIdx) => (
+                        <div key={dIdx} className='date-group'>
+                            <h3 className='date-group__title'>Date {dIdx + 1}</h3>
+                            <div className='form__fields'>
+                                <div className='date-group__form-field'>
+                                    <label className='form-label'>Per Removed Group (PHP)</label>
+                                    <input type='number' className='form-input' min='0' value={dateGroup.fee_rules?.perRemovedGroup || 0} onChange={(e) => updateFeeRule(dIdx, 'perRemovedGroup', Number(e.target.value))} />
+                                </div>
+                                <div className='date-group__form-field'>
+                                    <label className='form-label'>Per Rest Day (PHP)</label>
+                                    <input type='number' className='form-input' min='0' value={dateGroup.fee_rules?.perRestDay || 0} onChange={(e) => updateFeeRule(dIdx, 'perRestDay', Number(e.target.value))} />
+                                </div>
+                                <div className='date-group__form-field'>
+                                    <label className='form-label'>Minimum Fee (PHP)</label>
+                                    <input type='number' className='form-input' min='0' value={dateGroup.fee_rules?.minFee || 0} onChange={(e) => updateFeeRule(dIdx, 'minFee', Number(e.target.value))} />
+                                </div>
+                                <div className='date-group__form-field'>
+                                    <label className='form-label'>Maximum Fee (PHP)</label>
+                                    <input type='number' className='form-input' min='0' value={dateGroup.fee_rules?.maxFee || 0} onChange={(e) => updateFeeRule(dIdx, 'maxFee', Number(e.target.value))} />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </AccordionSection>
+
+            <AccordionSection
+                title='Inclusions'
+                isOpen={openSections.inclusion_groups}
+                toggle={() => toggleSection('inclusion_groups')}
+            >
+                <div className='form__fields'>
+                    {formData.dates.map((dateGroup, dIdx) => (
+                        <div key={dIdx} className='date-group'>
+                            <h3 className='date-group__title'>Date {dIdx + 1}</h3>
+                            <div className='grid gap-4'>
+                                {(dateGroup.inclusion_groups || []).map((group, gIdx) => (
+                                    <div key={gIdx} className='border rounded-md p-3 border-gray-300'>
+                                        <div className='date-group__form-field'>
+                                            <label className='form-label'>Group Title</label>
+                                            <select className='form-select' value={group.category || 'Custom…'} onChange={(e) => updateInclusionGroup(dIdx, gIdx, 'category', e.target.value)}>
+                                                {CATEGORY_OPTIONS.map((opt) => (
+                                                    <option key={opt} value={opt}>{opt}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        {group.category === 'Custom…' && (
+                                            <div className='date-group__form-field'>
+                                                <label className='form-label'>Custom Group Title</label>
+                                                <input type='text' className='form-input' value={group.title || ''} onChange={(e) => updateInclusionGroup(dIdx, gIdx, 'title', e.target.value)} />
+                                            </div>
+                                        )}
+                                        <div className='date-group__form-field'>
+                                            <label className='form-label'>Removable?</label>
+                                            <select className='form-select' value={group.removable ? 'yes' : 'no'} onChange={(e) => updateInclusionGroup(dIdx, gIdx, 'removable', e.target.value === 'yes')}>
+                                                <option value='yes'>Yes</option>
+                                                <option value='no'>No (Required)</option>
+                                            </select>
+                                        </div>
+                                        <div className='form__fields'>
+                                            <label className='form-label'>Items</label>
+                                            {(group.items || []).map((item, iIdx) => (
+                                                <div key={iIdx} className='flex items-center gap-2'>
+                                                    <input type='text' className='form-input' value={item} onChange={(e) => updateInclusionGroupItem(dIdx, gIdx, iIdx, e.target.value)} placeholder='e.g., Roundtrip international airfare on economy class' />
+                                                    {(group.items || []).length > 1 && (
+                                                        <button onClick={() => removeInclusionGroupItem(dIdx, gIdx, iIdx)} className='button-link button-link--remove'>Remove</button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            <button onClick={() => addInclusionGroupItem(dIdx, gIdx)} className='button-link'>+ Add another item</button>
+                                        </div>
+                                        <button onClick={() => removeInclusionGroup(dIdx, gIdx)} className='button-link button-link--remove'>Remove Group</button>
+                                    </div>
+                                ))}
+                                <button onClick={() => addInclusionGroupForDate(dIdx)} className='button-link'>+ Add inclusion group</button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </AccordionSection>
+
+            {/* <AccordionSection
                 title='Inclusions'
                 isOpen={openSections.inclusions}
                 toggle={() => toggleSection('inclusions')}
@@ -758,7 +1026,7 @@ function CreateTourPackage() {
                         + Add another inclusion
                     </button>
                 </div>
-            </AccordionSection>
+            </AccordionSection> */}
 
             <AccordionSection
                 title='Exclusions'
