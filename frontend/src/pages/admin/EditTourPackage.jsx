@@ -583,6 +583,19 @@ function EditTourPackage() {
                     await adminClient.put(`/tours/dates/${createdDateId}/fee-rules`, fr)
                 }
 
+                // Clear existing inclusion groups (to avoid duplicates and persist removals)
+                try {
+                    const existingGroupsRes = await adminClient.get(`/tours/dates/${createdDateId}/inclusion-groups`)
+                    const existingGroups = Array.isArray(existingGroupsRes?.data) ? existingGroupsRes.data : []
+                    for (const eg of existingGroups) {
+                        if (eg && eg.id) {
+                            await adminClient.delete(`/tours/inclusion-groups/${eg.id}`)
+                        }
+                    }
+                } catch (_) {
+                    // ignore cleanup errors; creation step below will still run
+                }
+
                 // Create inclusion groups and items
                 const groups = formData.dates[dIdx].inclusion_groups || []
                 for (const g of groups) {

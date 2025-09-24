@@ -9,7 +9,6 @@ Payment Process Concerns:
 - refund system pag nag cancel yung booking 
 
 Tour and Flight:
-- apply pdf generation method from admin sa client side if kaya pa ng time
 
 Mobile Concerns:
 - create navbar for mobile app
