@@ -7,6 +7,8 @@ import './FlightSearchResults.css'
 
 // 🧠 Utils
 import { extractFlightLeg, formatToLongDate } from '../../utils/flightUtils'
+import { formatToYMD } from '../../utils/flightUtils'
+import axios from 'axios'
 import { Duration } from 'luxon'
 // import { useAirports } from '../../context/AirportContext'
 // import { defaultAirportOptionsData } from '../../utils/defaultAirportOptions'
@@ -92,6 +94,10 @@ function FlightSearchResults() {
     const [sortBy, setSortBy] = useState('best')
     const [flightIsFavorite, setflightIsFavorite] = useState({})
     const [isDisabled, setIsDisabled] = useState(false)
+
+    // Nearby date fares state
+    const [nearbyFares, setNearbyFares] = useState([])
+    const [isNearbyLoading, setIsNearbyLoading] = useState(false)
 
     useEffect(() => {
         setIsLoading(true)
@@ -336,6 +342,111 @@ function FlightSearchResults() {
         navigate('/flights', { state: searchFormData })
     }
 
+    // Helper to add days to a Date instance safely
+    const addDays = (d, days) => {
+        const base = d instanceof Date ? d : new Date(d)
+        const copy = new Date(base)
+        copy.setDate(copy.getDate() + days)
+        return copy
+    }
+
+    // Fetch cheapest fare for a given date using existing backend endpoint
+    const fetchCheapestForDate = async (targetDate) => {
+        try {
+            const payload = {
+                tripType: searchData?.tripType || filters.tripType,
+                date: Array.isArray(searchData?.date || filters.date)
+                    ? [formatToYMD(targetDate), formatToYMD(targetDate)]
+                    : formatToYMD(targetDate),
+                origin: searchData?.origin || filters.origin,
+                destination: searchData?.destination || filters.destination,
+                travelerCount:
+                    searchData?.travelerCount || filters.travelerCount,
+                cabinClass: searchData?.cabinClass || filters.cabinClass,
+            }
+
+            const res = await axios.post(
+                `${import.meta.env.VITE_BACKEND_URL}/api/v1/flights/search`,
+                payload
+            )
+            const flights = res?.data?.flights?.outbound || []
+            if (!flights.length) return { price: null, currency: 'PHP' }
+            const cheapest = flights.reduce((min, f) => {
+                const p = parseFloat(f?.price?.total || Infinity)
+                return p < parseFloat(min?.price?.total || Infinity) ? f : min
+            }, flights[0])
+            return {
+                price: parseFloat(cheapest.price.total),
+                currency: cheapest.price.currency,
+            }
+        } catch (e) {
+            return { price: null, currency: 'PHP' }
+        }
+    }
+
+    // Build nearby (+/- 3 days) fare strip
+    useEffect(() => {
+        const baseDate = Array.isArray(date) ? date[0] : date
+        if (!baseDate) return
+        // Only run for valid Date
+        const base = baseDate instanceof Date ? baseDate : new Date(baseDate)
+        if (isNaN(base)) return
+
+        let isCancelled = false
+        const loadNearby = async () => {
+            setIsNearbyLoading(true)
+            const offsets = [-3, -2, -1, 0, 1, 2, 3]
+            const dates = offsets.map((o) => addDays(base, o))
+            try {
+                const results = await Promise.all(
+                    dates.map((d) => fetchCheapestForDate(d))
+                )
+                if (isCancelled) return
+                const data = dates.map((d, idx) => ({
+                    date: d,
+                    ...results[idx],
+                    ymd: formatToYMD(d),
+                }))
+                setNearbyFares(data)
+            } finally {
+                if (!isCancelled) setIsNearbyLoading(false)
+            }
+        }
+        loadNearby()
+        return () => {
+            isCancelled = true
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filters.origin, filters.destination, filters.cabinClass, filters.travelerCount, date])
+
+    const handleSelectNearbyDate = async (d) => {
+        setIsLoading(true)
+        try {
+            const payload = {
+                tripType: filters.tripType,
+                date: Array.isArray(filters.date)
+                    ? [formatToYMD(d), formatToYMD(d)]
+                    : formatToYMD(d),
+                origin: filters.origin,
+                destination: filters.destination,
+                travelerCount: filters.travelerCount,
+                cabinClass: filters.cabinClass,
+            }
+            const res = await axios.post(
+                `${import.meta.env.VITE_BACKEND_URL}/api/v1/flights/search`,
+                payload
+            )
+            const data = res?.data?.flights || []
+            setAllFlights(data)
+            setFilters((prev) => ({ ...prev, date: d }))
+            setCurrentPage(0)
+        } catch (e) {
+            // noop UI keeps previous results
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
     return (
         <div className='flight-results pt-[var(--default-padding-top)] lg:pt-25 md:pt-35'>
             <FilterModal
@@ -503,6 +614,36 @@ function FlightSearchResults() {
                                     >
                                         <FaBell />
                                     </button>
+                                </div>
+                            </div>
+                            {/* Nearby dates fare strip */}
+                            <div className='mt-4 px-4'>
+                                <div className='flex gap-2 overflow-x-auto no-scrollbar py-2 justify-center'>
+                                    {(isNearbyLoading ? Array.from({ length: 7 }) : nearbyFares).map((item, idx) => {
+                                        const isSelected = item && formatToYMD(item.date) === formatToYMD(Array.isArray(date) ? date[0] : date)
+                                        return (
+                                            <button
+                                                key={idx}
+                                                className={clsx(
+                                                    'rounded-md border px-3 py-2 min-w-[110px] text-left cursor-pointer',
+                                                    isSelected
+                                                        ? 'bg-yellow-200 border-yellow-400'
+                                                        : 'bg-white border-gray-200'
+                                                )}
+                                                disabled={isNearbyLoading}
+                                                onClick={() => item && handleSelectNearbyDate(item.date)}
+                                            >
+                                                <div className='text-xs opacity-70'>
+                                                    {formatToLongDate(item?.date || new Date()).split(',').slice(0, 2).join(', ')}
+                                                </div>
+                                                <div className='font-semibold'>
+                                                    {item?.price
+                                                        ? `${item.currency} ${formatPrice(item.price)}`
+                                                        : '—'}
+                                                </div>
+                                            </button>
+                                        )
+                                    })}
                                 </div>
                             </div>
                             <div className='flight-results__summary'>

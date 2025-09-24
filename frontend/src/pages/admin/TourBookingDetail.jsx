@@ -757,7 +757,7 @@ const TourBookingDetail = () => {
                                                 </div>
                                             </div>
 
-                                            <div className="info-section">
+                                            {/* <div className="info-section">
                                                 <div className="section-header">
                                                     <FiFileText className="section-icon" />
                                                     <h5>Package Information</h5>
@@ -765,7 +765,7 @@ const TourBookingDetail = () => {
                                                 <div className="description-content">
                                                     <p>Package details are not available in the current database schema. Please contact the administrator for more information about this tour package.</p>
                                                 </div>
-                                            </div>
+                                            </div> */}
                                         </div>
                                     </div>
                                 </div>
@@ -781,7 +781,7 @@ const TourBookingDetail = () => {
                             <p>Lead contact information and passenger details</p>
                         </div>
                         
-                        <div className="passenger-details passenger-details--tour">
+                        <div className="passenger-details passenger-details--tour-detail bg-white">
                             <div className="passenger-card">
                                 <div className="passenger-card-header">
                                     <div className="passenger-avatar-large">
@@ -984,8 +984,7 @@ const TourBookingDetail = () => {
 
                             <div className="pdf-notes">
                                 <h4>Notes</h4>
-                                <ul>
-                                    <li>This admin version uses print-optimized HTML instead of PDFShift for faster generation</li>
+                                <ul>                      
                                     <li>The document contains the complete tour booking details with all passenger and package information</li>
                                     <li>This is the official admin receipt that can be used for internal records and printing</li>
                                     <li>Click "Generate PDF" to open a print dialog where you can save as PDF</li>

@@ -354,6 +354,14 @@ export const generateTourPDF = async (req, res) => {
             itinerary: generateItineraryHTML(packageDate?.package_itineraries || [])
         }
 
+        // Add flight placeholders (TBA defaults)
+        const flight = booking.flight_details || {}
+        const outboundSegs = Array.isArray(flight.outbound) ? flight.outbound : (flight.outbound ? [flight.outbound] : [])
+        const inboundSegs = Array.isArray(flight.return || flight.inbound) ? (flight.return || flight.inbound) : ((flight.return || flight.inbound) ? [ (flight.return || flight.inbound) ] : [])
+        const firstOutbound = outboundSegs[0] || {}
+        const lastInbound = inboundSegs[inboundSegs.length - 1] || {}
+
+
         // Generate PDF
         const pdfBuffer = await generateTourSummaryPDF(bookingDetails)
 
@@ -520,6 +528,17 @@ export const viewTourBookingHTML = async (req, res) => {
             .replace(/{{requirements}}/g, bookingDetails.requirements)
             .replace(/{{paymentTerms}}/g, bookingDetails.paymentTerms)
             .replace(/{{tourDescription}}/g, bookingDetails.tourDescription)
+            // Flight placeholders
+            .replace(/{{outboundAirline}}/g, bookingDetails.outboundAirline)
+            .replace(/{{outboundFlightNo}}/g, bookingDetails.outboundFlightNo)
+            .replace(/{{outboundDeparture}}/g, bookingDetails.outboundDeparture)
+            .replace(/{{outboundArrival}}/g, bookingDetails.outboundArrival)
+            .replace(/{{outboundDate}}/g, bookingDetails.outboundDate)
+            .replace(/{{returnAirline}}/g, bookingDetails.returnAirline)
+            .replace(/{{returnFlightNo}}/g, bookingDetails.returnFlightNo)
+            .replace(/{{returnDeparture}}/g, bookingDetails.returnDeparture)
+            .replace(/{{returnArrival}}/g, bookingDetails.returnArrival)
+            .replace(/{{returnDate}}/g, bookingDetails.returnDate)
             .replace(/{{outboundAirline}}/g, bookingDetails.outboundAirline)
             .replace(/{{outboundFlightNo}}/g, bookingDetails.outboundFlightNo)
             .replace(/{{outboundDeparture}}/g, bookingDetails.outboundDeparture)

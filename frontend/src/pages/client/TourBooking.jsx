@@ -202,7 +202,7 @@ function TourBooking() {
                 />
             </div>
 
-            <div className='max-w-[1200px] mx-auto w-screen px-4 lg:px-0'>
+            <div className='max-w-[1200px] mx-auto w-screen px-4 lg:px-0 pt-[var(--default-padding-top)] lg:pt-25 md:pt-35 bg-black'>
                 <div className='grid lg:grid-cols-3 gap-6'>
                     <div className='lg:col-span-2'>
                         <div className='bg-white rounded-lg p-6 shadow-sm border border-gray-200'>

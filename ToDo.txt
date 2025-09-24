@@ -2,9 +2,6 @@ bug: email is not sent to specific email
 
 General Admin Concerns: 
 
-Flights Concerns:
-- Ilagay yung date price katulad nung sa pal na may price between
-
 Chatbot Concerns:
 - botUI (wag na yung potek na botpress)
 

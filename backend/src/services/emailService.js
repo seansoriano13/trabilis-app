@@ -2,9 +2,9 @@ import { query } from '../config/db.js'
 import fs from 'fs/promises'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import fetch from 'node-fetch'
 import nodemailer from 'nodemailer'
 import { supabase } from '../config/supabaseClient.js'
+import puppeteer from 'puppeteer'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -67,6 +67,54 @@ export const transporter = nodemailer.createTransport({
         pass: process.env.GMAIL_SMTP_PASS,
     },
 })
+
+// Reusable HTML -> PDF buffer generator using headless Chromium
+async function createPdfFromHtml(html) {
+    let browser
+    try {
+        // Render-friendly Puppeteer launch options
+        const isProduction = process.env.NODE_ENV === 'production'
+        const userDataDir = process.env.PUPPETEER_USER_DATA_DIR || '/tmp/puppeteer-user-data'
+        const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || undefined
+
+        browser = await puppeteer.launch({
+            headless: 'new',
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--no-zygote',
+                '--single-process',
+                '--font-render-hinting=medium',
+            ],
+            userDataDir,
+            // If Render provides an executable path, use it; otherwise let Puppeteer resolve
+            executablePath,
+        })
+        const page = await browser.newPage()
+        // Ensure UTF-8 charset and base styles are respected
+        const normalizedHtml = html.includes('<meta charset="utf-8"')
+            ? html
+            : html.replace(
+                  /<head>/i,
+                  '<head><meta charset="utf-8">'
+              )
+        await page.setContent(normalizedHtml, { waitUntil: 'networkidle0' })
+        const pdfBuffer = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            preferCSSPageSize: false,
+            margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' },
+        })
+        await page.close()
+        return pdfBuffer
+    } finally {
+        if (browser) {
+            await browser.close()
+        }
+    }
+}
 
 export const generateFlightItineraryPDF = async (bookingDetails) => {
     const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -231,32 +279,9 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
         .replace('{{flightInclusions}}', flightInclusionsHtml)
 
     try {
-        const response = await fetch('https://api.pdfshift.io/v3/convert/pdf', {
-            method: 'POST',
-            headers: {
-                'X-API-Key': process.env.PDFSHIFT_API_KEY,
-                'Content-type': 'application/json',
-            },
-            body: JSON.stringify({
-                source: html,
-                format: 'A4',
-                landscape: false,
-                use_print: true,
-            }),
-        })
-
-        if (!response.ok) {
-            throw new Error(
-                `PDFShift API error: ${
-                    response.status
-                } ${await response.text()}`
-            )
-        }
-
-        const arrayBuffer = await response.arrayBuffer()
-        return Buffer.from(arrayBuffer)
+        return await createPdfFromHtml(html)
     } catch (error) {
-        console.error('Error generating PDF via PDFShift:', error)
+        console.error('Error generating flight PDF:', error)
         throw new Error('Could not generate the itinerary PDF.')
     }
 }
@@ -303,6 +328,32 @@ export const generateTourSummaryPDF = async (bookingDetails) => {
         panellumUrl = '',
     } = bookingDetails
 
+    // Derive flight details with TBA defaults (admin may later edit real details)
+    const flight = bookingDetails.flight_details || {}
+    const outboundSegs = Array.isArray(flight.outbound)
+        ? flight.outbound
+        : flight.outbound
+        ? [flight.outbound]
+        : []
+    const inboundSegs = Array.isArray(flight.return || flight.inbound)
+        ? flight.return || flight.inbound
+        : flight.return || flight.inbound
+        ? [flight.return || flight.inbound]
+        : []
+    const firstOutbound = outboundSegs[0] || {}
+    const lastInbound = inboundSegs[inboundSegs.length - 1] || {}
+
+    const outboundAirline = firstOutbound.airline || 'TBA'
+    const outboundFlightNo = firstOutbound.flight_no || firstOutbound.flightNo || 'TBA'
+    const outboundDeparture = firstOutbound.departure || 'TBA'
+    const outboundArrival = firstOutbound.arrival || 'TBA'
+    const outboundDate = firstOutbound.date || 'TBA'
+    const returnAirline = lastInbound.airline || 'TBA'
+    const returnFlightNo = lastInbound.flight_no || lastInbound.flightNo || 'TBA'
+    const returnDeparture = lastInbound.departure || 'TBA'
+    const returnArrival = lastInbound.arrival || 'TBA'
+    const returnDate = lastInbound.date || 'TBA'
+
     html = html
         .replace(/{{bookingReference}}/g, bookingReference)
         .replace(/{{companyName}}/g, 'Lindela Travel And Tours - Trabilis')
@@ -335,32 +386,20 @@ export const generateTourSummaryPDF = async (bookingDetails) => {
         .replace(/{{tourDescription}}/g, tourDescription)
         .replace(/{{mainImageUrl}}/g, mainImageUrl)
         .replace(/{{panellumUrl}}/g, panellumUrl)
+        // Flight placeholders (TBA defaults)
+        .replace(/{{outboundAirline}}/g, outboundAirline)
+        .replace(/{{outboundFlightNo}}/g, outboundFlightNo)
+        .replace(/{{outboundDeparture}}/g, outboundDeparture)
+        .replace(/{{outboundArrival}}/g, outboundArrival)
+        .replace(/{{outboundDate}}/g, outboundDate)
+        .replace(/{{returnAirline}}/g, returnAirline)
+        .replace(/{{returnFlightNo}}/g, returnFlightNo)
+        .replace(/{{returnDeparture}}/g, returnDeparture)
+        .replace(/{{returnArrival}}/g, returnArrival)
+        .replace(/{{returnDate}}/g, returnDate)
 
     try {
-        const response = await fetch('https://api.pdfshift.io/v3/convert/pdf', {
-            method: 'POST',
-            headers: {
-                'X-API-Key': process.env.PDFSHIFT_API_KEY,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                source: html,
-                format: 'A4',
-                landscape: false,
-                use_print: true,
-            }),
-        })
-
-        if (!response.ok) {
-            throw new Error(
-                `PDFShift API error: ${
-                    response.status
-                } ${await response.text()}`
-            )
-        }
-
-        const arrayBuffer = await response.arrayBuffer()
-        return Buffer.from(arrayBuffer)
+        return await createPdfFromHtml(html)
     } catch (err) {
         console.error('Error generating Tour PDF:', err)
         throw new Error('Could not generate the tour summary PDF.')

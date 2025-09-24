@@ -626,7 +626,7 @@ const Dashboard = () => {
                         <span className='dashboard__section-count'>({tourTotal} total)</span>
                     </div>
                     <div className='dashboard__section-actions'>
-                        <Link to="/admin/tours" className='dashboard__action-btn dashboard__action-btn--view-all'>
+                        <Link to="/admin/tour-sales" className='dashboard__action-btn dashboard__action-btn--view-all'>
                             <FiEye size={16} />
                             View All
                         </Link>

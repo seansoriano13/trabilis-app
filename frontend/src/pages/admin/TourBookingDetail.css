@@ -427,7 +427,7 @@
 
 .info-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 1rem;
     padding: 1.5rem;
 }
@@ -529,14 +529,15 @@
 .passenger-details {
     /* max-width: 600px; */
     margin: 0 auto;
-    background: black !important;
-    padding-bottom: 5rem;
-    padding-top: 10rem;
+    /* background: black !important; */
+    
+    /* padding-top: 10rem; */
 }
 
 .passenger-details--tour{
     padding-top: 0;
-    background: white !important;
+    background: black !important;
+    padding-bottom: 5rem;
 }
 
 .passenger-card {
