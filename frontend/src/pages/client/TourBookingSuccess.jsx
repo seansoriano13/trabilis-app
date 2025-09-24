@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 
@@ -8,65 +8,87 @@ function TourBookingSuccess() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [bookingDetails, setBookingDetails] = useState(null)
+    const [lastUpdated, setLastUpdated] = useState(null)
+    const [polling, setPolling] = useState(false)
+    const pollingRef = useRef(null)
 
-    useEffect(() => {
+    const bookingReference = useMemo(() => {
         const params = new URLSearchParams(search)
-        const bookingReference = params.get('booking_reference')
+        return params.get('booking_reference')
+    }, [search])
 
-        const checkBookingStatus = async () => {
-            if (!bookingReference) {
-                setError('Booking reference missing')
+    const fetchStatus = async () => {
+        if (!bookingReference) {
+            setError('Booking reference missing')
+            setLoading(false)
+            return
+        }
+        try {
+            const response = await axios.get(
+                `${import.meta.env.VITE_BACKEND_URL}/api/v1/destinations/tour/booking`,
+                { params: { booking_reference: bookingReference } }
+            )
+
+            if (!response.data) {
+                setError('Booking data not found')
                 setLoading(false)
                 return
             }
 
-            try {
-                const response = await axios.get(
-                    `${
-                        import.meta.env.VITE_BACKEND_URL
-                    }/api/v1/destinations/tour/booking`,
-                    { params: { booking_reference: bookingReference } }
-                )
+            const {
+                status = 'UNKNOWN',
+                start_date = null,
+                end_date = null,
+                title = 'Unknown Tour',
+                passenger_count = 0,
+            } = response.data
 
-                if (!response.data) {
-                    setError('Booking data not found')
+            setBookingDetails({
+                status,
+                startDate: start_date,
+                endDate: end_date,
+                tourTitle: title,
+                passengerCount: passenger_count,
+            })
+            setLastUpdated(new Date())
+
+            if (status === 'FAILED') {
+                alert(
+                    'Tour booking failed. A refund has been issued. Please try booking again.'
+                )
+                navigate('/destinations')
+                return
+            }
+        // eslint-disable-next-line no-unused-vars
+        } catch (err) {
+            setError('Failed to verify booking status. Please try again shortly.')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        let intervalId = null
+        const start = async () => {
+            setPolling(true)
+            await fetchStatus()
+            intervalId = setInterval(async () => {
+                const status = bookingDetails?.status
+                if (status === 'CONFIRMED' || status === 'FAILED') {
+                    clearInterval(intervalId)
+                    setPolling(false)
                     return
                 }
-
-                const {
-                    status = 'UNKNOWN',
-                    start_date = null,
-                    end_date = null,
-                    title = 'Unknown Tour',
-                    passenger_count = 0,
-                } = response.data
-
-                setBookingDetails({
-                    status,
-                    startDate: start_date,
-                    endDate: end_date,
-                    tourTitle: title,
-                    passengerCount: passenger_count,
-                })
-
-                if (status === 'FAILED') {
-                    alert(
-                        'Tour booking failed. A refund has been issued. Please try booking again.'
-                    )
-                    navigate('/destinations')
-                }
-            // eslint-disable-next-line no-unused-vars
-            } catch (err) {
-                setError(
-                    'Failed to verify booking status. Please contact support.'
-                )
-            } finally {
-                setLoading(false)
-            }
+                await fetchStatus()
+            }, 5000)
+            pollingRef.current = intervalId
         }
-
-        checkBookingStatus()
-    }, [search, navigate])
+        start()
+        return () => {
+            if (intervalId) clearInterval(intervalId)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [bookingReference])
 
     const getContent = () => {
         if (loading) {
@@ -136,14 +158,87 @@ function TourBookingSuccess() {
                         {message}
                     </p>
 
-                    {buttonText && (
-                        <button
-                            onClick={buttonAction}
-                            className='mt-8 px-6 py-3 bg-primary-500 hover:bg-primary-600 transition rounded-lg font-semibold text-white'
-                        >
-                            {buttonText}
-                        </button>
+                    {bookingReference && (
+                        <div className='mt-6 text-left text-white/90 text-xs bg-white/10 rounded-lg p-3'>
+                            <div className='flex items-center justify-between'>
+                                <span className='font-semibold'>Booking Reference</span>
+                                <span className='font-mono'>{bookingReference}</span>
+                            </div>
+                            {bookingDetails?.status && (
+                                <div className='mt-2 flex items-center justify-between'>
+                                    <span className='font-semibold'>Status</span>
+                                    <span className={`px-2 py-0.5 rounded text-xs ${
+                                        bookingDetails.status === 'CONFIRMED'
+                                            ? 'bg-green-200/20 text-green-200'
+                                            : bookingDetails.status === 'FAILED'
+                                            ? 'bg-red-200/20 text-red-200'
+                                            : 'bg-yellow-200/20 text-yellow-200'
+                                    }`}>
+                                        {bookingDetails.status}
+                                    </span>
+                                </div>
+                            )}
+                            {lastUpdated && (
+                                <div className='mt-2 flex items-center justify-between'>
+                                    <span className='font-semibold'>Last updated</span>
+                                    <span>{lastUpdated.toLocaleTimeString()}</span>
+                                </div>
+                            )}
+                        </div>
                     )}
+
+                    {bookingDetails && (
+                        <div className='grid grid-cols-2 gap-3 text-left text-white text-xs mt-3'>
+                            {bookingDetails.tourTitle && (
+                                <div className='bg-white/10 rounded-lg p-3 col-span-2'>
+                                    <div className='font-semibold'>Tour</div>
+                                    <div>{bookingDetails.tourTitle}</div>
+                                </div>
+                            )}
+                            {bookingDetails.startDate && (
+                                <div className='bg-white/10 rounded-lg p-3'>
+                                    <div className='font-semibold'>Start</div>
+                                    <div>{new Date(bookingDetails.startDate).toLocaleDateString()}</div>
+                                </div>
+                            )}
+                            {bookingDetails.endDate && (
+                                <div className='bg-white/10 rounded-lg p-3'>
+                                    <div className='font-semibold'>End</div>
+                                    <div>{new Date(bookingDetails.endDate).toLocaleDateString()}</div>
+                                </div>
+                            )}
+                            {typeof bookingDetails.passengerCount === 'number' && (
+                                <div className='bg-white/10 rounded-lg p-3 col-span-2'>
+                                    <div className='font-semibold'>Passengers</div>
+                                    <div>{bookingDetails.passengerCount}</div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <div className='mt-8 flex flex-wrap items-center justify-center gap-2'>
+                        <button
+                            onClick={() => fetchStatus()}
+                            className='px-5 py-3 bg-primary-500 hover:bg-primary-600 transition rounded-lg font-semibold text-white disabled:opacity-50'
+                            disabled={polling}
+                        >
+                            {polling ? 'Refreshing…' : 'Refresh status'}
+                        </button>
+                        {buttonText && (
+                            <button
+                                onClick={buttonAction}
+                                className='px-5 py-3 bg-white/10 hover:bg-white/20 transition rounded-lg font-semibold text-white'
+                            >
+                                {buttonText}
+                            </button>
+                        )}
+                        <button
+                            onClick={() => navigate('/destinations')}
+                            className='px-5 py-3 bg-white text-black rounded-lg font-semibold hover:bg-gray-100 transition'
+                        >
+                            Explore more tours
+                        </button>
+                    </div>
                 </div>
             </div>
         </section>
