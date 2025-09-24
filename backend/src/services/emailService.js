@@ -75,8 +75,18 @@ async function createPdfFromHtml(html) {
         // Render-friendly Puppeteer launch options
         const isProduction = process.env.NODE_ENV === 'production'
         const userDataDir = process.env.PUPPETEER_USER_DATA_DIR || '/tmp/puppeteer-user-data'
-        const resolvedExecutablePath =
-            process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath()
+        const envExecutablePath = process.env.PUPPETEER_EXECUTABLE_PATH
+        let resolvedExecutablePath
+        if (envExecutablePath) {
+            try {
+                await fs.access(envExecutablePath)
+                resolvedExecutablePath = envExecutablePath
+            } catch {
+                resolvedExecutablePath = puppeteer.executablePath()
+            }
+        } else {
+            resolvedExecutablePath = puppeteer.executablePath()
+        }
 
         browser = await puppeteer.launch({
             headless: 'new',
