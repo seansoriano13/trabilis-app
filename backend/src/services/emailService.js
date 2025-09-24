@@ -75,7 +75,8 @@ async function createPdfFromHtml(html) {
         // Render-friendly Puppeteer launch options
         const isProduction = process.env.NODE_ENV === 'production'
         const userDataDir = process.env.PUPPETEER_USER_DATA_DIR || '/tmp/puppeteer-user-data'
-        const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || undefined
+        const resolvedExecutablePath =
+            process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath()
 
         browser = await puppeteer.launch({
             headless: 'new',
@@ -85,12 +86,11 @@ async function createPdfFromHtml(html) {
                 '--disable-dev-shm-usage',
                 '--disable-gpu',
                 '--no-zygote',
-                '--single-process',
                 '--font-render-hinting=medium',
             ],
             userDataDir,
             // If Render provides an executable path, use it; otherwise let Puppeteer resolve
-            executablePath,
+            executablePath: resolvedExecutablePath,
         })
         const page = await browser.newPage()
         // Ensure UTF-8 charset and base styles are respected
