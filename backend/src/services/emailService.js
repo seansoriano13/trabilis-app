@@ -75,7 +75,8 @@ async function createPdfFromHtml(html) {
         // Render-friendly Puppeteer launch options
         const isProduction = process.env.NODE_ENV === 'production'
         const userDataDir = process.env.PUPPETEER_USER_DATA_DIR || '/tmp/puppeteer-user-data'
-        const envExecutablePath = process.env.PUPPETEER_EXECUTABLE_PATH
+        const useSystemChrome = process.env.PUPPETEER_USE_SYSTEM_CHROME === 'true'
+        const envExecutablePath = useSystemChrome ? process.env.PUPPETEER_EXECUTABLE_PATH : undefined
         let resolvedExecutablePath
         if (envExecutablePath) {
             try {

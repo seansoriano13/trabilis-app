@@ -177,6 +177,8 @@ export const handleStripeWebhook = async (req, res) => {
                 console.error('❌ Failed to send immediate tour payment notification:', notifyErr)
             }
 
+            // Ensure email shows latest status
+            bookingDetails.status = 'CONFIRMED'
             await sendTourConfirmationEmail(bookingDetails)
         } else {
             // ===== FLIGHT LOGIC =====
