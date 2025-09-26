@@ -1,4 +1,4 @@
-import { sendVisaInquiryConfirmationEmail } from '../services/emailService.js'
+import { sendVisaInquiryConfirmationEmail } from '../services/resendEmailService.js'
 import { supabase, supabaseAdmin } from '../config/supabaseClient.js'
 import Pusher from 'pusher'
 

@@ -1,5 +1,5 @@
 import { supabase } from '../config/supabaseClient.js'
-import { sendConfirmationEmail, generateFlightItineraryPDF } from '../services/emailService.js'
+import { sendConfirmationEmail, generateFlightItineraryPDF } from '../services/resendEmailService.js'
 import { mockFlightOffers } from '../mock/flightResultMockData.js'
 import Pusher from 'pusher'
 

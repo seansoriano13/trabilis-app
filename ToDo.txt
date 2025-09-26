@@ -1,5 +1,3 @@
-bug: email is not sent to specific email
-
 General Admin Concerns: 
 
 Chatbot Concerns:

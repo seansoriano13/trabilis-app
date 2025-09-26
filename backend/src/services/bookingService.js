@@ -6,7 +6,7 @@ import {
     sendFailureEmail,
     sendTourConfirmationEmail,
     sendTourFailureEmail,
-} from './emailService.js'
+} from './resendEmailService.js'
 
 import Pusher from 'pusher'
 import { supabase } from '../config/supabaseClient.js'

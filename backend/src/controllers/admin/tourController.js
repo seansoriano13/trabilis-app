@@ -1,6 +1,6 @@
 import { supabase } from '../../config/supabaseClient.js'
 import Pusher from 'pusher'
-import { generateTourSummaryPDF } from '../../services/emailService.js'
+import { generateTourSummaryPDF } from '../../services/resendEmailService.js'
 
 // Helper function to generate itinerary HTML
 const generateItineraryHTML = (itineraries) => {

@@ -1,5 +1,5 @@
 import { query } from '../../config/db.js'
-import { generateFlightItineraryPDF } from '../../services/emailService.js'
+import { generateFlightItineraryPDF } from '../../services/resendEmailService.js'
 import { supabase } from '../../config/supabaseClient.js'
 import Pusher from 'pusher'
 import fs from 'fs'

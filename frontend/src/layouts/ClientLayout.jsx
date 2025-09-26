@@ -12,7 +12,6 @@ export default function ClientLayout() {
             <main>
                 <Outlet />
             </main>
-            {/* <Chatbot /> */}
             <BotpressAI />
             <Footer />
         </>

@@ -6,7 +6,7 @@ import Pusher from 'pusher'
 import {
     sendTourConfirmationEmail,
     sendTourFailureEmail,
-} from '../services/emailService.js'
+} from '../services/resendEmailService.js'
 
 export const handleStripeWebhook = async (req, res) => {
     const sig = req.headers['stripe-signature']
