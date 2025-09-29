@@ -318,6 +318,7 @@ export const generateTourSummaryPDF = async (bookingDetails) => {
         startDate,
         endDate,
         passengerCount = 1,
+        passengers = [],
         paymentType = 'FULL',
         amount = 'N/A',
         firstName = 'Guest',
@@ -365,6 +366,26 @@ export const generateTourSummaryPDF = async (bookingDetails) => {
     const returnArrival = lastInbound.arrival || 'TBA'
     const returnDate = lastInbound.date || 'TBA'
 
+    // Generate passenger table rows
+    const passengerTableRows = passengers.map((passenger, index) => {
+        const email = passenger.contact?.emailAddress || '-'
+        const phone = passenger.contact?.phones?.[0]?.number 
+            ? `${passenger.contact.phones[0].countryCallingCode || ''} ${passenger.contact.phones[0].number}`
+            : '-'
+        const dateOfBirth = passenger.dateOfBirth || '-'
+        
+        return `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${passenger.name?.firstName || ''} ${passenger.name?.lastName || ''}</td>
+                <td>${passenger.type || 'Adult'}</td>
+                <td>${email}</td>
+                <td>${phone}</td>
+                <td>${dateOfBirth}</td>
+            </tr>
+        `
+    }).join('')
+
     html = html
         .replace(/{{bookingReference}}/g, bookingReference)
         .replace(/{{companyName}}/g, 'Lindela Travel And Tours - Trabilis')
@@ -408,6 +429,7 @@ export const generateTourSummaryPDF = async (bookingDetails) => {
         .replace(/{{returnDeparture}}/g, returnDeparture)
         .replace(/{{returnArrival}}/g, returnArrival)
         .replace(/{{returnDate}}/g, returnDate)
+        .replace(/{{passengerTableRows}}/g, passengerTableRows)
 
     try {
         return await createPdfFromHtml(html)

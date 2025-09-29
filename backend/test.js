@@ -1,5 +1,5 @@
 import dotenv from 'dotenv'
-import { sendTourConfirmationEmail } from './src/services/emailService.js'
+import { sendTourConfirmationEmail } from './src/services/brevoEmailService.js'
 
 dotenv.config()
 ;(async () => {

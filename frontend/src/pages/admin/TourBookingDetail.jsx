@@ -52,6 +52,8 @@ const TourBookingDetail = () => {
             return: [ { airline: '', flight_no: '', departure: '', arrival: '', date: '' } ]
         }
     })
+
+    console.log(booking)
     const [adminOptions, setAdminOptions] = useState([])
     const [loadingAdmins, setLoadingAdmins] = useState(false)
     const [assignedAdminName, setAssignedAdminName] = useState('')
@@ -778,51 +780,180 @@ const TourBookingDetail = () => {
                     <div className="tab-content">
                         <div className="passenger-header">
                             <h3><FiUsers /> Passenger Details</h3>
-                            <p>Lead contact information and passenger details</p>
+                            <p>Complete passenger information for all travelers</p>
                         </div>
                         
                         <div className="passenger-details passenger-details--tour-detail bg-white">
-                            <div className="passenger-card">
-                                <div className="passenger-card-header">
-                                    <div className="passenger-avatar-large">
-                                        {booking.lead_first_name?.charAt(0)}{booking.lead_last_name?.charAt(0)}
-                                    </div>
-                                    <div className="passenger-title">
-                                        <h4>Lead Contact</h4>
-                                        <p>{booking.lead_first_name} {booking.lead_last_name}</p>
-                                    </div>
+                            {/* All Passengers Table */}
+                            <div className="passenger-table-section">
+                                <div className="section-header">
+                                    <FiUsers className="section-icon" />
+                                    <h5>All Passengers ({booking.passenger_count})</h5>
                                 </div>
                                 
-                                <div className="passenger-sections">
-                                    <div className="info-section">
-                                        <div className="section-header">
-                                            <FiUsers className="section-icon" />
-                                            <h5>Contact Information</h5>
+                                <div className="passenger-table-container">
+                                    <table className="passenger-table">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Name</th>
+                                                <th>Type</th>
+                                                <th>Gender</th>
+                                                <th>Email</th>
+                                                <th>Phone</th>
+                                                <th>Date of Birth</th>
+                                                <th>Document No.</th>
+                                                <th>Nationality</th>
+                                                <th>Expiry</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {(() => {
+                                                let passengers = []
+                                                try {
+                                                    if (booking.passenger_details) {
+                                                        passengers = typeof booking.passenger_details === 'string' 
+                                                            ? JSON.parse(booking.passenger_details) 
+                                                            : booking.passenger_details
+                                                    }
+                                                } catch (error) {
+                                                    console.error('Error parsing passenger details:', error)
+                                                    passengers = []
+                                                }
+                                                
+                                                if (passengers && passengers.length > 0) {
+                                                    return passengers.map((passenger, index) => {
+                                                        const doc = Array.isArray(passenger.documents) && passenger.documents.length > 0 ? passenger.documents[0] : null
+                                                        const phoneObj = passenger.contact?.phones?.[0]
+                                                        const phoneStr = phoneObj?.number ? `${phoneObj.countryCallingCode || ''} ${phoneObj.number}` : null
+                                                        return (
+                                                            <tr key={index}>
+                                                                <td>{index + 1}</td>
+                                                                <td>
+                                                                    <div className="passenger-name">
+                                                                        <strong>{passenger.name?.firstName || ''} {passenger.name?.lastName || ''}</strong>
+                                                                        {index === 0 && <span className="lead-badge">Lead</span>}
+                                                                    </div>
+                                                                </td>
+                                                                <td>
+                                                                    <span className={`passenger-type ${passenger.type?.toLowerCase() || 'adult'}`}>
+                                                                        {passenger.type || 'Adult'}
+                                                                    </span>
+                                                                </td>
+                                                                <td>{passenger.gender || <span className="no-data">-</span>}</td>
+                                                                <td>
+                                                                    {passenger.contact?.emailAddress ? (
+                                                                        <a href={`mailto:${passenger.contact.emailAddress}`} className="email-link">
+                                                                            <FiMail /> {passenger.contact.emailAddress}
+                                                                        </a>
+                                                                    ) : (
+                                                                        <span className="no-data">-</span>
+                                                                    )}
+                                                                </td>
+                                                                <td>
+                                                                    {phoneStr ? (
+                                                                        <a href={`tel:${phoneObj?.countryCallingCode || ''}${phoneObj?.number || ''}`} className="phone-link">
+                                                                            <FiPhone /> {phoneStr}
+                                                                        </a>
+                                                                    ) : (
+                                                                        <span className="no-data">-</span>
+                                                                    )}
+                                                                </td>
+                                                                <td>
+                                                                    {passenger.dateOfBirth ? (
+                                                                        <span className="date-of-birth">
+                                                                            {new Date(passenger.dateOfBirth).toLocaleDateString()}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="no-data">-</span>
+                                                                    )}
+                                                                </td>
+                                                                <td>{doc?.number || <span className="no-data">-</span>}</td>
+                                                                <td>{doc?.nationality || <span className="no-data">-</span>}</td>
+                                                                <td>{doc?.expiryDate ? new Date(doc.expiryDate).toLocaleDateString() : <span className="no-data">-</span>}</td>
+                                                            </tr>
+                                                        )
+                                                    })
+                                                } else {
+                                                    // Fallback to lead passenger only
+                                                    return (
+                                                        <tr>
+                                                            <td>1</td>
+                                                            <td>
+                                                                <div className="passenger-name">
+                                                                    <strong>{booking.lead_first_name} {booking.lead_last_name}</strong>
+                                                                    <span className="lead-badge">Lead</span>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <span className="passenger-type adult">Lead Passenger</span>
+                                                            </td>
+                                                            <td>
+                                                                <a href={`mailto:${booking.lead_email}`} className="email-link">
+                                                                    <FiMail /> {booking.lead_email}
+                                                                </a>
+                                                            </td>
+                                                            <td>
+                                                                <a href={`tel:${booking.lead_phone}`} className="phone-link">
+                                                                    <FiPhone /> {booking.lead_phone}
+                                                                </a>
+                                                            </td>
+                                                            <td>
+                                                                <span className="no-data">-</span>
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                }
+                                            })()}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            {/* Lead Contact Summary */}
+                            <div className="lead-contact-summary">
+                                <div className="passenger-card">
+                                    <div className="passenger-card-header">
+                                        <div className="passenger-avatar-large">
+                                            {booking.lead_first_name?.charAt(0)}{booking.lead_last_name?.charAt(0)}
                                         </div>
-                                        <div className="info-grid">
-                                            <div className="info-item">
-                                                <span className="label">Full Name:</span>
-                                                <span className="value">
-                                                    {booking.lead_first_name} {booking.lead_last_name}
-                                                </span>
+                                        <div className="passenger-title">
+                                            <h4>Lead Contact</h4>
+                                            <p>{booking.lead_first_name} {booking.lead_last_name}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="passenger-sections">
+                                        <div className="info-section">
+                                            <div className="section-header">
+                                                <FiUsers className="section-icon" />
+                                                <h5>Contact Information</h5>
                                             </div>
-                                            <div className="info-item">
-                                                <span className="label">Email:</span>
-                                                <span className="value">
-                                                    <FiMail /> {booking.lead_email}
-                                                </span>
-                                            </div>
-                                            <div className="info-item">
-                                                <span className="label">Phone:</span>
-                                                <span className="value">
-                                                    <FiPhone /> {booking.lead_phone}
-                                                </span>
-                                            </div>
-                                            <div className="info-item">
-                                                <span className="label">Passenger Count:</span>
-                                                <span className="value">
-                                                    <FiUsers /> {booking.passenger_count} person(s)
-                                                </span>
+                                            <div className="info-grid">
+                                                <div className="info-item">
+                                                    <span className="label">Full Name:</span>
+                                                    <span className="value">
+                                                        {booking.lead_first_name} {booking.lead_last_name}
+                                                    </span>
+                                                </div>
+                                                <div className="info-item">
+                                                    <span className="label">Email:</span>
+                                                    <span className="value">
+                                                        <FiMail /> {booking.lead_email}
+                                                    </span>
+                                                </div>
+                                                <div className="info-item">
+                                                    <span className="label">Phone:</span>
+                                                    <span className="value">
+                                                        <FiPhone /> {booking.lead_phone}
+                                                    </span>
+                                                </div>
+                                                <div className="info-item">
+                                                    <span className="label">Passenger Count:</span>
+                                                    <span className="value">
+                                                        <FiUsers /> {booking.passenger_count} person(s)
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

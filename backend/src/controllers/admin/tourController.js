@@ -1,6 +1,6 @@
 import { supabase } from '../../config/supabaseClient.js'
 import Pusher from 'pusher'
-import { generateTourSummaryPDF } from '../../services/resendEmailService.js'
+import { generateTourSummaryPDF } from '../../services/brevoEmailService.js'
 
 // Helper function to generate itinerary HTML
 const generateItineraryHTML = (itineraries) => {
@@ -614,6 +614,54 @@ export const viewTourBookingPrint = async (req, res) => {
         const firstOutbound = outboundSegs[0] || {}
         const lastInbound = inboundSegs[inboundSegs.length - 1] || {}
 
+        // Generate passenger table rows
+        let passengers = []
+        let passengerTableRows = ''
+        
+        try {
+            if (booking.passenger_details) {
+                passengers = typeof booking.passenger_details === 'string' 
+                    ? JSON.parse(booking.passenger_details) 
+                    : booking.passenger_details
+            }
+        } catch (error) {
+            console.error('Error parsing passenger details:', error)
+            passengers = []
+        }
+        
+        if (passengers && passengers.length > 0) {
+            passengerTableRows = passengers.map((passenger, index) => {
+                const email = passenger.contact?.emailAddress || '-'
+                const phone = passenger.contact?.phones?.[0]?.number 
+                    ? `${passenger.contact.phones[0].countryCallingCode || ''} ${passenger.contact.phones[0].number}`
+                    : '-'
+                const dateOfBirth = passenger.dateOfBirth || '-'
+                
+                return `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${passenger.name?.firstName || ''} ${passenger.name?.lastName || ''}</td>
+                        <td>${passenger.type || 'Adult'}</td>
+                        <td>${email}</td>
+                        <td>${phone}</td>
+                        <td>${dateOfBirth}</td>
+                    </tr>
+                `
+            }).join('')
+        } else {
+            // Fallback to lead passenger only if no passenger details
+            passengerTableRows = `
+                <tr>
+                    <td>1</td>
+                    <td>${booking.lead_first_name} ${booking.lead_last_name}</td>
+                    <td>Lead Passenger</td>
+                    <td>${booking.lead_email}</td>
+                    <td>${booking.lead_phone}</td>
+                    <td>-</td>
+                </tr>
+            `
+        }
+
         const bookingDetails = {
             bookingReference: booking.booking_reference,
             leadFirstName: booking.lead_first_name,
@@ -638,6 +686,7 @@ export const viewTourBookingPrint = async (req, res) => {
             
             // Itinerary (generate from actual data)
             itinerary: generateItineraryHTML(packageDate?.package_itineraries || []),
+            passengerTableRows: passengerTableRows,
             outboundAirline: firstOutbound.airline || 'TBA',
             outboundFlightNo: firstOutbound.flight_no || firstOutbound.flightNo || 'TBA',
             outboundDeparture: firstOutbound.departure || 'TBA',

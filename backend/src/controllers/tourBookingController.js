@@ -9,6 +9,7 @@ const TourBookingController = {
                 package_date_id,
                 num_pax,
                 lead_booker_details,
+                passenger_details, // optional: array of all passenger details
                 payment_type = 'FULL',
                 customization, // optional: { enabled, removedInclusionGroupIds: number[], restDayNumbers: number[], clientTotals? }
             } = req.body
@@ -32,6 +33,23 @@ const TourBookingController = {
 
             if (!['RESERVATION', 'FULL'].includes(payment_type)) {
                 return res.status(400).json({ error: 'Invalid payment type' })
+            }
+
+            // Validate passenger_details if provided
+            if (passenger_details) {
+                if (!Array.isArray(passenger_details)) {
+                    return res.status(400).json({ error: 'passenger_details must be an array' })
+                }
+                if (passenger_details.length !== num_pax) {
+                    return res.status(400).json({ error: 'passenger_details length must match num_pax' })
+                }
+                // Basic validation for passenger structure
+                for (let i = 0; i < passenger_details.length; i++) {
+                    const passenger = passenger_details[i]
+                    if (!passenger.name || !passenger.name.firstName || !passenger.name.lastName) {
+                        return res.status(400).json({ error: `Passenger ${i + 1} must have valid name structure` })
+                    }
+                }
             }
 
             const { data: packageData, error: packageError } = await supabase
@@ -145,6 +163,7 @@ const TourBookingController = {
                     lead_last_name: lead_booker_details.lastName,
                     lead_email: lead_booker_details.email,
                     lead_phone: lead_booker_details.phone,
+                    passenger_details: Array.isArray(passenger_details) ? passenger_details : null,
                     total_amount,
                     reservation_amount: total_reservation_fee,
                     status: 'PENDING_PAYMENT',
@@ -285,6 +304,13 @@ const TourBookingController = {
                 passenger_count: data.passenger_count,
                 total_amount: data.total_amount,
                 payment_type: data.payment_type,
+                // Support both JSONB object and legacy stringified JSON
+                passenger_details:
+                    data.passenger_details == null
+                        ? null
+                        : (typeof data.passenger_details === 'string'
+                            ? ((() => { try { return JSON.parse(data.passenger_details) } catch { return null } })())
+                            : data.passenger_details),
             }
 
             res.json(response)

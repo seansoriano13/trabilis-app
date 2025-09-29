@@ -10,9 +10,9 @@ const PrimaryButton = ({ onClick, className, buttonText, isBold, loading }) => (
     <button
         type='button'
         onClick={onClick}
-        className={`w-full py-3 px-4 bg-yellow-500 text-black font-${
+        className={`w-full py-3 px-4 bg-[#f7d100] text-black font-${
             isBold ? 'semibold' : 'medium'
-        } rounded-md shadow hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors ${className}`}
+        } rounded-md shadow hover:bg-[#ffe347] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors ${className}`}
         disabled={loading}
     >
         {loading ? 'Processing...' : buttonText}
@@ -50,7 +50,7 @@ function TourBooking() {
                     },
                 ],
             },
-            documents: [], // tour booking doesn't need passport documents
+            documents: [], 
         })),
         payment_type: 'FULL',
     })
@@ -94,10 +94,10 @@ function TourBooking() {
         setError(null)
     }
 
-    const handlePaymentTypeChange = (e) => {
-        const { value } = e.target
-        setFormData((prev) => ({ ...prev, payment_type: value }))
-    }
+    // const handlePaymentTypeChange = (e) => {
+    //     const { value } = e.target
+    //     setFormData((prev) => ({ ...prev, payment_type: value }))
+    // }
 
     const validateForm = () => {
         const lead = formData.passengers[0]
@@ -152,6 +152,7 @@ function TourBooking() {
                         email: leadPassenger.contact.emailAddress,
                         phone: leadPassenger.contact.phones[0].number,
                     },
+                    passenger_details: formData.passengers,
                     payment_type: formData.payment_type,
                 },
                 { headers: { 'Content-Type': 'application/json' } }

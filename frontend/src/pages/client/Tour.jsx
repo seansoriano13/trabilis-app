@@ -321,7 +321,7 @@ function Tour() {
                         <div className='text-sm text-gray-600'>
                             Available Dates
                         </div>
-                        <div>{availableDates}</div>
+                        <div className='flex flex-wrap gap-2'>{availableDates}</div>
                         <div className='text-sm text-gray-600'>
                             Available Slots: {availableSlots}
                         </div>

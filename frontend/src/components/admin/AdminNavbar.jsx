@@ -299,7 +299,7 @@ function AdminNavbar() {
         if (!notif.booking_id && notif.booking_reference) {
             try {
                 const token = localStorage.getItem('adminToken')
-                const res = await fetch('/api/v1/admin/dashboard/resolve?ref=' + encodeURIComponent(notif.booking_reference), {
+                const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/admin/dashboard/resolve?ref=` + encodeURIComponent(notif.booking_reference), {
                     headers: { Authorization: `Bearer ${token}` }
                 })
                 const payload = await res.json()

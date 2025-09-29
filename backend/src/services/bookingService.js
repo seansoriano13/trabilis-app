@@ -6,7 +6,7 @@ import {
     sendFailureEmail,
     sendTourConfirmationEmail,
     sendTourFailureEmail,
-} from './resendEmailService.js'
+} from './brevoEmailService.js'
 
 import Pusher from 'pusher'
 import { supabase } from '../config/supabaseClient.js'
@@ -249,6 +249,7 @@ export async function finalizeTourBooking(bookingReference) {
                 startDate: booking.package_dates.start_date,
                 endDate: booking.package_dates.end_date,
                 passengerCount: booking.passenger_count,
+                passengers: booking.passenger_details ? JSON.parse(booking.passenger_details) : [],
                 amount:
                     booking.payment_type === 'RESERVATION'
                         ? booking.reservation_amount

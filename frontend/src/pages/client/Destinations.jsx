@@ -96,7 +96,7 @@ export default function Destinations() {
                     {/* Desktop */}
                     <source
                         srcSet={greatPyramidOfGazaDesktop}
-                        media='(min-width: 1024px)' // Tailwind's lg breakpoint
+                        media='(min-width: 1024px)' 
                     />
 
                     {/* Mobile fallback */}
