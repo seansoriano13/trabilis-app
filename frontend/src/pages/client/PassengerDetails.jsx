@@ -13,7 +13,6 @@ import { formatToYMD } from '../../utils/flightUtils.js'
 import axios from 'axios'
 import { calculateAge, formatPhoneForAmadeus } from '../../utils/stringUtils.js'
 import countries from '../../data/CountryCodes.json'
-import nationalities from '../../data/nationalities.json'
 
 import { FaArrowRightArrowLeft } from 'react-icons/fa6'
 import { FaArrowRight } from 'react-icons/fa6'
@@ -24,11 +23,7 @@ export function PassengerForm({
     validationErrors,
     setValidationErrors,
 }) {
-    const [selectGender, setSelectGender] = useState('')
-
-    function handleGenderSelection(gender) {
-        setSelectGender(gender)
-    }
+    // Use traveler.gender from state; no shared gender UI state
 
     const countryOptions = countries.map((c) => ({
         value: c.dial_code.replace('+', ''), // "63"
@@ -36,9 +31,10 @@ export function PassengerForm({
         code: c.code,
     }))
 
-    const nationalityOptions = nationalities.map((n) => ({
-        value: n, // "Filipino"
-        label: n, // "Filipino"
+    // Use ISO country codes for nationality (Amadeus expects ISO 3166-1 alpha-2)
+    const nationalityOptions = countries.map((c) => ({
+        value: c.code, // e.g., "PH"
+        label: `${c.name} (${c.code})`,
     }))
 
     const issuanceCountryOptions = countries.map((c) => ({
@@ -47,11 +43,11 @@ export function PassengerForm({
     }))
 
     const titleOptions = [
-        { value: 'mr', label: 'Mr' },
-        { value: 'mrs', label: 'Mrs' },
-        { value: 'ms', label: 'Ms' },
-        { value: 'master', label: 'Master' },
-        { value: 'miss', label: 'Miss' },
+        { value: 'MR', label: 'Mr' },
+        { value: 'MRS', label: 'Mrs' },
+        { value: 'MS', label: 'Ms' },
+        { value: 'MASTER', label: 'Master' },
+        { value: 'MISS', label: 'Miss' },
     ]
 
     useEffect(() => {
@@ -138,14 +134,14 @@ export function PassengerForm({
                                     value={
                                         titleOptions.find(
                                             (opt) =>
-                                                opt.value === passenger.title
+                                                opt.value === (passenger.title || '').toUpperCase()
                                         ) || null
                                     }
                                     onChange={(selected) =>
                                         handleChange(
                                             index,
                                             'title',
-                                            selected?.value || ''
+                                            (selected?.value || '').toUpperCase()
                                         )
                                     }
                                     placeholder=''
@@ -250,10 +246,9 @@ export function PassengerForm({
                                                 'gender',
                                                 'MALE'
                                             )
-                                            handleGenderSelection('MALE')
                                         }}
                                         className={`passenger-form__gender-option ${
-                                            selectGender === 'MALE'
+                                            passenger.gender === 'MALE'
                                                 ? 'active'
                                                 : ''
                                         }`}
@@ -262,7 +257,6 @@ export function PassengerForm({
                                     </p>
                                     <p
                                         onClick={() => {
-                                            handleGenderSelection('FEMALE')
                                             handleChange(
                                                 index,
                                                 'gender',
@@ -270,7 +264,7 @@ export function PassengerForm({
                                             )
                                         }}
                                         className={`passenger-form__gender-option ${
-                                            selectGender === 'FEMALE'
+                                            passenger.gender === 'FEMALE'
                                                 ? 'active'
                                                 : ''
                                         }`}
@@ -379,15 +373,14 @@ export function PassengerForm({
                                 <Select
                                     className='passenger-form__select'
                                     options={countryOptions}
-                                    defaultValue={'63'}
-                                    // value={
-                                    //     countryOptions.find(
-                                    //         (opt) =>
-                                    //             opt.value ===
-                                    //             passenger.contact.phones[0]
-                                    //                 ?.countryCallingCode
-                                    //     ) || null
-                                    // }
+						value={
+							countryOptions.find(
+								(opt) =>
+									opt.value ===
+									(passenger.contact.phones[0]
+										?.countryCallingCode || '63')
+							) || null
+						}
                                     onChange={(selected) =>
                                         handleChange(
                                             index,
@@ -507,7 +500,7 @@ export function PassengerForm({
                             </div>
                             <div className='passenger-form__field'>
                                 <label className='passenger-form__label'>
-                                    Nationality (e.g., Filipino)
+                                    Nationality (e.g., PH)
                                 </label>
                                 <Select
                                     className='passenger-form__select'
@@ -516,8 +509,8 @@ export function PassengerForm({
                                         nationalityOptions.find(
                                             (opt) =>
                                                 opt.value ===
-                                                passenger.documents[0]
-                                                    ?.nationality
+                                                (passenger.documents[0]
+                                                    ?.nationality || 'PH')
                                         ) || null
                                     }
                                     onChange={(selected) =>
@@ -692,8 +685,8 @@ function PassengerDetails() {
     const [passengers, setPassengers] = useState(
         Array.from({ length: totalPassengers }, (_, i) => ({
             id: `${i + 1}`,
-            type: i < adults ? 'Adult' : 'Child',
-            title: 'mr',
+            type: i < adults ? 'ADULT' : 'CHILD',
+            title: 'MR',
             name: {
                 firstName: 'Sean',
                 lastName: 'Soriano',
@@ -705,7 +698,7 @@ function PassengerDetails() {
                 phones: [
                     {
                         deviceType: 'MOBILE',
-                        countryCallingCode: '',
+						countryCallingCode: '63',
                         number: '9927831240',
                     },
                 ],
@@ -714,7 +707,7 @@ function PassengerDetails() {
                 {
                     documentType: 'PASSPORT',
                     number: 'AB1234567',
-                    nationality: 'Filipino',
+                    nationality: 'PH',
                     issuanceCountry: 'PH',
                     expiryDate: '2032-08-07',
                     issuanceDate: '2024-08-07',
@@ -796,7 +789,7 @@ function PassengerDetails() {
                         })
                     }
 
-                    if (passenger.type === 'child' && age >= 12) {
+                    if (passenger.type === 'CHILD' && age >= 12) {
                         errors.push({
                             index,
                             field: 'dateOfBirth',
@@ -853,8 +846,45 @@ function PassengerDetails() {
                 return
             }
 
+            // Normalize travelers to match API expectations
+            const normalizedTravelers = passengers.map((p, idx) => ({
+                id: `${idx + 1}`,
+                type: (p.type || '').toUpperCase(),
+                title: (p.title || 'MR').toUpperCase(),
+                gender: (p.gender || '').toUpperCase(),
+                name: {
+                    firstName: p.name?.firstName || '',
+                    lastName: p.name?.lastName || '',
+                },
+                dateOfBirth: p.dateOfBirth || '',
+                contact: {
+                    emailAddress: p.contact?.emailAddress || '',
+                    phones: [
+                        {
+                            deviceType: 'MOBILE',
+                            countryCallingCode:
+                                p.contact?.phones?.[0]?.countryCallingCode || '63',
+                            number: p.contact?.phones?.[0]?.number || '',
+                        },
+                    ],
+                },
+                documents: [
+                    {
+                        documentType: p.documents?.[0]?.documentType || 'PASSPORT',
+                        number: p.documents?.[0]?.number || '',
+                        nationality: p.documents?.[0]?.nationality || 'PH',
+                        issuanceCountry: p.documents?.[0]?.issuanceCountry || 'PH',
+                        expiryDate: p.documents?.[0]?.expiryDate || '',
+                        issuanceDate: p.documents?.[0]?.issuanceDate || '',
+                        validityCountry: p.documents?.[0]?.validityCountry || 'PH',
+                        placeOfBirth: p.documents?.[0]?.placeOfBirth || '',
+                        holder: Boolean(p.documents?.[0]?.holder),
+                    },
+                ],
+            }))
+
             const passengerData = {
-                travelers: passengers,
+                travelers: normalizedTravelers,
                 remarks: {
                     general: [
                         {
