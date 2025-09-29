@@ -126,7 +126,7 @@ export const assignTourBooking = async (req, res) => {
                 assigned_to: assignedTo,
                 assigned_by: assignedById,
                 booking_type: 'tour',
-                booking_id: bookingId,
+                booking_id: null,
                 created_at: new Date().toISOString()
             }])
 
@@ -212,7 +212,7 @@ export const assignFlightBooking = async (req, res) => {
                 assigned_to: assignedTo,
                 assigned_by: assignedById,
                 booking_type: 'flight',
-                booking_id: bookingId,
+                booking_id: null,
                 created_at: new Date().toISOString()
             }])
 

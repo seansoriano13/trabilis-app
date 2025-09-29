@@ -89,20 +89,35 @@ async function createPdfFromHtml(html) {
             resolvedExecutablePath = puppeteer.executablePath()
         }
 
-        browser = await puppeteer.launch({
-            headless: 'new',
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--no-zygote',
-                '--font-render-hinting=medium',
-            ],
-            userDataDir,
-            // If Render provides an executable path, use it; otherwise let Puppeteer resolve
-            executablePath: resolvedExecutablePath,
-        })
+        try {
+            browser = await puppeteer.launch({
+                headless: 'new',
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-gpu',
+                    '--no-zygote',
+                    '--font-render-hinting=medium',
+                ],
+                userDataDir,
+                executablePath: resolvedExecutablePath,
+            })
+        } catch (launchErr) {
+            // Fallback: try without explicit executablePath
+            browser = await puppeteer.launch({
+                headless: 'new',
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-gpu',
+                    '--no-zygote',
+                    '--font-render-hinting=medium',
+                ],
+                userDataDir,
+            })
+        }
         const page = await browser.newPage()
         // Ensure UTF-8 charset and base styles are respected
         const normalizedHtml = html.includes('<meta charset="utf-8"')
