@@ -5,6 +5,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { supabase } from '../config/supabaseClient.js'
 import puppeteer from 'puppeteer'
+import chromium from '@sparticuz/chromium'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -74,7 +75,10 @@ async function createPdfFromHtml(html) {
         const useSystemChrome = process.env.PUPPETEER_USE_SYSTEM_CHROME === 'true'
         const envExecutablePath = useSystemChrome ? process.env.PUPPETEER_EXECUTABLE_PATH : undefined
         let resolvedExecutablePath
-        if (envExecutablePath) {
+        if (isProduction) {
+            // Prefer chromium path when on serverless/Render
+            resolvedExecutablePath = await chromium.executablePath()
+        } else if (envExecutablePath) {
             try {
                 await fs.access(envExecutablePath)
                 resolvedExecutablePath = envExecutablePath
@@ -88,7 +92,7 @@ async function createPdfFromHtml(html) {
         try {
             browser = await puppeteer.launch({
                 headless: 'new',
-                args: [
+                args: isProduction ? chromium.args : [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
                     '--disable-dev-shm-usage',
@@ -96,6 +100,7 @@ async function createPdfFromHtml(html) {
                     '--no-zygote',
                     '--font-render-hinting=medium',
                 ],
+                defaultViewport: isProduction ? chromium.defaultViewport : null,
                 userDataDir,
                 executablePath: resolvedExecutablePath,
             })
@@ -103,7 +108,7 @@ async function createPdfFromHtml(html) {
             // Fallback: try without explicit executablePath (let Puppeteer resolve bundled Chrome)
             browser = await puppeteer.launch({
                 headless: 'new',
-                args: [
+                args: isProduction ? chromium.args : [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
                     '--disable-dev-shm-usage',
@@ -111,6 +116,7 @@ async function createPdfFromHtml(html) {
                     '--no-zygote',
                     '--font-render-hinting=medium',
                 ],
+                defaultViewport: isProduction ? chromium.defaultViewport : null,
                 userDataDir,
             })
         }
