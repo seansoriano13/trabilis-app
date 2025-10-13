@@ -24,7 +24,7 @@ export default function ImmigrationVisaConsultancy() {
 
     const handleViewDetails = (visaType) => {
         // Handle view details button click
-        console.log(`View details for ${visaType}`)
+        // TODO: Implement view details functionality
     }
 
     const handleInputChange = (e) => {

@@ -1588,9 +1588,6 @@ function PassengerDetails() {
                 return
             }
             
-            // Debug: Log the payload before sending
-            console.log('Sending passenger data:', JSON.stringify(passengerData, null, 2))
-            
             const response = await axios.post(
                 `${import.meta.env.VITE_BACKEND_URL}/api/v1/bookings/flights`,
                 {
@@ -1607,11 +1604,6 @@ function PassengerDetails() {
             window.location.href = checkoutUrl
         } catch (error) {
             console.error('Booking submission failed:', error)
-            console.log(
-                'Error response:',
-                JSON.stringify(error.response?.data, null, 2)
-            )
-            console.log('Error status:', error.response?.status)
             setIsLoading(false)
             alert(
                 error.response?.data?.error ||

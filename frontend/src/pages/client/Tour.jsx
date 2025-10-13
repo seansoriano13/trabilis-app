@@ -45,7 +45,7 @@ function Tour() {
                     setSelectedDateId(response.data.dates[0].id)
                 }
             } catch (error) {
-                console.log(error)
+                console.error('Failed to fetch tour:', error)
             }
         }
         fetchTour()

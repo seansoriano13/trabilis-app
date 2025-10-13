@@ -192,10 +192,9 @@ export default function Flights() {
                     cabinClass,
                 }
             )
-            console.log(res)
             return res.data
         } catch (err) {
-            console.error(err)
+            console.error('Flight search failed:', err)
             throw err
         }
     }

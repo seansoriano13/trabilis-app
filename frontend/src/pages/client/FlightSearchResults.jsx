@@ -55,8 +55,6 @@ function FlightSearchResults() {
         }
     }, [state])
 
-    if (!searchData) console.log('No Flight search results')
-
     const getInitialFilters = () => {
         const saved = localStorage.getItem('savedFilters')
         const parsed = saved ? JSON.parse(saved) : {}

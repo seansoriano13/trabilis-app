@@ -267,7 +267,7 @@ const Dashboard = () => {
                 setCompressionStats(compressionStatsRes.data?.data || null)
                 setLoading(false)
             } catch (err) {
-                console.error(err)
+                console.error('Dashboard data fetch failed:', err)
                 setError('Failed to load data. Please try again.')
                 setLoading(false)
             }
