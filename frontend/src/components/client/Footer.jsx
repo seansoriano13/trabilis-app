@@ -185,6 +185,7 @@ export default function Footer() {
                             LINDELA TRAVEL
                         </div>
                         <ul className='flex text-xl gap-2'>
+                            {/* eslint-disable-next-line no-unused-vars */}
                             {SOCIALS.map(({ link, icon: Icon, color }, idx) => (
                                 <li key={idx}>
                                     <a

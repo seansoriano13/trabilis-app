@@ -77,6 +77,9 @@ node_modules/.vite/
 /roadmaps/
 TODO*.txt
 NOTES*.txt
+todo.txt
+WHAT_I_NOTICED.txt
+trabilis.sql
 
 # OS-generated files
 *.swp

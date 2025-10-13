@@ -35,7 +35,7 @@ import AssignmentModal from '../../components/admin/AssignmentModal'
 
 const AdminVisaInquiries = () => {
     const [inquiries, setInquiries] = useState([])
-    const [inquiryStats, setInquiryStats] = useState({})
+    // const [inquiryStats, setInquiryStats] = useState({})
     const [page, setPage] = useState(0)
     const [total, setTotal] = useState(0)
     const [loading, setLoading] = useState(true)

@@ -51,7 +51,7 @@ function TourPackages() {
                 }
                 setTourPackages(sortedPackages)
                 setIsLoading(false)
-            } catch (err) {
+            } catch (_err) {
                 setError('Failed to load tour packages')
                 setIsLoading(false)
             }
@@ -72,7 +72,7 @@ function TourPackages() {
             await adminClient.delete(`/tours/${id}`)
             setTourPackages(tourPackages.filter((tour) => tour.id !== id))
             setShowDeleteConfirm(null)
-        } catch (err) {
+        } catch (_err) {
             setError('Failed to delete tour package')
         }
     }

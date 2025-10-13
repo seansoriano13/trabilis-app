@@ -87,14 +87,14 @@ const AdminTours = () => {
         { value: 'completed', label: 'Completed' },
     ]
     
-    const dateRangeOptions = [
-        { value: 'All', label: 'All Time' },
-        { value: 'today', label: 'Today' },
-        { value: 'week', label: 'This Week' },
-        { value: 'month', label: 'This Month' },
-        { value: 'quarter', label: 'This Quarter' },
-        { value: 'year', label: 'This Year' }
-    ]
+    // const dateRangeOptions = [
+    //     { value: 'All', label: 'All Time' },
+    //     { value: 'today', label: 'Today' },
+    //     { value: 'week', label: 'This Week' },
+    //     { value: 'month', label: 'This Month' },
+    //     { value: 'quarter', label: 'This Quarter' },
+    //     { value: 'year', label: 'This Year' }
+    // ]
 
     useEffect(() => {
         if (jwt) {
@@ -418,7 +418,7 @@ const AdminTours = () => {
         setSelectedBooking(booking)
         
         // Find the assigned staff option from adminOptions
-        const assignedStaffOption = adminOptions.find(option => option.value === booking.assigned_to)
+        // const assignedStaffOption = adminOptions.find(option => option.value === booking.assigned_to)
         
         setEditForm({
             status: booking.status,

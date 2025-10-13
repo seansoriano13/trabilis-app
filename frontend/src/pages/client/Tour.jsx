@@ -711,9 +711,7 @@ function Tour() {
                     </div>
                 </div>
             </div>
-            
-            {/* Add bottom padding to prevent content from being hidden behind sticky footer */}
-            <div className='h-40'></div>
+        
         </div>
     )
 }

@@ -23,7 +23,7 @@ import Select from 'react-select'
 import { supabase } from '../../api/supabaseClient'
 import adminClient from '../../api/adminClient'
 import './FlightBookingDetail.css'
-import axios from 'axios'
+// import axios from 'axios'
 
 const FlightBookingDetail = () => {
     const { id } = useParams()
@@ -200,10 +200,6 @@ const FlightBookingDetail = () => {
         }
     }
 
-    const handlePrint = () => {
-        window.print()
-    }
-
     const handlePreview = async () => {
         if (!booking) return
 
@@ -328,69 +324,38 @@ const FlightBookingDetail = () => {
         }
     }
 
-    const handleCancel = () => {
-        // Check if booking can be cancelled
-        if (booking.status === 'CANCELLED') {
-            alert('This booking is already cancelled.')
-            return
-        }
+    // const cancelBooking = async (reason) => {
+    //     try {
+    //         const response = await adminClient.put(
+    //             `/flights/${booking.id}/cancel`,
+    //             {
+    //                 reason: reason || null,
+    //             }
+    //         )
 
-        if (booking.status === 'TICKETED') {
-            alert(
-                'Cannot cancel ticketed booking. Please contact support for assistance.'
-            )
-            return
-        }
+    //         if (response.data.success) {
+    //             // Update local state
+    //             setBooking((prev) => ({
+    //                 ...prev,
+    //                 status: 'CANCELLED',
+    //                 cancelled_at: new Date().toISOString(),
+    //                 cancellation_reason: reason || null,
+    //                 updated_at: new Date().toISOString(),
+    //             }))
 
-        // Get cancellation reason
-        const reason = prompt(
-            'Please provide a reason for cancellation (optional):',
-            ''
-        )
-
-        if (
-            window.confirm(
-                `Are you sure you want to cancel this booking?\n\nBooking Reference: ${
-                    booking.booking_reference
-                }\n${reason ? `Reason: ${reason}` : ''}`
-            )
-        ) {
-            cancelBooking(reason)
-        }
-    }
-
-    const cancelBooking = async (reason) => {
-        try {
-            const response = await adminClient.put(
-                `/flights/${booking.id}/cancel`,
-                {
-                    reason: reason || null,
-                }
-            )
-
-            if (response.data.success) {
-                // Update local state
-                setBooking((prev) => ({
-                    ...prev,
-                    status: 'CANCELLED',
-                    cancelled_at: new Date().toISOString(),
-                    cancellation_reason: reason || null,
-                    updated_at: new Date().toISOString(),
-                }))
-
-                alert('Booking cancelled successfully!')
-            } else {
-                alert('Failed to cancel booking')
-            }
-        } catch (error) {
-            console.error('Error cancelling booking:', error)
-            if (error.response?.data?.error) {
-                alert(`Error: ${error.response.data.error}`)
-            } else {
-                alert('Error cancelling booking. Please try again.')
-            }
-        }
-    }
+    //             alert('Booking cancelled successfully!')
+    //         } else {
+    //             alert('Failed to cancel booking')
+    //         }
+    //     } catch (error) {
+    //         console.error('Error cancelling booking:', error)
+    //         if (error.response?.data?.error) {
+    //             alert(`Error: ${error.response.data.error}`)
+    //         } else {
+    //             alert('Error cancelling booking. Please try again.')
+    //         }
+    //     }
+    // }
 
     const handlePrintReceipt = async () => {
         if (!booking) return

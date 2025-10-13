@@ -1,5 +1,5 @@
 import nationalities from '../data/nationalities.json'
-import countries from '../data/CountryCodes.json'
+// import countries from '../data/CountryCodes.json'
 
 // Create a mapping from nationality names to country codes
 const nationalityToCountryCode = {
@@ -210,7 +210,7 @@ export const getNationalityOptions = () => {
 
 // Helper function to get nationality name from country code
 export const getNationalityFromCountryCode = (countryCode) => {
-    const entry = Object.entries(nationalityToCountryCode).find(([nationality, code]) => code === countryCode)
+    const entry = Object.entries(nationalityToCountryCode).find(([_nationality, code]) => code === countryCode)
     return entry ? entry[0] : countryCode
 }
 

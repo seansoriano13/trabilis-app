@@ -24,7 +24,7 @@ export default function Chatbot() {
                 ...newMessages,
                 { sender: 'bot', text: res.data.reply },
             ])
-        } catch (err) {
+        } catch (_err) {
             setMessages([
                 ...newMessages,
                 { sender: 'bot', text: 'Error contacting server.' },

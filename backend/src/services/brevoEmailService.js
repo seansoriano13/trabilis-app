@@ -117,71 +117,116 @@ export const formatToLongDate = (date) => {
 async function createPdfFromHtml(html) {
     let browser
     try {
+        console.log('🔍 PUPPETEER DEBUG - Starting PDF generation')
+        
         // Render-friendly Puppeteer launch options
         const isProduction = process.env.NODE_ENV === 'production'
         const userDataDir = process.env.PUPPETEER_USER_DATA_DIR || '/tmp/puppeteer-user-data'
         const useSystemChrome = process.env.PUPPETEER_USE_SYSTEM_CHROME === 'true'
         const envExecutablePath = useSystemChrome ? process.env.PUPPETEER_EXECUTABLE_PATH : undefined
+        
+        console.log('🔍 PUPPETEER DEBUG - Environment check:', {
+            NODE_ENV: process.env.NODE_ENV,
+            isProduction,
+            userDataDir,
+            useSystemChrome,
+            envExecutablePath,
+            RENDER: !!process.env.RENDER,
+            RENDER_EXTERNAL_URL: process.env.RENDER_EXTERNAL_URL
+        })
+        
         let resolvedExecutablePath
         if (isProduction) {
-            // Prefer chromium path when on serverless/Render
-            resolvedExecutablePath = await chromium.executablePath()
+            console.log('🔍 PUPPETEER DEBUG - Getting Chromium executable path for production')
+            try {
+                resolvedExecutablePath = await chromium.executablePath()
+                console.log('🔍 PUPPETEER DEBUG - Chromium path resolved:', resolvedExecutablePath)
+            } catch (chromiumError) {
+                console.error('❌ PUPPETEER DEBUG - Chromium path resolution failed:', chromiumError.message)
+                resolvedExecutablePath = puppeteer.executablePath()
+                console.log('🔍 PUPPETEER DEBUG - Fallback to Puppeteer path:', resolvedExecutablePath)
+            }
         } else if (envExecutablePath) {
             try {
                 await fs.access(envExecutablePath)
                 resolvedExecutablePath = envExecutablePath
+                console.log('🔍 PUPPETEER DEBUG - Using custom executable path:', resolvedExecutablePath)
             } catch {
                 resolvedExecutablePath = puppeteer.executablePath()
+                console.log('🔍 PUPPETEER DEBUG - Custom path not accessible, using Puppeteer path:', resolvedExecutablePath)
             }
         } else {
             resolvedExecutablePath = puppeteer.executablePath()
+            console.log('🔍 PUPPETEER DEBUG - Using default Puppeteer path:', resolvedExecutablePath)
         }
 
+        // Render-specific args for better compatibility
+        const renderArgs = [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--no-zygote',
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-renderer-backgrounding',
+            '--disable-features=TranslateUI',
+            '--disable-ipc-flooding-protection',
+            '--font-render-hinting=medium',
+            '--ignore-certificate-errors',
+            '--ignore-ssl-errors',
+            '--ignore-certificate-errors-spki-list',
+            '--disable-web-security',
+            '--allow-running-insecure-content',
+            '--disable-extensions',
+            '--disable-plugins',
+            '--disable-images',
+            '--disable-javascript',
+            '--memory-pressure-off',
+            '--max_old_space_size=4096'
+        ]
+        
+        const launchArgs = isProduction ? [...chromium.args, ...renderArgs] : renderArgs
+        
+        console.log('🔍 PUPPETEER DEBUG - Launch configuration:', {
+            headless: 'new',
+            argsCount: launchArgs.length,
+            userDataDir,
+            executablePath: resolvedExecutablePath,
+            isProduction
+        })
+
         try {
+            console.log('🔍 PUPPETEER DEBUG - Attempting browser launch')
             browser = await puppeteer.launch({
                 headless: 'new',
-                args: isProduction ? chromium.args : [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-gpu',
-                    '--no-zygote',
-                    '--font-render-hinting=medium',
-                    '--ignore-certificate-errors',
-                    '--ignore-ssl-errors',
-                    '--ignore-certificate-errors-spki-list',
-                    '--disable-web-security',
-                    '--allow-running-insecure-content',
-                ],
+                args: launchArgs,
                 defaultViewport: isProduction ? chromium.defaultViewport : null,
                 userDataDir,
                 executablePath: resolvedExecutablePath,
+                timeout: 30000, // 30 second timeout
             })
+            console.log('✅ PUPPETEER DEBUG - Browser launched successfully')
         } catch (launchErr) {
+            console.error('❌ PUPPETEER DEBUG - First launch attempt failed:', launchErr.message)
+            console.log('🔍 PUPPETEER DEBUG - Attempting fallback launch without explicit executablePath')
+            
             // Fallback: try without explicit executablePath (let Puppeteer resolve bundled Chrome)
             browser = await puppeteer.launch({
                 headless: 'new',
-                args: isProduction ? chromium.args : [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-gpu',
-                    '--no-zygote',
-                    '--font-render-hinting=medium',
-                    '--ignore-certificate-errors',
-                    '--ignore-ssl-errors',
-                    '--ignore-certificate-errors-spki-list',
-                    '--disable-web-security',
-                    '--allow-running-insecure-content',
-                ],
+                args: launchArgs,
                 defaultViewport: isProduction ? chromium.defaultViewport : null,
                 userDataDir,
+                timeout: 30000,
             })
+            console.log('✅ PUPPETEER DEBUG - Fallback browser launch successful')
         }
         const page = await browser.newPage()
+        console.log('✅ PUPPETEER DEBUG - New page created')
         
         // Set real Chrome user-agent and headers for better image loading
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+        console.log('✅ PUPPETEER DEBUG - User agent set')
         
         // Set extra headers including Referer for kiwi.com images
         await page.setExtraHTTPHeaders({
@@ -190,6 +235,7 @@ async function createPdfFromHtml(html) {
             'Accept-Language': 'en-US,en;q=0.9',
             'Cache-Control': 'no-cache',
         })
+        console.log('✅ PUPPETEER DEBUG - HTTP headers set')
         
         // Ensure UTF-8 charset and base styles are respected
         const normalizedHtml = html.includes('<meta charset="utf-8"')
@@ -199,13 +245,18 @@ async function createPdfFromHtml(html) {
                   '<head><meta charset="utf-8">'
               )
         
+        console.log('🔍 PUPPETEER DEBUG - HTML prepared, length:', normalizedHtml.length)
+        
         // Load content with networkidle0 to wait for all resources
+        console.log('🔍 PUPPETEER DEBUG - Loading HTML content')
         await page.setContent(normalizedHtml, { 
             waitUntil: 'networkidle0',
             timeout: 30000 // 30 second timeout for image loading
         })
+        console.log('✅ PUPPETEER DEBUG - HTML content loaded')
         
         // Wait for all images to load completely
+        console.log('🔍 PUPPETEER DEBUG - Waiting for images to load')
         await page.evaluate(() => {
             return Promise.all(
                 Array.from(document.images)
@@ -215,21 +266,34 @@ async function createPdfFromHtml(html) {
                     }))
             )
         })
+        console.log('✅ PUPPETEER DEBUG - Images loaded')
         
         // Additional wait to ensure all images are fully rendered
         await new Promise(resolve => setTimeout(resolve, 2000))
+        console.log('✅ PUPPETEER DEBUG - Additional render wait completed')
         
+        console.log('🔍 PUPPETEER DEBUG - Generating PDF')
         const pdfBuffer = await page.pdf({
             format: 'A4',
             printBackground: true,
             preferCSSPageSize: false,
             margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' },
         })
+        console.log('✅ PUPPETEER DEBUG - PDF generated successfully, size:', pdfBuffer.length, 'bytes')
+        
         await page.close()
+        console.log('✅ PUPPETEER DEBUG - Page closed')
+        
         return pdfBuffer
     } finally {
         if (browser) {
-            await browser.close()
+            console.log('🔍 PUPPETEER DEBUG - Closing browser')
+            try {
+                await browser.close()
+                console.log('✅ PUPPETEER DEBUG - Browser closed successfully')
+            } catch (closeError) {
+                console.error('❌ PUPPETEER DEBUG - Error closing browser:', closeError.message)
+            }
         }
     }
 }
@@ -481,6 +545,7 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
 
 export const generateTourSummaryPDF = async (bookingDetails) => {
     try {
+        console.log('🔍 PDF DEBUG - Starting tour PDF generation')
         console.log('📧 Email PDF Generation - Received bookingDetails:', JSON.stringify(bookingDetails, null, 2))
         
         // Transform flattened bookingDetails back to the structure expected by generateTourBookingHTML
@@ -548,15 +613,22 @@ export const generateTourSummaryPDF = async (bookingDetails) => {
         console.log('📧 Email PDF Generation - Transformed booking:', JSON.stringify(transformedBooking, null, 2))
 
         // Generate HTML using shared function
+        console.log('🔍 PDF DEBUG - Generating HTML from template')
         const html = await generateTourBookingHTML(transformedBooking)
         
         console.log('📧 Email PDF Generation - HTML generated successfully, length:', html.length)
         
         // Convert HTML to PDF using existing PDF generation logic
+        console.log('🔍 PDF DEBUG - Converting HTML to PDF')
         return await createPdfFromHtml(html)
     } catch (err) {
-        console.error('❌ Error generating Tour PDF:', err)
-        console.error('❌ Booking details received:', JSON.stringify(bookingDetails, null, 2))
+        console.error('❌ PDF DEBUG - Error generating Tour PDF:', err)
+        console.error('❌ PDF DEBUG - Booking details received:', JSON.stringify(bookingDetails, null, 2))
+        console.error('❌ PDF DEBUG - Error details:', {
+            message: err.message,
+            stack: err.stack,
+            name: err.name
+        })
         throw new Error('Could not generate the tour summary PDF.')
     }
 }
@@ -672,7 +744,14 @@ export const sendConfirmationEmail = async (bookingReference) => {
 
 export const sendTourConfirmationEmail = async (bookingDetails) => {
     try {
+        console.log('🔍 EMAIL DEBUG - Starting tour confirmation email for:', bookingDetails.bookingReference)
+        console.log('🔍 EMAIL DEBUG - Email recipient:', bookingDetails.email)
+        console.log('🔍 EMAIL DEBUG - Tour title:', bookingDetails.tourTitle)
+        
+        console.log('🔍 EMAIL DEBUG - Generating PDF buffer')
         const pdfBuffer = await generateTourSummaryPDF(bookingDetails)
+        console.log('✅ EMAIL DEBUG - PDF generated successfully, size:', pdfBuffer.length, 'bytes')
+        
         const {
             email,
             firstName = 'Guest',
@@ -682,6 +761,7 @@ export const sendTourConfirmationEmail = async (bookingDetails) => {
 
         if (!email) throw new Error('Recipient email not found.')
 
+        console.log('🔍 EMAIL DEBUG - Preparing Brevo email')
         const sendSmtpEmail = new brevo.SendSmtpEmail()
         
         sendSmtpEmail.subject = `Tour Confirmation - ${tourTitle}`
@@ -708,11 +788,17 @@ export const sendTourConfirmationEmail = async (bookingDetails) => {
             name: `Tour-Summary-${bookingReference}.pdf`
         }]
 
+        console.log('🔍 EMAIL DEBUG - Sending email via Brevo API')
         const data = await apiInstance.sendTransacEmail(sendSmtpEmail)
-        console.log(`✅ Tour confirmation email sent to ${email} (Ref: ${bookingReference})`)
-        console.log('Brevo API response:', data.response.statusMessage)
+        console.log(`✅ EMAIL DEBUG - Tour confirmation email sent to ${email} (Ref: ${bookingReference})`)
+        console.log('🔍 EMAIL DEBUG - Brevo API response:', data.response.statusMessage)
     } catch (err) {
-        console.error('❌ Error sending tour confirmation email:', err)
+        console.error('❌ EMAIL DEBUG - Error sending tour confirmation email:', err)
+        console.error('❌ EMAIL DEBUG - Error details:', {
+            message: err.message,
+            stack: err.stack,
+            name: err.name
+        })
         throw err
     }
 }

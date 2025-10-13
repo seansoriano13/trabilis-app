@@ -22,7 +22,7 @@ export default function ImmigrationVisaConsultancy() {
         }
     }
 
-    const handleViewDetails = (visaType) => {
+    const handleViewDetails = (_visaType) => {
         // Handle view details button click
         // TODO: Implement view details functionality
     }

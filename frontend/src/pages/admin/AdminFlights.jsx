@@ -25,7 +25,6 @@ import ReactPaginate from 'react-paginate'
 import './AdminFlights.css'
 import { supabase } from '../../api/supabaseClient'
 import AssignmentModal from '../../components/admin/AssignmentModal'
-import adminClient from '../../api/adminClient'
 
 const AdminFlights = () => {
     const [flightBookings, setFlightBookings] = useState([])
@@ -177,10 +176,6 @@ const AdminFlights = () => {
         })
     }
 
-    const getNestedValue = (obj, path) => {
-        return path.split('.').reduce((o, k) => o?.[k], obj) || ''
-    }
-
     const handleSort = (key) => {
         setSort({
             key,
@@ -224,26 +219,6 @@ const AdminFlights = () => {
                 booking.id === updatedBooking.id ? updatedBooking : booking
             )
         )
-    }
-
-    const handlePreviewPDF = async (bookingId) => {
-        try {
-            const token = localStorage.getItem('adminToken')
-            const url = `${import.meta.env.VITE_BACKEND_URL}/api/v1/admin/flights/${bookingId}/html`
-            window.open(`${url}?token=${token}`, '_blank')
-        } catch (error) {
-            console.error('Error opening PDF preview:', error)
-        }
-    }
-
-    const handleDownloadPDF = async (bookingId) => {
-        try {
-            const token = localStorage.getItem('adminToken')
-            const url = `${import.meta.env.VITE_BACKEND_URL}/api/v1/admin/flights/${bookingId}/pdf`
-            window.open(`${url}?token=${token}`, '_blank')
-        } catch (error) {
-            console.error('Error downloading PDF:', error)
-        }
     }
 
     if (loading) {

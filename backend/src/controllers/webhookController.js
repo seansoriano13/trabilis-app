@@ -31,6 +31,10 @@ export const handleStripeWebhook = async (req, res) => {
     let { booking_reference, product_type } = session.metadata || {}
     product_type = product_type || 'FLIGHT'
 
+    console.log(`🔍 WEBHOOK DEBUG - Processing ${product_type} booking: ${booking_reference}`)
+    console.log(`🔍 WEBHOOK DEBUG - Session metadata:`, session.metadata)
+    console.log(`🔍 WEBHOOK DEBUG - Payment amount: ${session.amount_total} ${session.currency}`)
+
     if (!booking_reference) {
         console.error('❌ Webhook session missing booking_reference')
         return res.sendStatus(400)
@@ -38,6 +42,8 @@ export const handleStripeWebhook = async (req, res) => {
 
     try {
         if (product_type === 'TOUR') {
+            console.log(`🔍 WEBHOOK DEBUG - Starting TOUR processing for ${booking_reference}`)
+            
             // ===== TOUR LOGIC =====
             const { data: bookingData, error: bookingError } = await supabase
                 .from('tour_bookings')
@@ -55,12 +61,28 @@ export const handleStripeWebhook = async (req, res) => {
                 .eq('status', 'PENDING_PAYMENT')
                 .maybeSingle()
 
+            console.log(`🔍 WEBHOOK DEBUG - Tour booking query result:`, {
+                found: !!bookingData,
+                error: bookingError?.message,
+                status: bookingData?.status,
+                passengerCount: bookingData?.passenger_count
+            })
+
             if (bookingError || !bookingData) {
                 console.log(
                     `⚠️ Webhook received for tour booking ${booking_reference}, but no booking found or already processed.`
                 )
                 return res.sendStatus(200)
             }
+
+            console.log(`🔍 WEBHOOK DEBUG - Tour booking data retrieved successfully`)
+            console.log(`🔍 WEBHOOK DEBUG - Package details:`, {
+                tourTitle: bookingData.package_dates?.tour_packages?.title,
+                startDate: bookingData.package_dates?.start_date,
+                endDate: bookingData.package_dates?.end_date,
+                availableSlots: bookingData.package_dates?.available_slots,
+                passengerCount: bookingData.passenger_count
+            })
 
             const bookingDetails = {
                 bookingReference: bookingData.booking_reference,
@@ -109,8 +131,23 @@ export const handleStripeWebhook = async (req, res) => {
                     bookingData.package_dates.tour_packages.panellum_url || '',
             }
 
+            console.log(`🔍 WEBHOOK DEBUG - Booking details prepared for email:`, {
+                bookingReference: bookingDetails.bookingReference,
+                email: bookingDetails.email,
+                tourTitle: bookingDetails.tourTitle,
+                itineraryCount: bookingDetails.itinerary?.length || 0,
+                passengerCount: bookingDetails.passengerCount
+            })
+
             const currentSlots = bookingData.package_dates.available_slots
             const newSlots = currentSlots - bookingData.passenger_count
+
+            console.log(`🔍 WEBHOOK DEBUG - Slot calculation:`, {
+                currentSlots,
+                passengerCount: bookingData.passenger_count,
+                newSlots,
+                hasEnoughSlots: newSlots >= 0
+            })
 
             if (newSlots < 0) {
                 console.error(
@@ -134,6 +171,7 @@ export const handleStripeWebhook = async (req, res) => {
                 return res.sendStatus(500)
             }
 
+            console.log(`🔍 WEBHOOK DEBUG - Updating tour booking status to CONFIRMED`)
             const { error: updateBookingError } = await supabase
                 .from('tour_bookings')
                 .update({
@@ -145,6 +183,7 @@ export const handleStripeWebhook = async (req, res) => {
 
             if (updateBookingError) throw updateBookingError
 
+            console.log(`🔍 WEBHOOK DEBUG - Updating available slots: ${newSlots}`)
             const { error: updateSlotsError } = await supabase
                 .from('package_dates')
                 .update({ available_slots: newSlots })
@@ -152,8 +191,11 @@ export const handleStripeWebhook = async (req, res) => {
 
             if (updateSlotsError) throw updateSlotsError
 
+            console.log(`🔍 WEBHOOK DEBUG - Database updates completed successfully`)
+
             // Immediately notify admin that a tour payment is confirmed
             try {
+                console.log(`🔍 WEBHOOK DEBUG - Sending admin notification`)
                 const pusher = new Pusher({
                     appId: '2048372',
                     key: '371c6201af1a663a4f58',
@@ -195,7 +237,28 @@ export const handleStripeWebhook = async (req, res) => {
 
             // Ensure email shows latest status
             bookingDetails.status = 'CONFIRMED'
-            await sendTourConfirmationEmail(bookingDetails)
+            
+            console.log(`🔍 WEBHOOK DEBUG - Starting email generation and sending`)
+            console.log(`🔍 WEBHOOK DEBUG - Environment check:`, {
+                NODE_ENV: process.env.NODE_ENV,
+                RENDER_EXTERNAL_URL: process.env.RENDER_EXTERNAL_URL,
+                BACKEND_URL: process.env.BACKEND_URL,
+                BREVO_API_KEY: process.env.BREVO_API_KEY ? 'SET' : 'NOT_SET',
+                BREVO_FROM_EMAIL: process.env.BREVO_FROM_EMAIL
+            })
+            
+            try {
+                await sendTourConfirmationEmail(bookingDetails)
+                console.log(`✅ WEBHOOK DEBUG - Tour confirmation email sent successfully for ${booking_reference}`)
+            } catch (emailError) {
+                console.error(`❌ WEBHOOK DEBUG - Email sending failed for ${booking_reference}:`, emailError)
+                console.error(`❌ WEBHOOK DEBUG - Email error details:`, {
+                    message: emailError.message,
+                    stack: emailError.stack,
+                    name: emailError.name
+                })
+                // Don't fail the webhook - email is not critical for payment processing
+            }
         } else {
             // ===== FLIGHT LOGIC =====
             const { data, error } = await supabase

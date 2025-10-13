@@ -134,32 +134,32 @@ function AdminNavbar() {
                     fetchNotifications()
                 })
 
-                channel.bind('new-booking', (data) => {
+                channel.bind('new-booking', (_data) => {
                     // Refresh notifications from database instead of just adding to local state
                     fetchNotifications()
                     if (!isNotificationsOpen) setIsNotificationsOpen(true)
                 })
 
-                channel.bind('booking-assigned', (data) => {
+                channel.bind('booking-assigned', (_data) => {
                     // Refresh notifications from database instead of just adding to local state
                     fetchNotifications()
                     if (!isNotificationsOpen) setIsNotificationsOpen(true)
                 })
 
                 // Also listen for the actual event name from database
-                channel.bind('booking_assigned', (data) => {
+                channel.bind('booking_assigned', (_data) => {
                     // Refresh notifications from database instead of just adding to local state
                     fetchNotifications()
                     if (!isNotificationsOpen) setIsNotificationsOpen(true)
                 })
 
-                channel.bind('booking-reassigned', (data) => {
+                channel.bind('booking-reassigned', (_data) => {
                     // Refresh notifications from database instead of just adding to local state
                     fetchNotifications()
                     if (!isNotificationsOpen) setIsNotificationsOpen(true)
                 })
 
-                channel.bind('visa-inquiry-assigned', (data) => {
+                channel.bind('visa-inquiry-assigned', (_data) => {
                     // Refresh notifications from database instead of just adding to local state
                     fetchNotifications()
                     if (!isNotificationsOpen) setIsNotificationsOpen(true)
