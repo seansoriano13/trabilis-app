@@ -7,6 +7,8 @@ import {
     getAllTours,
     getTour,
     updateTour,
+    updateTourVisaSettings,
+    getCountriesWithVisaRequirements,
 } from '../controllers/admin/tourController.js'
 import { adminLogin } from '../controllers/admin/loginController.js'
 import {
@@ -28,11 +30,10 @@ import {
     generateFlightPDF,
     generateFlightPDFAdmin,
     viewFlightBookingHTML,
-    viewFlightBookingPrint,
     editFlightBooking,
     cancelFlightBooking
 } from '../controllers/admin/flightController.js'
-import { generateTourPDF, generateTourPDFAdmin, viewTourBookingHTML, viewTourBookingPrint, editTourBooking, cancelTourBooking } from '../controllers/admin/tourController.js'
+import { generateTourPDFAdmin, viewTourBookingHTML, editTourBooking, cancelTourBooking } from '../controllers/admin/tourController.js'
 import {
     getAccountingStaff,
     getAllStaff,
@@ -60,6 +61,7 @@ router.get('/me', (req, res) => {
 // Tour
 router.post('/tours/create', createTour)
 router.get('/tours', getAllTours)
+router.get('/tours/countries-with-visa', getCountriesWithVisaRequirements)
 router.get('/tours/:id', getTour)
 router.put('/tours/:id', updateTour)
 router.delete('/tours/:id', deleteTour)
@@ -94,21 +96,31 @@ router.get('/dashboard/tour_stats', getTourStats)
 router.get('/flights/:id/pdf', pdfAuthMiddleware, generateFlightPDF)
 router.get('/flights/:id/pdfadmin', pdfAuthMiddleware, generateFlightPDFAdmin)
 router.get('/flights/:id/html', pdfAuthMiddleware, viewFlightBookingHTML)
-router.get('/flights/:id/print', pdfAuthMiddleware, viewFlightBookingPrint)
+router.get('/flights/:id/print', pdfAuthMiddleware, (req, res) => {
+    // Add mode=print query parameter and delegate to viewFlightBookingHTML
+    req.query.mode = 'print'
+    viewFlightBookingHTML(req, res)
+})
 
 // Flight booking management
 router.put('/flights/:id/edit', editFlightBooking)
 router.put('/flights/:id/cancel', cancelFlightBooking)
 
 // Tour PDF (using special PDF auth middleware)
-router.get('/tours/:id/pdf', pdfAuthMiddleware, generateTourPDF)
 router.get('/tours/:id/pdfadmin', pdfAuthMiddleware, generateTourPDFAdmin)
 router.get('/tours/:id/html', pdfAuthMiddleware, viewTourBookingHTML)
-router.get('/tours/:id/print', pdfAuthMiddleware, viewTourBookingPrint)
+router.get('/tours/:id/print', pdfAuthMiddleware, (req, res) => {
+    // Add mode=print query parameter and delegate to viewTourBookingHTML
+    req.query.mode = 'print'
+    viewTourBookingHTML(req, res)
+})
 
 // Tour booking management
 router.put('/tours/:id/edit', editTourBooking)
 router.put('/tours/:id/cancel', cancelTourBooking)
+
+// Tour visa settings
+router.put('/tours/:id/visa-settings', updateTourVisaSettings)
 
 // Users
 router.get('/users', getUsers)

@@ -1,0 +1,361 @@
+/* Visa Processing Modal Styles */
+.visa-processing-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+}
+
+.visa-processing-modal {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    width: 100%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.visa-processing-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+.visa-processing-modal__title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.visa-processing-modal__title h3 {
+    margin: 0;
+    color: #111827;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.modal-icon {
+    color: #3b82f6;
+    flex-shrink: 0;
+}
+
+.visa-processing-modal__close {
+    background: none;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.visa-processing-modal__close:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.visa-processing-modal__content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+
+.visa-processing-modal__loading,
+.visa-processing-modal__error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    text-align: center;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e2e8f0;
+    border-top: 4px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.error-icon {
+    color: #ef4444;
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.visa-processing-modal__error p {
+    color: #6b7280;
+    margin: 0;
+}
+
+/* Section Styles */
+.visa-processing-modal__section {
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 1rem 0;
+    color: #111827;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.section-icon {
+    color: #3b82f6;
+    flex-shrink: 0;
+}
+
+/* Passenger Information */
+.passenger-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.info-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.info-value {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #111827;
+    font-size: 0.875rem;
+}
+
+/* Form Styles */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-field label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+/* Requirements Checklist */
+.requirements-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+}
+
+.requirement-item {
+    display: flex;
+    align-items: center;
+}
+
+.requirement-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+}
+
+.requirement-checkbox:hover {
+    background: #f9fafb;
+}
+
+.requirement-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #3b82f6;
+}
+
+.requirement-label {
+    font-size: 0.875rem;
+    color: #374151;
+    user-select: none;
+}
+
+/* Notes */
+.notes-textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 100px;
+}
+
+.notes-textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Status Icons */
+.status-icon {
+    font-size: 1rem;
+}
+
+.status-icon--approved {
+    color: #10b981;
+}
+
+.status-icon--in-progress {
+    color: #3b82f6;
+}
+
+.status-icon--rejected {
+    color: #ef4444;
+}
+
+.status-icon--cancelled {
+    color: #6b7280;
+}
+
+.status-icon--pending {
+    color: #f59e0b;
+}
+
+/* Footer */
+.visa-processing-modal__footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+/* Buttons */
+.btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn--primary {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    box-shadow: 0 1px 3px rgba(59, 130, 246, 0.2);
+}
+
+.btn--primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+}
+
+.btn--secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.btn--secondary:hover:not(:disabled) {
+    background: #e5e7eb;
+    border-color: #9ca3af;
+}
+
+.btn-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .visa-processing-modal {
+        margin: 0.5rem;
+        max-height: 95vh;
+    }
+    
+    .visa-processing-modal__header {
+        padding: 1rem;
+    }
+    
+    .visa-processing-modal__content {
+        padding: 1rem;
+    }
+    
+    .visa-processing-modal__footer {
+        padding: 1rem;
+        flex-direction: column-reverse;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .passenger-info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .requirements-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}

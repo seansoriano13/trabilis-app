@@ -10,8 +10,16 @@ const AssignmentModal = ({
     bookingId, 
     bookingType, 
     bookingReference,
+    // Legacy props for visa inquiries
+    inquiryId,
+    inquiryReference,
+    inquiryType,
     onSuccess 
 }) => {
+    // Use legacy props if new props are not provided
+    const actualBookingId = bookingId || inquiryId
+    const actualBookingType = bookingType || inquiryType
+    const actualBookingReference = bookingReference || inquiryReference
     const [staff, setStaff] = useState([])
     const [selectedStaff, setSelectedStaff] = useState(null)
     const [loading, setLoading] = useState(false)
@@ -21,18 +29,18 @@ const AssignmentModal = ({
         if (isOpen) {
             fetchAccountingStaff()
         }
-    }, [isOpen, bookingType])
+    }, [isOpen, actualBookingType])
 
     const fetchAccountingStaff = async () => {
         try {
             // Use different endpoints based on booking type
-            const endpoint = bookingType === 'visa' ? '/appointments/all-staff' : '/appointments/staff'
+            const endpoint = actualBookingType === 'visa' ? '/appointments/all-staff' : '/appointments/staff'
             const response = await adminClient.get(endpoint)
 
             
             if (response.data.success) {
                 // Filter for travel consultants only when booking type is visa
-                if (bookingType === 'visa') {
+                if (actualBookingType === 'visa') {
                    
                     const travelConsultants = response.data.data.filter(member => 
                         member.role === 'travel_consultant'
@@ -51,14 +59,15 @@ const AssignmentModal = ({
 
     const handleAssign = async () => {
         if (!selectedStaff) {
-            setError(`Please select a ${bookingType === 'visa' ? 'travel consultant' : 'staff member'}`)
+            setError(`Please select a ${actualBookingType === 'visa-inquiry' || actualBookingType === 'visa-processing' ? 'travel consultant' : 'staff member'}`)
             return
         }
 
         setLoading(true)
         setError('')
 
-        try {            // Get current admin user from localStorage
+        try {
+            // Get current admin user from localStorage
             const adminEmail = localStorage.getItem('admin_email')
             const adminToken = localStorage.getItem('adminToken')
             
@@ -68,29 +77,20 @@ const AssignmentModal = ({
                 return
             }
 
-            // Get admin user details from the token or use email as fallback
-            const assignedBy = adminEmail // Using email as identifier for now
+            // Unified endpoint for all booking types
+            const endpoint = '/assignments/assign'
+            
+            // Unified request payload
+            const requestData = {
+                bookingType: actualBookingType, // 'tour', 'flight', 'visa-inquiry', 'visa-processing'
+                bookingId: actualBookingId,
+                assignedTo: selectedStaff.value,
+                assignedBy: adminEmail
+            }
 
-            const endpoint = bookingType === 'tour' 
-                ? '/appointments/assign-tour' 
-                : bookingType === 'flight'
-                ? '/appointments/assign-flight'
-                : '/visa/inquiries/assign'
-
-            // Use different parameter names based on booking type
-            const requestData = bookingType === 'visa' 
-                ? {
-                    inquiryId: bookingId,
-                    assignedTo: selectedStaff.value,
-                    assignedBy: assignedBy
-                  }
-                : {
-                    bookingId: bookingId,
-                    assignedTo: selectedStaff.value,
-                    assignedBy: assignedBy
-                  }
-
-            const response = await adminClient.post(endpoint, requestData)
+            const response = await adminClient.post(endpoint, requestData, {
+                headers: { Authorization: `Bearer ${adminToken}` }
+            })
 
             if (response.data.success) {
                 onSuccess(response.data.data)
@@ -120,7 +120,7 @@ const AssignmentModal = ({
                 <div className="assignment-modal-header">
                     <div className="assignment-modal-title">
                         <FiUser size={20} />
-                        <h3>Assign Inquiry</h3>
+                        <h3>Assign {actualBookingType === 'visa-processing' ? 'Visa Processing' : actualBookingType === 'visa-inquiry' ? 'Visa Inquiry' : 'Booking'}</h3>
                     </div>
                     <button 
                         className="assignment-modal-close"
@@ -132,8 +132,8 @@ const AssignmentModal = ({
 
                 <div className="assignment-modal-content">
                     <div className="assignment-modal-info">
-                        <p><strong>Inquiry Reference:</strong> {bookingReference}</p>
-                        <p><strong>Type:</strong> {bookingType === 'tour' ? 'Tour' : bookingType === 'flight' ? 'Flight' : 'Visa'} {bookingType === 'visa' ? 'Inquiry' : 'Booking'}</p>
+                        <p><strong>{actualBookingType === 'visa-processing' ? 'Processing ID' : actualBookingType === 'visa-inquiry' ? 'Inquiry Reference' : 'Booking Reference'}:</strong> {actualBookingReference}</p>
+                        <p><strong>Type:</strong> {actualBookingType === 'tour' ? 'Tour' : actualBookingType === 'flight' ? 'Flight' : actualBookingType === 'visa-processing' ? 'Visa Processing' : 'Visa Inquiry'}</p>
                     </div>
 
                     {error && (
@@ -146,7 +146,7 @@ const AssignmentModal = ({
                     <div className="assignment-modal-form">
                         <label className="assignment-modal-label">
                             <FiUser size={16} />
-                            {bookingType === 'visa' ? 'Select Travel Consultant' : 'Select Staff Member'}
+                            {actualBookingType === 'visa' ? 'Select Travel Consultant' : actualBookingType === 'visa-processing' ? 'Select Travel Consultant' : 'Select Staff Member'}
                         </label>
                         <Select
                             value={selectedStaff}
