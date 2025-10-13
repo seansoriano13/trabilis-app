@@ -111,6 +111,7 @@ function Tour() {
                 passengers,
                 selectedDate,
                 title: tour.title,
+                tourPackage: tour, // Explicitly pass tour as tourPackage
                 customization: customizationPayload,
             },
         })
@@ -132,7 +133,13 @@ function Tour() {
         </button>
     ))
 
-    const itineraries = selectedDate?.itineraries?.map((itinerary) => {
+    const itineraries = selectedDate?.itineraries
+        ?.sort((a, b) => {
+            const dayA = parseInt(a.day_number) || 0
+            const dayB = parseInt(b.day_number) || 0
+            return dayA - dayB
+        })
+        ?.map((itinerary) => {
         const isCollapsed = isDescHidden[itinerary.id]
         const isRest = restDayNumbers.has(itinerary.day_number)
         return (
@@ -174,11 +181,96 @@ function Tour() {
                             )}
                         </div>
                     </button>
-                    <div className={isCollapsed ? 'hidden' : ''}>
+                    <div 
+                        className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                            isCollapsed 
+                                ? 'max-h-0 opacity-0' 
+                                : 'max-h-[2000px] opacity-100'
+                        }`}
+                        aria-hidden={isCollapsed}
+                    >
                         {isRest ? (
-                            <div className='italic text-gray-500'>Rest Day</div>
+                            <div className='flex items-center justify-center py-8 px-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200'>
+                                <div className='text-center'>
+                                    <div className='text-4xl mb-2'>😴</div>
+                                    <div className='italic text-gray-600 font-medium text-lg'>Rest Day</div>
+                                    <div className='text-sm text-gray-500 mt-1'>Take time to relax and recharge</div>
+                                </div>
+                            </div>
                         ) : (
-                            itinerary.description
+                            <div className='space-y-4'>
+                                {itinerary.image_url ? (
+                                    <div className='flex flex-col md:flex-row gap-4 md:gap-6'>
+                                        {/* Image on the left */}
+                                        <div className='flex-shrink-0 w-full md:w-80 lg:w-96'>
+                                            <div className='relative group overflow-hidden rounded-xl shadow-lg'>
+                                                <img
+                                                    src={itinerary.image_url}
+                                                    alt={`Day ${itinerary.day_number} - ${itinerary.title}`}
+                                                    className='w-full h-48 md:h-64 lg:h-72 object-cover transition-transform duration-300 group-hover:scale-105'
+                                                    loading='lazy'
+                                                    onError={(e) => {
+                                                        e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzZjNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIFVuYXZhaWxhYmxlPC90ZXh0Pjwvc3ZnPg=='
+                                                        e.target.alt = 'Image unavailable'
+                                                    }}
+                                                />
+                                                <div className='absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300'></div>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Description on the right */}
+                                        <div className='flex-1 min-w-0'>
+                                            <div className='prose prose-sm max-w-none'>
+                                                <div 
+                                                    id={`desc-${itinerary.id}`}
+                                                    className='text-gray-700 leading-relaxed whitespace-pre-line line-clamp-3'
+                                                >
+                                                    {itinerary.description || 'No description available for this day.'}
+                                                </div>
+                                            </div>
+                                            {itinerary.description && itinerary.description.length > 200 && (
+                                                <button
+                                                    className='text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200 flex items-center gap-1 mt-2'
+                                                    onClick={() => {
+                                                        // Add expand/collapse functionality for long descriptions
+                                                        const element = document.getElementById(`desc-${itinerary.id}`)
+                                                        if (element) {
+                                                            element.classList.toggle('line-clamp-3')
+                                                        }
+                                                    }}
+                                                >
+                                                    <span>Read more</span>
+                                                    <IoIosArrowDown className='text-xs' />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className='prose prose-sm max-w-none'>
+                                        <div 
+                                            id={`desc-${itinerary.id}`}
+                                            className='text-gray-700 leading-relaxed whitespace-pre-line line-clamp-3'
+                                        >
+                                            {itinerary.description || 'No description available for this day.'}
+                                        </div>
+                                        {itinerary.description && itinerary.description.length > 200 && (
+                                            <button
+                                                className='text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200 flex items-center gap-1 mt-2'
+                                                onClick={() => {
+                                                    // Add expand/collapse functionality for long descriptions
+                                                    const element = document.getElementById(`desc-${itinerary.id}`)
+                                                    if (element) {
+                                                        element.classList.toggle('line-clamp-3')
+                                                    }
+                                                }}
+                                            >
+                                                <span>Read more</span>
+                                                <IoIosArrowDown className='text-xs' />
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
                 </div>
@@ -208,7 +300,7 @@ function Tour() {
         const isRemoved = removedGroupIds.has(group.id)
         const titleText = sanitizeText(group.title)
         const itemsSanitized = (group.items || []).map((it) => sanitizeText(it)).filter(Boolean)
-        const showList = itemsSanitized.length > 1 || (itemsSanitized.length === 1 && itemsSanitized[0] !== titleText)
+        const showList = itemsSanitized.length > 0
         return (
             <div key={group.id} className={`border border-gray-400 rounded-lg px-4 py-3 ${isRemoved ? 'bg-gray-50' : 'bg-white'}`}>
                 <div className='flex items-center gap-3'>
@@ -247,7 +339,6 @@ function Tour() {
             </div>
         )
     })
-
     const exclusions = selectedDate?.exclusions?.map((exclusion, idx) => {
         const text = sanitizeText(exclusion)
         return text ? (
@@ -292,11 +383,14 @@ function Tour() {
         <div className='tour-container'>
             <div className='tour-card--destinations'>
                 {tour.main_image_url && (
-                    <img
-                        className='tour-card__image'
-                        src={tour.main_image_url}
-                        alt={tour.title || 'Tour Image'}
-                    />
+                    <div className='relative overflow-hidden'>
+                        <img
+                            className='tour-card__image'
+                            src={tour.main_image_url}
+                            alt={tour.title || 'Tour Image'}
+                        />
+                        <div className='absolute inset-0 bg-gradient-to-t from-black/20 to-transparent'></div>
+                    </div>
                 )}
                 <div className='tour-card__content max-w-[1200px] mx-auto mt-8'>
                     <div className='tour-card__header'>
@@ -317,28 +411,37 @@ function Tour() {
                             </button>
                         )}
                     </p>
-                    <div className='grid gap-3'>
-                        <div className='text-sm text-gray-600'>
+                    <div className='grid gap-4 bg-gray-50 rounded-xl p-6'>
+                        <div className='text-sm font-semibold text-gray-700 flex items-center gap-2'>
+                            <i className='bi-calendar-event text-yellow-500'></i>
                             Available Dates
                         </div>
-                        <div className='flex flex-wrap gap-2'>{availableDates}</div>
-                        <div className='text-sm text-gray-600'>
-                            Available Slots: {availableSlots}
-                        </div>
-                        {selectedDate && (
-                            <div className='text-sm text-gray-600'>
-                                Rate per Pax:{' '}
-                                {selectedDate.rate_per_pax
-                                    ? `PHP ${selectedDate.rate_per_pax.toLocaleString()}`
-                                    : 'N/A'}
+                        <div className='flex flex-wrap gap-3'>{availableDates}</div>
+                        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                            <div className='text-sm text-gray-600 flex items-center gap-2'>
+                                <i className='bi-people text-blue-500'></i>
+                                <span>Available Slots: <span className='font-semibold text-gray-800'>{availableSlots}</span></span>
                             </div>
-                        )}
+                            {selectedDate && (
+                                <div className='text-sm text-gray-600 flex items-center gap-2'>
+                                    <i className='bi-currency-dollar text-green-500'></i>
+                                    <span>Rate per Pax: <span className='font-semibold text-gray-800'>
+                                        {selectedDate.rate_per_pax
+                                            ? `PHP ${selectedDate.rate_per_pax.toLocaleString()}`
+                                            : 'N/A'}
+                                    </span></span>
+                                </div>
+                            )}
+                        </div>
                         {/* Customize Tour controls */}
-                        <div className='mt-2 border border-gray-300 rounded-lg p-4 bg-white shadow-sm'>
+                        <div className='mt-4 border border-gray-300 rounded-lg p-6 bg-white shadow-sm'>
                             <div className='flex items-center justify-between'>
                                 <div>
-                                    <div className='font-medium text-gray-800'>Customize this tour</div>
-                                    <div className='text-xs text-gray-500'>Remove inclusion groups or mark rest days</div>
+                                    <div className='font-semibold text-gray-800 flex items-center gap-2'>
+                                        <i className='bi-gear text-yellow-500'></i>
+                                        Customize this tour
+                                    </div>
+                                    <div className='text-sm text-gray-500 mt-1'>Remove inclusion groups or mark rest days</div>
                                 </div>
                                 <button
                                     type='button'
@@ -360,13 +463,23 @@ function Tour() {
                                 </button>
                             </div>
 
-                            <div className='mt-3 flex items-center gap-3 text-xs'>
-                                <span className='px-2 py-0.5 rounded-full bg-gray-100 text-gray-700'>Removed: {removedGroupIds.size}</span>
-                                <span className='px-2 py-0.5 rounded-full bg-gray-100 text-gray-700'>Rest days: {restDayNumbers.size}</span>
+                            <div className='mt-4 flex items-center gap-3 text-sm'>
+                                <span className='px-3 py-1 rounded-full bg-red-100 text-red-700 font-medium flex items-center gap-1'>
+                                    <i className='bi-x-circle text-xs'></i>
+                                    Removed: {removedGroupIds.size}
+                                </span>
+                                <span className='px-3 py-1 rounded-full bg-blue-100 text-blue-700 font-medium flex items-center gap-1'>
+                                    <i className='bi-moon text-xs'></i>
+                                    Rest days: {restDayNumbers.size}
+                                </span>
                             </div>
 
                             {/* Pricing summary */}
-                            <div className='mt-3 text-sm text-gray-700'>
+                            <div className='mt-4 p-4 bg-gray-50 rounded-lg'>
+                                <div className='text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2'>
+                                    <i className='bi-calculator text-yellow-500'></i>
+                                    Pricing Summary
+                                </div>
                                 {(() => {
                                     const paxCount = passengers.adults + passengers.children
                                     const base = (selectedDate?.rate_per_pax || 0) * paxCount
@@ -377,10 +490,19 @@ function Tour() {
                                     if (fee > (rules.maxFee || Number.MAX_SAFE_INTEGER)) fee = rules.maxFee
                                     const total = base + fee
                                     return (
-                                        <div className='space-y-1'>
-                                            <div className='flex justify-between'><span>Base Total</span><span className='font-medium'>PHP {base.toLocaleString()}</span></div>
-                                            <div className='flex justify-between'><span>Customization Fee</span><span className='font-medium'>PHP {fee.toLocaleString()}</span></div>
-                                            <div className='pt-1 mt-1 border-t border-gray-200 flex justify-between font-semibold'><span>Grand Total</span><span>PHP {total.toLocaleString()}</span></div>
+                                        <div className='space-y-2'>
+                                            <div className='flex justify-between items-center'>
+                                                <span className='text-gray-600'>Base Total</span>
+                                                <span className='font-semibold text-gray-800'>PHP {base.toLocaleString()}</span>
+                                            </div>
+                                            <div className='flex justify-between items-center'>
+                                                <span className='text-gray-600'>Customization Fee</span>
+                                                <span className='font-semibold text-gray-800'>PHP {fee.toLocaleString()}</span>
+                                            </div>
+                                            <div className='pt-2 mt-2 border-t border-gray-300 flex justify-between items-center'>
+                                                <span className='font-bold text-gray-800'>Grand Total</span>
+                                                <span className='font-bold text-lg text-yellow-600'>PHP {total.toLocaleString()}</span>
+                                            </div>
                                         </div>
                                     )
                                 })()}
@@ -406,57 +528,67 @@ function Tour() {
                             </span>
                         </div>
                     </div>
-                    <div className='flex gap-2 py-2 text-[#646466]'>
+                    <div className='flex flex-wrap gap-2 py-4 text-[#646466] border-b border-gray-200'>
                         <button
                             onClick={() => setSelectedTab('inclusions')}
-                            className={`flex gap-1 cursor-pointer ${
-                                selectedTab === 'inclusions' && 'text-black'
+                            className={`flex gap-2 cursor-pointer px-4 py-2 rounded-lg transition-all duration-200 ${
+                                selectedTab === 'inclusions' 
+                                    ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' 
+                                    : 'hover:bg-gray-100 text-gray-600'
                             }`}
                         >
                             <i className='bi-gift'></i>
-                            <span className='font-bold text-sm'>
+                            <span className='font-semibold text-sm'>
                                 Inclusions
                             </span>
                         </button>
                         <button
                             onClick={() => setSelectedTab('exclusions')}
-                            className={`flex gap-1 cursor-pointer ${
-                                selectedTab === 'exclusions' && 'text-black'
+                            className={`flex gap-2 cursor-pointer px-4 py-2 rounded-lg transition-all duration-200 ${
+                                selectedTab === 'exclusions' 
+                                    ? 'bg-red-100 text-red-800 border border-red-300' 
+                                    : 'hover:bg-gray-100 text-gray-600'
                             }`}
                         >
                             <i className='bi-x-circle'></i>
-                            <span className='font-bold text-sm'>
+                            <span className='font-semibold text-sm'>
                                 Exclusions
                             </span>
                         </button>
                         <button
                             onClick={() => setSelectedTab('notes')}
-                            className={`flex gap-1 cursor-pointer ${
-                                selectedTab === 'notes' && 'text-black'
+                            className={`flex gap-2 cursor-pointer px-4 py-2 rounded-lg transition-all duration-200 ${
+                                selectedTab === 'notes' 
+                                    ? 'bg-blue-100 text-blue-800 border border-blue-300' 
+                                    : 'hover:bg-gray-100 text-gray-600'
                             }`}
                         >
                             <i className='bi-file-text'></i>
-                            <span className='font-bold text-sm'>Notes</span>
+                            <span className='font-semibold text-sm'>Notes</span>
                         </button>
                         <button
                             onClick={() => setSelectedTab('payment_terms')}
-                            className={`flex gap-1 cursor-pointer ${
-                                selectedTab === 'payment_terms' && 'text-black'
+                            className={`flex gap-2 cursor-pointer px-4 py-2 rounded-lg transition-all duration-200 ${
+                                selectedTab === 'payment_terms' 
+                                    ? 'bg-green-100 text-green-800 border border-green-300' 
+                                    : 'hover:bg-gray-100 text-gray-600'
                             }`}
                         >
                             <i className='bi-credit-card'></i>
-                            <span className='font-bold text-sm'>
+                            <span className='font-semibold text-sm'>
                                 Payment Terms
                             </span>
                         </button>
                         <button
                             onClick={() => setSelectedTab('requirements')}
-                            className={`flex gap-1 cursor-pointer ${
-                                selectedTab === 'requirements' && 'text-black'
+                            className={`flex gap-2 cursor-pointer px-4 py-2 rounded-lg transition-all duration-200 ${
+                                selectedTab === 'requirements' 
+                                    ? 'bg-purple-100 text-purple-800 border border-purple-300' 
+                                    : 'hover:bg-gray-100 text-gray-600'
                             }`}
                         >
                             <i className='bi-check-circle'></i>
-                            <span className='font-bold text-sm'>
+                            <span className='font-semibold text-sm'>
                                 Requirements
                             </span>
                         </button>
@@ -480,85 +612,108 @@ function Tour() {
                     </div>
                 </div>
             </div>
-            <div className='max-w-[1200px] mx-auto flex flex-col gap-3 border-t justify-center border-gray-300 pt-4 px-4'>
-                <div className='flex items-center gap-4 flex-wrap'>
-                <span className='font-medium'>Adults</span>
-                <div className='flex items-center gap-2'>
-                    <button
-                        type='button'
-                        onClick={() =>
-                            setPassengers((p) => ({
-                                ...p,
-                                adults: Math.max(1, p.adults - 1),
-                            }))
-                        }
-                        className='px-3 py-1 bg-gray-200 rounded'
-                    >
-                        -
-                    </button>
-                    <span>{passengers.adults}</span>
-                    <button
-                        type='button'
-                        onClick={() =>
-                            setPassengers((p) => ({
-                                ...p,
-                                adults:
-                                    p.adults < availableSlots
-                                        ? p.adults + 1
-                                        : p.adults,
-                            }))
-                        }
-                        className='px-3 py-1 bg-gray-200 rounded'
-                    >
-                        +
-                    </button>
-                </div>
+            
+            {/* Sticky Booking Section */}
+            <div className='fixed bottom-0 left-0 right-0 bg-white border-t border-gray-300 shadow-lg z-50'>
+                <div className='max-w-[1200px] mx-auto flex flex-col gap-4 justify-center py-4 px-4'>
+                    <div className='bg-gray-50 rounded-xl p-4 grid gap-4'>
+                        <h3 className='text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2'>
+                            <i className='bi-people text-yellow-500'></i>
+                            Select Passengers
+                        </h3>
+                        <div className='flex items-center gap-8 flex-wrap'>
+                            <div className='flex items-center gap-4'>
+                                <span className='font-medium text-gray-700'>Adults</span>
+                                <div className='flex items-center gap-3'>
+                                    <button
+                                        type='button'
+                                        onClick={() =>
+                                            setPassengers((p) => ({
+                                                ...p,
+                                                adults: Math.max(1, p.adults - 1),
+                                            }))
+                                        }
+                                        className='w-8 h-8 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center transition-colors duration-200'
+                                    >
+                                        <i className='bi-dash text-gray-600'></i>
+                                    </button>
+                                    <span className='w-8 text-center font-semibold text-gray-800'>{passengers.adults}</span>
+                                    <button
+                                        type='button'
+                                        onClick={() =>
+                                            setPassengers((p) => ({
+                                                ...p,
+                                                adults:
+                                                    p.adults < availableSlots
+                                                        ? p.adults + 1
+                                                        : p.adults,
+                                            }))
+                                        }
+                                        className='w-8 h-8 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center transition-colors duration-200'
+                                    >
+                                        <i className='bi-plus text-gray-600'></i>
+                                    </button>
+                                </div>
+                            </div>
 
-                <span className='font-medium'>Children</span>
-                <div className='flex items-center gap-2'>
-                    <button
-                        type='button'
-                        onClick={() =>
-                            setPassengers((p) => ({
-                                ...p,
-                                children: Math.max(0, p.children - 1),
-                            }))
-                        }
-                        className='px-3 py-1 bg-gray-200 rounded'
-                    >
-                        -
-                    </button>
-                    <span>{passengers.children}</span>
-                    <button
-                        type='button'
-                        onClick={() =>
-                            setPassengers((p) => ({
-                                ...p,
-                                children:
-                                    p.adults + p.children < availableSlots
-                                        ? p.children + 1
-                                        : p.children,
-                            }))
-                        }
-                        className='px-3 py-1 bg-gray-200 rounded'
-                    >
-                        +
-                    </button>
-                </div>
+                            <div className='flex items-center gap-4'>
+                                <span className='font-medium text-gray-700'>Children</span>
+                                <div className='flex items-center gap-3'>
+                                    <button
+                                        type='button'
+                                        onClick={() =>
+                                            setPassengers((p) => ({
+                                                ...p,
+                                                children: Math.max(0, p.children - 1),
+                                            }))
+                                        }
+                                        className='w-8 h-8 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center transition-colors duration-200'
+                                    >
+                                        <i className='bi-dash text-gray-600'></i>
+                                    </button>
+                                    <span className='w-8 text-center font-semibold text-gray-800'>{passengers.children}</span>
+                                    <button
+                                        type='button'
+                                        onClick={() =>
+                                            setPassengers((p) => ({
+                                                ...p,
+                                                children:
+                                                    p.adults + p.children < availableSlots
+                                                        ? p.children + 1
+                                                        : p.children,
+                                            }))
+                                        }
+                                        className='w-8 h-8 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center transition-colors duration-200'
+                                    >
+                                        <i className='bi-plus text-gray-600'></i>
+                                    </button>
+                                </div>
+                            </div>
 
-                {passengers === availableSlots && (
-                    <div className='text-red-600'>Max Passengers Reached.</div>
-                )}
-                <PrimaryButton
-                    onClick={handleBookClick}
-                    className='tour-card__btn max-w-[1200px] mx-auto'
-                    buttonText='Book Now'
-                    disabled={
-                        !selectedDate?.available_slots || passengers === 0
-                    }
-                />
+                            {passengers.adults + passengers.children === availableSlots && (
+                                <div className='text-red-600 flex items-center gap-1'>
+                                    <i className='bi-exclamation-triangle text-sm'></i>
+                                    Max Passengers Reached
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    
+                    <div className='flex justify-center'>
+                        <PrimaryButton
+                            onClick={handleBookClick}
+                            className='tour-card__btn'
+                            buttonText='Book Now'
+                            disabled={
+                                !selectedDate?.available_slots || (passengers.adults + passengers.children) === 0
+                            }
+                        />
+                    </div>
                 </div>
             </div>
+            
+            {/* Add bottom padding to prevent content from being hidden behind sticky footer */}
+            <div className='h-40'></div>
         </div>
     )
 }

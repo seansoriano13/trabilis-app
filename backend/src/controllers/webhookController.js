@@ -6,6 +6,7 @@ import Pusher from 'pusher'
 import {
     sendTourConfirmationEmail,
     sendTourFailureEmail,
+    generateFlightItineraryPDF,
 } from '../services/brevoEmailService.js'
 
 export const handleStripeWebhook = async (req, res) => {
@@ -43,7 +44,11 @@ export const handleStripeWebhook = async (req, res) => {
                 .select(
                     `
                     *,
-                    package_dates (*, tour_packages (*))
+                    package_dates (
+                        *,
+                        tour_packages (*),
+                        package_itineraries (*)
+                    )
                 `
                 )
                 .eq('booking_reference', booking_reference)
@@ -73,13 +78,18 @@ export const handleStripeWebhook = async (req, res) => {
                 tourTitle: bookingData.package_dates.tour_packages.title,
                 startDate: bookingData.package_dates.start_date,
                 endDate: bookingData.package_dates.end_date,
+                passengers: bookingData.passenger_details
+                    ? (typeof bookingData.passenger_details === 'string' 
+                        ? JSON.parse(bookingData.passenger_details) 
+                        : bookingData.passenger_details)
+                    : [],
                 inclusions:
                     bookingData.package_dates.inclusions?.join('<br/>') ||
                     'As per package',
                 exclusions:
                     bookingData.package_dates.exclusions?.join('<br/>') || '-',
                 notes: bookingData.package_dates.notes?.join('<br/>') || '-',
-                itinerary: bookingData.itinerary || '',
+                itinerary: bookingData.package_dates?.package_itineraries || [],
                 ratePerPax: bookingData.package_dates.rate_per_pax || 'N/A',
                 availableSlots:
                     bookingData.package_dates.available_slots || 'N/A',
@@ -168,11 +178,17 @@ export const handleStripeWebhook = async (req, res) => {
                     console.error('Supabase insert error (payment_confirmed_tour):', insertError.message)
                 }
 
-                await pusher.trigger('admin-notifications', 'new-booking', {
-                    bookingReference: booking_reference,
-                    bookingType: 'tour',
-                    pnr: null,
-                })
+                try {
+                    await pusher.trigger('admin-notifications', 'new-booking', {
+                        bookingReference: booking_reference,
+                        bookingType: 'tour',
+                        pnr: null,
+                    })
+                    console.log('✅ Pusher notification sent successfully for tour booking:', booking_reference)
+                } catch (pusherError) {
+                    console.warn('⚠️ Pusher notification failed (non-critical):', pusherError.message)
+                    // Continue processing - this is not a critical failure
+                }
             } catch (notifyErr) {
                 console.error('❌ Failed to send immediate tour payment notification:', notifyErr)
             }
@@ -182,12 +198,18 @@ export const handleStripeWebhook = async (req, res) => {
             await sendTourConfirmationEmail(bookingDetails)
         } else {
             // ===== FLIGHT LOGIC =====
-            const updateResult = await query(
-                "UPDATE flight_bookings SET status = ? WHERE booking_reference = ? AND status = 'PENDING_PAYMENT'",
-                ['PAID_PENDING_TICKETING', booking_reference]
-            )
+            const { data, error } = await supabase
+                .from('flight_bookings')
+                .update({ status: 'PAID_PENDING_TICKETING' })
+                .eq('booking_reference', booking_reference)
+                .eq('status', 'PENDING_PAYMENT')
+                .select('id, status')
 
-            if (updateResult.rowCount > 0) {
+            if (error) {
+                throw new Error(`Database update error: ${error.message}`)
+            }
+
+            if (data && data.length > 0) {
                 console.log(
                     `✅ Database updated for flight booking ${booking_reference}. Status is now PAID_PENDING_TICKETING.`
                 )
@@ -217,10 +239,16 @@ export const handleStripeWebhook = async (req, res) => {
                         console.error('Supabase insert error (payment_confirmed):', insertError.message)
                     }
 
-                    await pusher.trigger('admin-notifications', 'new-booking', {
-                        bookingReference: booking_reference,
-                        pnr: null,
-                    })
+                    try {
+                        await pusher.trigger('admin-notifications', 'new-booking', {
+                            bookingReference: booking_reference,
+                            pnr: null,
+                        })
+                        console.log('✅ Pusher notification sent successfully for flight booking:', booking_reference)
+                    } catch (pusherError) {
+                        console.warn('⚠️ Pusher notification failed (non-critical):', pusherError.message)
+                        // Continue processing - this is not a critical failure
+                    }
                 } catch (notifyErr) {
                     console.error('❌ Failed to send immediate payment notification:', notifyErr)
                 }
@@ -247,3 +275,50 @@ export const handleStripeWebhook = async (req, res) => {
 
     return res.sendStatus(200)
 }
+
+// Test endpoint for Flight PDF generation
+export const testFlightPDFGeneration = async (req, res) => {
+    try {
+        const { bookingReference } = req.params
+        
+        console.log(`🧪 Testing Flight PDF generation for booking: ${bookingReference}`)
+        
+        // Get flight booking data
+        const { data: bookingData, error: bookingError } = await supabase
+            .from('flight_bookings')
+            .select('*')
+            .eq('booking_reference', bookingReference)
+            .single()
+
+        if (bookingError || !bookingData) {
+            console.log(`❌ Flight booking ${bookingReference} not found`)
+            return res.status(404).json({ error: 'Flight booking not found' })
+        }
+
+        console.log('🧪 Test - Raw flight booking data from Supabase:')
+        console.log('🧪 Test - booking status:', bookingData.status)
+        console.log('🧪 Test - has amadeus_flight_offer:', !!bookingData.amadeus_flight_offer)
+        console.log('🧪 Test - has passenger_details:', !!bookingData.passenger_details)
+        console.log('🧪 Test - PNR:', bookingData.pnr)
+
+        // Generate PDF
+        const pdfBuffer = await generateFlightItineraryPDF(bookingData)
+        
+        console.log(`✅ Flight PDF generated successfully for ${bookingReference}, size: ${pdfBuffer.length} bytes`)
+
+        // Return PDF as download
+        res.setHeader('Content-Type', 'application/pdf')
+        res.setHeader('Content-Disposition', `attachment; filename="Flight-Itinerary-${bookingReference}.pdf"`)
+        res.setHeader('Content-Length', pdfBuffer.length)
+        res.send(pdfBuffer)
+
+    } catch (error) {
+        console.error(`❌ Error testing Flight PDF generation for ${req.params.bookingReference}:`, error)
+        res.status(500).json({ 
+            error: 'Flight PDF generation failed', 
+            message: error.message,
+            details: error.stack 
+        })
+    }
+}
+

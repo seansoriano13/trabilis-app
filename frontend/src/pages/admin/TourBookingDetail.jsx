@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import Select from 'react-select'
 import AsyncSelect from 'react-select/async'
 import { useParams, useNavigate, Link } from 'react-router-dom'
@@ -26,10 +26,12 @@ import { supabase } from '../../api/supabaseClient'
 import adminClient from '../../api/adminClient'
 import ReactFlatpickr from 'react-flatpickr'
 import 'flatpickr/dist/themes/material_red.css'
-import airlines from '../../data/airlines.json'
 import { useAirports } from '../../context/AirportContext'
+import { useAirlines } from '../../context/AirlinesContext'
 import { loadOptions } from '../../utils/airportOptionsLoader'
 import { defaultAirportOptionsData } from '../../utils/defaultAirportOptions'
+import { getAircraftOptions } from '../../utils/metadataApi'
+import VisaProcessingModal from '../../components/admin/VisaProcessingModal'
 import './TourBookingDetail.css'
 
 const TourBookingDetail = () => {
@@ -41,6 +43,7 @@ const TourBookingDetail = () => {
     const [error, setError] = useState(null)
     const [activeTab, setActiveTab] = useState('overview')
     const [printLoading, setPrintLoading] = useState(false)
+    const [previewLoading, setPreviewLoading] = useState(false)
     const [showEditModal, setShowEditModal] = useState(false)
     const [editLoading, setEditLoading] = useState(false)
     const [editForm, setEditForm] = useState({
@@ -48,22 +51,82 @@ const TourBookingDetail = () => {
         assigned_to: '',
         assignment_status: 'pending',
         flight_details: {
-            outbound: [ { airline: '', flight_no: '', departure: '', arrival: '', date: '' } ],
-            return: [ { airline: '', flight_no: '', departure: '', arrival: '', date: '' } ]
+            outbound: [ { airline: '', pnr: '', departure: '', arrival: '', date: '' } ],
+            return: [ { airline: '', pnr: '', departure: '', arrival: '', date: '' } ]
         }
     })
+    const [draftSaved, setDraftSaved] = useState(false)
 
-    console.log(booking)
     const [adminOptions, setAdminOptions] = useState([])
     const [loadingAdmins, setLoadingAdmins] = useState(false)
     const [assignedAdminName, setAssignedAdminName] = useState('')
     const [tripType, setTripType] = useState('round-trip')
     const { airports } = useAirports()
+    const { airlines, loading: airlinesLoading } = useAirlines()
     const { asyncLoader, defaultOptions } = loadOptions(airports, defaultAirportOptionsData)
+    const [aircraftOptions, setAircraftOptions] = useState([])
+    const [aircraftLoading, setAircraftLoading] = useState(false)
+    
+    // Visa Processing Modal State
+    const [visaProcessingModal, setVisaProcessingModal] = useState({
+        isOpen: false,
+        passenger: null,
+        passengerIndex: null
+    })
 
-    const airlineOptions = (airlines || [])
-        .filter(a => a && a.name)
-        .map(a => ({ value: a.name, label: a.name, logo: a.logo }))
+    // Memoized airline options for better performance
+    const airlineOptions = useMemo(() => {
+        return (airlines || [])
+            .filter(a => a && a.label)
+            .map(a => ({ value: a.value, label: a.label, logo: a.logo }))
+    }, [airlines])
+
+    // Async loader for airlines with debouncing
+    const loadAirlines = useCallback((inputValue) => {
+        return new Promise((resolve) => {
+            // Add small delay to prevent excessive filtering
+            setTimeout(() => {
+                const searchTerm = (inputValue || '').toLowerCase().trim()
+                
+                if (!searchTerm) {
+                    // Return first 20 airlines when no search term
+                    resolve(airlineOptions.slice(0, 20))
+                    return
+                }
+                
+                const filteredAirlines = airlineOptions
+                    .filter(airline => 
+                        airline.label && 
+                        airline.label.toLowerCase().includes(searchTerm)
+                    )
+                    .slice(0, 50) // Limit to 50 results for performance
+                
+                resolve(filteredAirlines)
+            }, 100) // 100ms debounce
+        })
+    }, [airlineOptions])
+
+    // Load aircraft options
+    const loadAircraftOptions = useCallback(async () => {
+        if (aircraftOptions.length > 0) return
+        
+        setAircraftLoading(true)
+        try {
+            const response = await getAircraftOptions()
+            console.log('Aircraft options response:', response)
+            if (response.success) {
+                setAircraftOptions(response.data || [])
+            } else {
+                console.warn('No aircraft options received')
+                setAircraftOptions([])
+            }
+        } catch (error) {
+            console.error('Error loading aircraft options:', error)
+            setAircraftOptions([])
+        } finally {
+            setAircraftLoading(false)
+        }
+    }, [aircraftOptions.length])
 
     // Status options for tours
     const statusOptions = [
@@ -87,58 +150,70 @@ const TourBookingDetail = () => {
         }
     }, [jwt])
 
+    // Fetch booking data function
+    const fetchBooking = useCallback(async () => {
+        setLoading(true)
+        try {
+            const { data, error } = await supabase
+                .from('tour_bookings')
+                .select(`
+                    *,
+                    package_dates (
+                        id,
+                        start_date,
+                        end_date,
+                        total_slots,
+                        tour_package_id,
+                        tour_packages (
+                            id,
+                            title,
+                            visa_required,
+                            destination_country
+                        )
+                    ),
+                    visa_processings (
+                        id,
+                        passenger_index,
+                        passenger_name,
+                        status,
+                        assigned_to,
+                        assigned_at
+                    )
+                    )
+                `)
+                .eq('id', id)
+                .single()
+
+            if (error) {
+                throw new Error('Failed to fetch booking details')
+            }
+
+            if (!data) {
+                throw new Error('Booking not found')
+            }
+
+            // console.log('Booking data received:', data)
+            setBooking(data)
+            setPackageDetails(data.package_dates)
+
+            // Fetch assigned admin name if assigned_to exists
+            if (data.assigned_to) {
+                fetchAssignedAdminName(data.assigned_to)
+            }
+            setLoading(false)
+        } catch (err) {
+            console.error(err)
+            setError(err.message)
+            setLoading(false)
+        }
+    }, [id, jwt])
+
     // Fetch booking data
     useEffect(() => {
-        const fetchBooking = async () => {
-            setLoading(true)
-            try {
-                const { data, error } = await supabase
-                    .from('tour_bookings')
-                    .select(`
-                        *,
-                        package_dates (
-                            id,
-                            start_date,
-                            end_date,
-                            total_slots,
-                            tour_package_id,
-                            tour_packages (
-                                id,
-                                title
-                            )
-                        )
-                    `)
-                    .eq('id', id)
-                    .single()
-
-                if (error) {
-                    throw new Error('Failed to fetch booking details')
-                }
-
-                if (!data) {
-                    throw new Error('Booking not found')
-                }
-
-                // console.log('Booking data received:', data)
-                setBooking(data)
-                setPackageDetails(data.package_dates)
-
-                // Fetch assigned admin name if assigned_to exists
-                if (data.assigned_to) {
-                    fetchAssignedAdminName(data.assigned_to)
-                }
-                setLoading(false)
-            } catch (err) {
-                console.error(err)
-                setError(err.message)
-                setLoading(false)
-            }
-        }
-
         if (id) {
             fetchBooking()
         }
-    }, [id, jwt])
+    }, [id, fetchBooking])
 
     // Admin options for assignment
     const fetchAdminOptions = async () => {
@@ -222,16 +297,13 @@ const TourBookingDetail = () => {
         }
     }
 
-    const handlePrint = () => {
-        window.print()
-    }
-
     const handlePreview = async () => {
         if (!booking) return
         
+        setPreviewLoading(true)
         try {
             // Use admin client with proper authentication for preview
-            const response = await adminClient.get(`/tours/${booking.id}/html`, {
+            const response = await adminClient.get(`/tours/${booking.id}/html?t=${Date.now()}`, {
                 responseType: 'blob'
             })
 
@@ -248,6 +320,8 @@ const TourBookingDetail = () => {
         } catch (error) {
             console.error('Error opening preview:', error)
             alert('Failed to open preview. Please try again.')
+        } finally {
+            setPreviewLoading(false)
         }
     }
 
@@ -256,8 +330,8 @@ const TourBookingDetail = () => {
         
         setPrintLoading(true)
         try {
-            // Use the new admin PDF route that doesn't use PDFShift
-            const response = await adminClient.get(`/tours/${booking.id}/pdfadmin`, {
+            // Use the new print route with mode=print
+            const response = await adminClient.get(`/tours/${booking.id}/print`, {
                 responseType: 'blob'
             })
 
@@ -313,6 +387,197 @@ const TourBookingDetail = () => {
 
     const handleEdit = async () => {
         await fetchAdminOptions()
+        await loadAircraftOptions()
+        
+        // Get tour package dates for smart flight date defaults
+        const tourStartDate = booking.package_dates?.start_date
+        const tourEndDate = booking.package_dates?.end_date
+        
+        // Calculate smart flight dates
+        const getSmartFlightDates = () => {
+            if (!tourStartDate || !tourEndDate) {
+                return { outboundDate: '', returnDate: '' }
+            }
+            
+            const startDate = new Date(tourStartDate)
+            const endDate = new Date(tourEndDate)
+            
+            // Outbound: Usually day before tour starts (or same day for early morning tours)
+            const outboundDate = new Date(startDate)
+            outboundDate.setDate(startDate.getDate() - 1)
+            
+            // Return: Usually day after tour ends (or same day for late evening tours)
+            const returnDate = new Date(endDate)
+            returnDate.setDate(endDate.getDate() + 1)
+            
+            return {
+                outboundDate: outboundDate.toISOString().split('T')[0],
+                returnDate: returnDate.toISOString().split('T')[0]
+            }
+        }
+        
+        const smartDates = getSmartFlightDates()
+        
+        // Check if there's a saved draft and auto-load it
+        const draftKey = `tour_booking_draft_${booking.id}`
+        const savedDraft = localStorage.getItem(draftKey)
+        
+        let initialFormData
+        let initialTripType = 'round-trip'
+        
+        if (savedDraft) {
+            try {
+                const parsedDraft = JSON.parse(savedDraft)
+                initialFormData = parsedDraft
+                initialTripType = parsedDraft.tripType || 'round-trip'
+                console.log('Auto-loaded draft for booking', booking.id)
+            } catch (error) {
+                console.error('Error parsing saved draft:', error)
+                // Fall back to fresh form if draft is corrupted
+                initialFormData = null
+            }
+        }
+        
+        // If no draft or draft parsing failed, create fresh form with smart dates
+        if (!initialFormData) {
+            const fd = booking.flight_details || {}
+            const normalizeLeg = (leg) => {
+                if (!leg) return [ { airline: '', pnr: '', departure: '', arrival: '', date: '', aircraft: '' } ]
+                if (Array.isArray(leg)) {
+                    return leg.length ? leg.map(seg => ({
+                        airline: seg.airline || '',
+                        pnr: seg.pnr || seg.flight_no || '', // Use pnr, fallback to flight_no for legacy data
+                        departure: seg.departure || '',
+                        arrival: seg.arrival || '',
+                        date: seg.date || '',
+                        aircraft: seg.aircraft || '',
+                        terminal: seg.terminal || '',
+                        arrival_date: seg.arrival_date || ''
+                    })) : [ { airline: '', pnr: '', departure: '', arrival: '', date: '', aircraft: '' } ]
+                }
+                return [ {
+                    airline: leg.airline || '',
+                    pnr: leg.pnr || leg.flight_no || '', // Use pnr, fallback to flight_no for legacy data
+                    departure: leg.departure || '',
+                    arrival: leg.arrival || '',
+                    date: leg.date || '',
+                    aircraft: leg.aircraft || '',
+                    terminal: leg.terminal || '',
+                    arrival_date: leg.arrival_date || ''
+                } ]
+            }
+            
+            // Handle both old and new flight_details structure
+            const outbound = normalizeLeg(fd.outbound || fd.outboundSegments)
+            const returnFlights = normalizeLeg(fd.return || fd.inbound || fd.returnSegments)
+            
+            // Pre-populate dates if not already set
+            if (outbound.length > 0 && !outbound[0].date && smartDates.outboundDate) {
+                outbound[0].date = smartDates.outboundDate
+            }
+            if (returnFlights.length > 0 && !returnFlights[0].date && smartDates.returnDate) {
+                returnFlights[0].date = smartDates.returnDate
+            }
+            
+            initialFormData = {
+                status: booking.status,
+                assigned_to: booking.assigned_to || '',
+                assignment_status: booking.assignment_status || 'pending',
+                flight_details: {
+                    outbound,
+                    return: returnFlights
+                }
+            }
+        }
+        
+        setEditForm(initialFormData)
+        setTripType(initialTripType)
+        setShowEditModal(true)
+    }
+
+    const handleCloseEditModal = () => {
+        // Auto-save draft before closing
+        saveDraft()
+        
+        setShowEditModal(false)
+        setEditForm({
+            status: '',
+            assigned_to: '',
+            assignment_status: 'pending',
+            flight_details: {
+                outbound: { airline: '', pnr: '', departure: '', arrival: '', date: '' },
+                return: { airline: '', pnr: '', departure: '', arrival: '', date: '' }
+            }
+        })
+        setDraftSaved(false)
+    }
+
+    // Save draft functionality
+    const saveDraft = () => {
+        const draftKey = `tour_booking_draft_${booking.id}`
+        const draftData = {
+            ...editForm,
+            tripType,
+            savedAt: new Date().toISOString()
+        }
+        localStorage.setItem(draftKey, JSON.stringify(draftData))
+        setDraftSaved(true)
+        
+        // Show confirmation
+        setTimeout(() => setDraftSaved(false), 2000)
+    }
+
+    // Load draft functionality
+    const loadDraft = () => {
+        const draftKey = `tour_booking_draft_${booking.id}`
+        const draftData = localStorage.getItem(draftKey)
+        
+        if (draftData) {
+            try {
+                const parsed = JSON.parse(draftData)
+                setEditForm(parsed)
+                setTripType(parsed.tripType || 'round-trip')
+                alert('Draft loaded successfully!')
+            } catch (error) {
+                console.error('Error loading draft:', error)
+                alert('Error loading draft. Please try again.')
+            }
+        } else {
+            alert('No draft found for this booking.')
+        }
+    }
+
+    // Auto-populate flight dates when trip type changes
+    const handleTripTypeChange = (newTripType) => {
+        setTripType(newTripType)
+        
+        // If switching to round-trip and return flights don't have dates, populate them
+        if (newTripType === 'round-trip') {
+            const tourEndDate = booking.package_dates?.end_date
+            if (tourEndDate) {
+                const returnDate = new Date(tourEndDate)
+                returnDate.setDate(returnDate.getDate() + 1)
+                const smartReturnDate = returnDate.toISOString().split('T')[0]
+                
+                setEditForm(prev => ({
+                    ...prev,
+                    flight_details: {
+                        ...prev.flight_details,
+                        return: prev.flight_details.return.map((seg, idx) => 
+                            idx === 0 && !seg.date ? { ...seg, date: smartReturnDate } : seg
+                        )
+                    }
+                }))
+            }
+        }
+    }
+
+    // Clear draft functionality
+    const clearDraft = () => {
+        const draftKey = `tour_booking_draft_${booking.id}`
+        localStorage.removeItem(draftKey)
+        
+        // Reset form to original booking data
         setEditForm({
             status: booking.status,
             assigned_to: booking.assigned_to || '',
@@ -320,30 +585,42 @@ const TourBookingDetail = () => {
             flight_details: (() => {
                 const fd = booking.flight_details || {}
                 const normalizeLeg = (leg) => {
-                    if (!leg) return [ { airline: '', flight_no: '', departure: '', arrival: '', date: '' } ]
-                    if (Array.isArray(leg)) return leg.length ? leg : [ { airline: '', flight_no: '', departure: '', arrival: '', date: '' } ]
-                    return [ leg ]
+                    if (!leg) return [ { airline: '', pnr: '', departure: '', arrival: '', date: '', aircraft: '' } ]
+                    if (Array.isArray(leg)) {
+                        return leg.length ? leg.map(seg => ({
+                            airline: seg.airline || '',
+                            pnr: seg.pnr || seg.flight_no || '', // Use pnr, fallback to flight_no for legacy data
+                            departure: seg.departure || '',
+                            arrival: seg.arrival || '',
+                            date: seg.date || '',
+                            aircraft: seg.aircraft || '',
+                            terminal: seg.terminal || '',
+                            arrival_date: seg.arrival_date || ''
+                        })) : [ { airline: '', pnr: '', departure: '', arrival: '', date: '', aircraft: '' } ]
+                    }
+                    return [ {
+                        airline: leg.airline || '',
+                        pnr: leg.pnr || leg.flight_no || '', // Use pnr, fallback to flight_no for legacy data
+                        departure: leg.departure || '',
+                        arrival: leg.arrival || '',
+                        date: leg.date || '',
+                        aircraft: leg.aircraft || '',
+                        terminal: leg.terminal || '',
+                        arrival_date: leg.arrival_date || ''
+                    } ]
                 }
+                
+                const outbound = normalizeLeg(fd.outbound || fd.outboundSegments)
+                const returnFlights = normalizeLeg(fd.return || fd.inbound || fd.returnSegments)
+                
                 return {
-                    outbound: normalizeLeg(fd.outbound || fd.outboundSegments),
-                    return: normalizeLeg(fd.return || fd.inbound || fd.returnSegments)
+                    outbound,
+                    return: returnFlights
                 }
             })()
         })
-        setShowEditModal(true)
-    }
-
-    const handleCloseEditModal = () => {
-        setShowEditModal(false)
-        setEditForm({
-            status: '',
-            assigned_to: '',
-            assignment_status: 'pending',
-            flight_details: {
-                outbound: { airline: '', flight_no: '', departure: '', arrival: '', date: '' },
-                return: { airline: '', flight_no: '', departure: '', arrival: '', date: '' }
-            }
-        })
+        setTripType('round-trip')
+        alert('Draft cleared! Form reset to original booking data.')
     }
 
     const handleEditFormChange = (field, value) => {
@@ -367,7 +644,7 @@ const TourBookingDetail = () => {
                 ...prev.flight_details,
                 [direction]: [
                     ...(prev.flight_details?.[direction] || []),
-                    { airline: '', flight_no: '', departure: '', arrival: '', date: '' }
+                    { airline: '', pnr: '', departure: '', arrival: '', departure_time: '', arrival_time: '', aircraft: '', terminal: '' }
                 ]
             }
         }))
@@ -392,8 +669,13 @@ const TourBookingDetail = () => {
                 assigned_to: editForm.assigned_to || null,
                 assignment_status: editForm.assignment_status,
                 flight_details: {
-                    outbound: editForm.flight_details?.outbound || [],
-                    return: tripType === 'round-trip' ? (editForm.flight_details?.return || []) : []
+                    outbound: (editForm.flight_details?.outbound || []).filter(seg => 
+                        seg.airline || seg.pnr || seg.departure || seg.arrival || seg.date
+                    ),
+                    return: tripType === 'round-trip' ? 
+                        (editForm.flight_details?.return || []).filter(seg => 
+                            seg.airline || seg.pnr || seg.departure || seg.arrival || seg.date
+                        ) : []
                 }
             }
             const response = await adminClient.put(`/tours/${booking.id}/edit`, submitData)
@@ -425,41 +707,62 @@ const TourBookingDetail = () => {
         }
     }
 
-    const handleCancel = () => {
-        if (booking.status === 'CANCELLED') {
-            alert('This booking is already cancelled.')
-            return
-        }
-        const reason = prompt('Please provide a reason for cancellation (optional):', '')
-        if (window.confirm(`Are you sure you want to cancel this booking?\n\nBooking Reference: ${booking.booking_reference}\n${reason ? `Reason: ${reason}` : ''}`)) {
-            cancelBooking(reason)
-        }
+    const handleVisaProcessing = (passenger, passengerIndex) => {
+        setVisaProcessingModal({
+            isOpen: true,
+            passenger: passenger,
+            passengerIndex: passengerIndex
+        })
     }
 
-    const cancelBooking = async (reason) => {
-        try {
-            const response = await adminClient.put(`/tours/${booking.id}/cancel`, { reason: reason || null })
-            if (response.data.success) {
-                setBooking(prev => ({
-                    ...prev,
-                    status: 'CANCELLED',
-                    cancelled_at: new Date().toISOString(),
-                    cancellation_reason: reason || null,
-                    updated_at: new Date().toISOString()
-                }))
-                alert('Booking cancelled successfully!')
-            } else {
-                alert('Failed to cancel booking')
-            }
-        } catch (error) {
-            console.error('Error cancelling booking:', error)
-            if (error.response?.data?.error) {
-                alert(`Error: ${error.response.data.error}`)
-            } else {
-                alert('Error cancelling booking. Please try again.')
-            }
-        }
+    const handleVisaProcessingClose = () => {
+        setVisaProcessingModal({
+            isOpen: false,
+            passenger: null,
+            passengerIndex: null
+        })
     }
+
+    const handleVisaStatusUpdate = (updatedProcessing) => {
+        // Refresh the booking data to show updated visa processing status
+        fetchBooking()
+    }
+
+    // const handleCancel = () => {
+    //     if (booking.status === 'CANCELLED') {
+    //         alert('This booking is already cancelled.')
+    //         return
+    //     }
+    //     const reason = prompt('Please provide a reason for cancellation (optional):', '')
+    //     if (window.confirm(`Are you sure you want to cancel this booking?\n\nBooking Reference: ${booking.booking_reference}\n${reason ? `Reason: ${reason}` : ''}`)) {
+    //         cancelBooking(reason)
+    //     }
+    // }
+
+    // const cancelBooking = async (reason) => {
+    //     try {
+    //         const response = await adminClient.put(`/tours/${booking.id}/cancel`, { reason: reason || null })
+    //         if (response.data.success) {
+    //             setBooking(prev => ({
+    //                 ...prev,
+    //                 status: 'CANCELLED',
+    //                 cancelled_at: new Date().toISOString(),
+    //                 cancellation_reason: reason || null,
+    //                 updated_at: new Date().toISOString()
+    //             }))
+    //             alert('Booking cancelled successfully!')
+    //         } else {
+    //             alert('Failed to cancel booking')
+    //         }
+    //     } catch (error) {
+    //         console.error('Error cancelling booking:', error)
+    //         if (error.response?.data?.error) {
+    //             alert(`Error: ${error.response.data.error}`)
+    //         } else {
+    //             alert('Error cancelling booking. Please try again.')
+    //         }
+    //     }
+    // }
 
     if (loading) {
         return (
@@ -805,6 +1108,8 @@ const TourBookingDetail = () => {
                                                 <th>Document No.</th>
                                                 <th>Nationality</th>
                                                 <th>Expiry</th>
+                                                <th>Passenger Visa Status</th>
+                                                {tourPackage?.visa_required && <th>Processing Status</th>}
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -871,6 +1176,74 @@ const TourBookingDetail = () => {
                                                                 <td>{doc?.number || <span className="no-data">-</span>}</td>
                                                                 <td>{doc?.nationality || <span className="no-data">-</span>}</td>
                                                                 <td>{doc?.expiryDate ? new Date(doc.expiryDate).toLocaleDateString() : <span className="no-data">-</span>}</td>
+                                                                <td>
+                                                                    <div className="visa-status-cell">
+                                                                        {tourPackage?.visa_required ? (
+                                                                            <>
+                                                                                <span className={`visa-status-badge visa-status--${passenger.visa_status || 'visa_required'}`}>
+                                                                                    {passenger.visa_status === 'needs_processing' ? 'Needs Processing' :
+                                                                                     passenger.visa_status === 'already_has' ? 'Has Visa' :
+                                                                                     'Visa Required'}
+                                                                                </span>
+                                                                                {passenger.visa_status === 'already_has' && passenger.existing_visa_status && (
+                                                                                    <div className="visa-details">
+                                                                                        <span className={`visa-existing-status visa-existing-status--${passenger.existing_visa_status}`}>
+                                                                                            {passenger.existing_visa_status === 'valid' ? 'Valid' :
+                                                                                             passenger.existing_visa_status === 'expired' ? 'Expired' :
+                                                                                             passenger.existing_visa_status === 'expiring_soon' ? 'Expiring Soon' : 'Not Specified'}
+                                                                                        </span>
+                                                                                        {passenger.visa_expiry_date && (
+                                                                                            <span className="visa-expiry">
+                                                                                                Expires: {new Date(passenger.visa_expiry_date).toLocaleDateString()}
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                )}
+                                                                            </>
+                                                                        ) : (
+                                                                            <span className="visa-status-badge visa-status--not_applicable">
+                                                                                Not Applicable
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                                {tourPackage?.visa_required && (
+                                                                    <td>
+                                                                        <div className="processing-status-cell">
+                                                                            {(() => {
+                                                                                const visaProcessing = booking.visa_processings?.find(vp => vp.passenger_index === index)
+                                                                                if (visaProcessing) {
+                                                                                    return (
+                                                                                        <>
+                                                                                            <span className={`processing-status-badge processing-status--${visaProcessing.status.toLowerCase()}`}>
+                                                                                                {visaProcessing.status}
+                                                                                            </span>
+                                                                                            <button 
+                                                                                                className="visa-process-btn"
+                                                                                                onClick={() => handleVisaProcessing(passenger, index)}
+                                                                                                title="Manage Visa Processing"
+                                                                                            >
+                                                                                                Manage
+                                                                                            </button>
+                                                                                        </>
+                                                                                    )
+                                                                                } else if (passenger.visa_status === 'needs_processing') {
+                                                                                    return (
+                                                                                        <button 
+                                                                                            className="visa-process-btn"
+                                                                                            onClick={() => handleVisaProcessing(passenger, index)}
+                                                                                            title="Start Visa Processing"
+                                                                                        >
+                                                                                            Start Processing
+                                                                                        </button>
+                                                                                    )
+                                                                                } else {
+                                                                                    return <span className="no-data">-</span>
+                                                                                }
+                                                                            })()}
+                                                                        </div>
+                                                                    </td>
+                                                                )}
                                                             </tr>
                                                         )
                                                     })
@@ -889,6 +1262,9 @@ const TourBookingDetail = () => {
                                                                 <span className="passenger-type adult">Lead Passenger</span>
                                                             </td>
                                                             <td>
+                                                                <span className="no-data">-</span>
+                                                            </td>
+                                                            <td>
                                                                 <a href={`mailto:${booking.lead_email}`} className="email-link">
                                                                     <FiMail /> {booking.lead_email}
                                                                 </a>
@@ -901,6 +1277,25 @@ const TourBookingDetail = () => {
                                                             <td>
                                                                 <span className="no-data">-</span>
                                                             </td>
+                                                            <td>
+                                                                <span className="no-data">-</span>
+                                                            </td>
+                                                            <td>
+                                                                <span className="no-data">-</span>
+                                                            </td>
+                                                            <td>
+                                                                <span className="no-data">-</span>
+                                                            </td>
+                                                            <td>
+                                                                <span className="visa-status-badge visa-status--not_applicable">
+                                                                    Not Applicable
+                                                                </span>
+                                                            </td>
+                                                            {tourPackage?.visa_required && (
+                                                                <td>
+                                                                    <span className="no-data">-</span>
+                                                                </td>
+                                                            )}
                                                         </tr>
                                                     )
                                                 }
@@ -1064,8 +1459,18 @@ const TourBookingDetail = () => {
                                     <button 
                                         className="btn btn-info"
                                         onClick={handlePreview}
+                                        disabled={previewLoading}
                                     >
-                                        <FiEye />Preview
+                                        {previewLoading ? (
+                                            <>
+                                                <div className="loading-spinner-small"></div>
+                                                Loading...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <FiEye /> Preview
+                                            </>
+                                        )}
                                     </button>
                                     <button 
                                         className="btn btn-success"
@@ -1120,7 +1525,7 @@ const TourBookingDetail = () => {
                                     <li>This is the official admin receipt that can be used for internal records and printing</li>
                                     <li>Click "Generate PDF" to open a print dialog where you can save as PDF</li>
                                     <li>In the print dialog, select "Save as PDF" as the destination to create a PDF file</li>
-                                    <li><strong>For Firefox users:</strong> Uncheck "Headers and Footers" in print options to remove browser watermarks</li>
+                                    <li>Uncheck "Headers and Footers" in print options to remove browser watermarks</li>
                                     <li>Use the HTML preview to check the layout before generating the PDF</li>
                                 </ul>
                             </div>
@@ -1132,16 +1537,19 @@ const TourBookingDetail = () => {
             {showEditModal && (
                 <div className="modal-overlay" onClick={handleCloseEditModal}>
                     <div className="modal-content modal-wide" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header">
+                        <div className="modal-header modal-header-sticky">
                             <h3>Edit Tour Booking</h3>
-                            <button 
-                                className="modal-close" 
-                                onClick={handleCloseEditModal}
-                                disabled={editLoading}
-                                aria-label="Close"
-                            >
-                                ×
-                            </button>
+                            <div className="modal-header-actions">
+                               
+                                <button 
+                                    className="modal-close" 
+                                    onClick={handleCloseEditModal}
+                                    disabled={editLoading}
+                                    aria-label="Close"
+                                >
+                                    ×
+                                </button>
+                            </div>
                         </div>
 
                         <form onSubmit={handleEditSubmit} className="edit-form">
@@ -1210,7 +1618,7 @@ const TourBookingDetail = () => {
                                 <label htmlFor="trip_type">Trip Type</label>
                                 <Select
                                     value={{ value: tripType, label: tripType === 'round-trip' ? 'Round-trip' : 'One-way' }}
-                                    onChange={(opt) => setTripType(opt?.value || 'round-trip')}
+                                    onChange={(opt) => handleTripTypeChange(opt?.value || 'round-trip')}
                                     options={[{ value: 'round-trip', label: 'Round-trip' }, { value: 'one-way', label: 'One-way' }]}
                                     isSearchable={false}
                                     className="react-select-container"
@@ -1219,26 +1627,66 @@ const TourBookingDetail = () => {
                             </div>
 
                             <div className="form-group">
-                                <label>Flight Details (Optional)</label>
+                                <div className="form-group-header">
+                                    <label>Flight Details (Optional)</label>
+                                    <button 
+                                        type="button"
+                                        className="btn btn-outline btn-sm"
+                                        onClick={clearDraft}
+                                        disabled={editLoading}
+                                        title="Clear draft and reset to original booking data"
+                                    >
+                                        Clear
+                                    </button>
+                                </div>
+                                <p className="form-help-text">
+                                    Add flight information for this tour booking. This will appear in the PDF receipt.
+                                </p>
                                 <div className="flight-details-grid">
                                     <div className="flight-group">
                                         <h5>Outbound</h5>
                                         {(editForm.flight_details?.outbound || []).map((seg, idx) => (
                                             <div key={`outbound-${idx}`} className="grid-2">
-                                            <Select
+                                            <AsyncSelect
                                                 className="react-select-container"
                                                 classNamePrefix="react-select"
-                                                placeholder="Airline"
-                                                options={airlineOptions}
-                                                value={airlineOptions.find(o => o.label === (seg?.airline || '')) || null}
-                                                onChange={(opt) => handleFlightChange('outbound', 'airline', opt?.label || '', idx)}
+                                                placeholder={airlinesLoading ? 'Loading airlines...' : 'Select airline...'}
+                                                cacheOptions
+                                                defaultOptions={airlineOptions.length > 0 ? airlineOptions.slice(0, 20) : []}
+                                                loadOptions={loadAirlines}
+                                                value={airlineOptions.find(o => o.value === (seg?.airline || '')) || null}
+                                                onChange={(opt) => handleFlightChange('outbound', 'airline', opt?.value || '', idx)}
                                                 isClearable
+                                                isLoading={airlinesLoading}
+                                                noOptionsMessage={() => airlinesLoading ? 'Loading airlines...' : 'No airlines found'}
+                                                loadingMessage={() => 'Searching airlines...'}
+                                                isSearchable
+                                                minInputLength={0}
+                                                maxMenuHeight={200}
                                             />
                                             <input
                                                 type="text"
-                                                placeholder="Flight No."
-                                                value={seg?.flight_no || ''}
-                                                onChange={(e) => handleFlightChange('outbound', 'flight_no', e.target.value, idx)}
+                                                placeholder="PNR"
+                                                value={seg?.pnr || ''}
+                                                onChange={(e) => handleFlightChange('outbound', 'pnr', e.target.value, idx)}
+                                            />
+                                            <ReactFlatpickr
+                                                options={{ 
+                                                    enableTime: true,
+                                                    dateFormat: 'Y-m-d H:i',
+                                                    time_24hr: false,
+                                                    placeholder: 'Departure Date & Time'
+                                                }}
+                                                value={seg?.date || ''}
+                                                onChange={(dates) => handleFlightChange('outbound', 'date', dates?.[0] ? dates[0].toISOString() : '', idx)}
+                                                style={{
+                                                    background: '#fff',
+                                                    border: '1px solid #ced4da',
+                                                    borderRadius: 4,
+                                                    padding: '7px 10px',
+                                                    height: 38,
+                                                    width: '100%'
+                                                }}
                                             />
                                             <AsyncSelect
                                                 className="react-select-container"
@@ -1251,6 +1699,24 @@ const TourBookingDetail = () => {
                                                 onChange={(opt) => handleFlightChange('outbound', 'departure', opt?.label || '', idx)}
                                                 isClearable
                                             />
+                                            <ReactFlatpickr
+                                                options={{ 
+                                                    enableTime: true,
+                                                    dateFormat: 'Y-m-d H:i',
+                                                    time_24hr: false,
+                                                    placeholder: 'Arrival Date & Time'
+                                                }}
+                                                value={seg?.arrival_date || ''}
+                                                onChange={(dates) => handleFlightChange('outbound', 'arrival_date', dates?.[0] ? dates[0].toISOString() : '', idx)}
+                                                style={{
+                                                    background: '#fff',
+                                                    border: '1px solid #ced4da',
+                                                    borderRadius: 4,
+                                                    padding: '7px 10px',
+                                                    height: 38,
+                                                    width: '100%'
+                                                }}
+                                            />
                                             <AsyncSelect
                                                 className="react-select-container"
                                                 classNamePrefix="react-select"
@@ -1262,18 +1728,24 @@ const TourBookingDetail = () => {
                                                 onChange={(opt) => handleFlightChange('outbound', 'arrival', opt?.label || '', idx)}
                                                 isClearable
                                             />
-                                            <ReactFlatpickr
-                                                options={{ enableTime: true, dateFormat: 'Y-m-d H:i' }}
-                                                value={seg?.date || ''}
-                                                onChange={(dates) => handleFlightChange('outbound', 'date', dates?.[0] ? dates[0].toISOString() : '', idx)}
-                                                style={{
-                                                    background: '#fff',
-                                                    border: '1px solid #ced4da',
-                                                    borderRadius: 4,
-                                                    padding: '7px 10px',
-                                                    height: 38,
-                                                    width: '100%'
-                                                }}
+                                            <Select
+                                                className="react-select-container"
+                                                classNamePrefix="react-select"
+                                                placeholder={aircraftLoading ? 'Loading aircraft...' : 'Aircraft'}
+                                                options={aircraftOptions}
+                                                value={aircraftOptions.find(o => o.value === (seg?.aircraft || '')) || null}
+                                                onChange={(opt) => handleFlightChange('outbound', 'aircraft', opt?.value || '', idx)}
+                                                isClearable
+                                                isLoading={aircraftLoading}
+                                                noOptionsMessage={() => 'No aircraft found'}
+                                                isSearchable
+                                                maxMenuHeight={200}
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="Terminal"
+                                                value={seg?.terminal || ''}
+                                                onChange={(e) => handleFlightChange('outbound', 'terminal', e.target.value, idx)}
                                             />
                                             <div className="segment-actions">
                                                 <button type="button" className="btn btn-secondary" onClick={() => addSegment('outbound')}>+ Segment</button>
@@ -1289,20 +1761,46 @@ const TourBookingDetail = () => {
                                         <h5>Return</h5>
                                         {(editForm.flight_details?.return || []).map((seg, idx) => (
                                         <div key={`return-${idx}`} className="grid-2">
-                                            <Select
+                                            <AsyncSelect
                                                 className="react-select-container"
                                                 classNamePrefix="react-select"
-                                                placeholder="Airline"
-                                                options={airlineOptions}
-                                                value={airlineOptions.find(o => o.label === (seg?.airline || '')) || null}
-                                                onChange={(opt) => handleFlightChange('return', 'airline', opt?.label || '', idx)}
+                                                placeholder={airlinesLoading ? 'Loading airlines...' : 'Select airline...'}
+                                                cacheOptions
+                                                defaultOptions={airlineOptions.length > 0 ? airlineOptions.slice(0, 20) : []}
+                                                loadOptions={loadAirlines}
+                                                value={airlineOptions.find(o => o.value === (seg?.airline || '')) || null}
+                                                onChange={(opt) => handleFlightChange('return', 'airline', opt?.value || '', idx)}
                                                 isClearable
+                                                isLoading={airlinesLoading}
+                                                noOptionsMessage={() => airlinesLoading ? 'Loading airlines...' : 'No airlines found'}
+                                                loadingMessage={() => 'Searching airlines...'}
+                                                isSearchable
+                                                minInputLength={0}
+                                                maxMenuHeight={200}
                                             />
                                             <input
                                                 type="text"
-                                                placeholder="Flight No."
-                                                value={seg?.flight_no || ''}
-                                                onChange={(e) => handleFlightChange('return', 'flight_no', e.target.value, idx)}
+                                                placeholder="PNR"
+                                                value={seg?.pnr || ''}
+                                                onChange={(e) => handleFlightChange('return', 'pnr', e.target.value, idx)}
+                                            />
+                                            <ReactFlatpickr
+                                                options={{ 
+                                                    enableTime: true,
+                                                    dateFormat: 'Y-m-d H:i',
+                                                    time_24hr: false,
+                                                    placeholder: 'Departure Date & Time'
+                                                }}
+                                                value={seg?.date || ''}
+                                                onChange={(dates) => handleFlightChange('return', 'date', dates?.[0] ? dates[0].toISOString() : '', idx)}
+                                                style={{
+                                                    background: '#fff',
+                                                    border: '1px solid #ced4da',
+                                                    borderRadius: 4,
+                                                    padding: '7px 10px',
+                                                    height: 38,
+                                                    width: '100%'
+                                                }}
                                             />
                                             <AsyncSelect
                                                 className="react-select-container"
@@ -1315,6 +1813,24 @@ const TourBookingDetail = () => {
                                                 onChange={(opt) => handleFlightChange('return', 'departure', opt?.label || '', idx)}
                                                 isClearable
                                             />
+                                            <ReactFlatpickr
+                                                options={{ 
+                                                    enableTime: true,
+                                                    dateFormat: 'Y-m-d H:i',
+                                                    time_24hr: false,
+                                                    placeholder: 'Arrival Date & Time'
+                                                }}
+                                                value={seg?.arrival_date || ''}
+                                                onChange={(dates) => handleFlightChange('return', 'arrival_date', dates?.[0] ? dates[0].toISOString() : '', idx)}
+                                                style={{
+                                                    background: '#fff',
+                                                    border: '1px solid #ced4da',
+                                                    borderRadius: 4,
+                                                    padding: '7px 10px',
+                                                    height: 38,
+                                                    width: '100%'
+                                                }}
+                                            />
                                             <AsyncSelect
                                                 className="react-select-container"
                                                 classNamePrefix="react-select"
@@ -1326,18 +1842,24 @@ const TourBookingDetail = () => {
                                                 onChange={(opt) => handleFlightChange('return', 'arrival', opt?.label || '', idx)}
                                                 isClearable
                                             />
-                                            <ReactFlatpickr
-                                                options={{ enableTime: true, dateFormat: 'Y-m-d H:i' }}
-                                                value={seg?.date || ''}
-                                                onChange={(dates) => handleFlightChange('return', 'date', dates?.[0] ? dates[0].toISOString() : '', idx)}
-                                                style={{
-                                                    background: '#fff',
-                                                    border: '1px solid #ced4da',
-                                                    borderRadius: 4,
-                                                    padding: '7px 10px',
-                                                    height: 38,
-                                                    width: '100%'
-                                                }}
+                                            <Select
+                                                className="react-select-container"
+                                                classNamePrefix="react-select"
+                                                placeholder={aircraftLoading ? 'Loading aircraft...' : 'Aircraft'}
+                                                options={aircraftOptions}
+                                                value={aircraftOptions.find(o => o.value === (seg?.aircraft || '')) || null}
+                                                onChange={(opt) => handleFlightChange('return', 'aircraft', opt?.value || '', idx)}
+                                                isClearable
+                                                isLoading={aircraftLoading}
+                                                noOptionsMessage={() => 'No aircraft found'}
+                                                isSearchable
+                                                maxMenuHeight={200}
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="Terminal"
+                                                value={seg?.terminal || ''}
+                                                onChange={(e) => handleFlightChange('return', 'terminal', e.target.value, idx)}
                                             />
                                             <div className="segment-actions">
                                                 <button type="button" className="btn btn-secondary" onClick={() => addSegment('return')}>+ Segment</button>
@@ -1352,7 +1874,7 @@ const TourBookingDetail = () => {
                                 </div>
                             </div>
 
-                            <div className="modal-actions">
+                            <div className="modal-actions modal-actions-sticky">
                                 <button 
                                     type="button" 
                                     className="btn btn-secondary"
@@ -1382,6 +1904,15 @@ const TourBookingDetail = () => {
                     </div>
                 </div>
             )}
+
+            {/* Visa Processing Modal */}
+            <VisaProcessingModal
+                isOpen={visaProcessingModal.isOpen}
+                onClose={handleVisaProcessingClose}
+                passenger={visaProcessingModal.passenger}
+                bookingId={id}
+                onStatusUpdate={handleVisaStatusUpdate}
+            />
         </div>
     )
 }

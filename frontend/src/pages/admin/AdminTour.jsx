@@ -10,13 +10,16 @@ import {
     FiSearch,
     FiFilter,
     FiRefreshCw,
-    FiEye,
     FiEdit,
-    FiTrash2,
     FiUserPlus,
     FiFileText,
-    FiDownload
+    FiDownload,
+    FiCalendar,
+    FiX,
+    FiUser,
+    FiActivity
 } from 'react-icons/fi'
+import Select from 'react-select'
 import ReactPaginate from 'react-paginate'
 import './AdminTour.css'
 import { supabase } from '../../api/supabaseClient'
@@ -29,24 +32,69 @@ const AdminTours = () => {
     const [page, setPage] = useState(0)
     const [total, setTotal] = useState(0)
     const [loading, setLoading] = useState(true)
+    const [searchLoading, setSearchLoading] = useState(false)
     const [error, setError] = useState(null)
     const [sort, setSort] = useState({
         key: 'created_at',
-        direction: 'asc',
+        direction: 'desc',
     })
-    const [filters, setFilters] = useState({ status: 'All', package_name: '', reference: '' })
+    const [filters, setFilters] = useState({ 
+        status: 'All', 
+        package_name: '', 
+        reference: '',
+        lead_name: '',
+        lead_email: '',
+        assignment_status: 'All',
+        date_range: 'All'
+    })
     const [searchInput, setSearchInput] = useState('')
     const [referenceInput, setReferenceInput] = useState('')
+    const [leadNameInput, setLeadNameInput] = useState('')
+    const [leadEmailInput, setLeadEmailInput] = useState('')
     const [assignmentModal, setAssignmentModal] = useState({
         isOpen: false,
         bookingId: null,
         bookingReference: '',
         bookingType: 'tour'
     })
+    
+    // Edit modal states
+    const [showEditModal, setShowEditModal] = useState(false)
+    const [editLoading, setEditLoading] = useState(false)
+    const [adminOptions, setAdminOptions] = useState([])
+    const [loadingAdmins, setLoadingAdmins] = useState(false)
+    const [editForm, setEditForm] = useState({
+        status: '',
+        assigned_to: '',
+        assignment_status: 'pending',
+    })
+    const [selectedBooking, setSelectedBooking] = useState(null)
 
-    const pageSize = 5
+    const pageSize = 20
     const jwt = localStorage.getItem('adminToken')
     const userRole = localStorage.getItem('admin_role')
+    
+    // Status options for dropdowns
+    const tourStatusOptions = [
+        { value: 'CONFIRMED', label: 'Confirmed', color: '#28a745' },
+        { value: 'PENDING_PAYMENT', label: 'Pending Payment', color: '#fd7e14' },
+        { value: 'CANCELLED', label: 'Cancelled', color: '#dc3545' }
+    ]
+    
+    const assignmentStatusOptions = [
+        { value: 'pending', label: 'Pending' },
+        { value: 'in_progress', label: 'In Progress' },
+        { value: 'completed', label: 'Completed' },
+    ]
+    
+    const dateRangeOptions = [
+        { value: 'All', label: 'All Time' },
+        { value: 'today', label: 'Today' },
+        { value: 'week', label: 'This Week' },
+        { value: 'month', label: 'This Month' },
+        { value: 'quarter', label: 'This Quarter' },
+        { value: 'year', label: 'This Year' }
+    ]
 
     useEffect(() => {
         if (jwt) {
@@ -69,10 +117,30 @@ const AdminTours = () => {
 
         return () => clearTimeout(timer)
     }, [referenceInput])
+    
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setFilters((prev) => ({ ...prev, lead_name: leadNameInput }))
+        }, 500)
+
+        return () => clearTimeout(timer)
+    }, [leadNameInput])
+    
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setFilters((prev) => ({ ...prev, lead_email: leadEmailInput }))
+        }, 500)
+
+        return () => clearTimeout(timer)
+    }, [leadEmailInput])
 
     useEffect(() => {
         const fetchData = async () => {
-            setLoading(true)
+            if (loading) {
+                setLoading(true)
+            } else {
+                setSearchLoading(true)
+            }
             setError(null)
             try {
                 let query = supabase
@@ -93,6 +161,12 @@ const AdminTours = () => {
               first_name,
               last_name,
               email
+            ),
+            assigned_by_staff:assigned_by (
+              id,
+              first_name,
+              last_name,
+              email
             )
           `,
                         { count: 'exact' }
@@ -104,10 +178,8 @@ const AdminTours = () => {
                     query = query.eq('status', filters.status)
                 }
                 if (filters.package_name) {
-                    query = query.ilike(
-                        'package_dates.tour_packages.title',
-                        `%${filters.package_name}%`
-                    )
+                    // We'll filter this client-side since Supabase can't filter on nested relationships
+                    // The filtering will be done after fetching the data
                 }
                 if (filters.reference) {
                     query = query.ilike(
@@ -115,24 +187,130 @@ const AdminTours = () => {
                         `%${filters.reference}%`
                     )
                 }
+                if (filters.lead_name) {
+                    query = query.or(`lead_first_name.ilike.%${filters.lead_name}%,lead_last_name.ilike.%${filters.lead_name}%`)
+                }
+                if (filters.lead_email) {
+                    query = query.ilike('lead_email', `%${filters.lead_email}%`)
+                }
+                if (filters.assignment_status && filters.assignment_status !== 'All') {
+                    query = query.eq('assignment_status', filters.assignment_status)
+                }
+                
+                // Date range filtering
+                if (filters.date_range && filters.date_range !== 'All') {
+                    const now = new Date()
+                    let startDate, endDate
+                    
+                    switch (filters.date_range) {
+                        case 'today':
+                            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+                            endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+                            break
+                        case 'week':
+                            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7)
+                            endDate = new Date()
+                            break
+                        case 'month':
+                            startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+                            endDate = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+                            break
+                        case 'quarter': {
+                            const quarter = Math.floor(now.getMonth() / 3)
+                            startDate = new Date(now.getFullYear(), quarter * 3, 1)
+                            endDate = new Date(now.getFullYear(), quarter * 3 + 3, 1)
+                            break
+                        }
+                        case 'year':
+                            startDate = new Date(now.getFullYear(), 0, 1)
+                            endDate = new Date(now.getFullYear() + 1, 0, 1)
+                            break
+                    }
+                    
+                    if (startDate && endDate) {
+                        query = query.gte('created_at', startDate.toISOString()).lt('created_at', endDate.toISOString())
+                    }
+                }
 
-                const [bookingsRes, statsRes] = await Promise.all([
-                    query,
-                    supabase.rpc('get_tour_stats'),
-                ])
+                const bookingsRes = await query
 
-                if (bookingsRes.error || statsRes.error) {
+                if (bookingsRes.error) {
                     throw new Error('Failed to fetch data')
                 }
 
-                setTourBookings(bookingsRes.data)
-                setTourStats(statsRes.data[0] || {})
-                setTotal(bookingsRes.count || 0)
+                // Calculate stats from the data
+                const now = new Date()
+                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+                const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+                
+                // Get all bookings for stats calculation (not just paginated)
+                const allBookingsQuery = supabase
+                    .from('tour_bookings')
+                    .select(`
+                        *,
+                        package_dates (
+                            tour_packages (title)
+                        )
+                    `)
+                
+                const allBookingsRes = await allBookingsQuery
+                
+                if (allBookingsRes.error) {
+                    throw new Error('Failed to fetch stats data')
+                }
+                
+                const allBookings = allBookingsRes.data || []
+                
+                // Calculate statistics
+                const stats = {
+                    in_progress_bookings: allBookings.filter(booking => 
+                        booking.assignment_status === 'in_progress'
+                    ).length,
+                    monthly_revenue: allBookings
+                        .filter(booking => {
+                            const bookingDate = new Date(booking.created_at)
+                            return bookingDate >= startOfMonth && bookingDate < endOfMonth
+                        })
+                        .reduce((sum, booking) => sum + (Number(booking.total_amount) || 0), 0),
+                    cancelled_bookings: allBookings
+                        .filter(booking => {
+                            const bookingDate = new Date(booking.created_at)
+                            return booking.status === 'CANCELLED' && 
+                                   bookingDate >= startOfMonth && 
+                                   bookingDate < endOfMonth
+                        }).length,
+                    popular_package: (() => {
+                        const packageCounts = {}
+                        allBookings.forEach(booking => {
+                            const packageTitle = booking.package_dates?.tour_packages?.title || 'Unknown'
+                            packageCounts[packageTitle] = (packageCounts[packageTitle] || 0) + 1
+                        })
+                        const sortedPackages = Object.entries(packageCounts)
+                            .sort(([,a], [,b]) => b - a)
+                        return sortedPackages.length > 0 ? sortedPackages[0][0] : '-'
+                    })()
+                }
+
+                // Apply client-side filtering for package name
+                let filteredBookings = bookingsRes.data || []
+                if (filters.package_name && filters.package_name.trim() !== '') {
+                    filteredBookings = filteredBookings.filter(booking => {
+                        const packageTitle = booking.package_dates?.tour_packages?.title || ''
+                        return packageTitle.toLowerCase().includes(filters.package_name.toLowerCase())
+                    })
+                }
+
+                setTourBookings(filteredBookings)
+                setTourStats(stats)
+                // Use filtered count only if we applied client-side filtering, otherwise use server count
+                setTotal(filters.package_name && filters.package_name.trim() !== '' ? filteredBookings.length : bookingsRes.count || 0)
                 setLoading(false)
+                setSearchLoading(false)
             } catch (err) {
                 console.error(err)
                 setError('Failed to load tours. Please try again.')
                 setLoading(false)
+                setSearchLoading(false)
             }
         }
 
@@ -158,6 +336,10 @@ const AdminTours = () => {
             setSearchInput(value)
         } else if (name === 'reference') {
             setReferenceInput(value)
+        } else if (name === 'lead_name') {
+            setLeadNameInput(value)
+        } else if (name === 'lead_email') {
+            setLeadEmailInput(value)
         } else {
             setFilters((prev) => ({ ...prev, [name]: value }))
             setPage(0)
@@ -165,9 +347,19 @@ const AdminTours = () => {
     }
 
     const clearFilters = () => {
-        setFilters({ status: 'All', package_name: '', reference: '' })
+        setFilters({ 
+            status: 'All', 
+            package_name: '', 
+            reference: '',
+            lead_name: '',
+            lead_email: '',
+            assignment_status: 'All',
+            date_range: 'All'
+        })
         setSearchInput('')
         setReferenceInput('')
+        setLeadNameInput('')
+        setLeadEmailInput('')
         setPage(0)
     }
 
@@ -188,27 +380,119 @@ const AdminTours = () => {
             )
         )
     }
-
-    const handlePreviewPDF = async (bookingId) => {
+    
+    // Fetch admin options for assignment dropdown
+    const fetchAdminOptions = async () => {
+        setLoadingAdmins(true)
         try {
-            const token = localStorage.getItem('adminToken')
-            const url = `${import.meta.env.VITE_BACKEND_URL}/api/v1/admin/tours/${bookingId}/html`
-            window.open(`${url}?token=${token}`, '_blank')
+            // Get all admins with accounting role from Supabase
+            const { data: admins, error } = await supabase
+                .from('admins')
+                .select('id, first_name, last_name, email, role')
+                .eq('role', 'accounting')
+            
+            if (error) {
+                console.error('Error fetching admins:', error)
+                throw error
+            }
+            
+            const options = admins.map((admin) => ({
+                value: admin.id,
+                label: `${admin.first_name} ${admin.last_name} (${admin.email})`,
+                email: admin.email,
+                name: `${admin.first_name} ${admin.last_name}`,
+            }))
+            setAdminOptions(options)
         } catch (error) {
-            console.error('Error opening PDF preview:', error)
+            console.error('Error fetching admin options:', error)
+            // Fallback to empty array if there's an error
+            setAdminOptions([])
+        } finally {
+            setLoadingAdmins(false)
         }
     }
+    
+    // Handle edit modal
+    const handleEdit = async (booking) => {
+        await fetchAdminOptions()
+        setSelectedBooking(booking)
+        
+        // Find the assigned staff option from adminOptions
+        const assignedStaffOption = adminOptions.find(option => option.value === booking.assigned_to)
+        
+        setEditForm({
+            status: booking.status,
+            assigned_to: booking.assigned_to || '',
+            assignment_status: booking.assignment_status || 'pending',
+        })
+        setShowEditModal(true)
+    }
+    
+    // Close modal
+    const handleCloseModal = () => {
+        setShowEditModal(false)
+        setSelectedBooking(null)
+        setEditForm({
+            status: '',
+            assigned_to: '',
+            assignment_status: 'pending',
+        })
+    }
+    
+    // Handle form changes
+    const handleFormChange = (field, value) => {
+        setEditForm((prev) => ({
+            ...prev,
+            [field]: value,
+        }))
+    }
+    
+    // Submit handler
+    const handleEditSubmit = async (e) => {
+        e.preventDefault()
+        setEditLoading(true)
 
-    const handleDownloadPDF = async (bookingId) => {
         try {
-            const token = localStorage.getItem('adminToken')
-            const url = `${import.meta.env.VITE_BACKEND_URL}/api/v1/admin/tours/${bookingId}/pdf`
-            window.open(`${url}?token=${token}`, '_blank')
+            const submitData = {
+                status: editForm.status,
+                assigned_to: editForm.assigned_to || null,
+                assignment_status: editForm.assignment_status,
+            }
+
+            const response = await adminClient.put(
+                `/tours/${selectedBooking.id}/edit`,
+                submitData
+            )
+
+            if (response.data.success) {
+                // Update local state
+                setTourBookings((prev) =>
+                    prev.map((booking) =>
+                        booking.id === selectedBooking.id
+                            ? {
+                                ...booking,
+                                ...submitData,
+                                updated_at: new Date().toISOString(),
+                            }
+                            : booking
+                    )
+                )
+                handleCloseModal()
+                alert('Tour booking updated successfully!')
+            } else {
+                alert('Failed to update tour booking')
+            }
         } catch (error) {
-            console.error('Error downloading PDF:', error)
+            console.error('Error updating tour booking:', error)
+            if (error.response?.data?.error) {
+                alert(`Error: ${error.response.data.error}`)
+            } else {
+                alert('Error updating tour booking. Please try again.')
+            }
+        } finally {
+            setEditLoading(false)
         }
     }
-
 
     if (loading) {
         return <div className='tours__loading'>Loading...</div>
@@ -249,34 +533,34 @@ const AdminTours = () => {
             </div>
 
             <div className='tours__summary'>
-                <div className='tours__summary-card tours__summary-card--bookings'>
+                <div className='tours__summary-card tours__summary-card--in-progress'>
                     <div className='tours__summary-icon'>
-                        <FiUsers size={24} />
+                        <FiActivity size={24} />
                     </div>
                     <div className='tours__summary-content'>
-                        <h3>Total Bookings</h3>
-                        <p>{tourStats.total_bookings || 0}</p>
-                        <span className='tours__summary-label'>Active bookings</span>
+                        <h3>In Progress</h3>
+                        <p>{tourStats.in_progress_bookings || 0}</p>
+                        <span className='tours__summary-label'>Active assignments</span>
                     </div>
                 </div>
-                <div className='tours__summary-card tours__summary-card--revenue'>
+                <div className='tours__summary-card tours__summary-card--revenue-month'>
                     <div className='tours__summary-icon'>
                         <FiDollarSign size={24} />
                     </div>
                     <div className='tours__summary-content'>
-                        <h3>Total Revenue</h3>
-                        <p>₱{(tourStats.total_revenue || 0).toLocaleString()}</p>
-                        <span className='tours__summary-label'>All time</span>
+                        <h3>Revenue This Month</h3>
+                        <p>₱{(tourStats.monthly_revenue || 0).toLocaleString()}</p>
+                        <span className='tours__summary-label'>Current month</span>
                     </div>
                 </div>
-                <div className='tours__summary-card tours__summary-card--average'>
+                <div className='tours__summary-card tours__summary-card--cancelled'>
                     <div className='tours__summary-icon'>
                         <FiTrendingUp size={24} />
                     </div>
                     <div className='tours__summary-content'>
-                        <h3>Avg. Booking Cost</h3>
-                        <p>₱{(tourStats.avg_booking_cost || 0).toLocaleString()}</p>
-                        <span className='tours__summary-label'>Per booking</span>
+                        <h3>Cancelled Bookings</h3>
+                        <p>{tourStats.cancelled_bookings || 0}</p>
+                        <span className='tours__summary-label'>This month</span>
                     </div>
                 </div>
                 <div className='tours__summary-card tours__summary-card--popular'>
@@ -293,81 +577,134 @@ const AdminTours = () => {
 
             <div className='tours__filter'>
                 <div className='tours__filter-header'>
-                    <FiFilter size={20} />
-                    <h3>Filters & Search</h3>
+                    <div className='tours__filter-title'>
+                        <FiFilter size={18} />
+                        <span>Filters & Search</span>
+                    </div>
+                    <button
+                        className='tours__filter-clear'
+                        onClick={clearFilters}
+                    >
+                        <FiRefreshCw size={14} />
+                        Clear All
+                    </button>
                 </div>
-                <div className='tours__filter-content'>
-                    <div className='tours__filter-group'>
-                        <label className='tours__filter-label'>
-                            <FiPackage size={16} />
-                            Status
-                        </label>
-                        <select
-                            name='status'
-                            value={filters.status}
-                            onChange={handleFilterChange}
-                            className='tours__filter-select'
-                        >
-                            <option value='All'>All Statuses</option>
-                            <option value='CONFIRMED'>Confirmed</option>
-                            <option value='PENDING_PAYMENT'>Pending Payment</option>
-                            <option value='CANCELLED'>Cancelled</option>
-                        </select>
+                
+                <div className='tours__filter-grid'>
+                    {/* Quick Filters */}
+                    <div className='tours__filter-section'>
+                        <div className='tours__filter-section-title'>Quick Filters</div>
+                        <div className='tours__filter-row'>
+                            <div className='tours__filter-group'>
+                                <select
+                                    name='status'
+                                    value={filters.status}
+                                    onChange={handleFilterChange}
+                                    className='tours__filter-select'
+                                >
+                                    <option value='All'>All Statuses</option>
+                                    <option value='CONFIRMED'>Confirmed</option>
+                                    <option value='PENDING_PAYMENT'>Pending Payment</option>
+                                    <option value='CANCELLED'>Cancelled</option>
+                                </select>
+                            </div>
+                            <div className='tours__filter-group'>
+                                <select
+                                    name='assignment_status'
+                                    value={filters.assignment_status}
+                                    onChange={handleFilterChange}
+                                    className='tours__filter-select'
+                                >
+                                    <option value='All'>All Assignments</option>
+                                    <option value='pending'>Pending</option>
+                                    <option value='in_progress'>In Progress</option>
+                                    <option value='completed'>Completed</option>
+                                </select>
+                            </div>
+                            <div className='tours__filter-group'>
+                                <select
+                                    name='date_range'
+                                    value={filters.date_range}
+                                    onChange={handleFilterChange}
+                                    className='tours__filter-select'
+                                >
+                                    <option value='All'>All Time</option>
+                                    <option value='today'>Today</option>
+                                    <option value='week'>This Week</option>
+                                    <option value='month'>This Month</option>
+                                    <option value='quarter'>This Quarter</option>
+                                    <option value='year'>This Year</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
-                    <div className='tours__filter-group'>
-                        <label className='tours__filter-label'>
-                            <FiSearch size={16} />
-                            Search Package
-                        </label>
-                        <input
-                            type='text'
-                            name='package_name'
-                            value={searchInput}
-                            onChange={handleFilterChange}
-                            placeholder='Search Package (e.g., Boracay Tour)'
-                            className='tours__filter-input'
-                        />
+
+                    {/* Search Fields */}
+                    <div className='tours__filter-section'>
+                        <div className='tours__filter-section-title'>Search</div>
+                        <div className='tours__filter-row'>
+                            <div className='tours__filter-group'>
+                                <input
+                                    type='text'
+                                    name='package_name'
+                                    value={searchInput}
+                                    onChange={handleFilterChange}
+                                    placeholder='Package name...'
+                                    className='tours__filter-input'
+                                />
+                            </div>
+                            <div className='tours__filter-group'>
+                                <input
+                                    type='text'
+                                    name='reference'
+                                    value={referenceInput}
+                                    onChange={handleFilterChange}
+                                    placeholder='Booking reference...'
+                                    className='tours__filter-input'
+                                />
+                            </div>
+                            <div className='tours__filter-group'>
+                                <input
+                                    type='text'
+                                    name='lead_name'
+                                    value={leadNameInput}
+                                    onChange={handleFilterChange}
+                                    placeholder='Lead name...'
+                                    className='tours__filter-input'
+                                />
+                            </div>
+                            <div className='tours__filter-group'>
+                                <input
+                                    type='text'
+                                    name='lead_email'
+                                    value={leadEmailInput}
+                                    onChange={handleFilterChange}
+                                    placeholder='Lead email...'
+                                    className='tours__filter-input'
+                                />
+                            </div>
+                        </div>
                     </div>
-                    <div className='tours__filter-group'>
-                        <label className='tours__filter-label'>
-                            <FiSearch size={16} />
-                            Search Reference
-                        </label>
-                        <input
-                            type='text'
-                            name='reference'
-                            value={referenceInput}
-                            onChange={handleFilterChange}
-                            placeholder='Search Reference (e.g., TR123)'
-                            className='tours__filter-input'
-                        />
-                    </div>
-                    <div className='tours__filter-group'>
-                        <label className='tours__filter-label'>
-                            <FiFilter size={16} />
-                            Sort by Date
-                        </label>
-                        <select
-                            name='order'
-                            value={sort.key === 'created_at' ? sort.direction : 'desc'}
-                            onChange={(e) => {
-                                setSort({ key: 'created_at', direction: e.target.value })
-                                setPage(0)
-                            }}
-                            className='tours__filter-select'
-                        >
-                            <option value='desc'>Newest first</option>
-                            <option value='asc'>Oldest first</option>
-                        </select>
-                    </div>
-                    <div className='tours__filter-actions'>
-                        <button
-                            className='tours__filter-clear'
-                            onClick={clearFilters}
-                        >
-                            <FiRefreshCw size={16} />
-                            Clear Filters
-                        </button>
+
+                    {/* Sort */}
+                    <div className='tours__filter-section'>
+                        <div className='tours__filter-section-title'>Sort</div>
+                        <div className='tours__filter-row'>
+                            <div className='tours__filter-group'>
+                                <select
+                                    name='order'
+                                    value={sort.key === 'created_at' ? sort.direction : 'desc'}
+                                    onChange={(e) => {
+                                        setSort({ key: 'created_at', direction: e.target.value })
+                                        setPage(0)
+                                    }}
+                                    className='tours__filter-select'
+                                >
+                                    <option value='desc'>Newest first</option>
+                                    <option value='asc'>Oldest first</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -378,6 +715,12 @@ const AdminTours = () => {
                         <FiPackage size={24} />
                         <h2>Tour Bookings</h2>
                         <span className='tours__section-count'>({total} bookings)</span>
+                        {searchLoading && (
+                            <div className='tours__search-loading'>
+                                <div className='tours__search-spinner'></div>
+                                <span>Searching...</span>
+                            </div>
+                        )}
                     </div>
                     {/* <div className='tours__section-actions'>
                         <button className='tours__action-btn tours__action-btn--export'>
@@ -573,6 +916,12 @@ const AdminTours = () => {
                                                         <span className='tours__assignment-staff-email'>
                                                             {booking.assigned_staff?.email}
                                                         </span>
+                                                        {!booking.assigned_by && (
+                                                            <span className='tours__assignment-auto'>
+                                                                <FiActivity size={12} />
+                                                                Auto-assigned
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <span className={`tours__assignment-status tours__assignment-status--${booking.assignment_status}`}>
                                                         {booking.assignment_status?.replace('_', ' ') || 'pending'}
@@ -588,13 +937,6 @@ const AdminTours = () => {
                                     </td>
                                     <td className='tours__table-cell tours__table-cell--actions'>
                                         <div className='tours__actions'>
-                                            <Link 
-                                                to={`/admin/tour-sales/${booking.id}`}
-                                                className='tours__action-btn tours__action-btn--view'
-                                                title='View Details'
-                                            >
-                                                <FiEye size={16} />
-                                            </Link>
                                             {userRole === 'admin' && (
                                                 <button 
                                                     className='tours__action-btn tours__action-btn--assign'
@@ -607,15 +949,9 @@ const AdminTours = () => {
                                             <button 
                                                 className='tours__action-btn tours__action-btn--edit'
                                                 title='Edit Booking'
+                                                onClick={() => handleEdit(booking)}
                                             >
                                                 <FiEdit size={16} />
-                                            </button>
-                                           
-                                            <button 
-                                                className='tours__action-btn tours__action-btn--delete'
-                                                title='Cancel Booking'
-                                            >
-                                                <FiTrash2 size={16} />
                                             </button>
                                         </div>
                                     </td>
@@ -650,6 +986,111 @@ const AdminTours = () => {
                 bookingType={assignmentModal.bookingType}
                 onSuccess={handleAssignmentSuccess}
             />
+            
+            {/* Edit Modal */}
+            {showEditModal && (
+                <div className='modal-overlay' onClick={handleCloseModal}>
+                    <div className='modal-content' onClick={(e) => e.stopPropagation()}>
+                        <div className='modal-header'>
+                            <h3>Edit Tour Booking</h3>
+                            <button
+                                className='modal-close'
+                                onClick={handleCloseModal}
+                                disabled={editLoading}
+                            >
+                                <FiX />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleEditSubmit} className='edit-form'>
+                            <div className='form-group'>
+                                <label htmlFor='status'>Status</label>
+                                <Select
+                                    value={tourStatusOptions.find(
+                                        (option) => option.value === editForm.status
+                                    )}
+                                    onChange={(selectedOption) =>
+                                        handleFormChange('status', selectedOption?.value || '')
+                                    }
+                                    options={tourStatusOptions}
+                                    placeholder='Select status'
+                                    isSearchable={false}
+                                    className='react-select-container'
+                                    classNamePrefix='react-select'
+                                    formatOptionLabel={(option) => (
+                                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                                            <div
+                                                style={{
+                                                    width: 12,
+                                                    height: 12,
+                                                    borderRadius: '50%',
+                                                    backgroundColor: option.color,
+                                                    marginRight: 8,
+                                                }}
+                                            />
+                                            {option.label}
+                                        </div>
+                                    )}
+                                />
+                            </div>
+
+                            <div className='form-group'>
+                                <label htmlFor='assigned_to'>Assigned To</label>
+                                <Select
+                                    value={adminOptions.find(
+                                        (option) => option.value === editForm.assigned_to
+                                    )}
+                                    onChange={(selectedOption) =>
+                                        handleFormChange('assigned_to', selectedOption?.value || '')
+                                    }
+                                    options={adminOptions}
+                                    placeholder={loadingAdmins ? 'Loading admins...' : 'Select admin'}
+                                    isSearchable={true}
+                                    isLoading={loadingAdmins}
+                                    isClearable={true}
+                                    className='react-select-container'
+                                    classNamePrefix='react-select'
+                                />
+                            </div>
+
+                            <div className='form-group'>
+                                <label htmlFor='assignment_status'>Assignment Status</label>
+                                <Select
+                                    value={assignmentStatusOptions.find(
+                                        (option) => option.value === editForm.assignment_status
+                                    )}
+                                    onChange={(selectedOption) =>
+                                        handleFormChange('assignment_status', selectedOption?.value || 'pending')
+                                    }
+                                    options={assignmentStatusOptions}
+                                    placeholder='Select assignment status'
+                                    isSearchable={false}
+                                    className='react-select-container'
+                                    classNamePrefix='react-select'
+                                />
+                            </div>
+
+                            <div className='modal-actions'>
+                                <button
+                                    type='button'
+                                    className='btn btn-secondary'
+                                    onClick={handleCloseModal}
+                                    disabled={editLoading}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type='submit'
+                                    className='btn btn-primary'
+                                    disabled={editLoading}
+                                >
+                                    {editLoading ? 'Updating...' : 'Update Booking'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

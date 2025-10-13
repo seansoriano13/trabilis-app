@@ -3,32 +3,143 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { IoChevronBack } from 'react-icons/io5'
 import AdminPrimaryButton from '../../components/admin/AdminPrimaryButton'
 import adminClient from '../../api/adminClient.js'
+import axios from 'axios'
+import AsyncSelect from 'react-select/async'
 import './EditTourPackage.css'
 import './CreateTourPackage.css'
-import { AccordionSection, DateGroup } from './CreateTourPackage.jsx'
+import { AccordionSection } from './CreateTourPackage.jsx'
+import { loadCountryOptions, checkVisaRequirement } from '../../utils/countryOptionsLoader'
+import { formSelectStyles } from '../../styles/client/reactSelectStyles'
+
+const CATEGORY_OPTIONS = [
+    'Air Travel',
+    'Transfers',
+    'Accommodation',
+    'Meals',
+    'Guided Tours / Activities',
+    'Entrance Fees / Tickets',
+    'Visa / Documentation',
+    'Insurance',
+    'Taxes / Surcharges',
+    'Miscellaneous / Others',
+    'Custom…',
+]
+
+// Custom DateGroup for EditTourPackage with non-editable slots
+const EditDateGroup = ({
+    index,
+    dateGroup,
+    updateDateGroup,
+    removeDateGroup,
+}) => (
+    <div className='date-group'>
+        <h3 className='date-group__title'>Tour Package Date {index + 1}</h3>
+        <div className='form__fields'>
+            <div className='date-group__form-field'>
+                <label className='form-label'>Start Date *</label>
+                <input
+                    type='date'
+                    value={dateGroup.start_date}
+                    onChange={(e) =>
+                        updateDateGroup(index, 'start_date', e.target.value)
+                    }
+                    className='form-input'
+                    required
+                />
+            </div>
+            <div className='date-group__form-field'>
+                <label className='form-label'>End Date *</label>
+                <input
+                    type='date'
+                    value={dateGroup.end_date}
+                    onChange={(e) =>
+                        updateDateGroup(index, 'end_date', e.target.value)
+                    }
+                    className='form-input'
+                    required
+                />
+            </div>
+            <div className='date-group__form-field'>
+                <label className='form-label'>Rate per Pax (PHP) *</label>
+                <input
+                    type='number'
+                    value={dateGroup.rate_per_pax}
+                    onChange={(e) =>
+                        updateDateGroup(
+                            index,
+                            'rate_per_pax',
+                            Number(e.target.value)
+                        )
+                    }
+                    className='form-input'
+                    min='0'
+                    required
+                />
+            </div>
+            <div className='date-group__form-field'>
+                <label className='form-label'>
+                    Rate per Pax - Reservation (PHP) *
+                </label>
+                <input
+                    type='number'
+                    value={dateGroup.reservation_fee_per_pax}
+                    onChange={(e) =>
+                        updateDateGroup(
+                            index,
+                            'reservation_fee_per_pax',
+                            Number(e.target.value)
+                        )
+                    }
+                    className='form-input'
+                    min='0'
+                    required
+                />
+            </div>
+            <div className='date-group__form-field'>
+                <label className='form-label'>Total Slots</label>
+                <input
+                    type='number'
+                    value={dateGroup.total_slots}
+                    className='form-input form-input--readonly'
+                    readOnly
+                    disabled
+                />
+                <small className='form-help-text'>Total slots cannot be changed. Create a new date group instead.</small>
+            </div>
+            <div className='date-group__form-field'>
+                <label className='form-label'>Available Slots</label>
+                <input
+                    type='number'
+                    value={dateGroup.available_slots}
+                    className='form-input form-input--readonly'
+                    readOnly
+                    disabled
+                />
+                <small className='form-help-text'>Available slots are automatically calculated.</small>
+            </div>
+            {index > 0 && (
+                <button
+                    onClick={() => removeDateGroup(index)}
+                    className='button-link button-link--remove'
+                >
+                    Remove Tour Package Date
+                </button>
+            )}
+        </div>
+    </div>
+)
 
 function EditTourPackage() {
     const { id } = useParams()
     const navigate = useNavigate()
-    const CATEGORY_OPTIONS = [
-        'Air Travel',
-        'Transfers',
-        'Accommodation',
-        'Meals',
-        'Guided Tours / Activities',
-        'Entrance Fees / Tickets',
-        'Visa / Documentation',
-        'Insurance',
-        'Taxes / Surcharges',
-        'Miscellaneous / Others',
-        'Custom…',
-    ]
     const [formData, setFormData] = useState({
         title: '',
         description: '',
         main_image_url: '',
         panellum_url: '',
         status: 'DRAFT',
+        destination_country: '', // New field for visa integration
+        visa_required: false, // Auto-enabled based on country
         dates: [],
         itineraries: [],
         inclusions: [''],
@@ -51,9 +162,12 @@ function EditTourPackage() {
     })
     const [mainImagePreview, setMainImagePreview] = useState(null)
     const [panellumImagePreview, setPanellumImagePreview] = useState(null)
+    const [itineraryImagePreviews, setItineraryImagePreviews] = useState({})
     const [isLoading, setIsLoading] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState(null)
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+    const [originalFormData, setOriginalFormData] = useState(null)
 
     useEffect(() => {
         const fetchTour = async () => {
@@ -116,11 +230,24 @@ function EditTourPackage() {
                                 ...d,
                                 inclusion_groups: groupsWithItems,
                             }
-                        } catch (_) {
+                        } catch (_error) { // eslint-disable-line no-unused-vars
+                            // Ignore API errors for inclusion groups
                             return d
                         }
                     })
                 )
+
+                // Build itineraries with proper date association
+                const allItineraries = tour.dates.flatMap((date) =>
+                    date.itineraries.map((it) => ({
+                        id: it.id,
+                        package_date_id: date.id,
+                        day_number: it.day_number || 0,
+                        title: it.title || '',
+                        description: it.description || '',
+                        image_url: it.image_url || '',
+                    }))
+                ).sort((a, b) => a.day_number - b.day_number)
 
                 setFormData({
                     title: tour.title || '',
@@ -128,16 +255,28 @@ function EditTourPackage() {
                     main_image_url: tour.main_image_url || '',
                     panellum_url: tour.panellum_url || '',
                     status: tour.status || 'DRAFT',
+                    destination_country: tour.destination_country || '',
+                    visa_required: tour.visa_required || false,
                     dates: datesWithExtras,
-                    itineraries: tour.dates.flatMap((date) =>
-                        date.itineraries.map((it) => ({
-                            id: it.id,
-                            package_date_id: date.id,
-                            day_number: it.day_number || 0,
-                            title: it.title || '',
-                            description: it.description || '',
-                        }))
-                    ),
+                    itineraries: allItineraries,
+                    inclusions: tour.dates[0]?.inclusions || [''],
+                    exclusions: tour.dates[0]?.exclusions || [''],
+                    payment_terms: tour.dates[0]?.payment_terms || [''],
+                    requirements: tour.dates[0]?.requirements || [''],
+                    notes: tour.dates[0]?.notes || [''],
+                })
+
+                // Store original data for comparison
+                setOriginalFormData({
+                    title: tour.title || '',
+                    description: tour.description || '',
+                    main_image_url: tour.main_image_url || '',
+                    panellum_url: tour.panellum_url || '',
+                    status: tour.status || 'DRAFT',
+                    destination_country: tour.destination_country || '',
+                    visa_required: tour.visa_required || false,
+                    dates: datesWithExtras,
+                    itineraries: allItineraries,
                     inclusions: tour.dates[0]?.inclusions || [''],
                     exclusions: tour.dates[0]?.exclusions || [''],
                     payment_terms: tour.dates[0]?.payment_terms || [''],
@@ -159,6 +298,14 @@ function EditTourPackage() {
         fetchTour()
     }, [id])
 
+    // Track changes to detect unsaved modifications
+    useEffect(() => {
+        if (!originalFormData) return
+
+        const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalFormData)
+        setHasUnsavedChanges(hasChanges)
+    }, [formData, originalFormData])
+
     console.log(formData)
     const toggleSection = (section) => {
         setOpenSections((prev) => ({
@@ -169,6 +316,42 @@ function EditTourPackage() {
 
     const updateFormData = (field, value) => {
         setFormData((prev) => ({ ...prev, [field]: value }))
+    }
+
+    // Auto-enable visa based on country selection
+    const checkAndEnableVisa = (selectedCountry) => {
+        const countryName = selectedCountry?.value || ''
+        const visaRequired = checkVisaRequirement(countryName)
+        
+        setFormData(prev => ({
+            ...prev,
+            destination_country: countryName,
+            visa_required: visaRequired,
+            dates: prev.dates.map(date => {
+                if (visaRequired) {
+                    // Check if visa inclusion group already exists
+                    const hasVisaGroup = date.inclusion_groups?.some(group => 
+                        group.category === 'Visa / Documentation'
+                    )
+                    
+                    if (!hasVisaGroup) {
+                        return {
+                            ...date,
+                            inclusion_groups: [
+                                ...(date.inclusion_groups || []),
+                                {
+                                    title: 'Visa / Documentation',
+                                    category: 'Visa / Documentation',
+                                    removable: false, // Required for visa countries
+                                    items: ['Visa processing assistance']
+                                }
+                            ]
+                        }
+                    }
+                }
+                return date
+            })
+        }))
     }
 
     const updateDateGroup = (index, field, value) => {
@@ -364,31 +547,41 @@ function EditTourPackage() {
         }))
     }
 
-    const autofillDateGroup = (index) => {
-        // Optional: Implement autofill logic if needed
-    }
-
     const updateItinerary = (index, field, value) => {
         setFormData((prev) => {
             const newItineraries = [...prev.itineraries]
             newItineraries[index][field] = value
+            
+            // If day_number was updated, sort the itineraries
+            if (field === 'day_number') {
+                newItineraries.sort((a, b) => a.day_number - b.day_number)
+            }
+            
             return { ...prev, itineraries: newItineraries }
         })
     }
 
     const addItinerary = () => {
-        setFormData((prev) => ({
-            ...prev,
-            itineraries: [
-                ...prev.itineraries,
-                {
-                    day_number: prev.itineraries.length + 1,
-                    title: '',
-                    description: '',
-                    package_date_id: prev.dates[0]?.id || null,
-                },
-            ],
-        }))
+        setFormData((prev) => {
+            // Calculate the next day number based on the highest existing day number
+            const maxDayNumber = prev.itineraries.length > 0 
+                ? Math.max(...prev.itineraries.map(it => it.day_number || 0))
+                : 0
+            
+            return {
+                ...prev,
+                itineraries: [
+                    ...prev.itineraries,
+                    {
+                        day_number: maxDayNumber + 1,
+                        title: '',
+                        description: '',
+                        image_url: '',
+                        package_date_id: prev.dates[0]?.id || null,
+                    },
+                ],
+            }
+        })
     }
 
     const removeItinerary = (index) => {
@@ -396,6 +589,8 @@ function EditTourPackage() {
             const newItineraries = prev.itineraries.filter(
                 (_, i) => i !== index
             )
+            // Re-sort and renumber the remaining itineraries
+            newItineraries.sort((a, b) => a.day_number - b.day_number)
             newItineraries.forEach((it, i) => {
                 it.day_number = i + 1
             })
@@ -529,7 +724,70 @@ function EditTourPackage() {
         }
     }
 
+    const uploadImageToImgBB = async (file, field) => {
+        // Client-side validation
+        const maxSize = 10 * 1024 * 1024 // 10MB
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+        
+        if (file.size > maxSize) {
+            alert('Image file too large. Maximum size is 10MB.')
+            return
+        }
+        
+        if (!allowedTypes.includes(file.type)) {
+            alert('Unsupported image format. Please use JPEG, PNG, or WebP.')
+            return
+        }
+        
+        const formData = new FormData()
+        formData.append('image', file)
+        try {
+            const response = await axios.post(
+                `${import.meta.env.VITE_BACKEND_URL}/api/v1/images/upload-image`,
+                formData,
+                {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                }
+            )
+            const imageUrl = response.data.data.url
+            if (field.startsWith('itinerary_')) {
+                const itinIndex = parseInt(field.split('_')[1])
+                updateItinerary(itinIndex, 'image_url', imageUrl)
+            } else {
+                updateFormData(field, imageUrl)
+                if (field === 'main_image_url') {
+                    setMainImagePreview(URL.createObjectURL(file))
+                } else if (field === 'panellum_url') {
+                    setPanellumImagePreview(URL.createObjectURL(file))
+                }
+            }
+        } catch (error) {
+            console.error('Error uploading image:', error)
+            const errorMessage = error.response?.data?.error || error.message || 'Failed to upload image'
+            alert(`Image upload failed: ${errorMessage}. Please check your file size (max 10MB) and format (JPEG, PNG, WebP only).`)
+        }
+    }
+
+    const handleItineraryImageChange = (e, itinIndex) => {
+        const file = e.target.files[0]
+        if (file) {
+            uploadImageToImgBB(file, `itinerary_${itinIndex}`)
+            setItineraryImagePreviews(prev => ({
+                ...prev,
+                [itinIndex]: URL.createObjectURL(file)
+            }))
+        }
+    }
+
     const handleBackClick = () => {
+        if (hasUnsavedChanges) {
+            const shouldLeave = window.confirm(
+                'You have unsaved changes. Are you sure you want to leave without saving?'
+            )
+            if (!shouldLeave) return
+        }
         navigate('/admin/tours')
     }
 
@@ -537,34 +795,78 @@ function EditTourPackage() {
         e.preventDefault()
         setIsSubmitting(true)
         try {
+            // Validate required fields before sending
+            const validationErrors = []
+            
+            if (!formData.title?.trim()) validationErrors.push('Title is required')
+            if (!formData.description?.trim()) validationErrors.push('Description is required')
+            if (!formData.destination_country?.trim()) validationErrors.push('Destination Country is required')
+            if (!formData.main_image_url?.trim()) validationErrors.push('Main image is required')
+            if (!formData.panellum_url?.trim()) validationErrors.push('Panellum image is required')
+            
+            // Validate dates
+            formData.dates.forEach((date, index) => {
+                if (!date.start_date) validationErrors.push(`Start date is required for date group ${index + 1}`)
+                if (!date.end_date) validationErrors.push(`End date is required for date group ${index + 1}`)
+                if (date.start_date && date.end_date && new Date(date.start_date) >= new Date(date.end_date)) {
+                    validationErrors.push(`End date must be after start date for date group ${index + 1}`)
+                }
+                if (!date.rate_per_pax || Number(date.rate_per_pax) <= 0) {
+                    validationErrors.push(`Rate per pax must be greater than 0 for date group ${index + 1}`)
+                }
+                if (!date.total_slots || Number(date.total_slots) <= 0) {
+                    validationErrors.push(`Total slots must be greater than 0 for date group ${index + 1}`)
+                }
+            })
+            
+            if (validationErrors.length > 0) {
+                setError(validationErrors.join(', '))
+                setIsSubmitting(false)
+                return
+            }
+            
             const payload = {
                 title: formData.title,
                 description: formData.description,
                 main_image_url: formData.main_image_url,
                 panellum_url: formData.panellum_url,
                 status: formData.status,
+                destination_country: formData.destination_country,
+                visa_required: formData.visa_required,
                 dates: formData.dates.map((date) => ({
                     id: date.id || undefined,
                     start_date: date.start_date,
                     end_date: date.end_date,
-                    rate_per_pax: parseFloat(date.rate_per_pax) || 0,
+                    rate_per_pax: Number(date.rate_per_pax) || 0,
                     reservation_fee_per_pax: date.reservation_fee_per_pax
-                        ? parseFloat(date.reservation_fee_per_pax)
+                        ? Number(date.reservation_fee_per_pax)
                         : null,
-                    total_slots: parseInt(date.total_slots) || 0,
-                    available_slots: parseInt(date.available_slots) || 0,
+                    total_slots: Number(date.total_slots) || 0,
+                    available_slots: Number(date.available_slots) || 0,
                     inclusions: date.inclusions.filter(Boolean),
                     exclusions: date.exclusions.filter(Boolean),
                     payment_terms: date.payment_terms.filter(Boolean),
                     requirements: date.requirements.filter(Boolean),
                     notes: date.notes.filter(Boolean),
                     itineraries: formData.itineraries
-                        .filter((it) => it.package_date_id === date.id)
+                        .filter((it) => {
+                            // For existing dates, match by package_date_id
+                            if (date.id) {
+                                return it.package_date_id === date.id
+                            } else {
+                                // For new dates, assign itineraries that don't have a package_date_id
+                                // or assign to the first new date
+                                const dateIndex = formData.dates.findIndex(d => d === date)
+                                const isFirstNewDate = dateIndex === formData.dates.findIndex(d => !d.id)
+                                return !it.package_date_id && isFirstNewDate
+                            }
+                        })
                         .map((it) => ({
                             id: it.id || undefined,
-                            day_number: parseInt(it.day_number) || 0,
-                            title: it.title,
-                            description: it.description,
+                            day_number: Number(it.day_number) || 0,
+                            title: it.title || '',
+                            description: it.description || '',
+                            image_url: it.image_url || '',
                         })),
                 })),
             }
@@ -592,8 +894,8 @@ function EditTourPackage() {
                             await adminClient.delete(`/tours/inclusion-groups/${eg.id}`)
                         }
                     }
-                } catch (_) {
-                    // ignore cleanup errors; creation step below will still run
+                } catch (_error) { // eslint-disable-line no-unused-vars
+                    // Ignore cleanup errors; creation step below will still run
                 }
 
                 // Create inclusion groups and items
@@ -617,6 +919,7 @@ function EditTourPackage() {
             }
 
             if (response.data.message === 'Tour updated successfully') {
+                setHasUnsavedChanges(false)
                 navigate('/admin/tours')
             } else {
                 throw new Error('Unexpected response from server')
@@ -630,7 +933,12 @@ function EditTourPackage() {
         }
     }
 
-    if (isLoading) return <div className='loading'>Loading...</div>
+    if (isLoading) return (
+        <div className='loading-container'>
+            <div className='loading-spinner'></div>
+            <div className='loading-text'>Loading tour package...</div>
+        </div>
+    )
     if (error) return <div className='loading'>{error}</div>
 
     return (
@@ -639,6 +947,9 @@ function EditTourPackage() {
                 <div onClick={handleBackClick} className='header__back-button'>
                     <IoChevronBack size={24} />
                     <p className='header__back-text'>Back to Tours</p>
+                    {hasUnsavedChanges && (
+                        <span className='unsaved-indicator'>•</span>
+                    )}
                 </div>
             </div>
 
@@ -713,6 +1024,44 @@ function EditTourPackage() {
                         )}
                     </div>
                     <div className='date-group__form-field'>
+                        <label className='form-label'>Destination Country *</label>
+                        <AsyncSelect
+                            loadOptions={loadCountryOptions}
+                            onChange={checkAndEnableVisa}
+                            value={formData.destination_country ? { 
+                                value: formData.destination_country, 
+                                label: formData.destination_country,
+                                requiresVisa: checkVisaRequirement(formData.destination_country)
+                            } : null}
+                            styles={formSelectStyles}
+                            placeholder="Search for a country..."
+                            noOptionsMessage={() => "No countries found"}
+                            loadingMessage={() => "Loading countries..."}
+                            isClearable
+                            isSearchable
+                            cacheOptions
+                            defaultOptions
+                            formatOptionLabel={(option) => (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span>{option.label}</span>
+                                    <div style={{ display: 'flex', gap: '8px', fontSize: '12px', color: '#666' }}>
+                                        <span>{option.code}</span>
+                                        {option.requiresVisa && (
+                                            <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>VISA REQUIRED</span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        />
+                        {formData.visa_required && (
+                            <div className='visa-notice'>
+                                <p className='visa-notice__text'>
+                                    ✅ Visa processing will be automatically included for this destination
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                    <div className='date-group__form-field'>
                         <label className='form-label'>Status *</label>
                         <select
                             value={formData.status}
@@ -736,18 +1085,17 @@ function EditTourPackage() {
             >
                 <div className='form__fields'>
                     {formData.dates.map((dateGroup, index) => (
-                        <DateGroup
+                        <EditDateGroup
                             key={dateGroup.id || `date-${index}`}
                             index={index}
                             dateGroup={dateGroup}
                             updateDateGroup={updateDateGroup}
                             removeDateGroup={removeDateGroup}
-                            autofillDateGroup={autofillDateGroup}
                         />
                     ))}
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <button onClick={() => addDateGroup(false)} className='button-link'>+ Add another travel date</button>
-                        <button onClick={() => addDateGroup(true)} className='button-link'>+ Add date (duplicate pricing)</button>
+                        <button onClick={() => addDateGroup(false)} className='button-link'>Add Tour Package Date</button>
+                        <button onClick={() => addDateGroup(true)} className='button-link'>Duplicate Tour Package Date</button>
                     </div>
                 </div>
             </AccordionSection>
@@ -914,6 +1262,24 @@ function EditTourPackage() {
                                     required
                                     placeholder='e.g., Airport pickup, transfer to hotel'
                                 />
+                            </div>
+                            <div className='date-group__form-field'>
+                                <label className='form-label'>Day Image</label>
+                                <input
+                                    type='file'
+                                    accept='image/jpeg,image/png,image/gif,image/webp'
+                                    onChange={(e) =>
+                                        handleItineraryImageChange(e, itinIndex)
+                                    }
+                                    className='form-input'
+                                />
+                                {(itineraryImagePreviews[itinIndex] || itinerary.image_url) && (
+                                    <img
+                                        src={itineraryImagePreviews[itinIndex] || itinerary.image_url}
+                                        alt={`Day ${itinerary.day_number} Preview`}
+                                        className='image-preview'
+                                    />
+                                )}
                             </div>
                             {formData.itineraries.length > 1 && (
                                 <button

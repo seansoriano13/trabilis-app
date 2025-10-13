@@ -68,7 +68,7 @@ export default function Home() {
                     Travel and Tours
                 </h2>
 
-                <div className='lg:flex gap-8 flex'>
+                <div className='gap-8 grid lg:flex'>
                     <img
                         className='rounded-lg'
                         src='/client/lindela-reception.jpg'
@@ -121,7 +121,7 @@ export default function Home() {
                             <a
                                 ref={destinationRef}
                                 href='/about-us'
-                                className='w-full lg:w-fit mt-4 lg:mt-0 py-3 lg:py-4 px-8 flex items-center justify-center gap-2 text-secondary-500 hover:text-tertiary-500 hover:bg-secondary-500 border border-secondary-500 rounded-lg shadow transition-all'
+                                className='w-full lg:w-fit mt-4 lg:mt-0 py-3 lg:py-4 px-8 flex items-center justify-center gap-2 text-secondary-500 hover:text-white hover:bg-black border border-secondary-500 rounded-lg shadow transition-all'
                             >
                                 <i className='bi-arrow-up-right'></i>
                                 <span>KNOW MORE</span>
@@ -140,19 +140,21 @@ export default function Home() {
                         Explore new horizons and cultures around the world.
                     </p>
 
-                    <Link
-                        to='destinations'
-                        className='text-[#f7d100] mr-2 hover:mr-0 flex items-center gap-2 hover:gap-4 font-bold transition-all'
-                    >
-                        <span>Explore Destinations</span>
-                        <FaLongArrowAltRight />
-                    </Link>
+                    <div>
+                        <Link
+                            to='destinations'
+                            className='text-[#f7d100] mr-2 hover:mr-0 flex items-center gap-2 hover:gap-4 font-bold transition-all'
+                        >
+                            <span>Explore Destinations</span>
+                            <FaLongArrowAltRight />
+                        </Link>
+                    </div>
 
                     <Swiper
                         modules={[Navigation, Pagination]}
                         navigation
                         spaceBetween={20}
-                        slidesPerView={1}
+                        slidesPerView={2}
                         className='mt-4'
                     >
                         {tours.map((tour) => (
@@ -163,23 +165,23 @@ export default function Home() {
                                         src={tour.main_image_url}
                                         alt={tour.title}
                                     />
-                                    
+
                                     {/* Overlay with gradient for better text readability */}
                                     <div className='absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent rounded-lg'></div>
-                                    
+
                                     {/* Tour Info */}
-                                    <div className='bg-[#18181ab3] absolute bottom-0 text-white w-full p-6 flex items-center justify-between gap-2'>
-                                        <h4 className='text-sm font-semibold mb-1'>
+                                    <div className='bg-[#18181ab3] absolute bottom-0 text-white w-full lg:p-6 md:p-6 p-2 flex items-center justify-between gap-2'>
+                                        <h4 className='md:text-lg text-xs font-bold mb-1'>
                                             {tour.title.toUpperCase()}
                                         </h4>
-                                        <p className='text-2xl font-bold mb-3'>
+                                        {/* <p className='lg:text-2xl font-bold mb-3'>
                                             {tour.dates?.[0]?.rate_per_pax
                                                 ? `PHP ${tour.dates[0].rate_per_pax.toLocaleString()}`
                                                 : 'Price N/A'}
-                                        </p>
-                                        
+                                        </p> */}
+
                                         {/* Action Buttons */}
-                                        <div className='flex gap-2'>
+                                        <div className='flex gap-2 '>
                                             {/* <div>
                                             <button
                                                 className='flex-1 bg-[#f7d100] text-black font-bold py-2 px-4 rounded-md hover:bg-[#ffe347] transition-colors text-sm'
@@ -196,7 +198,7 @@ export default function Home() {
                                             </button>
                                             </div> */}
                                             <button
-                                                className='bg-transparent border border-white text-white font-bold py-2 px-4 rounded-md hover:bg-white hover:text-black transition-colors text-sm'
+                                                className='bg-transparent border border-white text-white font-bold py-2 px-4 rounded-md hover:bg-white hover:text-black transition-colors lg:text-sm'
                                                 onClick={() =>
                                                     navigate(
                                                         `/destinations/tour/${tour.id}`,
@@ -232,8 +234,26 @@ export default function Home() {
                         spending plan and schedule.
                     </p>
                 </div>
+
                 <div className='home__benefits-list mt-8 flex flex-wrap gap-8'>
-                    {[...Array(4)].map((_, i) => (
+                    {[
+                        {
+                            title: 'Satisfaction Guaranteed',
+                            desc: 'Our goal is your happiness. We want you to be completely satisfied with our services and we will do what it takes to make sure that happens.',
+                        },
+                        {
+                            title: 'Time and Value',
+                            desc: "We secure competitive rates with hotels, guides, and airlines through negotiations. But what's truly priceless is the time we save you. We handle all the planning, ensuring every detail of your trip is perfect.",
+                        },
+                        {
+                            title: 'Quality and Service',
+                            desc: 'We go above and beyond to ensure the quality of our service are met at every step of your travel. We closely listen and are constantly seeking new ways to improve our services.',
+                        },
+                        {
+                            title: 'All the Little Details',
+                            desc: "We're seasoned Travel Consultants, skilled in handling every aspect of your trip. From travel insurance to documentation, we've got you covered.",
+                        },
+                    ].map((benefit, i) => (
                         <div
                             key={i}
                             className='home__benefit w-full lg:w-[calc(calc(100%/2)-2rem)] lg:pt-6 lg:px-8 lg:pb-4 flex flex-row lg:flex-col gap-4 bg-white lg:border-[0.5px] lg:border-gray-400 rounded-lg lg:shadow group'
@@ -241,17 +261,14 @@ export default function Home() {
                             <img
                                 className='home__benefit-icon w-12 lg:w-16 h-12 lg:h-16 block object-center object-contain group-hover:-rotate-6 transition-all'
                                 src={`/client/benefits-${i}.png`}
-                                alt={`benefits-${i}`}
+                                alt={benefit.title}
                             />
                             <div className='home__benefit-text flex-1'>
                                 <div className='font-bold text-base lg:text-xl underline underline-offset-4 decoration-transparent group-hover:decoration-primary-500 decoration-4 transition-all'>
-                                    Satisfaction Guaranteed
+                                    {benefit.title}
                                 </div>
                                 <p className='lg:mt-4 text-sm lg:text-base text-secondary-300'>
-                                    Our goal is your happiness. We want you to
-                                    be completely satisfied with our services
-                                    and we will do what it takes to make sure
-                                    that happens.
+                                    {benefit.desc}
                                 </p>
                             </div>
                         </div>

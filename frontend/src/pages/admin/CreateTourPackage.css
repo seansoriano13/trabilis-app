@@ -1,3 +1,23 @@
+/* --- Visa Integration Styles --- */
+.visa-notice {
+    margin-top: 0.5rem;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    border: 1px solid #10b981;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1);
+}
+
+.visa-notice__text {
+    margin: 0;
+    color: #065f46;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 /* --- Enhanced Blocks --- */
 
 .admin-primary-button {
@@ -494,3 +514,5 @@
 ::-webkit-scrollbar-thumb:hover {
     background: #e6c200;
 }
+
+/* Readonly Input Styles - Moved to EditTourPackage.css to avoid conflicts */

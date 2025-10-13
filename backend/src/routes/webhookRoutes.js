@@ -1,5 +1,5 @@
 import express from 'express'
-import { handleStripeWebhook } from '../controllers/webhookController.js'
+import { handleStripeWebhook, testFlightPDFGeneration } from '../controllers/webhookController.js'
 
 const router = express.Router()
 
@@ -8,5 +8,8 @@ router.post(
     express.raw({ type: 'application/json' }),
     handleStripeWebhook
 )
+
+// Test endpoint for Flight PDF generation
+router.get('/test-flight-pdf/:bookingReference', testFlightPDFGeneration)
 
 export default router

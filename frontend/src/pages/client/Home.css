@@ -35,6 +35,11 @@
     font-size: 0.875rem;
 }
 
+.home__header-btn:hover {
+    background-color: #f7d100;
+    color: black;
+}
+
 .home__about {
     padding: 2rem 1rem;
     display: grid;

@@ -96,7 +96,7 @@ export default function Destinations() {
                     {/* Desktop */}
                     <source
                         srcSet={greatPyramidOfGazaDesktop}
-                        media='(min-width: 1024px)' 
+                        media='(min-width: 1024px)'
                     />
 
                     {/* Mobile fallback */}
@@ -150,54 +150,127 @@ export default function Destinations() {
                     </form>
                 </div>
             </section>
-            <div className='max-w-[1200px] grid [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))] gap-5 px-5 my-8 mx-auto'>
-                <h3 className='text-[#333] font-bold text-3xl lg:text-3xl mx-auto text-center col-span-full lg:p-4'>
+            <div className='max-w-[1200px] px-5 my-8 mx-auto grid gap-8'>
+                <h3 className='text-[#333] font-bold text-3xl lg:text-4xl mx-auto text-center mb-8'>
                     Tour Packages
                 </h3>
 
                 {isLoading ? (
-                    <p className='col-span-full text-center'>
-                        Loading tours...
-                    </p>
+                    <div className='flex justify-center items-center py-12'>
+                        <div className='flex items-center gap-3 text-gray-600'>
+                            <i className='bi-arrow-clockwise animate-spin text-2xl'></i>
+                            <span className='text-lg'>Loading tours...</span>
+                        </div>
+                    </div>
                 ) : currentTours.length === 0 ? (
-                    <p className='col-span-full text-center'>No tours found.</p>
+                    <div className='text-center py-12'>
+                        <i className='bi-compass text-6xl text-gray-300 mb-4'></i>
+                        <p className='text-lg text-gray-600'>No tours found.</p>
+                    </div>
                 ) : (
-                    currentTours.map(
-                        (tour) =>
-                            tour.status === 'PUBLISHED' && (
-                                <div
-                                    key={tour.id}
-                                    className='tour-card'
-                                >
-                                    <Panorama
-                                        id={tour.id}
-                                        image={tour.panellum_url}
-                                        preview={tour.main_image_url}
-                                    />
-                                    <div className='tour-card__content'>
-                                        <h3 className='tour-card__title--destinations'>
-                                            {tour.title || 'Tour Title'}
-                                        </h3>
-                                        <p className='tour-card__price'>
-                                            {tour.dates &&
-                                            tour.dates[0]?.rate_per_pax
-                                                ? `PHP ${tour.dates[0].rate_per_pax.toLocaleString()}`
-                                                : 'Price N/A'}
-                                        </p>
-                                        <PrimaryButton
-                                            buttonText='View Details'
-                                            isBold={true}
-                                            style={{ padding: '0.5rem 1rem' }}
-                                            onClick={() =>
-                                                navigate(`tour/${tour.id}`, {
-                                                    state: tour,
-                                                })
-                                            }
-                                        />
+                    <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'>
+                        {currentTours.map(
+                            (tour) =>
+                                tour.status === 'PUBLISHED' && (
+                                    <div
+                                        key={tour.id}
+                                        className='group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-yellow-200 transform hover:-translate-y-2 tour-card-enhanced'
+                                    >
+                                        {/* Image Section */}
+                                        <div className='relative h-64 overflow-hidden'>
+                                            <div className='tour-card-image h-full'>
+                                                <Panorama
+                                                    id={tour.id}
+                                                    image={tour.panellum_url}
+                                                    preview={tour.main_image_url}
+                                                    aspectRatio='16/9'
+                                                />
+                                            </div>
+                                            <div className='absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none'></div>
+                                            <div className='absolute top-4 left-4 pointer-events-none'>
+                                                <div className='tour-card-badge rounded-full px-3 py-1 text-xs font-semibold text-gray-700 shadow-lg'>
+                                                    <i className='bi-calendar-check mr-1'></i>
+                                                    {tour.dates?.length || 0} dates
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Content Section */}
+                                        <div className='p-6'>
+                                            {/* Title */}
+                                            <h3 className='text-xl font-bold text-gray-800 mb-3 line-clamp-2 group-hover:text-yellow-600 transition-colors duration-200'>
+                                                {tour.title || 'Tour Title'}
+                                            </h3>
+
+                                            {/* Description */}
+                                            <p className='text-gray-600 text-sm mb-4 line-clamp-2'>
+                                                {tour.description || 'Discover amazing destinations with our carefully crafted tour packages.'}
+                                            </p>
+
+                                            {/* Available Dates */}
+                                            <div className='mb-4'>
+                                                <div className='flex items-center gap-2 mb-2'>
+                                                    <i className='bi-calendar-event text-yellow-500'></i>
+                                                    <span className='text-sm font-semibold text-gray-700'>Available Dates</span>
+                                                </div>
+                                                <div className='space-y-1 max-h-20 overflow-y-auto'>
+                                                    {tour.dates?.slice(0, 3).map((date, index) => (
+                                                        <div key={index} className='flex items-center gap-2 text-xs text-gray-600'>
+                                                            <div className='w-1.5 h-1.5 bg-yellow-400 rounded-full'></div>
+                                                            <span>
+                                                                {new Date(date.start_date).toLocaleDateString()} - {new Date(date.end_date).toLocaleDateString()}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                    {tour.dates?.length > 3 && (
+                                                        <div className='text-xs text-yellow-600 font-medium'>
+                                                            +{tour.dates.length - 3} more dates
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Price and Duration */}
+                                            <div className='flex items-center justify-between mb-6'>
+                                                <div className='flex items-center gap-2'>
+                                                    <i className='bi-clock text-gray-400'></i>
+                                                    <span className='text-sm text-gray-600'>
+                                                        {tour.dates?.[0] ? 
+                                                            Math.ceil((new Date(tour.dates[0].end_date) - new Date(tour.dates[0].start_date)) / (1000 * 60 * 60 * 24)) + 1 
+                                                            : 'N/A'
+                                                        } days
+                                                    </span>
+                                                </div>
+                                                <div className='text-right'>
+                                                    <div className='text-2xl font-bold tour-card-price'>
+                                                        {tour.dates && tour.dates[0]?.rate_per_pax
+                                                            ? `₱${tour.dates[0].rate_per_pax.toLocaleString()}`
+                                                            : 'Price N/A'}
+                                                    </div>
+                                                    <div className='text-xs text-gray-500'>per person</div>
+                                                </div>
+                                            </div>
+
+                                            {/* Action Button */}
+                                            <button
+                                                onClick={() =>
+                                                    navigate(`tour/${tour.id}`, {
+                                                        state: tour,
+                                                    })
+                                                }
+                                                className='w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center gap-2 group/btn tour-card-button'
+                                            >
+                                                <span>View Details</span>
+                                                <i className='bi-arrow-right group-hover/btn:translate-x-1 transition-transform duration-200'></i>
+                                            </button>
+                                        </div>
+
+                                        {/* Hover Overlay */}
+                                        <div className='absolute inset-0 bg-gradient-to-t from-yellow-400/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none'></div>
                                     </div>
-                                </div>
-                            )
-                    )
+                                )
+                        )}
+                    </div>
                 )}
             </div>
 

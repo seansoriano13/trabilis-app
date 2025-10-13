@@ -32,10 +32,12 @@ import TourBookingCancel from './pages/client/TourBookingCancel'
 import TourBooking from './pages/client/TourBooking'
 import AdminTours from './pages/admin/AdminTour'
 import AdminUsers from './pages/admin/AdminUsers'
-import AdminVisaInquiries from './pages/admin/AdminVisaInquiries'
+import AdminVisa from './pages/admin/AdminVisa'
 import TrackBooking from './pages/client/TrackBooking'
 import FlightBookingDetail from './pages/admin/FlightBookingDetail'
 import TourBookingDetail from './pages/admin/TourBookingDetail'
+import { AirportProvider } from './context/AirportContext'
+import { AirlinesProvider } from './context/AirlinesContext'
 
 Modal.setAppElement('#root')
 
@@ -53,8 +55,10 @@ function App() {
         return children ? children : <Outlet />
     }
     return (
-        <Router>
-            <Routes>
+        <AirportProvider>
+            <AirlinesProvider>
+                <Router>
+                    <Routes>
                 {/* CLient Routes */}
                 <Route
                     path='/'
@@ -184,12 +188,14 @@ function App() {
                         />
                         <Route
                             path='visa-inquiries'
-                            element={<AdminVisaInquiries />}
+                            element={<AdminVisa />}
                         />
                     </Route>
                 </Route>
-            </Routes>
-        </Router>
+                    </Routes>
+                </Router>
+            </AirlinesProvider>
+        </AirportProvider>
     )
 }
 

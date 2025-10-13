@@ -1,9 +1,10 @@
 import Modal from 'react-modal'
 import { GiAirplaneDeparture } from 'react-icons/gi'
 import { IoIosClose } from 'react-icons/io'
-import { getAircraftName } from '../../utils/aircraftUtils'
+import { getAircraftName } from '../../utils/metadataApi.js'
 import { LuDot } from 'react-icons/lu'
 import PrimaryButton from './PrimaryButton'
+import { useState, useEffect } from 'react'
 
 function FlightDetailsModal({
     isOpen,
@@ -20,7 +21,13 @@ function FlightDetailsModal({
     aircraftCode,
     departureIata,
 }) {
-    const aircraftName = getAircraftName(aircraftCode)
+    const [aircraftName, setAircraftName] = useState('Loading...')
+
+    useEffect(() => {
+        if (aircraftCode) {
+            getAircraftName(aircraftCode).then(setAircraftName)
+        }
+    }, [aircraftCode])
 
     return (
         <Modal

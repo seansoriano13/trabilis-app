@@ -154,20 +154,20 @@
     color: white;
 }
 
-.tours__summary-card--bookings .tours__summary-icon {
-    background: linear-gradient(135deg, #f7d100, #e6c200);
+.tours__summary-card--in-progress .tours__summary-icon {
+    background: linear-gradient(135deg, #17a2b8, #138496);
 }
 
-.tours__summary-card--revenue .tours__summary-icon {
+.tours__summary-card--revenue-month .tours__summary-icon {
     background: linear-gradient(135deg, #28a745, #1e7e34);
 }
 
-.tours__summary-card--average .tours__summary-icon {
-    background: linear-gradient(135deg, #ffc107, #e0a800);
+.tours__summary-card--cancelled .tours__summary-icon {
+    background: linear-gradient(135deg, #dc3545, #c82333);
 }
 
 .tours__summary-card--popular .tours__summary-icon {
-    background: linear-gradient(135deg, #dc3545, #c82333);
+    background: linear-gradient(135deg, #6f42c1, #5a32a3);
 }
 
 .tours__summary-content {
@@ -201,90 +201,103 @@
     background: white;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    border: 1px solid #e9ecef;
     margin-bottom: 25px;
     overflow: hidden;
 }
 
 .tours__filter-header {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 12px;
-    padding: 20px 25px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 20px 24px;
+    background: #f8f9fa;
     border-bottom: 1px solid #e9ecef;
 }
 
-.tours__filter-header h3 {
-    margin: 0;
-    color: #333;
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.tours__filter-content {
-    padding: 25px;
-    display: grid;
-    grid-template-columns: 1fr 2fr auto;
-    gap: 20px;
-    align-items: end;
-}
-
-.tours__filter-group {
-    display: flex;
-    gap: 1rem
-}
-
-.tours__filter-label {
+.tours__filter-title {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: #6c757d;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.tours__filter-select,
-.tours__filter-input {
-    padding: 12px 16px;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    font-size: 14px;
-    background: white;
-    color: #333;
-    transition: all 0.3s ease;
-}
-
-.tours__filter-select:focus,
-.tours__filter-input:focus {
-    outline: none;
-    border-color: #f7d100;
-    box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
-}
-
-.tours__filter-actions {
-    display: flex;
-    align-items: center;
+    color: #495057;
+    font-size: 16px;
+    font-weight: 600;
 }
 
 .tours__filter-clear {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
+    gap: 6px;
+    padding: 8px 12px;
     background: #6c757d;
     color: white;
     border: none;
-    border-radius: 8px;
-    font-size: 14px;
+    border-radius: 6px;
+    font-size: 13px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
 }
 
 .tours__filter-clear:hover {
     background: #545b62;
-    transform: translateY(-1px);
+}
+
+.tours__filter-grid {
+    padding: 24px;
+}
+
+.tours__filter-section {
+    margin-bottom: 24px;
+}
+
+.tours__filter-section:last-child {
+    margin-bottom: 0;
+}
+
+.tours__filter-section-title {
+    color: #6c757d;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+}
+
+.tours__filter-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.tours__filter-input,
+.tours__filter-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    transition: all 0.2s ease;
+}
+
+.tours__filter-input:focus,
+.tours__filter-select:focus {
+    outline: none;
+    border-color: #f7d100;
+    box-shadow: 0 0 0 2px rgba(247, 209, 0, 0.15);
+}
+
+.tours__filter-input::placeholder {
+    color: #adb5bd;
+    font-size: 13px;
+}
+
+.tours__filter-select {
+    cursor: pointer;
+}
+
+.tours__filter-select:hover {
+    border-color: #adb5bd;
 }
 
 /* Section Styles */
@@ -309,6 +322,29 @@
     display: flex;
     align-items: center;
     gap: 12px;
+}
+
+.tours__search-loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #6c757d;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.tours__search-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #e9ecef;
+    border-top: 2px solid #f7d100;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 .tours__section-title h2 {
@@ -684,6 +720,16 @@
     font-size: 10px;
     color: #6b7280;
     line-height: 1.2;
+}
+
+.tours__assignment-auto {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: #17a2b8;
+    font-weight: 500;
+    margin-top: 2px;
 }
 
 .tours__assignment-status {

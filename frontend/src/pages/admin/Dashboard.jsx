@@ -54,16 +54,13 @@ ChartJS.register(
 const Dashboard = () => {
     const [flightBookings, setFlightBookings] = useState([])
     const [tourBookings, setTourBookings] = useState([])
-    const [notifications, setNotifications] = useState([])
     const [revenueData, setRevenueData] = useState([])
-    const [totalRevenue, setTotalRevenue] = useState(0)
     const [flightPage, setFlightPage] = useState(0)
     const [tourPage, setTourPage] = useState(0)
-    const [notifPage, setNotifPage] = useState(0)
     const [flightTotal, setFlightTotal] = useState(0)
     const [tourTotal, setTourTotal] = useState(0)
-    const [notifTotal, setNotifTotal] = useState(0)
     const [thisMonthRevenue, setThisMonthRevenue] = useState(0)
+    const [bookingsToday, setBookingsToday] = useState(0)
     const currentMonthLabelLong = new Date().toLocaleString('en-US', { month: 'long' })
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
@@ -75,12 +72,10 @@ const Dashboard = () => {
         key: 'booking_reference',
         direction: 'asc',
     })
-    const [modalOpen, setModalOpen] = useState(false)
-    const [selectedNotification, setSelectedNotification] = useState(null)
     const [weather, setWeather] = useState(null)
+    const [compressionStats, setCompressionStats] = useState(null)
 
     const pageSize = 5
-    const jwt = localStorage.getItem('adminToken')
 
     useEffect(() => {
         const fetchData = async () => {
@@ -98,12 +93,6 @@ const Dashboard = () => {
                         ascending: sortFlight.direction === 'asc',
                     })
 
-                const notifPromise = supabase
-                    .from('admin_notifications')
-                    .select('*', { count: 'exact' })
-                    .range(notifPage * pageSize, (notifPage + 1) * pageSize - 1)
-                    .order('created_at', { ascending: false })
-
                 const revenuePromise = supabase.rpc('get_monthly_revenue', {
                     p_start_date: '2025-01-01',
                     p_end_date: '2025-12-31',
@@ -113,6 +102,10 @@ const Dashboard = () => {
                     `https://api.openweathermap.org/data/2.5/weather?q=Manila,PH&appid=${
                         import.meta.env.VITE_OPEN_WEATHER_API_KEY
                     }&units=metric`
+                )
+
+                const compressionStatsPromise = axios.get(
+                    `${import.meta.env.VITE_BACKEND_URL}/api/v1/images/compression-stats`
                 )
 
                 const tourCountPromise = supabase
@@ -135,36 +128,69 @@ const Dashboard = () => {
                         ascending: sortTour.direction === 'asc',
                     })
 
+                // Get today's bookings count
+                const today = new Date()
+                const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+                const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+                
+                // Try to get today's flight bookings - use updated_at as fallback if created_at doesn't exist
+                const todayFlightBookingsPromise = supabase
+                    .from('flight_bookings')
+                    .select('id', { count: 'exact', head: true })
+                    .gte('updated_at', startOfDay.toISOString())
+                    .lt('updated_at', endOfDay.toISOString())
+                    
+                const todayTourBookingsPromise = supabase
+                    .from('tour_bookings')
+                    .select('id', { count: 'exact', head: true })
+                    .gte('created_at', startOfDay.toISOString())
+                    .lt('created_at', endOfDay.toISOString())
+
                 const [
                     flightRes,
-                    notifRes,
                     revenueRes,
                     weatherRes,
+                    compressionStatsRes,
                     tourCountRes,
                     tourDataRes,
+                    todayFlightRes,
+                    todayTourRes,
                 ] = await Promise.all([
                     flightPromise,
-                    notifPromise,
                     revenuePromise,
                     weatherPromise,
+                    compressionStatsPromise,
                     tourCountPromise,
                     tourDataPromise,
+                    todayFlightBookingsPromise,
+                    todayTourBookingsPromise,
                 ])
 
                 if (
                     flightRes.error ||
-                    notifRes.error ||
                     revenueRes.error ||
                     weatherRes.error ||
+                    compressionStatsRes.error ||
                     tourCountRes.error ||
-                    tourDataRes.error
+                    tourDataRes.error ||
+                    todayFlightRes.error ||
+                    todayTourRes.error
                 ) {
+                    console.error('Data fetch errors:', {
+                        flightRes: flightRes.error,
+                        revenueRes: revenueRes.error,
+                        weatherRes: weatherRes.error,
+                        compressionStatsRes: compressionStatsRes.error,
+                        tourCountRes: tourCountRes.error,
+                        tourDataRes: tourDataRes.error,
+                        todayFlightRes: todayFlightRes.error,
+                        todayTourRes: todayTourRes.error
+                    })
                     throw new Error('Failed to fetch data')
                 }
 
                 setFlightBookings(flightRes.data)
                 setTourBookings(tourDataRes.data)
-                setNotifications(notifRes.data)
                 // Normalize revenue data to expected shape { month, total }
                 const rawRevenue = revenueRes.data || []
                 const normalizedRevenue = rawRevenue.map((r) => ({
@@ -172,16 +198,6 @@ const Dashboard = () => {
                     total: Number(r.total) || 0,
                 }))
                 setRevenueData(normalizedRevenue)
-                // Try to compute total revenue from RPC across a wide range first
-                try {
-                    const allTimeRes = await supabase.rpc('get_monthly_revenue', {
-                        p_start_date: '2000-01-01',
-                        p_end_date: '2100-12-31',
-                    })
-                    const allRows = allTimeRes.data || []
-                    const totalFromRpc = allRows.reduce((s, r) => s + (Number(r.total) || 0), 0)
-                    if (totalFromRpc > 0) setTotalRevenue(totalFromRpc)
-                } catch (_) {}
 
                 // If no revenue data from RPC, fallback to client-side aggregation
                 const aggregateMonth = async (date) => {
@@ -191,8 +207,8 @@ const Dashboard = () => {
                         supabase
                             .from('flight_bookings')
                             .select('total_amount')
-                            .gte('created_at', start.toISOString())
-                            .lt('created_at', nextMonthStart.toISOString()),
+                            .gte('updated_at', start.toISOString())
+                            .lt('updated_at', nextMonthStart.toISOString()),
                         supabase
                             .from('tour_bookings')
                             .select('total_amount')
@@ -220,14 +236,6 @@ const Dashboard = () => {
                     setRevenueData(computed)
                     const currentMonthSum = await aggregateMonth(now)
                     setThisMonthRevenue(currentMonthSum)
-                    // Fallback all-time totals by summing all rows from both tables
-                    const [allFlights, allTours] = await Promise.all([
-                        supabase.from('flight_bookings').select('total_amount'),
-                        supabase.from('tour_bookings').select('total_amount'),
-                    ])
-                    const totalAll = (allFlights.data || []).reduce((s, r) => s + (Number(r.total_amount) || 0), 0)
-                        + (allTours.data || []).reduce((s, r) => s + (Number(r.total_amount) || 0), 0)
-                    setTotalRevenue(totalAll)
                 } else {
                     const now = new Date()
                     const thisShort = now.toLocaleString('en-US', { month: 'short' })
@@ -244,10 +252,19 @@ const Dashboard = () => {
                         setThisMonthRevenue(fallback)
                     }
                 }
+                
+                // Set today's bookings count with error handling
+                try {
+                    const todayBookingsCount = (todayFlightRes.count || 0) + (todayTourRes.count || 0)
+                    setBookingsToday(todayBookingsCount)
+                } catch (bookingError) {
+                    console.warn('Error calculating today\'s bookings:', bookingError)
+                    setBookingsToday(0)
+                }
                 setFlightTotal(flightRes.count || 0)
                 setTourTotal(tourCountRes.count || 0)
-                setNotifTotal(notifRes.count || 0)
                 setWeather(weatherRes.data)
+                setCompressionStats(compressionStatsRes.data?.data || null)
                 setLoading(false)
             } catch (err) {
                 console.error(err)
@@ -257,7 +274,7 @@ const Dashboard = () => {
         }
 
         fetchData()
-    }, [flightPage, tourPage, notifPage, sortFlight, sortTour])
+    }, [flightPage, tourPage, sortFlight, sortTour])
 
     const getNestedValue = (obj, path) => {
         return path.split('.').reduce((o, k) => o?.[k], obj) || ''
@@ -294,10 +311,6 @@ const Dashboard = () => {
         setTourPage(0) // Reset to first page on sort
     }
 
-    const openNotificationModal = (notification) => {
-        setSelectedNotification(notification)
-        setModalOpen(true)
-    }
 
     const bookingStatsData = {
         labels: ['Flights', 'Tours'],
@@ -409,7 +422,7 @@ const Dashboard = () => {
                     </div>
                     <div className='dashboard__header-text'>
                         <h1>Admin Dashboard</h1>
-                        <p>Overview of your travel business performance</p>
+                        <p>Overview</p>
                     </div>
                 </div>
                 <div className='dashboard__header-actions'>
@@ -451,14 +464,14 @@ const Dashboard = () => {
                         <span className='dashboard__summary-label'>Month to date</span>
                     </div>
                 </div>
-                <div className='dashboard__summary-card dashboard__summary-card--revenue'>
+                <div className='dashboard__summary-card dashboard__summary-card--today'>
                     <div className='dashboard__summary-icon'>
-                        <FiDollarSign size={24} />
+                        <FiCalendar size={24} />
                     </div>
                     <div className='dashboard__summary-content'>
-                    <h3>Total Revenue</h3>
-                    <p>₱{Number(totalRevenue || 0).toLocaleString()}</p>
-                        <span className='dashboard__summary-label'>All time</span>
+                    <h3>Bookings Today</h3>
+                    <p>{bookingsToday}</p>
+                        <span className='dashboard__summary-label'>New bookings</span>
                     </div>
                 </div>
             </div>
@@ -836,6 +849,39 @@ const Dashboard = () => {
 
                 <div className='dashboard__section dashboard__section--chart'>
                     <div className='dashboard__section-header'>
+                        <div className='dashboard__section-title'>
+                            <FiActivity size={24} />
+                            <h2>Image Compression Stats</h2>
+                        </div>
+                    </div>
+                    <div className='dashboard__compression-stats'>
+                        {compressionStats ? (
+                            <div className='dashboard__compression-info'>
+                                <div className='dashboard__compression-item'>
+                                    <div className='dashboard__compression-label'>Compressions Used</div>
+                                    <div className='dashboard__compression-value'>{compressionStats.compressionsUsed}</div>
+                                </div>
+                                <div className='dashboard__compression-item'>
+                                    <div className='dashboard__compression-label'>Remaining</div>
+                                    <div className='dashboard__compression-value'>{compressionStats.compressionsRemaining}</div>
+                                </div>
+                                <div className='dashboard__compression-item'>
+                                    <div className='dashboard__compression-label'>API Status</div>
+                                    <div className='dashboard__compression-value dashboard__compression-value--status'>
+                                        {compressionStats.apiKey === 'Configured' ? '✅ Active' : '❌ Not configured'}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className='dashboard__compression-error'>
+                                <p>Unable to load compression statistics</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className='dashboard__section dashboard__section--chart'>
+                    <div className='dashboard__section-header'>
                     <div className='dashboard__section-title'>
                         <FiBarChart2 size={24} />
                         <h2>Bookings by Type</h2>
@@ -907,56 +953,6 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* <div className='dashboard__section'>
-                <h2>Notifications</h2>
-                <ul className='dashboard__notifications'>
-                    {notifications.map((notification) => (
-                        <li
-                            key={notification.id}
-                            onClick={() => openNotificationModal(notification)}
-                            className='dashboard__notification'
-                        >
-                            {notification.message}
-                            <span>
-                                {new Date(
-                                    notification.created_at
-                                ).toLocaleString()}
-                            </span>
-                        </li>
-                    ))}
-                </ul>
-                <ReactPaginate
-                    previousLabel={'←'}
-                    nextLabel={'→'}
-                    pageCount={Math.ceil(notifTotal / pageSize)}
-                    onPageChange={({ selected }) => setNotifPage(selected)}
-                    containerClassName={'dashboard__pagination'}
-                    activeClassName={'dashboard__pagination--active'}
-                    forcePage={notifPage}
-                />
-            </div> */}
-
-            {modalOpen && (
-                <div className='dashboard__modal'>
-                    <div className='dashboard__modal-content'>
-                        <h3>Notification Details</h3>
-                        <p>{selectedNotification?.message}</p>
-                        <p>
-                            <small>
-                                {new Date(
-                                    selectedNotification?.created_at
-                                ).toLocaleString()}
-                            </small>
-                        </p>
-                        <button
-                            className='dashboard__modal-close'
-                            onClick={() => setModalOpen(false)}
-                        >
-                            Close
-                        </button>
-                    </div>
-                </div>
-            )}
         </div>
     )
 }

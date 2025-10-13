@@ -1013,13 +1013,17 @@
 .modal-content { background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; animation: modalSlideIn 0.3s ease-out; }
 @keyframes modalSlideIn { from { opacity: 0; transform: translateY(-20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #e9ecef; background: #f8f9fa; border-radius: 12px 12px 0 0; }
+.modal-header-sticky { position: sticky; top: 0; z-index: 10; background: #f8f9fa; }
+.modal-header-actions { display: flex; align-items: center; gap: 8px; }
 .modal-header h3 { margin: 0; color: #2c3e50; font-size: 1.25rem; font-weight: 600; }
 .modal-close { background: none; border: none; font-size: 1.5rem; color: #6c757d; cursor: pointer; padding: 4px; border-radius: 4px; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; }
 .modal-close:hover { background: #e9ecef; color: #495057; }
 .modal-close:disabled { opacity: 0.5; cursor: not-allowed; }
 .edit-form { padding: 24px; }
 .form-group { margin-bottom: 20px; }
+.form-group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .form-group label { display: block; margin-bottom: 6px; font-weight: 500; color: #2c3e50; font-size: 0.9rem; }
+.form-group-header label { margin-bottom: 0; }
 .form-group label[for="status"]::after { content: " *"; color: #dc3545; }
 .form-input, .form-textarea { width: 100%; padding: 10px 12px; border: 1px solid #ced4da; border-radius: 6px; font-size: 0.9rem; transition: all 0.2s ease; background: white; }
 .form-input:focus, .form-textarea:focus { outline: none; border-color: #f7d100; box-shadow: 0 0 0 3px rgba(247, 209, 0, 0.1); }
@@ -1039,9 +1043,24 @@
 .react-select__dropdown-indicator { color: #6c757d !important; }
 .react-select__dropdown-indicator:hover { color: #495057 !important; }
 .modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; padding-top: 20px; border-top: 1px solid #e9ecef; }
+.modal-actions-sticky { position: sticky; bottom: 0; z-index: 10; background: white; margin-top: 0; padding: 20px 24px; border-top: 1px solid #e9ecef; }
 .modal-actions .btn { min-width: 100px; display: flex; align-items: center; justify-content: center; gap: 6px; }
 
+/* Draft functionality styles */
+.btn-sm { padding: 6px 12px; font-size: 0.8rem; min-width: auto; }
+.btn-outline { background: transparent; border: 1px solid #6c757d; color: #6c757d; }
+.btn-outline:hover { background: #6c757d; color: white; }
+.btn-secondary { background: #6c757d; color: white; border: 1px solid #6c757d; }
+.btn-secondary:hover { background: #5a6268; border-color: #545b62; }
+
 /* Flight details layout */
+.form-help-text {
+    font-size: 12px;
+    color: #6c757d;
+    margin: 4px 0 12px 0;
+    line-height: 1.4;
+}
+
 .flight-details-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -1055,6 +1074,7 @@
 }
 
 .grid-2 {
+    margin-top: 10px;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
@@ -1236,6 +1256,200 @@
     .email-link,
     .phone-link {
         font-size: 12px;
+    }
+}
+
+/* Visa Status Styles */
+.visa-status-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+}
+
+.visa-status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.visa-status--needs_processing {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #92400e;
+    border: 1px solid #f59e0b;
+}
+
+.visa-status--already_has {
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    color: #065f46;
+    border: 1px solid #10b981;
+}
+
+.visa-status--not_applicable {
+    background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+    color: #6b7280;
+    border: 1px solid #d1d5db;
+}
+
+.visa-status--visa_required {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #92400e;
+    border: 1px solid #f59e0b;
+}
+
+.visa-process-btn {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    border: none;
+    padding: 0.375rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(59, 130, 246, 0.2);
+}
+
+.visa-process-btn:hover {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+}
+
+.visa-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+}
+
+.visa-existing-status {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.625rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.visa-existing-status--valid {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.visa-existing-status--expired {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.visa-existing-status--expiring_soon {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.visa-existing-status--not_specified {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.visa-expiry {
+    color: #6b7280;
+    font-size: 0.625rem;
+    font-style: italic;
+}
+
+/* Mobile responsive adjustments for visa status */
+@media (max-width: 768px) {
+    .visa-status-cell {
+        gap: 0.25rem;
+    }
+    
+    .visa-status-badge {
+        font-size: 0.625rem;
+        padding: 0.125rem 0.5rem;
+    }
+    
+    .visa-process-btn {
+        font-size: 0.625rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .visa-details {
+        font-size: 0.625rem;
+    }
+    
+    .visa-existing-status {
+        font-size: 0.5rem;
+        padding: 0.125rem 0.375rem;
+    }
+    
+    .visa-expiry {
+        font-size: 0.5rem;
+    }
+}
+
+/* Processing Status Styles */
+.processing-status-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+}
+
+.processing-status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.processing-status--pending {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #92400e;
+    border: 1px solid #f59e0b;
+}
+
+.processing-status--in_progress {
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    color: #1e40af;
+    border: 1px solid #3b82f6;
+}
+
+.processing-status--approved {
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    color: #065f46;
+    border: 1px solid #10b981;
+}
+
+.processing-status--rejected {
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    color: #991b1b;
+    border: 1px solid #ef4444;
+}
+
+.processing-status--cancelled {
+    background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+    color: #374151;
+    border: 1px solid #6b7280;
+}
+
+/* Mobile responsive for processing status */
+@media (max-width: 768px) {
+    .processing-status-cell {
+        gap: 0.25rem;
+    }
+    
+    .processing-status-badge {
+        font-size: 0.625rem;
+        padding: 0.125rem 0.375rem;
     }
 }
 

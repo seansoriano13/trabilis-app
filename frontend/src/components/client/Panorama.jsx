@@ -1,5 +1,4 @@
 import { useEffect } from 'react'
-import '../../../public/panellum/panellum.css'
 
 function Panorama({ preview, image, aspectRatio = '16/9', id }) {
     useEffect(() => {
@@ -22,14 +21,28 @@ function Panorama({ preview, image, aspectRatio = '16/9', id }) {
 
         function initViewer() {
             if (window.pannellum) {
-                window.pannellum.viewer(containerId, {
+                const viewer = window.pannellum.viewer(containerId, {
                     type: 'equirectangular',
                     panorama: proxy(image),
                     autoLoad: false,
                     preview: proxy(preview),
                     showZoomCtrl: false,
                     showFullscreenCtrl: true,
+                    showControls: true,
+                    compass: false,
+                    keyboardZoom: false,
+                    mouseZoom: true,
+                    doubleClickZoom: true,
+                    touchPan: true,
+                    touchZoom: true,
                 })
+                
+                // Ensure the viewer is interactive
+                if (viewer) {
+                    viewer.on('load', () => {
+                        console.log('Panorama loaded for', containerId)
+                    })
+                }
             }
         }
 
@@ -44,8 +57,9 @@ function Panorama({ preview, image, aspectRatio = '16/9', id }) {
             id={`panorama-${id}`}
             style={{
                 width: '100%',
+                height: '100%',
                 aspectRatio,
-                maxHeight: '20vh',
+                minHeight: '100%',
             }}
         ></div>
     )

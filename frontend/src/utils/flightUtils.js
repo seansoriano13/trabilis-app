@@ -1,10 +1,10 @@
 import { Duration } from 'luxon'
-import { getAirlineInfo } from './airlinesUtils.js'
+import { getAirlineInfo } from './metadataApi.js'
 
-export const createFlightDetails = (flight) => {
+export const createFlightDetails = async (flight) => {
     const { airlineCode, segments } = flight
     const flightNumber = segments[0].number
-    const { name, logo } = getAirlineInfo(airlineCode)
+    const { name, logo } = await getAirlineInfo(airlineCode)
 
     return {
         airlineCode: airlineCode,

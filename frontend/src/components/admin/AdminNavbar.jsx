@@ -448,7 +448,7 @@ function AdminNavbar() {
                                     onClick={() => setMenuOpen(false)}
                                 >
                                     <FiShield size={18} />
-                                    <span>Visa Inquiries</span>
+                                    <span>Visa Processing</span>
                                 </NavLink>
                             </li>
                             {userRole === 'admin' && (

@@ -1,9 +1,18 @@
-import { getAirlineInfo } from '../../utils/airlinesUtils'
+import { getAirlineInfo } from '../../utils/metadataApi.js'
+import { useState, useEffect } from 'react'
 
-export const createFlightNumber = (flight) => {
+export const CreateFlightNumber = ({ flight }) => {
     const { airlineCode, segments } = flight
     const flightNumber = segments[0].number
-    const { name: airlineName, logo: airlineLogo } = getAirlineInfo(airlineCode)
+    const [airlineInfo, setAirlineInfo] = useState({ name: 'Loading...', logo: null })
+
+    useEffect(() => {
+        if (airlineCode) {
+            getAirlineInfo(airlineCode).then(setAirlineInfo)
+        }
+    }, [airlineCode])
+
+    const { name: airlineName, logo: airlineLogo } = airlineInfo
 
     return (
         <span className='flight-info'>

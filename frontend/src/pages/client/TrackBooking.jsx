@@ -8,7 +8,34 @@ import axios from 'axios'
 import { getStatusStyle } from '../../utils/statusStyles.js'
 import { useAirports } from '../../context/AirportContext.jsx'
 import { getAirportInfoByIata } from '../../utils/getAirportInfoByIata.js'
-import { getAirlineInfo } from '../../utils/airlinesUtils.js'
+import { getAirlineInfo } from '../../utils/metadataApi.js'
+
+// Component to handle async airline info loading
+function AirlineInfo({ airlineCode }) {
+    const [airlineInfo, setAirlineInfo] = useState({ name: 'Loading...', logo: null })
+
+    useEffect(() => {
+        if (airlineCode) {
+            getAirlineInfo(airlineCode).then(setAirlineInfo)
+        }
+    }, [airlineCode])
+
+    return (
+        <div className='text-gray-600 flex gap-1 items-center'>
+            <div>This flight is operated by</div>
+            <div className='flex items-center'>
+                {airlineInfo.name}
+                {airlineInfo.logo && (
+                    <img
+                        className='h-8'
+                        src={airlineInfo.logo}
+                        alt={airlineInfo.name}
+                    />
+                )}
+            </div>
+        </div>
+    )
+}
 
 function TrackBooking() {
     const [isLoading, setIsLoading] = useState()
@@ -93,9 +120,9 @@ function TrackBooking() {
                     className='max-w-[1200px] mx-auto shadow-md rounded-lg border border-gray-200 p-8 mt-8'
                 >
                     <div className='lg:flex md:flex gap-8 justify-between grid'>
-                        <div className='grid lg:flex md:flex gap-8'>
-                            <div className='radio-input'>
-                                <label>
+                        <div className='grid lg:flex md:flex gap-8 items-center'>
+                            <div className='flex flex-wrap gap-4'>
+                                <label className='flex items-center cursor-pointer group radio-option'>
                                     <input
                                         type='radio'
                                         name='value-radio'
@@ -104,10 +131,28 @@ function TrackBooking() {
                                         onChange={(e) =>
                                             setBookingType(e.target.value)
                                         }
+                                        className='sr-only'
                                     />
-                                    <span>Flight</span>
+                                    <div className={`flex items-center gap-3 px-6 py-3 rounded-xl border-2 transition-all duration-200 group-hover:shadow-md ${
+                                        bookingType === 'flight'
+                                            ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-md'
+                                            : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
+                                    }`}>
+                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 radio-dot relative ${
+                                            bookingType === 'flight'
+                                                ? 'border-blue-500 bg-blue-500'
+                                                : 'border-gray-300 group-hover:border-gray-400'
+                                        }`}>
+                                            {bookingType === 'flight' && (
+                                                <div className='w-2 h-2 rounded-full bg-white'></div>
+                                            )}
+                                        </div>
+                                        <i className='bi-airplane text-lg'></i>
+                                        <span className='font-medium'>Flight</span>
+                                    </div>
                                 </label>
-                                <label>
+                                
+                                <label className='flex items-center cursor-pointer group radio-option'>
                                     <input
                                         type='radio'
                                         name='value-radio'
@@ -116,10 +161,28 @@ function TrackBooking() {
                                         onChange={(e) =>
                                             setBookingType(e.target.value)
                                         }
+                                        className='sr-only'
                                     />
-                                    <span>Tour Package</span>
+                                    <div className={`flex items-center gap-3 px-6 py-3 rounded-xl border-2 transition-all duration-200 group-hover:shadow-md ${
+                                        bookingType === 'tour'
+                                            ? 'bg-amber-50 border-amber-500 text-amber-700 shadow-md'
+                                            : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
+                                    }`}>
+                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 radio-dot relative ${
+                                            bookingType === 'tour'
+                                                ? 'border-amber-500 bg-amber-500'
+                                                : 'border-gray-300 group-hover:border-gray-400'
+                                        }`}>
+                                            {bookingType === 'tour' && (
+                                                <div className='w-2 h-2 rounded-full bg-white'></div>
+                                            )}
+                                        </div>
+                                        <i className='bi-compass text-lg'></i>
+                                        <span className='font-medium'>Tour Package</span>
+                                    </div>
                                 </label>
-                                <label>
+                                
+                                <label className='flex items-center cursor-pointer group radio-option'>
                                     <input
                                         type='radio'
                                         name='value-radio'
@@ -128,34 +191,73 @@ function TrackBooking() {
                                         onChange={(e) =>
                                             setBookingType(e.target.value)
                                         }
+                                        className='sr-only'
                                     />
-                                    <span>Visa Inquiry</span>
+                                    <div className={`flex items-center gap-3 px-6 py-3 rounded-xl border-2 transition-all duration-200 group-hover:shadow-md ${
+                                        bookingType === 'visa'
+                                            ? 'bg-green-50 border-green-500 text-green-700 shadow-md'
+                                            : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
+                                    }`}>
+                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 radio-dot relative ${
+                                            bookingType === 'visa'
+                                                ? 'border-green-500 bg-green-500'
+                                                : 'border-gray-300 group-hover:border-gray-400'
+                                        }`}>
+                                            {bookingType === 'visa' && (
+                                                <div className='w-2 h-2 rounded-full bg-white'></div>
+                                            )}
+                                        </div>
+                                        <i className='bi-passport text-lg'></i>
+                                        <span className='font-medium'>Visa Inquiry</span>
+                                    </div>
                                 </label>
                             </div>
-                            <div className=''>
-                                <input
-                                    type='text'
-                                    className='rounded-md border border-gray-300 h-full'
-                                    placeholder='Booking Reference'
-                                    value={bookingRef}
-                                    onChange={(e) =>
-                                        setBookingRef(e.target.value)
-                                    }
-                                />
-                                <div className='text-xs text-gray-400 italic'>
-                                    TRB-FLT for Flight / TRB-TOUR for Tour Package / TRB-VISA for Visa
+                            <div className='flex-1'>
+                                <div className='relative'>
+                                    <input
+                                        type='text'
+                                        className='w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200 text-gray-700 placeholder-gray-400 track-input'
+                                        placeholder='Enter your booking reference'
+                                        value={bookingRef}
+                                        onChange={(e) =>
+                                            setBookingRef(e.target.value)
+                                        }
+                                    />
+                                    <i className='bi-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400'></i>
                                 </div>
                             </div>
                         </div>
 
-                        <div>
-                            <PrimaryButton
-                                buttonText={
-                                    isLoading ? 'Checking...' : 'Track Me'
-                                }
-                                isBold={true}
-                                className='px-4 py-4'
-                            />
+                        <div className='flex items-center'>
+                            <button
+                                type='submit'
+                                disabled={isLoading}
+                                className={`px-8 py-3 rounded-xl font-semibold text-white transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 ${
+                                    isLoading
+                                        ? 'bg-gray-400 cursor-not-allowed btn-loading'
+                                        : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
+                                }`}
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <i className='bi-arrow-clockwise animate-spin'></i>
+                                        <span>Checking...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <i className='bi-search'></i>
+                                        <span>Track Booking</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {/* Format notice at bottom */}
+                    <div className='mt-4 pt-4 border-t border-gray-100'>
+                        <div className='text-xs text-gray-500 flex items-center gap-1'>
+                            <i className='bi-info-circle'></i>
+                            <span>Format: TRB-FLT (Flight) / TRB-TOUR (Tour) / TRB-VISA (Visa)</span>
                         </div>
                     </div>
                 </form>
@@ -330,23 +432,7 @@ function TrackBooking() {
                                     {result.bookingReference}
                                 </span>
                             </div>
-                            <div className='text-gray-600 flex gap-1 items-center'>
-                                <div>This flight is operated by</div>
-                                <div className='flex items-center'>
-                                    {getAirlineInfo(result.airlineCode).name}
-                                    <img
-                                        className='h-8'
-                                        src={
-                                            getAirlineInfo(result.airlineCode)
-                                                .logo
-                                        }
-                                        alt={
-                                            getAirlineInfo(result.airlineCode)
-                                                .name
-                                        }
-                                    />
-                                </div>
-                            </div>
+                            <AirlineInfo airlineCode={result.airlineCode} />
                         </div>
                     </div>
                 )}

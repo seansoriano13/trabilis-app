@@ -4,7 +4,8 @@ import PrimaryButton from '../../components/client/PrimaryButton'
 import FlightLeg from '../client/FlightLeg'
 import { useNavigate } from 'react-router-dom'
 import './FlightResultCard.css'
-import { getAirlineInfo } from '../../utils/airlinesUtils'
+import { getAirlineInfo } from '../../utils/metadataApi.js'
+import { useState, useEffect } from 'react'
 
 export default function FlightResultCard({
     index,
@@ -18,7 +19,15 @@ export default function FlightResultCard({
     travelerCount,
 }) {
     const navigate = useNavigate()
-    const { name, logo } = getAirlineInfo(outboundData.airlineCode)
+    const [airlineInfo, setAirlineInfo] = useState({ name: 'Loading...', logo: null })
+
+    useEffect(() => {
+        if (outboundData.airlineCode) {
+            getAirlineInfo(outboundData.airlineCode).then(setAirlineInfo)
+        }
+    }, [outboundData.airlineCode])
+
+    const { name, logo } = airlineInfo
 
     const handleBookNow = (flight) => {
         const bookingData = {

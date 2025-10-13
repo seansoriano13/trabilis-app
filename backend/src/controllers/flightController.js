@@ -53,9 +53,42 @@ export const searchFlights = async (req, res) => {
                 })
             }
 
+            // Filter flights that support the requested passenger mix
+            const supportedFlights = flightResponse.data.filter(flight => {
+                if (!flight.travelerPricings || flight.travelerPricings.length === 0) {
+                    return false // Skip flights without pricing info
+                }
+
+                const availableTypes = flight.travelerPricings.map(p => p.travelerType)
+                const requiredTypes = []
+                
+                // Add adult types
+                for (let i = 0; i < travelerCount.adults; i++) {
+                    requiredTypes.push('ADULT')
+                }
+                
+                // Add child types
+                for (let i = 0; i < (travelerCount.children || 0); i++) {
+                    requiredTypes.push('CHILD')
+                }
+
+                // Check if all required types are available
+                const uniqueRequiredTypes = [...new Set(requiredTypes)]
+                const hasAllTypes = uniqueRequiredTypes.every(type => availableTypes.includes(type))
+                
+                if (!hasAllTypes) {
+                    console.log(`Flight ${flight.id} filtered out - missing pricing for:`, 
+                        uniqueRequiredTypes.filter(type => !availableTypes.includes(type)))
+                }
+                
+                return hasAllTypes
+            })
+
+            console.log(`Search returned ${flightResponse.data.length} flights, ${supportedFlights.length} support passenger mix`)
+
             res.status(200).json({
                 flights: {
-                    outbound: flightResponse.data,
+                    outbound: supportedFlights,
                 },
             })
         } else {
@@ -70,9 +103,42 @@ export const searchFlights = async (req, res) => {
                     travelClass: cabinClassValue,
                     currencyCode: 'PHP',
                 })
+            // Filter flights that support the requested passenger mix (round-trip)
+            const supportedFlights = flightResponse.data.filter(flight => {
+                if (!flight.travelerPricings || flight.travelerPricings.length === 0) {
+                    return false // Skip flights without pricing info
+                }
+
+                const availableTypes = flight.travelerPricings.map(p => p.travelerType)
+                const requiredTypes = []
+                
+                // Add adult types
+                for (let i = 0; i < travelerCount.adults; i++) {
+                    requiredTypes.push('ADULT')
+                }
+                
+                // Add child types
+                for (let i = 0; i < (travelerCount.children || 0); i++) {
+                    requiredTypes.push('CHILD')
+                }
+
+                // Check if all required types are available
+                const uniqueRequiredTypes = [...new Set(requiredTypes)]
+                const hasAllTypes = uniqueRequiredTypes.every(type => availableTypes.includes(type))
+                
+                if (!hasAllTypes) {
+                    console.log(`Round-trip flight ${flight.id} filtered out - missing pricing for:`, 
+                        uniqueRequiredTypes.filter(type => !availableTypes.includes(type)))
+                }
+                
+                return hasAllTypes
+            })
+
+            console.log(`Round-trip search returned ${flightResponse.data.length} flights, ${supportedFlights.length} support passenger mix`)
+
             res.status(200).json({
                 flights: {
-                    outbound: flightResponse.data,
+                    outbound: supportedFlights,
                 },
             })
         }

@@ -1,5 +1,6 @@
 import { sendVisaInquiryConfirmationEmail } from '../services/brevoEmailService.js'
 import { supabase, supabaseAdmin } from '../config/supabaseClient.js'
+import { autoAssignBooking } from '../services/assignmentService.js'
 import Pusher from 'pusher'
 
 const pusher = new Pusher({
@@ -35,7 +36,7 @@ export const submitVisaInquiry = async (req, res) => {
         const inquiryReference = `TRB-VISA-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`
 
         // Insert inquiry into database (Supabase)
-        const { error: insertError } = await supabaseAdmin
+        const { data: inquiryData, error: insertError } = await supabaseAdmin
             .from('visa_inquiries')
             .insert([{
                 inquiry_reference: inquiryReference,
@@ -48,9 +49,24 @@ export const submitVisaInquiry = async (req, res) => {
                 status: 'PENDING',
                 created_at: new Date().toISOString(),
             }])
+            .select()
+            .single()
 
         if (insertError) {
             throw insertError
+        }
+
+        // Auto-assign inquiry to travel consultant staff
+        try {
+            const assignmentResult = await autoAssignBooking('visa-inquiry', inquiryData.id)
+            if (assignmentResult.success) {
+                console.log(`Visa inquiry ${inquiryData.id} auto-assigned to ${assignmentResult.assignedStaff.name}`)
+            } else {
+                console.warn(`Failed to auto-assign visa inquiry ${inquiryData.id}:`, assignmentResult.error)
+            }
+        } catch (assignmentError) {
+            console.error('Auto-assignment error:', assignmentError)
+            // Don't fail the inquiry creation if auto-assignment fails
         }
 
         // Send confirmation email to client

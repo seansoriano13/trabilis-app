@@ -98,6 +98,17 @@ function FlightSearchResults() {
     // Nearby date fares state
     const [nearbyFares, setNearbyFares] = useState([])
     const [isNearbyLoading, setIsNearbyLoading] = useState(false)
+    const [screenWidth, setScreenWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024)
+
+    // Window resize listener
+    useEffect(() => {
+        const handleResize = () => {
+            setScreenWidth(window.innerWidth)
+        }
+
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
+    }, [])
 
     useEffect(() => {
         setIsLoading(true)
@@ -379,12 +390,12 @@ function FlightSearchResults() {
                 price: parseFloat(cheapest.price.total),
                 currency: cheapest.price.currency,
             }
-        } catch (e) {
+        } catch {
             return { price: null, currency: 'PHP' }
         }
     }
 
-    // Build nearby (+/- 3 days) fare strip
+    // Build nearby fare strip with responsive date count
     useEffect(() => {
         const baseDate = Array.isArray(date) ? date[0] : date
         if (!baseDate) return
@@ -395,7 +406,19 @@ function FlightSearchResults() {
         let isCancelled = false
         const loadNearby = async () => {
             setIsNearbyLoading(true)
-            const offsets = [-3, -2, -1, 0, 1, 2, 3]
+            
+            // Responsive date offsets based on screen size
+            const getResponsiveOffsets = () => {
+                if (screenWidth < 640) { // Mobile: 3 days
+                    return [-1, 0, 1]
+                } else if (screenWidth < 1024) { // Tablet: 5 days
+                    return [-2, -1, 0, 1, 2]
+                } else { // Desktop: 7 days
+                    return [-3, -2, -1, 0, 1, 2, 3]
+                }
+            }
+            
+            const offsets = getResponsiveOffsets()
             const dates = offsets.map((o) => addDays(base, o))
             try {
                 const results = await Promise.all(
@@ -417,7 +440,7 @@ function FlightSearchResults() {
             isCancelled = true
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [filters.origin, filters.destination, filters.cabinClass, filters.travelerCount, date])
+    }, [filters.origin, filters.destination, filters.cabinClass, filters.travelerCount, date, screenWidth])
 
     const handleSelectNearbyDate = async (d) => {
         setIsLoading(true)
@@ -440,7 +463,7 @@ function FlightSearchResults() {
             setAllFlights(data)
             setFilters((prev) => ({ ...prev, date: d }))
             setCurrentPage(0)
-        } catch (e) {
+        } catch {
             // noop UI keeps previous results
         } finally {
             setIsLoading(false)
@@ -617,34 +640,93 @@ function FlightSearchResults() {
                                 </div>
                             </div>
                             {/* Nearby dates fare strip */}
-                            <div className='mt-4 px-4'>
-                                <div className='flex gap-2 overflow-x-auto no-scrollbar py-2 justify-center'>
-                                    {(isNearbyLoading ? Array.from({ length: 7 }) : nearbyFares).map((item, idx) => {
+                            <div className='mt-4 sm:mt-6 px-2 sm:px-4'>
+                                <div className='mb-2 sm:mb-3'>
+                                    <h3 className='text-base sm:text-lg font-semibold text-gray-800 text-center'>
+                                        Flexible Dates - Compare Prices
+                                    </h3>
+                                    <p className='text-xs sm:text-sm text-gray-600 text-center mt-1'>
+                                        Click on any date to see available flights
+                                    </p>
+                                </div>
+                                <div className='flex justify-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar py-2 sm:py-4 px-1 sm:px-2'>
+                                    {(isNearbyLoading ? Array.from({ length: screenWidth < 640 ? 3 : screenWidth < 1024 ? 5 : 7 }) : nearbyFares).map((item, idx) => {
                                         const isSelected = item && formatToYMD(item.date) === formatToYMD(Array.isArray(date) ? date[0] : date)
+                                        const isToday = item && formatToYMD(item.date) === formatToYMD(new Date())
+                                        const isWeekend = item && (item.date.getDay() === 0 || item.date.getDay() === 6)
+                                        
                                         return (
                                             <button
                                                 key={idx}
                                                 className={clsx(
-                                                    'rounded-md border px-3 py-2 min-w-[110px] text-left cursor-pointer',
+                                                    'relative rounded-lg sm:rounded-xl border-2 px-2 sm:px-4 py-2 sm:py-3 min-w-[90px] sm:min-w-[120px] text-left cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-105 group flex-shrink-0',
                                                     isSelected
-                                                        ? 'bg-yellow-200 border-yellow-400'
-                                                        : 'bg-white border-gray-200'
+                                                        ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 border-yellow-600 shadow-lg ring-2 ring-yellow-300 ring-opacity-50'
+                                                        : 'bg-white border-gray-200 hover:border-yellow-300 hover:bg-yellow-50',
+                                                    isNearbyLoading && 'animate-pulse bg-gray-100'
                                                 )}
                                                 disabled={isNearbyLoading}
                                                 onClick={() => item && handleSelectNearbyDate(item.date)}
                                             >
-                                                <div className='text-xs opacity-70'>
-                                                    {formatToLongDate(item?.date || new Date()).split(',').slice(0, 2).join(', ')}
+                                                {/* Day indicator */}
+                                                <div className={clsx(
+                                                    'text-xs font-medium mb-1',
+                                                    isSelected ? 'text-yellow-900' : 'text-gray-500',
+                                                    isToday && 'text-blue-600 font-bold'
+                                                )}>
+                                                    {isToday ? 'TODAY' : formatToLongDate(item?.date || new Date()).split(',')[0].toUpperCase()}
                                                 </div>
-                                                <div className='font-semibold'>
+                                                
+                                                {/* Date */}
+                                                <div className={clsx(
+                                                    'text-sm font-semibold mb-1',
+                                                    isSelected ? 'text-yellow-900' : 'text-gray-800',
+                                                    isWeekend && !isSelected && 'text-blue-600'
+                                                )}>
+                                                    {item?.date ? item.date.getDate() : '—'}
+                                                </div>
+                                                
+                                                {/* Price */}
+                                                <div className={clsx(
+                                                    'text-xs font-bold',
+                                                    isSelected ? 'text-yellow-900' : 'text-gray-900',
+                                                    !item?.price && 'text-gray-400'
+                                                )}>
                                                     {item?.price
                                                         ? `${item.currency} ${formatPrice(item.price)}`
-                                                        : '—'}
+                                                        : isNearbyLoading ? '...' : '—'}
                                                 </div>
+                                                
+                                                {/* Selected indicator */}
+                                                {isSelected && (
+                                                    <div className='absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-yellow-600 rounded-full border-2 border-white'></div>
+                                                )}
+                                                
+                                                {/* Weekend indicator */}
+                                                {isWeekend && !isSelected && (
+                                                    <div className='absolute top-1 right-1 w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-400 rounded-full'></div>
+                                                )}
+                                                
+                                                {/* Hover effect overlay */}
+                                                <div className={clsx(
+                                                    'absolute inset-0 rounded-lg sm:rounded-xl opacity-0 transition-opacity duration-200',
+                                                    !isSelected && 'group-hover:opacity-10 group-hover:bg-yellow-400'
+                                                )}></div>
                                             </button>
                                         )
                                     })}
                                 </div>
+                                
+                                {/* Loading indicator */}
+                                {isNearbyLoading && (
+                                    <div className='flex justify-center mt-2'>
+                                        <div className='flex space-x-1'>
+                                            <div className='w-1.5 h-1.5 sm:w-2 sm:h-2 bg-yellow-400 rounded-full animate-bounce'></div>
+                                            <div className='w-1.5 h-1.5 sm:w-2 sm:h-2 bg-yellow-400 rounded-full animate-bounce' style={{animationDelay: '0.1s'}}></div>
+                                            <div className='w-1.5 h-1.5 sm:w-2 sm:h-2 bg-yellow-400 rounded-full animate-bounce' style={{animationDelay: '0.2s'}}></div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             <div className='flight-results__summary'>
                                 <div
@@ -791,3 +873,4 @@ function FlightSearchResults() {
 }
 
 export default FlightSearchResults
+

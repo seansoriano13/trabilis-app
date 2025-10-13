@@ -61,6 +61,7 @@
 }
 
 .flight-details__info {
+    padding: 0.5rem 1rem 0rem;
 }
 .flight-details__info-item {
 }
@@ -221,7 +222,7 @@
 
 /* AIRLINE INFO */
 .flight-details__airline {
-    display: grid;
+    display: flex;
     gap: 6px;
 }
 

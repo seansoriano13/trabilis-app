@@ -115,6 +115,18 @@
     margin: 0 0 8px;
 }
 
+.tour-card__duration-header {
+    font-style: italic;
+    color: #333333;
+    font-size: 0.825rem;
+}
+
+.tour-card__duration {
+    margin-left: 1.5rem;
+    color: #333333;
+    font-weight: bold;
+}
+
 .tour-card__price {
     font-size: 1.5rem;
     font-weight: bold;

@@ -1,4 +1,5 @@
 import { query } from '../config/db.js'
+import { supabase } from '../config/supabaseClient.js'
 import { amadeus } from '../config/amadeus.js'
 import stripe from '../config/stripe.js'
 import {
@@ -9,7 +10,7 @@ import {
 } from './brevoEmailService.js'
 
 import Pusher from 'pusher'
-import { supabase } from '../config/supabaseClient.js'
+
 
 const pusher = new Pusher({
     appId: '2048372',
@@ -31,16 +32,17 @@ export async function finalizeFlightBooking(bookingReference) {
     try {
         console.log(`Starting finalization for booking: ${bookingReference}`)
 
-        const result = await query(
-            'SELECT amadeus_order_id, status, passenger_details, search_criteria FROM flight_bookings WHERE booking_reference = ?',
-            [bookingReference]
-        )
+        const { data, error } = await supabase
+            .from('flight_bookings')
+            .select('amadeus_order_id, status, passenger_details, search_criteria')
+            .eq('booking_reference', bookingReference)
+            .single()
 
-        if (result.rows.length === 0) {
+        if (error || !data) {
             throw new Error(`Booking ${bookingReference} not found`)
         }
 
-        const booking = result.rows[0]
+        const booking = data
         const { amadeus_order_id, status } = booking
 
         if (status !== 'PAID_PENDING_TICKETING') {
@@ -80,23 +82,23 @@ export async function finalizeFlightBooking(bookingReference) {
             )
         }
 
-        const eTicketNumbers =
-            order.associatedRecords?.map((record) => record.reference) || []
         const pnr =
             order.associatedRecords?.find(
                 (record) => record.originSystemCode === 'GDS'
             )?.reference || null
 
         try {
-            await query(
-                'UPDATE flight_bookings SET status = ?, e_ticket_numbers = ?, pnr = ? WHERE booking_reference = ?',
-                [
-                    'TICKETED',
-                    JSON.stringify(eTicketNumbers),
-                    pnr,
-                    bookingReference,
-                ]
-            )
+            const { error } = await supabase
+                .from('flight_bookings')
+                .update({
+                    status: 'TICKETED',
+                    pnr: pnr
+                })
+                .eq('booking_reference', bookingReference)
+
+            if (error) {
+                throw new Error(`Database update error: ${error.message}`)
+            }
             console.log(
                 `✅ Booking ${bookingReference} finalized with status TICKETED, PNR: ${pnr}`
             )
@@ -126,19 +128,28 @@ export async function finalizeFlightBooking(bookingReference) {
             `❌ CRITICAL FAILURE during finalization for ${bookingReference}: ${error.message}`
         )
         try {
-            await query(
-                'UPDATE flight_bookings SET status = ? WHERE booking_reference = ?',
-                [`TICKETING_FAILED`, bookingReference]
-            )
+            const { error: updateError } = await supabase
+                .from('flight_bookings')
+                .update({ status: 'TICKETING_FAILED' })
+                .eq('booking_reference', bookingReference)
+
+            if (updateError) {
+                throw new Error(`Database update error: ${updateError.message}`)
+            }
             console.log(
                 `Database updated for ${bookingReference}. Status: TICKETING_FAILED: ${error.message}`
             )
 
-            const result = await query(
-                'SELECT total_amount, currency, stripe_checkout_id, passenger_details, search_criteria FROM flight_bookings WHERE booking_reference = ?',
-                [bookingReference]
-            )
-            const booking = result.rows[0]
+            const { data, error: selectError } = await supabase
+                .from('flight_bookings')
+                .select('total_amount, currency, stripe_checkout_id, passenger_details, search_criteria')
+                .eq('booking_reference', bookingReference)
+                .single()
+
+            if (selectError || !data) {
+                throw new Error(`Failed to fetch booking data: ${selectError?.message}`)
+            }
+            const booking = data
             if (booking.stripe_checkout_id) {
                 try {
                     await stripe.refunds.create({
@@ -195,10 +206,30 @@ export async function finalizeTourBooking(bookingReference) {
             .select(
                 `
         *,
-        package_dates (
+        package_dates!inner (
+          id,
           start_date,
           end_date,
-          tour_packages (title)
+          total_slots,
+          available_slots,
+          inclusions,
+          exclusions,
+          payment_terms,
+          requirements,
+          notes,
+          tour_packages!inner (
+            id,
+            title,
+            description
+          ),
+          package_itineraries (
+            id,
+            day_number,
+            title,
+            description,
+            image_url,
+            image_metadata
+          )
         )
       `
             )
@@ -207,6 +238,32 @@ export async function finalizeTourBooking(bookingReference) {
 
         if (error || !booking) {
             throw new Error(`Tour booking ${bookingReference} not found`)
+        }
+
+        console.log('📧 BookingService - Raw booking data from Supabase:')
+        console.log('📧 BookingService - package_dates:', booking.package_dates)
+        console.log('📧 BookingService - package_itineraries:', booking.package_dates?.package_itineraries)
+        console.log('📧 BookingService - package_itineraries type:', typeof booking.package_dates?.package_itineraries)
+        console.log('📧 BookingService - package_itineraries length:', booking.package_dates?.package_itineraries?.length)
+
+        // Debug: Check if package_itineraries data exists directly
+        if (booking.package_dates?.id) {
+            const { data: directItineraries, error: itineraryError } = await supabase
+                .from('package_itineraries')
+                .select('*')
+                .eq('package_date_id', booking.package_dates.id)
+                .order('day_number')
+            
+            console.log('📧 BookingService - Direct itinerary query result:')
+            console.log('📧 BookingService - Direct itineraries:', directItineraries)
+            console.log('📧 BookingService - Direct itineraries length:', directItineraries?.length)
+            console.log('📧 BookingService - Direct itinerary error:', itineraryError)
+            
+            // If we found itineraries directly, use them instead of the nested query result
+            if (directItineraries && directItineraries.length > 0) {
+                console.log('📧 BookingService - Using direct itineraries instead of nested query')
+                booking.package_dates.package_itineraries = directItineraries
+            }
         }
 
         if (booking.status !== 'CONFIRMED') {
@@ -240,20 +297,50 @@ export async function finalizeTourBooking(bookingReference) {
 
         // Send confirmation email
         try {
+            // Pass raw package_itineraries data for PDF generation
+            const packageItineraries = booking.package_dates?.package_itineraries || []
+            
+            console.log('📧 BookingService - packageItineraries type:', typeof packageItineraries)
+            console.log('📧 BookingService - packageItineraries length:', packageItineraries.length)
+            console.log('📧 BookingService - packageItineraries sample:', JSON.stringify(packageItineraries.slice(0, 2), null, 2))
+
             await sendTourConfirmationEmail({
                 bookingReference,
                 email: booking.lead_email,
                 firstName: booking.lead_first_name,
                 lastName: booking.lead_last_name,
-                tourTitle: booking.package_dates.tour_packages.title,
-                startDate: booking.package_dates.start_date,
-                endDate: booking.package_dates.end_date,
+                phone: booking.lead_phone,
+                tourTitle: booking.package_dates?.tour_packages?.title || 'Tour Package',
+                startDate: booking.package_dates?.start_date,
+                endDate: booking.package_dates?.end_date,
                 passengerCount: booking.passenger_count,
-                passengers: booking.passenger_details ? JSON.parse(booking.passenger_details) : [],
-                amount:
-                    booking.payment_type === 'RESERVATION'
-                        ? booking.reservation_amount
-                        : booking.total_amount,
+                passengers: booking.passenger_details 
+                    ? (typeof booking.passenger_details === 'string' 
+                        ? JSON.parse(booking.passenger_details) 
+                        : booking.passenger_details)
+                    : [],
+                paymentType: booking.payment_type || 'FULL',
+                amount: booking.total_amount,
+                reservationAmount: booking.reservation_amount,
+                status: booking.status,
+                flight_details: booking.flight_details 
+                    ? (typeof booking.flight_details === 'string' 
+                        ? JSON.parse(booking.flight_details) 
+                        : booking.flight_details)
+                    : {},
+                inclusions: booking.package_dates?.inclusions || ['As per package'],
+                exclusions: booking.package_dates?.exclusions || ['Personal expenses'],
+                notes: booking.package_dates?.notes || ['No additional notes'],
+                requirements: booking.package_dates?.requirements || ['Valid passport required'],
+                paymentTerms: booking.package_dates?.payment_terms || ['Standard payment terms apply'],
+                itinerary: packageItineraries,
+                tourDescription: booking.package_dates?.tour_packages?.description || 'Tour description will be provided upon confirmation.',
+                package_date_id: booking.package_date_id,
+                tour_package_id: booking.package_dates?.tour_packages?.id,
+                totalSlots: booking.package_dates?.total_slots,
+                availableSlots: booking.package_dates?.available_slots,
+                created_at: booking.created_at,
+                updated_at: booking.updated_at,
             })
             console.log(
                 `✅ Tour confirmation email sent for ${bookingReference}`
@@ -340,16 +427,17 @@ export async function finalizeTourBooking(bookingReference) {
 
 export async function checkBookingStatus(bookingReference) {
     try {
-        const result = await query(
-            'SELECT status, search_criteria, pnr FROM flight_bookings WHERE booking_reference = ?',
-            [bookingReference]
-        )
+        const { data, error } = await supabase
+            .from('flight_bookings')
+            .select('status, search_criteria, pnr')
+            .eq('booking_reference', bookingReference)
+            .single()
 
-        const { status, search_criteria, pnr } = result.rows[0]
-
-        if (!result.rows.length) {
+        if (error || !data) {
             throw new Error(`Booking ${bookingReference} not found`)
         }
+
+        const { status, search_criteria, pnr } = data
         return {
             status: status,
             searchCriteria: search_criteria,

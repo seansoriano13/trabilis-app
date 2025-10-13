@@ -5,6 +5,8 @@ import Pusher from 'pusher'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import dayjs from 'dayjs'
+import { formatSegment } from '../../utils/flightutils.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -22,16 +24,17 @@ export const generateFlightPDF = async (req, res) => {
         const { id } = req.params
 
         // Get booking details from database
-        const result = await query(
-            'SELECT * FROM flight_bookings WHERE id = ?',
-            [id]
-        )
+        const { data, error } = await supabase
+            .from('flight_bookings')
+            .select('*')
+            .eq('id', id)
+            .single()
 
-        if (result.rows.length === 0) {
+        if (error || !data) {
             return res.status(404).json({ error: 'Booking not found' })
         }
 
-        const booking = result.rows[0]
+        const booking = data
 
         // Parse JSON fields if they are strings
         const parseJsonField = (field) => {
@@ -53,7 +56,6 @@ export const generateFlightPDF = async (req, res) => {
             amadeus_flight_offer: parseJsonField(booking.amadeus_flight_offer),
             passenger_details: parseJsonField(booking.passenger_details),
             search_criteria: parseJsonField(booking.search_criteria),
-            e_ticket_numbers: parseJsonField(booking.e_ticket_numbers)
         }
 
         // Generate PDF
@@ -62,23 +64,25 @@ export const generateFlightPDF = async (req, res) => {
         if (!pdfBuffer || !Buffer.isBuffer(pdfBuffer)) {
             return res.status(500).json({ 
                 error: 'Failed to generate PDF - invalid buffer returned',
-                message: 'PDF generation failed' 
+                message: 'PDF generation failed',
             })
         }
 
         // Set response headers for PDF
         res.setHeader('Content-Type', 'application/pdf')
-        res.setHeader('Content-Disposition', `inline; filename="Flight-Itinerary-${booking.booking_reference}.pdf"`)
+        res.setHeader(
+            'Content-Disposition',
+            `inline; filename="Flight-Itinerary-${booking.booking_reference}.pdf"`
+        )
         res.setHeader('Content-Length', pdfBuffer.length)
 
         // Send PDF buffer
         res.send(pdfBuffer)
-
     } catch (error) {
         console.error('Error generating flight PDF:', error)
         res.status(500).json({ 
             error: 'Failed to generate PDF',
-            message: error.message 
+            message: error.message,
         })
     }
 }
@@ -86,18 +90,20 @@ export const generateFlightPDF = async (req, res) => {
 export const viewFlightBookingHTML = async (req, res) => {
     try {
         const { id } = req.params
+        const { mode = 'preview' } = req.query // 'preview' or 'print'
 
         // Get booking details from database
-        const result = await query(
-            'SELECT * FROM flight_bookings WHERE id = ?',
-            [id]
-        )
+        const { data, error } = await supabase
+            .from('flight_bookings')
+            .select('*')
+            .eq('id', id)
+            .single()
 
-        if (result.rows.length === 0) {
+        if (error || !data) {
             return res.status(404).json({ error: 'Booking not found' })
         }
 
-        const booking = result.rows[0]
+        const booking = data
 
         // Parse JSON fields if they are strings
         const parseJsonField = (field) => {
@@ -119,294 +125,343 @@ export const viewFlightBookingHTML = async (req, res) => {
             amadeus_flight_offer: parseJsonField(booking.amadeus_flight_offer),
             passenger_details: parseJsonField(booking.passenger_details),
             search_criteria: parseJsonField(booking.search_criteria),
-            e_ticket_numbers: parseJsonField(booking.e_ticket_numbers)
         }
 
-        // Read the HTML template
-        const templatePath = path.join(__dirname, '../../services/templates/flight-itinerary-template.html')
+        // Read the new HTML template based on flight.html
+        const templatePath = path.join(
+            __dirname,
+            '../../services/templates/flight.html'
+        )
         let html = fs.readFileSync(templatePath, 'utf8')
 
-        // Generate itineraries HTML
-        const generateItinerariesHTML = (flightOffer) => {
-            if (!flightOffer?.itineraries) return '<p>Flight details not available</p>'
-            
-            let itinerariesHTML = ''
-            flightOffer.itineraries.forEach((itinerary, index) => {
-                const isReturn = index > 0
-                const headerClass = isReturn ? 'itinerary-header return' : 'itinerary-header'
-                const title = isReturn ? 'Return Flight' : 'Outbound Flight'
-                
-                itinerariesHTML += `
-                    <div class="itinerary-section">
-                        <div class="${headerClass}">
-                            <span>${title}</span>
-                            <span>${itinerary.segments?.[0]?.departure?.at ? new Date(itinerary.segments[0].departure.at).toLocaleDateString() : 'N/A'}</span>
-                        </div>
-                        <div class="flight-column-headers">
-                            <div class="flight-col airline">Airline</div>
-                            <div class="flight-col">Flight</div>
-                            <div class="flight-col">From</div>
-                            <div class="flight-col">To</div>
-                            <div class="flight-col">Departure</div>
-                            <div class="flight-col">Arrival</div>
-                            <div class="flight-col duration">Duration</div>
-                        </div>
-                `
-                
-                itinerary.segments?.forEach(segment => {
-                    itinerariesHTML += `
-                        <div class="flight-details-row">
-                            <div class="flight-col airline">
-                                <span>${segment.carrierCode || 'N/A'}</span>
-                            </div>
-                            <div class="flight-col">
-                                <h4>${segment.number || 'N/A'}</h4>
-                                <p>Aircraft: ${segment.aircraft?.code || 'N/A'}</p>
-                            </div>
-                            <div class="flight-col">
-                                <h4>${segment.departure?.iataCode || 'N/A'}</h4>
-                                <p>Terminal ${segment.departure?.terminal || 'N/A'}</p>
-                            </div>
-                            <div class="flight-col">
-                                <h4>${segment.arrival?.iataCode || 'N/A'}</h4>
-                                <p>Terminal ${segment.arrival?.terminal || 'N/A'}</p>
-                            </div>
-                            <div class="flight-col">
-                                <h4>${segment.departure?.at ? new Date(segment.departure.at).toLocaleTimeString() : 'N/A'}</h4>
-                                <p>${segment.departure?.at ? new Date(segment.departure.at).toLocaleDateString() : 'N/A'}</p>
-                            </div>
-                            <div class="flight-col">
-                                <h4>${segment.arrival?.at ? new Date(segment.arrival.at).toLocaleTimeString() : 'N/A'}</h4>
-                                <p>${segment.arrival?.at ? new Date(segment.arrival.at).toLocaleDateString() : 'N/A'}</p>
-                            </div>
-                            <div class="flight-col duration">
-                                <span>${segment.duration || 'N/A'}</span>
-                            </div>
-                        </div>
-                    `
-                })
-                
-                itinerariesHTML += '</div>'
-            })
-            
-            return itinerariesHTML
-        }
+        // Replace BASE_URL placeholder with actual backend URL
+        const baseUrl =
+            process.env.BACKEND_URL ||
+            (process.env.NODE_ENV === 'production'
+                ? 'https://trabilis.onrender.com'
+                : 'http://localhost:3001')
 
-        // Generate passengers HTML
-        const generatePassengersHTML = (passengerDetails, eTicketNumbers) => {
-            if (!passengerDetails?.travelers) return '<tr><td colspan="6">No passenger details available</td></tr>'
-            
-            let passengersHTML = ''
-            passengerDetails.travelers.forEach((traveler, index) => {
-                const ticketNumber = eTicketNumbers?.[index] || 'N/A'
-                passengersHTML += `
-                    <tr>
-                        <td>${index + 1}</td>
-                        <td>
-                            <strong>${traveler.name?.firstName || ''} ${traveler.name?.lastName || ''}</strong><br>
-                            <small>${traveler.type || 'N/A'} | ${traveler.gender || 'N/A'}</small>
-                        </td>
-                        <td>
-                            ${traveler.documents?.[0]?.number || 'N/A'}<br>
-                            <small>${traveler.documents?.[0]?.nationality || 'N/A'}</small>
-                        </td>
-                        <td>${bookingDetails.pnr || 'N/A'}</td>
-                        <td>${ticketNumber}</td>
-                        <td>${bookingDetails.status || 'N/A'}</td>
-                    </tr>
+        const bookingDate = bookingDetails.updated_at
+            ? dayjs(bookingDetails.updated_at).format('MMM D, YYYY')
+            : dayjs(bookingDetails.created_at).format('MMM D, YYYY')
+
+        const itineraries = (
+            bookingDetails.amadeus_flight_offer?.itineraries || []
+        )
+            .map((itinerary, index) => {
+                return `
+                    <div class="pdf-flight-details__section">
+                        <div class="pdf-table-header">
+                            <div class="pdf-table-header__title">
+                                <i class="fa-solid fa-plane"></i>
+                                <p>
+                                    <b>${index === 0 ? 'Onward' : 'Return'}</b>
+                                    <span>${
+                                        itinerary.segments?.length || 0
+                                    }</span>
+                                    Flight(s)
+                                </p>
+                        </div>
+                            <div><span>Non-Refundable</span></div>
+                        </div>
+                        <div class="pdf-flight-details__subheader">
+                            <div class="pdf-flight-details__flight__index">
+                                <b>Flight <span>${index + 1}</span></b>
+                            </div>
+                            <div class="pdf-flight-details__subheader-title">
+                                <i class="fa-solid fa-plane-departure pdf-flight-details__icon"></i>
+                                <p>Departing</p>
+                            </div>
+                            <div class="pdf-flight-details__subheader-title">
+                                <i class="fa-solid fa-plane-arrival pdf-flight-details__icon"></i>
+                                <p>Arriving</p>
+                            </div>
+                            </div>
+                        <div class="pdf-flight-details__data">
+                            ${(itinerary.segments || [])
+                                .map((segment) => {
+                                    const {
+                                        airline,
+                                        aircraft,
+                                        departure,
+                                        arrival,
+                                        stopsLabel,
+                                        duration: flightDuration,
+                                    } = formatSegment(segment)
+
+                                    return /* HTML */ ` <div
+                                            class="pdf-flight-details__airline"
+                                        >
+                                            <img
+                                                class="pdf-flight-details__airline-logo"
+                                                src=${airline.logo}
+                                                alt=${airline.name}
+                                            />
+                                            <div
+                                                class="pdf-flight-details__airline-name"
+                                            >
+                                                <p
+                                                    class="pdf-flight-details__airline-text"
+                                                >
+                                                    <b>${airline.name}</b>
+                                                </p>
+                                                <p
+                                                    class="pdf-flight-details__airline-text"
+                                                >
+                                                    ${aircraft}
+                                                </p>
+                            </div>
+                            </div>
+
+                                        <div
+                                            class="pdf-flight-details__departure"
+                                        >
+                                            <p
+                                                class="pdf-flight-details__airport-code"
+                                            >
+                                                <b
+                                                    ><span
+                                                        >${departure.iata}</span
+                                                    ></b
+                                                >
+                                                <span>${departure.city}</span>
+                                            </p>
+                                            <p
+                                                class="pdf-flight-details__airport-name"
+                                            >
+                                                <span
+                                                    >${departure.airport}</span
+                                                >
+                                            </p>
+                                            <p
+                                                class="pdf-flight-details__terminal"
+                                            >
+                                                <span
+                                                    >Terminal
+                                                    ${departure.terminal ||
+                                                    ''}</span
+                                                >
+                                            </p>
+                                            <p class="pdf-flight-details__time">
+                                                <b
+                                                    ><span
+                                                        >${departure.time}</span
+                                                    ></b
+                                                >
+                                            </p>
+                            </div>
+
+                                        <div
+                                            class="pdf-flight-details__arrival"
+                                        >
+                                            <p
+                                                class="pdf-flight-details__airport-code"
+                                            >
+                                                <b
+                                                    ><span
+                                                        >${arrival.iata}</span
+                                                    >
+                                                    <span
+                                                        >${arrival.city}</span
+                                                    ></b
+                                                >
+                                            </p>
+                                            <p
+                                                class="pdf-flight-details__airport-code"
+                                            >
+                                                <span>${arrival.airport}</span>
+                                            </p>
+                                            <p
+                                                class="pdf-flight-details__terminal"
+                                            >
+                                                <span
+                                                    >Terminal
+                                                    ${arrival.terminal ||
+                                                    ''}</span
+                                                >
+                                            </p>
+                                            <p class="pdf-flight-details__time">
+                                                <b
+                                                    ><span
+                                                        >${arrival.time}</span
+                                                    ></b
+                                                >
+                                            </p>
+                        </div>
+
+                                        <div class="pdf-flight-details__leg">
+                                            <p
+                                                class="pdf-flight-details__stops"
+                                            >
+                                                ${stopsLabel}
+                                            </p>
+                                            <p
+                                                class="pdf-flight-details__durations"
+                                            >
+                                                ${flightDuration}
+                                            </p>
+                                        </div>`
+                                })
+                                .join('')}
+                        </div>
+                    </div>
                 `
             })
-            
-            return passengersHTML
-        }
+            .join('')
 
-        // Generate payment details HTML
-        const generatePaymentDetailsHTML = (bookingDetails, flightOffer) => {
-            let paymentHTML = `
-                <table>
-                    <tr>
-                        <td>Total Amount:</td>
-                        <td>₱${parseFloat(bookingDetails.total_amount || 0).toLocaleString()}</td>
-                    </tr>
-                    <tr>
-                        <td>Currency:</td>
-                        <td>${bookingDetails.currency || 'PHP'}</td>
-                    </tr>
-                    <tr>
-                        <td>Payment Type:</td>
-                        <td>${bookingDetails.payment_type || 'N/A'}</td>
-                    </tr>
-                    <tr>
-                        <td>Status:</td>
-                        <td>${bookingDetails.status || 'N/A'}</td>
-                    </tr>
-            `
-            
-            if (flightOffer?.price) {
-                paymentHTML += `
-                    <tr class="total">
-                        <td>Base Price:</td>
-                        <td>₱${parseFloat(flightOffer.price.base || 0).toLocaleString()}</td>
-                    </tr>
+        const pnr = bookingDetails.pnr
+        const status =
+            bookingDetails.status === 'TICKETED'
+                ? 'CONFIRMED'
+                : bookingDetails.status
+        const passengerDetails = (
+            bookingDetails.passenger_details?.travelers || []
+        )
+            .map((passenger, index) => {
+                const title = passenger.title || ''
+                const name = `${passenger.name?.firstName || ''} ${
+                    passenger.name?.lastName || ''
+                }`
+                    .trim()
+                    .toUpperCase()
+                const type = passenger.type || ''
+                const dateOfBirth = passenger.dateOfBirth || ''
+                const psngrDocs = (passenger.documents || [])[0] || {}
+                const passport = {
+                    number: psngrDocs.number || 'N/A',
+                    expiry: psngrDocs.expiryDate || 'N/A',
+                }
+
+                return `
+                    <div class="pdf-passenger-details__data">
+                        <div><span>${index + 1}</span></div>
+                        <div class="pdf-passenger-details__data-name">
+                            <p><b>${`${
+                                title ? title.toUpperCase() + '. ' : ''
+                            }${name}`}</b></p>
+                            <p>${type} (${dateOfBirth})</p>
+                        </div>
+                        <div class="pdf-passenger-details__data-passport">
+                            <span>${passport.number}</span>
+                            <span>${passport.expiry}</span>
+                        </div>
+                        <p class="pdf-passenger-details__data-pnr">${
+                            pnr || 'N/A'
+                        }</p>
+                        <div>N/A</div>
+                        <div>N/A</div>
+                        <div>N/A</div>
+                        <div>${status || 'N/A'}</div>
+                    </div>
                 `
-                
-                flightOffer.price.fees?.forEach(fee => {
-                    paymentHTML += `
-                        <tr>
-                            <td>Fee (${fee.type}):</td>
-                            <td>₱${parseFloat(fee.amount || 0).toLocaleString()}</td>
-                        </tr>
-                    `
-                })
-                
-                paymentHTML += `
-                    <tr class="total">
-                        <td>Grand Total:</td>
-                        <td>₱${parseFloat(flightOffer.price.grandTotal || 0).toLocaleString()}</td>
-                    </tr>
-                `
+            })
+            .join('')
+
+        // Compute Payment Details
+        const offerPrice = bookingDetails.amadeus_flight_offer?.price || {}
+        const currencyCode =
+            offerPrice.currency || bookingDetails.currency || 'PHP'
+        const toNumber = (value) => Number(value ?? 0)
+        const baseFare = toNumber(offerPrice.base)
+        const totalFare = toNumber(offerPrice.total || offerPrice.grandTotal)
+        const refundableTaxes = toNumber(
+            bookingDetails.amadeus_flight_offer?.travelerPricings?.[0]?.price
+                ?.refundableTaxes
+        )
+        const liTax = refundableTaxes || 0
+        const feesAndTaxes = Math.max(0, totalFare - baseFare - liTax)
+        const formatAmount = (n) =>
+            toNumber(n).toLocaleString('en-PH', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            })
+
+        // Flight Inclusions
+        const flightNumbers = (
+            bookingDetails.amadeus_flight_offer?.itineraries || []
+        )
+            .flatMap((it) => it.segments || [])
+            .map((seg) => {
+                const code = seg.operating?.carrierCode || seg.carrierCode
+                return `${code}-${seg.number}`
+            })
+            .join(', ')
+
+        // Derive baggage from traveler pricing fareDetailsBySegment if available
+        const fareDetails =
+            bookingDetails.amadeus_flight_offer?.travelerPricings?.[0]
+                ?.fareDetailsBySegment || []
+        const bagInfo = fareDetails.reduce(
+            (acc, f) => {
+                const includedBags = f.includedCheckedBags
+                if (includedBags) {
+                    if (typeof includedBags.weight === 'number') {
+                        acc.checkedKg = Math.max(
+                            acc.checkedKg,
+                            includedBags.weight
+                        )
+                        acc.checkedUnit =
+                            includedBags.weightUnit || acc.checkedUnit
+                    }
+                    if (typeof includedBags.quantity === 'number') {
+                        acc.checkedPieces = Math.max(
+                            acc.checkedPieces,
+                            includedBags.quantity
+                        )
+                    }
+                }
+                const cabin = f.cabinBags || f.cabin
+                if (cabin && typeof cabin.quantity === 'number') {
+                    acc.cabinPieces = Math.max(acc.cabinPieces, cabin.quantity)
+                }
+                return acc
+            },
+            {
+                checkedKg: 0,
+                checkedUnit: 'KG',
+                checkedPieces: 0,
+                cabinPieces: 0,
             }
-            
-            paymentHTML += '</table>'
-            return paymentHTML
-        }
+        )
 
-        // Generate flight inclusions HTML
-        const generateFlightInclusionsHTML = () => {
-            return `
-                <h5>Included Services:</h5>
-                <p>• Flight ticket(s) as specified</p>
-                <p>• Standard baggage allowance</p>
-                <p>• In-flight meals and beverages</p>
-                <p>• Seat selection (subject to availability)</p>
-                
-                <h5>Important Notes:</h5>
-                <p>• Check-in begins 3 hours prior to departure</p>
-                <p>• Valid ID required for all passengers</p>
-                <p>• Baggage restrictions apply</p>
-                <p>• Flight times subject to change</p>
-            `
-        }
+        const cabinBaggageText = `Adult: ${
+            bagInfo.cabinPieces || 0
+        } Pc Included`
+        const checkedBaggageText =
+            bagInfo.checkedKg > 0
+                ? `Adult: ${bagInfo.checkedKg} ${bagInfo.checkedUnit}`
+                : `Adult: ${bagInfo.checkedPieces || 0} PC`
 
-        // Replace placeholders with actual data
-        html = html.replace(/\{\{bookingReference\}\}/g, bookingDetails.booking_reference || 'N/A')
-        html = html.replace(/\{\{companyName\}\}/g, 'Lindela Travel And Tours - Trabilis')
-        html = html.replace(/\{\{companyEmail\}\}/g, 'lindelatravelctws@gmail.com')
-        html = html.replace(/\{\{companyAddress\}\}/g, 'Unit 2215 Cityland 10 Tower II, H. V. Dela Costa Street, Makati, Metro Manila')
-        html = html.replace(/\{\{bookingDate\}\}/g, bookingDetails.created_at ? new Date(bookingDetails.created_at).toLocaleDateString() : 'N/A')
-        html = html.replace(/\{\{itineraries\}\}/g, generateItinerariesHTML(bookingDetails.amadeus_flight_offer))
-        html = html.replace(/\{\{passengers\}\}/g, generatePassengersHTML(bookingDetails.passenger_details, bookingDetails.e_ticket_numbers))
-        html = html.replace(/\{\{paymentDetails\}\}/g, generatePaymentDetailsHTML(bookingDetails, bookingDetails.amadeus_flight_offer))
-        html = html.replace(/\{\{flightInclusions\}\}/g, generateFlightInclusionsHTML())
+        // Inject values into template
+        html = html.replace(/{{baseUrl}}/g, baseUrl)
+        html = html.replace(
+            /\{\{bookingReference\}\}/g,
+            bookingDetails.booking_reference || 'N/A',
+            bookingDetails.booking_reference
+        )
+        html = html.replace('{{bookingDate}}', bookingDate)
+        html = html.replace('{{itineraries}}', itineraries)
+        html = html.replace('{{passengerDetails}}', passengerDetails)
+        html = html.replace('{{currency}}', currencyCode)
+        html = html.replace('{{baseFare}}', formatAmount(baseFare))
+        html = html.replace('{{feesTaxes}}', formatAmount(feesAndTaxes))
+        html = html.replace('{{liTax}}', formatAmount(liTax))
+        html = html.replace('{{totalFare}}', formatAmount(totalFare))
+        html = html.replace(/\{{flightNumbers\}}/g, flightNumbers)
+        html = html.replace('{{cabinBaggage}}', cabinBaggageText)
+        html = html.replace('{{checkedBaggage}}', checkedBaggageText)
 
-        // Set response headers for HTML
         res.setHeader('Content-Type', 'text/html')
         res.send(html)
-
     } catch (error) {
         console.error('Error generating flight HTML:', error)
         res.status(500).json({ 
             error: 'Failed to generate HTML',
-            message: error.message 
+            message: error.message,
         })
     }
 }
 
-export const viewFlightBookingPrint = async (req, res) => {
-    try {
-        const { id } = req.params
-
-        // Get booking details from database
-        const result = await query(
-            'SELECT * FROM flight_bookings WHERE id = ?',
-            [id]
-        )
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Booking not found' })
-        }
-
-        const booking = result.rows[0]
-
-        // Parse JSON fields if they are strings
-        const parseJsonField = (field) => {
-            if (!field) return null
-            if (typeof field === 'string') {
-                try {
-                    return JSON.parse(field)
-                } catch (e) {
-                    console.error('Error parsing JSON field:', e)
-                    return null
-                }
-            }
-            return field
-        }
-
-        // Prepare booking details for HTML generation
-        const bookingDetails = {
-            ...booking,
-            amadeus_flight_offer: parseJsonField(booking.amadeus_flight_offer),
-            passenger_details: parseJsonField(booking.passenger_details),
-            search_criteria: parseJsonField(booking.search_criteria),
-            e_ticket_numbers: parseJsonField(booking.e_ticket_numbers)
-        }
-
-        // Read the HTML template
-        const templatePath = path.join(__dirname, '../../services/templates/flight-itinerary-template.html')
-        let html = fs.readFileSync(templatePath, 'utf8')
-
-        // Replace placeholders with actual data
-        html = html.replace(/\{\{booking_reference\}\}/g, bookingDetails.booking_reference || 'N/A')
-        html = html.replace(/\{\{status\}\}/g, bookingDetails.status || 'N/A')
-        html = html.replace(/\{\{total_amount\}\}/g, bookingDetails.total_amount || '0')
-        html = html.replace(/\{\{payment_type\}\}/g, bookingDetails.payment_type || 'N/A')
-        html = html.replace(/\{\{created_at\}\}/g, bookingDetails.created_at ? new Date(bookingDetails.created_at).toLocaleDateString() : 'N/A')
-
-        // Add print-specific CSS
-        const printStyles = `
-            <style>
-                @media print {
-                    body {
-                        margin: 0;
-                        padding: 0;
-                        background: white !important;
-                    }
-                    .container {
-                        margin: 0;
-                        padding: 20px;
-                        box-shadow: none;
-                        border-radius: 0;
-                        max-width: none;
-                        min-height: auto;
-                    }
-                    .no-print {
-                        display: none !important;
-                    }
-                    .flight-details {
-                        break-inside: avoid;
-                        page-break-inside: avoid;
-                    }
-                    .passenger-details {
-                        break-inside: avoid;
-                        page-break-inside: avoid;
-                    }
-                }
-            </style>
-        `
-        html = html.replace('</head>', printStyles + '</head>')
-
-        // Set response headers for HTML
-        res.setHeader('Content-Type', 'text/html')
-        res.send(html)
-
-    } catch (error) {
-        console.error('Error generating flight print HTML:', error)
-        res.status(500).json({ 
-            error: 'Failed to generate print HTML',
-            message: error.message 
-        })
-    }
-}
 
 // Generate Flight PDF for Admin (without PDFShift - uses browser print functionality)
 export const generateFlightPDFAdmin = async (req, res) => {
@@ -414,16 +469,17 @@ export const generateFlightPDFAdmin = async (req, res) => {
         const { id } = req.params
 
         // Get booking details from database
-        const result = await query(
-            'SELECT * FROM flight_bookings WHERE id = ?',
-            [id]
-        )
+        const { data, error } = await supabase
+            .from('flight_bookings')
+            .select('*')
+            .eq('id', id)
+            .single()
 
-        if (result.rows.length === 0) {
+        if (error || !data) {
             return res.status(404).json({ error: 'Booking not found' })
         }
 
-        const booking = result.rows[0]
+        const booking = data
 
         // Parse JSON fields if they are strings
         const parseJsonField = (field) => {
@@ -445,185 +501,271 @@ export const generateFlightPDFAdmin = async (req, res) => {
             amadeus_flight_offer: parseJsonField(booking.amadeus_flight_offer),
             passenger_details: parseJsonField(booking.passenger_details),
             search_criteria: parseJsonField(booking.search_criteria),
-            e_ticket_numbers: parseJsonField(booking.e_ticket_numbers)
         }
 
-        // Read the HTML template
-        const templatePath = path.join(__dirname, '../../services/templates/flight-itinerary-template.html')
+        // Read the new HTML template based on flight.html
+        const templatePath = path.join(
+            __dirname,
+            '../../services/templates/flight.html'
+        )
         let html = fs.readFileSync(templatePath, 'utf8')
 
-        // Generate itineraries HTML
-        const generateItinerariesHTML = (flightOffer) => {
-            if (!flightOffer?.itineraries) return '<p>Flight details not available</p>'
-            
-            let itinerariesHTML = ''
-            flightOffer.itineraries.forEach((itinerary, index) => {
-                const isReturn = index > 0
-                const headerClass = isReturn ? 'itinerary-header return' : 'itinerary-header'
-                const title = isReturn ? 'Return Flight' : 'Outbound Flight'
-                
-                itinerariesHTML += `
-                    <div class="itinerary-section">
-                        <div class="${headerClass}">
-                            <span>${title}</span>
-                            <span>${itinerary.segments?.[0]?.departure?.at ? new Date(itinerary.segments[0].departure.at).toLocaleDateString() : 'N/A'}</span>
-                        </div>
-                        <div class="flight-column-headers">
-                            <div class="flight-col airline">Airline</div>
-                            <div class="flight-col">Flight</div>
-                            <div class="flight-col">From</div>
-                            <div class="flight-col">To</div>
-                            <div class="flight-col">Departure</div>
-                            <div class="flight-col">Arrival</div>
-                            <div class="flight-col duration">Duration</div>
-                        </div>
-                `
-                
-                itinerary.segments?.forEach(segment => {
-                    itinerariesHTML += `
-                        <div class="flight-details-row">
-                            <div class="flight-col airline">
-                                <span>${segment.carrierCode || 'N/A'}</span>
-                            </div>
-                            <div class="flight-col">
-                                <h4>${segment.number || 'N/A'}</h4>
-                                <p>Aircraft: ${segment.aircraft?.code || 'N/A'}</p>
-                            </div>
-                            <div class="flight-col">
-                                <h4>${segment.departure?.iataCode || 'N/A'}</h4>
-                                <p>Terminal ${segment.departure?.terminal || 'N/A'}</p>
-                            </div>
-                            <div class="flight-col">
-                                <h4>${segment.arrival?.iataCode || 'N/A'}</h4>
-                                <p>Terminal ${segment.arrival?.terminal || 'N/A'}</p>
-                            </div>
-                            <div class="flight-col">
-                                <h4>${segment.departure?.at ? new Date(segment.departure.at).toLocaleTimeString() : 'N/A'}</h4>
-                                <p>${segment.departure?.at ? new Date(segment.departure.at).toLocaleDateString() : 'N/A'}</p>
-                            </div>
-                            <div class="flight-col">
-                                <h4>${segment.arrival?.at ? new Date(segment.arrival.at).toLocaleTimeString() : 'N/A'}</h4>
-                                <p>${segment.arrival?.at ? new Date(segment.arrival.at).toLocaleDateString() : 'N/A'}</p>
-                            </div>
-                            <div class="flight-col duration">
-                                <span>${segment.duration || 'N/A'}</span>
-                            </div>
-                        </div>
-                    `
-                })
-                
-                itinerariesHTML += '</div>'
-            })
-            
-            return itinerariesHTML
-        }
+        // Replace BASE_URL placeholder with actual backend URL
+        const baseUrl =
+            process.env.BACKEND_URL ||
+            (process.env.NODE_ENV === 'production'
+                ? 'https://trabilis.onrender.com'
+                : 'http://localhost:5000')
 
-        // Generate passengers HTML
-        const generatePassengersHTML = (passengerDetails, eTicketNumbers) => {
-            if (!passengerDetails?.travelers) return '<tr><td colspan="6">No passenger details available</td></tr>'
-            
-            let passengersHTML = ''
-            passengerDetails.travelers.forEach((traveler, index) => {
-                const ticketNumber = eTicketNumbers?.[index] || 'N/A'
-                passengersHTML += `
-                    <tr>
-                        <td>${index + 1}</td>
-                        <td>
-                            <strong>${traveler.name?.firstName || ''} ${traveler.name?.lastName || ''}</strong><br>
-                            <small>${traveler.type || 'N/A'} | ${traveler.gender || 'N/A'}</small>
-                        </td>
-                        <td>
-                            ${traveler.documents?.[0]?.number || 'N/A'}<br>
-                            <small>${traveler.documents?.[0]?.nationality || 'N/A'}</small>
-                        </td>
-                        <td>${bookingDetails.pnr || 'N/A'}</td>
-                        <td>${ticketNumber}</td>
-                        <td>${bookingDetails.status || 'N/A'}</td>
-                    </tr>
+        const bookingDate = bookingDetails.updated_at
+            ? dayjs(bookingDetails.updated_at).format('MMM D, YYYY')
+            : dayjs(bookingDetails.created_at).format('MMM D, YYYY')
+
+        const itineraries = (
+            bookingDetails.amadeus_flight_offer?.itineraries || []
+        )
+            .map((itinerary, index) => {
+                return `
+                    <div class="pdf-flight-details__section">
+                        <div class="pdf-table-header">
+                            <div class="pdf-table-header__title">
+                                <i class="fa-solid fa-plane"></i>
+                                <p>
+                                    <b>${index === 0 ? 'Onward' : 'Return'}</b>
+                                    <span>${
+                                        itinerary.segments?.length || 0
+                                    }</span>
+                                    Flight(s)
+                                </p>
+                        </div>
+                            <div><span>Non-Refundable</span></div>
+                        </div>
+                        <div class="pdf-flight-details__subheader">
+                            <div class="pdf-flight-details__flight__index">
+                                <b>Flight <span>${index + 1}</span></b>
+                            </div>
+                            <div class="pdf-flight-details__subheader-title">
+                                <i class="fa-solid fa-plane-departure pdf-flight-details__icon"></i>
+                                <p>Departing</p>
+                            </div>
+                            <div class="pdf-flight-details__subheader-title">
+                                <i class="fa-solid fa-plane-arrival pdf-flight-details__icon"></i>
+                                <p>Arriving</p>
+                            </div>
+                            </div>
+                        <div class="pdf-flight-details__data">
+                            ${(itinerary.segments || [])
+                                .map((segment) => {
+                                    const {
+                                        airline,
+                                        aircraft,
+                                        departure,
+                                        arrival,
+                                        stopsLabel,
+                                        duration: flightDuration,
+                                    } = formatSegment(segment)
+
+                                    return ` <div class="pdf-flight-details__airline">
+                                            <img class="pdf-flight-details__airline-logo" src=${
+                                                airline.logo
+                                            } alt=${airline.name} />
+                                            <div class="pdf-flight-details__airline-name">
+                                                <p class="pdf-flight-details__airline-text"><b>${
+                                                    airline.name
+                                                }</b></p>
+                                                <p class="pdf-flight-details__airline-text">${aircraft}</p>
+                            </div>
+                            </div>
+
+                                        <div class="pdf-flight-details__departure">
+                                            <p class="pdf-flight-details__airport-code">
+                                                <b><span>${
+                                                    departure.iata
+                                                }</span></b>
+                                                <span>${departure.city}</span>
+                                            </p>
+                                            <p class="pdf-flight-details__airport-name"><span>${
+                                                departure.airport
+                                            }</span></p>
+                                            <p class="pdf-flight-details__terminal"><span>Terminal ${
+                                                departure.terminal || ''
+                                            }</span></p>
+                                            <p class="pdf-flight-details__time"><b><span>${
+                                                departure.time
+                                            }</span></b></p>
+                            </div>
+
+                                        <div class="pdf-flight-details__arrival">
+                                            <p class="pdf-flight-details__airport-code">
+                                                <b><span>${
+                                                    arrival.iata
+                                                }</span><span>${
+                                        arrival.city
+                                    }</span></b>
+                                            </p>
+                                            <p class="pdf-flight-details__airport-code"><span>${
+                                                arrival.airport
+                                            }</span></p>
+                                            <p class="pdf-flight-details__terminal"><span>Terminal ${
+                                                arrival.terminal || ''
+                                            }</span></p>
+                                            <p class="pdf-flight-details__time"><b><span>${
+                                                arrival.time
+                                            }</span></b></p>
+                        </div>
+
+                                        <div class="pdf-flight-details__leg">
+                                            <p class="pdf-flight-details__stops">${stopsLabel}</p>
+                                            <p class="pdf-flight-details__durations">${flightDuration}</p>
+                                        </div>`
+                                })
+                                .join('')}
+                        </div>
+                    </div>
                 `
             })
-            
-            return passengersHTML
-        }
+            .join('')
 
-        // Generate payment details HTML
-        const generatePaymentDetailsHTML = (bookingDetails, flightOffer) => {
-            let paymentHTML = `
-                <table>
-                    <tr>
-                        <td>Total Amount:</td>
-                        <td>₱${parseFloat(bookingDetails.total_amount || 0).toLocaleString()}</td>
-                    </tr>
-                    <tr>
-                        <td>Currency:</td>
-                        <td>${bookingDetails.currency || 'PHP'}</td>
-                    </tr>
-                    <tr>
-                        <td>Payment Type:</td>
-                        <td>${bookingDetails.payment_type || 'N/A'}</td>
-                    </tr>
-                    <tr>
-                        <td>Status:</td>
-                        <td>${bookingDetails.status || 'N/A'}</td>
-                    </tr>
-            `
-            
-            if (flightOffer?.price) {
-                paymentHTML += `
-                    <tr class="total">
-                        <td>Base Price:</td>
-                        <td>₱${parseFloat(flightOffer.price.base || 0).toLocaleString()}</td>
-                    </tr>
+        const pnr = bookingDetails.pnr
+        const status =
+            bookingDetails.status === 'TICKETED'
+                ? 'CONFIRMED'
+                : bookingDetails.status
+        const passengerDetails = (
+            bookingDetails.passenger_details?.travelers || []
+        )
+            .map((passenger, index) => {
+                const title = passenger.title || ''
+                const name = `${passenger.name?.firstName || ''} ${
+                    passenger.name?.lastName || ''
+                }`
+                    .trim()
+                    .toUpperCase()
+                const type = passenger.type || ''
+                const dateOfBirth = passenger.dateOfBirth || ''
+                const psngrDocs = (passenger.documents || [])[0] || {}
+                const passport = {
+                    number: psngrDocs.number || 'N/A',
+                    expiry: psngrDocs.expiryDate || 'N/A',
+                }
+
+                return `
+                    <div class="pdf-passenger-details__data">
+                        <div><span>${index + 1}</span></div>
+                        <div class="pdf-passenger-details__data-name">
+                            <p><b>${`${
+                                title ? title.toUpperCase() + '. ' : ''
+                            }${name}`}</b></p>
+                            <p>${type} (${dateOfBirth})</p>
+                        </div>
+                        <div class="pdf-passenger-details__data-passport">
+                            <span>${passport.number}</span>
+                            <span>${passport.expiry}</span>
+                        </div>
+                        <p class="pdf-passenger-details__data-pnr">${
+                            pnr || 'N/A'
+                        }</p>
+                        <div>N/A</div>
+                        <div>N/A</div>
+                        <div>N/A</div>
+                        <div>${status || 'N/A'}</div>
+                    </div>
                 `
-                
-                flightOffer.price.fees?.forEach(fee => {
-                    paymentHTML += `
-                        <tr>
-                            <td>Fee (${fee.type}):</td>
-                            <td>₱${parseFloat(fee.amount || 0).toLocaleString()}</td>
-                        </tr>
-                    `
-                })
-                
-                paymentHTML += `
-                    <tr class="total">
-                        <td>Grand Total:</td>
-                        <td>₱${parseFloat(flightOffer.price.grandTotal || 0).toLocaleString()}</td>
-                    </tr>
-                `
+            })
+            .join('')
+
+        // Compute Payment Details
+        const offerPrice = bookingDetails.amadeus_flight_offer?.price || {}
+        const currencyCode =
+            offerPrice.currency || bookingDetails.currency || 'PHP'
+        const toNumber = (value) => Number(value ?? 0)
+        const baseFare = toNumber(offerPrice.base)
+        const totalFare = toNumber(offerPrice.total || offerPrice.grandTotal)
+        const refundableTaxes = toNumber(
+            bookingDetails.amadeus_flight_offer?.travelerPricings?.[0]?.price
+                ?.refundableTaxes
+        )
+        const liTax = refundableTaxes || 0
+        const feesAndTaxes = Math.max(0, totalFare - baseFare - liTax)
+        const formatAmount = (n) =>
+            toNumber(n).toLocaleString('en-PH', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            })
+
+        // Flight Inclusions
+        const flightNumbers = (
+            bookingDetails.amadeus_flight_offer?.itineraries || []
+        )
+            .flatMap((it) => it.segments || [])
+            .map((seg) => {
+                const code = seg.operating?.carrierCode || seg.carrierCode
+                return `${code}-${seg.number}`
+            })
+            .join(', ')
+
+        // Derive baggage from traveler pricing fareDetailsBySegment if available
+        const fareDetails =
+            bookingDetails.amadeus_flight_offer?.travelerPricings?.[0]
+                ?.fareDetailsBySegment || []
+        const bagInfo = fareDetails.reduce(
+            (acc, f) => {
+                const includedBags = f.includedCheckedBags
+                if (includedBags) {
+                    if (typeof includedBags.weight === 'number') {
+                        acc.checkedKg = Math.max(
+                            acc.checkedKg,
+                            includedBags.weight
+                        )
+                        acc.checkedUnit =
+                            includedBags.weightUnit || acc.checkedUnit
+                    }
+                    if (typeof includedBags.quantity === 'number') {
+                        acc.checkedPieces = Math.max(
+                            acc.checkedPieces,
+                            includedBags.quantity
+                        )
+                    }
+                }
+                const cabin = f.cabinBags || f.cabin
+                if (cabin && typeof cabin.quantity === 'number') {
+                    acc.cabinPieces = Math.max(acc.cabinPieces, cabin.quantity)
+                }
+                return acc
+            },
+            {
+                checkedKg: 0,
+                checkedUnit: 'KG',
+                checkedPieces: 0,
+                cabinPieces: 0,
             }
-            
-            paymentHTML += '</table>'
-            return paymentHTML
-        }
+        )
 
-        // Generate flight inclusions HTML
-        const generateFlightInclusionsHTML = () => {
-            return `
-                <h5>Included Services:</h5>
-                <p>• Flight ticket(s) as specified</p>
-                <p>• Standard baggage allowance</p>
-                <p>• In-flight meals and beverages</p>
-                <p>• Seat selection (subject to availability)</p>
-                
-                <h5>Important Notes:</h5>
-                <p>• Check-in begins 3 hours prior to departure</p>
-                <p>• Valid ID required for all passengers</p>
-                <p>• Baggage restrictions apply</p>
-                <p>• Flight times subject to change</p>
-            `
-        }
+        const cabinBaggageText = `Adult: ${
+            bagInfo.cabinPieces || 0
+        } Pc Included`
+        const checkedBaggageText =
+            bagInfo.checkedKg > 0
+                ? `Adult: ${bagInfo.checkedKg} ${bagInfo.checkedUnit}`
+                : `Adult: ${bagInfo.checkedPieces || 0} PC`
 
-        // Replace placeholders with actual data
-        html = html.replace(/\{\{bookingReference\}\}/g, bookingDetails.booking_reference || 'N/A')
-        html = html.replace(/\{\{companyName\}\}/g, 'Lindela Travel And Tours - Trabilis')
-        html = html.replace(/\{\{companyEmail\}\}/g, 'lindelatravelctws@gmail.com')
-        html = html.replace(/\{\{companyAddress\}\}/g, 'Unit 2215 Cityland 10 Tower II, H. V. Dela Costa Street, Makati, Metro Manila')
-        html = html.replace(/\{\{bookingDate\}\}/g, bookingDetails.created_at ? new Date(bookingDetails.created_at).toLocaleDateString() : 'N/A')
-        html = html.replace(/\{\{itineraries\}\}/g, generateItinerariesHTML(bookingDetails.amadeus_flight_offer))
-        html = html.replace(/\{\{passengers\}\}/g, generatePassengersHTML(bookingDetails.passenger_details, bookingDetails.e_ticket_numbers))
-        html = html.replace(/\{\{paymentDetails\}\}/g, generatePaymentDetailsHTML(bookingDetails, bookingDetails.amadeus_flight_offer))
-        html = html.replace(/\{\{flightInclusions\}\}/g, generateFlightInclusionsHTML())
+        // Inject values into template
+        html = html.replace('{{baseUrl}}', baseUrl)
+        html = html.replace(
+            '{{bookingReference}}',
+            bookingDetails.booking_reference
+        )
+        html = html.replace('{{bookingDate}}', bookingDate)
+        html = html.replace('{{itineraries}}', itineraries)
+        html = html.replace('{{passengerDetails}}', passengerDetails)
+        html = html.replace('{{currency}}', currencyCode)
+        html = html.replace('{{baseFare}}', formatAmount(baseFare))
+        html = html.replace('{{feesTaxes}}', formatAmount(feesAndTaxes))
+        html = html.replace('{{liTax}}', formatAmount(liTax))
+        html = html.replace('{{totalFare}}', formatAmount(totalFare))
+        html = html.replace(/\{{flightNumbers\}}/g, flightNumbers)
+        html = html.replace('{{cabinBaggage}}', cabinBaggageText)
+        html = html.replace('{{checkedBaggage}}', checkedBaggageText)
 
         // Add comprehensive print optimization and admin styling
         const adminStyles = `
@@ -976,14 +1118,16 @@ export const generateFlightPDFAdmin = async (req, res) => {
 
         // Set response headers for HTML (admin will use browser print to PDF)
         res.setHeader('Content-Type', 'text/html')
-        res.setHeader('Content-Disposition', `inline; filename="Flight-Itinerary-${booking.booking_reference}.html"`)
+        res.setHeader(
+            'Content-Disposition',
+            `inline; filename="Flight-Itinerary-${booking.booking_reference}.html"`
+        )
         res.send(html)
-
     } catch (error) {
         console.error('Error generating flight PDF for admin:', error)
         res.status(500).json({ 
             error: 'Failed to generate PDF for admin',
-            message: error.message 
+            message: error.message,
         })
     }
 }
@@ -995,16 +1139,15 @@ export const editFlightBooking = async (req, res) => {
         const { 
             status, 
             pnr, 
-            e_ticket_numbers, 
             assigned_to,
-            assignment_status 
+            assignment_status,
         } = req.body
 
         // Validate required fields
         if (!id) {
             return res.status(400).json({ 
                 success: false,
-                error: 'Booking ID is required' 
+                error: 'Booking ID is required',
             })
         }
 
@@ -1018,13 +1161,13 @@ export const editFlightBooking = async (req, res) => {
         if (fetchError || !existingBooking) {
             return res.status(404).json({ 
                 success: false,
-                error: 'Booking not found' 
+                error: 'Booking not found',
             })
         }
 
         // Prepare update data
         const updateData = {
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
         }
 
         // Only update fields that are provided
@@ -1033,9 +1176,6 @@ export const editFlightBooking = async (req, res) => {
         }
         if (pnr !== undefined) {
             updateData.pnr = pnr
-        }
-        if (e_ticket_numbers !== undefined) {
-            updateData.e_ticket_numbers = e_ticket_numbers
         }
         if (assigned_to !== undefined) {
             updateData.assigned_to = assigned_to
@@ -1046,7 +1186,7 @@ export const editFlightBooking = async (req, res) => {
             if (!validStatuses.includes(assignment_status)) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Invalid assignment status. Must be one of: pending, in_progress, completed'
+                    error: 'Invalid assignment status. Must be one of: pending, in_progress, completed',
                 })
             }
             updateData.assignment_status = assignment_status
@@ -1066,22 +1206,25 @@ export const editFlightBooking = async (req, res) => {
 
         // Create admin notification for status changes
         if (status && status !== existingBooking.status) {
-            await supabase
-                .from('admin_notifications')
-                .insert({
+            await supabase.from('admin_notifications').insert({
                     type: 'booking_status_changed',
                     message: `Flight booking ${existingBooking.booking_reference} status changed from ${existingBooking.status} to ${status}`,
                     booking_reference: existingBooking.booking_reference,
                     booking_type: 'flight',
                     booking_id: null,
-                    created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
                 })
         }
 
         // Create admin notification for assignment changes
-        if (assigned_to !== undefined && assigned_to !== existingBooking.assigned_to) {
+        if (
+            assigned_to !== undefined &&
+            assigned_to !== existingBooking.assigned_to
+        ) {
             const isReassign = !!existingBooking.assigned_to && !!assigned_to
-            const notifType = isReassign ? 'booking_reassigned' : 'booking_assigned'
+            const notifType = isReassign
+                ? 'booking_reassigned'
+                : 'booking_assigned'
             // Resolve assigner and assignee names for readable message
             let assignerName = req.user?.email || 'System'
             let assigneeName = assigned_to
@@ -1094,7 +1237,10 @@ export const editFlightBooking = async (req, res) => {
                         .eq('email', req.user.email)
                         .single()
                     if (assigner) {
-                        assignerName = `${assigner.first_name || ''} ${assigner.last_name || ''}`.trim() || assigner.email
+                        assignerName =
+                            `${assigner.first_name || ''} ${
+                                assigner.last_name || ''
+                            }`.trim() || assigner.email
                     }
                 }
                 // Lookup assignee by id
@@ -1105,7 +1251,10 @@ export const editFlightBooking = async (req, res) => {
                         .eq('id', assigned_to)
                         .single()
                     if (assignee) {
-                        assigneeName = `${assignee.first_name || ''} ${assignee.last_name || ''}`.trim() || assignee.email
+                        assigneeName =
+                            `${assignee.first_name || ''} ${
+                                assignee.last_name || ''
+                            }`.trim() || assignee.email
                     }
                 }
             } catch (_) {}
@@ -1114,9 +1263,7 @@ export const editFlightBooking = async (req, res) => {
                 ? `Flight booking ${existingBooking.booking_reference} reassigned by ${assignerName} to ${assigneeName}`
                 : `Flight booking ${existingBooking.booking_reference} assigned by ${assignerName} to ${assigneeName}`
 
-            await supabase
-                .from('admin_notifications')
-                .insert({
+            await supabase.from('admin_notifications').insert({
                     type: notifType,
                     message,
                     booking_reference: existingBooking.booking_reference,
@@ -1124,7 +1271,7 @@ export const editFlightBooking = async (req, res) => {
                     booking_id: null,
                     assigned_to: assigned_to || null,
                     assigned_by: req.user?.id || null,
-                    created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
                 })
 
             // Trigger realtime event via Pusher
@@ -1136,38 +1283,42 @@ export const editFlightBooking = async (req, res) => {
         }
 
         // Create admin notification for assignment status updates
-        if (assignment_status && assignment_status !== existingBooking.assignment_status) {
-            await supabase
-                .from('admin_notifications')
-                .insert({
+        if (
+            assignment_status &&
+            assignment_status !== existingBooking.assignment_status
+        ) {
+            await supabase.from('admin_notifications').insert({
                     type: 'assignment_status_updated',
                     message: `Flight booking ${existingBooking.booking_reference} assignment status: ${assignment_status}`,
                     booking_reference: existingBooking.booking_reference,
                     booking_type: 'flight',
                     booking_id: null,
-                    created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
                 })
 
-            await pusher.trigger('admin-notifications', 'assignment-status-updated', {
+            await pusher.trigger(
+                'admin-notifications',
+                'assignment-status-updated',
+                {
                 bookingReference: existingBooking.booking_reference,
                 bookingType: 'flight',
                 bookingId: id,
                 status: assignment_status,
-            })
+                }
+            )
         }
 
         res.json({
             success: true,
             message: 'Booking updated successfully',
-            data: updatedBooking
+            data: updatedBooking,
         })
-
     } catch (error) {
         console.error('Error editing flight booking:', error)
         res.status(500).json({ 
             success: false,
             error: 'Failed to update booking',
-            message: error.message 
+            message: error.message,
         })
     }
 }
@@ -1181,7 +1332,7 @@ export const cancelFlightBooking = async (req, res) => {
         if (!id) {
             return res.status(400).json({ 
                 success: false,
-                error: 'Booking ID is required' 
+                error: 'Booking ID is required',
             })
         }
 
@@ -1195,7 +1346,7 @@ export const cancelFlightBooking = async (req, res) => {
         if (fetchError || !existingBooking) {
             return res.status(404).json({ 
                 success: false,
-                error: 'Booking not found' 
+                error: 'Booking not found',
             })
         }
 
@@ -1203,14 +1354,14 @@ export const cancelFlightBooking = async (req, res) => {
         if (existingBooking.status === 'CANCELLED') {
             return res.status(400).json({ 
                 success: false,
-                error: 'Booking is already cancelled' 
+                error: 'Booking is already cancelled',
             })
         }
 
         if (existingBooking.status === 'TICKETED') {
             return res.status(400).json({ 
                 success: false,
-                error: 'Cannot cancel ticketed booking. Please contact support for assistance.' 
+                error: 'Cannot cancel ticketed booking. Please contact support for assistance.',
             })
         }
 
@@ -1218,7 +1369,7 @@ export const cancelFlightBooking = async (req, res) => {
         const updateData = {
             status: 'CANCELLED',
             cancelled_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
         }
 
         if (reason) {
@@ -1241,36 +1392,37 @@ export const cancelFlightBooking = async (req, res) => {
         }
 
         // Create admin notification
-        await supabase
-            .from('admin_notifications')
-            .insert({
+        await supabase.from('admin_notifications').insert({
                 type: 'booking_cancelled',
-                message: `Flight booking ${existingBooking.booking_reference} has been cancelled${reason ? ` - Reason: ${reason}` : ''}`,
+            message: `Flight booking ${
+                existingBooking.booking_reference
+            } has been cancelled${reason ? ` - Reason: ${reason}` : ''}`,
                 booking_reference: existingBooking.booking_reference,
                 booking_type: 'flight',
                 booking_id: null,
-                created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
             })
 
         // TODO: Process refund if payment was made
         // This would integrate with Stripe or other payment processor
         if (existingBooking.stripe_checkout_id && refund_amount) {
-            console.log(`Refund processing needed for booking ${existingBooking.booking_reference}: ${refund_amount}`)
+            console.log(
+                `Refund processing needed for booking ${existingBooking.booking_reference}: ${refund_amount}`
+            )
             // Implement refund logic here
         }
 
         res.json({
             success: true,
             message: 'Booking cancelled successfully',
-            data: cancelledBooking
+            data: cancelledBooking,
         })
-
     } catch (error) {
         console.error('Error cancelling flight booking:', error)
         res.status(500).json({ 
             success: false,
             error: 'Failed to cancel booking',
-            message: error.message 
+            message: error.message,
         })
     }
 }

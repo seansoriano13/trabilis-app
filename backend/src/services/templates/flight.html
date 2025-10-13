@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Flight-Itinerary-{{bookingReference}}</title>
+        <link
+            rel="shortcut icon"
+            href="{{baseUrl}}/public/favicon.ico"
+            type="image/x-icon"
+        />
+        <script
+            src="https://kit.fontawesome.com/11883d15ca.js"
+            crossorigin="anonymous"
+        ></script>
+        <style>
+            @media print {
+                * {
+                    -webkit-print-color-adjust: exact !important; /* Chrome, Safari */
+                    print-color-adjust: exact !important; /* Firefox, modern */
+                    color-adjust: exact !important; /* Legacy fallback */
+                }
+            }
+            @page {
+                size: letter;
+                margin: 10mm;
+            }
+            :root {
+                --pdf-passenger-grid: auto 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+                --pdf-color-primary: hsl(358, 85%, 52%);
+                --pdf-fs-small: 0.625rem;
+
+                --pdf-border-light: 1px solid #cccccc70;
+            }
+            .pdf-page {
+                margin: 0;
+                padding: 0;
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 12px;
+                color: #333;
+                background-color: #fff;
+                letter-spacing: 5%;
+            }
+            .pdf-main {
+                max-width: 793px;
+                width: 100%;
+                margin: 0 auto;
+            }
+            .pdf-header {
+                display: flex;
+                justify-content: space-between;
+                padding: 1rem 0;
+                align-items: center;
+            }
+            .pdf-header__logo {
+                height: 2.5rem;
+                margin-top: 1rem;
+                margin-left: 1rem;
+            }
+            .pdf-header__text {
+                display: grid;
+                justify-items: end;
+            }
+            .pdf-header__title {
+                border-bottom: 1px solid hsl(197, 13%, 89%);
+                padding-bottom: 5px;
+            }
+            .pdf-header__email a {
+                text-decoration: none;
+                color: hsl(164, 82%, 39%);
+            }
+            .pdf-header__icon {
+                text-decoration: none;
+                color: hsl(164, 82%, 39%);
+            }
+            .pdf-booking-reference {
+                display: flex;
+                justify-content: space-between;
+            }
+            .pdf-flight-details {
+            }
+            .pdf-flight-details__section {
+                border: var(--pdf-border-light);
+                margin-bottom: 1rem;
+            }
+            .pdf-table-header {
+                padding: 0.3rem 2rem;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                background-color: var(--pdf-color-primary);
+                color: white;
+            }
+            .pdf-table-header--passenger,
+            .pdf-passenger-details__data {
+                display: grid;
+                grid-template-columns: var(--pdf-passenger-grid);
+                align-items: center;
+            }
+
+            .pdf-table-header--passenger,
+            .pdf-table-header--payment,
+            .pdf-table-header--inclusions {
+                background-color: hsl(0, 0%, 40%);
+                text-align: center;
+            }
+            .pdf-table-header--passenger > :first-child {
+                margin-right: 2rem;
+                grid-column: auto;
+                text-align: start;
+            }
+            .pdf-table-header--passenger > :nth-child(2) {
+                text-align: start;
+            }
+            .pdf-table-header--passenger > :nth-child(3) {
+                text-align: start;
+                grid-column: span 2;
+            }
+            .pdf-table-header__title {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                grid-column: span 2;
+            }
+            .pdf-table-header__icon {
+                transform: rotate(180deg);
+            }
+
+            .pdf-flight-details__subheader {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                background-color: hsl(0, 0%, 85%);
+            }
+            .pdf-flight-details__flight__index {
+                display: flex;
+                align-items: center;
+                padding-left: 1rem;
+                color: var(--pdf-color-primary);
+            }
+            .pdf-flight-details__subheader-title {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .pdf-flight-details__data {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+            }
+            /* .pdf-flight-details__data :nth-child(2) p {
+                margin: 0;
+            }
+            .pdf-flight-details__data :nth-child(3) p {
+                margin: 0;
+            } */
+            .pdf-flight-details__airline {
+                padding: 0 1rem;
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+            }
+            .pdf-flight-details__airline-logo {
+                height: 2rem;
+            }
+            .pdf-flight-details__airline-name {
+                text-wrap: wrap;
+            }
+            .pdf-flight-details__airline-name p {
+                margin: 0;
+            }
+            .pdf-flight-details__airline-text {
+                margin: 0;
+            }
+            .pdf-flight-details__leg {
+                text-align: end;
+                margin: 1rem 2rem;
+                border-left: 1px solid hsl(0, 0%, 84%);
+            }
+            .pdf-flight-details__stops {
+            }
+            .pdf-flight-details__icon {
+                height: 1rem;
+                color: hsl(209, 10%, 60%);
+            }
+            .pdf-passenger-details {
+                border: var(--pdf-border-light);
+                margin-bottom: 1rem;
+            }
+            .pdf-passenger-details__data {
+                padding: 1rem 2rem;
+                text-align: center;
+            }
+            .pdf-passenger-details__data-name {
+                text-align: start;
+            }
+            .pdf-passenger-details__data-name :nth-child(2) {
+                font-size: var(--pdf-fs-small);
+                filter: opacity(70%);
+            }
+            .pdf-passenger-details__data-name p {
+                margin: 0;
+            }
+            .pdf-passenger-details__data > :first-child {
+                margin-right: 2rem;
+            }
+            .pdf-passenger-details__data > :nth-child(2) {
+                grid-column: span 2;
+            }
+            .pdf-passenger-details__data-passport {
+                display: grid;
+                text-align: start;
+                filter: opacity(80%);
+                font-size: var(--pdf-fs-small);
+                grid-column: span 2;
+                filter: opacity(70%);
+            }
+            .pdf-passenger-details__data-pnr {
+                color: var(--pdf-color-primary);
+                font-weight: 700;
+            }
+            .pdf-passenger-details__data-passport span {
+                font-size: var(--pdf-fs-small);
+            }
+            .pdf-passenger-details__icon {
+                height: 1rem;
+            }
+            .pdf-payment-inclusions {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 2rem;
+            }
+            .pdf-payment-details {
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                border: var(--pdf-border-light);
+                position: relative;
+            }
+            .pdf-payment-details__data {
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                padding: 1rem;
+            }
+
+            .pdf-payment-details__header {
+                display: flex;
+                justify-content: space-between;
+                padding-bottom: 0.5rem;
+                border-bottom: var(--pdf-border-light);
+            }
+
+            .pdf-payment-details__col {
+                font-weight: bold;
+            }
+
+            .pdf-payment-details__body {
+                display: grid;
+                gap: 5px;
+            }
+
+            .pdf-payment-details__row {
+                display: flex;
+                justify-content: space-between;
+            }
+
+            .pdf-payment-details__label {
+            }
+
+            .pdf-payment-details__value {
+                font-weight: bold;
+            }
+
+            .pdf-payment-details__footer {
+                display: flex;
+                justify-content: space-between;
+                border-top: var(--pdf-border-light);
+                padding-top: 0.5rem;
+            }
+
+            .pdf-payment-details__total-label {
+            }
+
+            .pdf-payment-details__total-value {
+                font-weight: bold;
+            }
+            .pdf-inclusions {
+                border: var(--pdf-border-light);
+            }
+            .pdf-inclusions__data {
+                padding: 1rem;
+                display: grid;
+                gap: 1rem;
+            }
+            .pdf-inclusions__row {
+            }
+            .pdf-inclusions__row--border {
+                border-bottom: var(--pdf-border-light);
+            }
+            .pdf-inclusions__label {
+                font-weight: bold;
+            }
+            .pdf-inclusions__value :nth-child(1) {
+                filter: opacity(70%);
+            }
+            .pdf-inclusions__icon {
+                height: 1rem;
+            }
+            .pdf-info {
+                padding: 1rem 0;
+            }
+            .pdf-info__title {
+                font-weight: bold;
+            }
+            .pdf-info__desc {
+                font-size: var(--pdf-fs-small);
+                filter: opacity(80%);
+                border-bottom: var(--pdf-border-light);
+                padding-bottom: 1rem;
+            }
+            .pdf-contact p {
+                margin: 0;
+            }
+            .pdf-contact {
+                text-align: end;
+                font-size: var(--pdf-fs-small);
+                filter: opacity(80%);
+            }
+        </style>
+    </head>
+    <body class="pdf-page">
+        <main class="pdf-main">
+            <header class="pdf-header">
+                <img
+                    class="pdf-header__logo"
+                    src="{{baseUrl}}/public/cheap-flights.png"
+                    alt="Cheap Flights Tickets and Hotels"
+                />
+                <div class="pdf-header__text">
+                    <p>
+                        <b
+                            ><span class="pdf-header__title"
+                                >Lindela Travel and Tours</span
+                            ></b
+                        >
+                    </p>
+                    <div class="pdf-header__email">
+                        <i class="fa-solid fa-envelope pdf-header__icon"></i>
+                        <a href="mailto:lindelatravelandtours@gmail.com">
+                            <span>lindelatravelandtours@gmail.com</span>
+                        </a>
+                    </div>
+                </div>
+            </header>
+            <div class="pdf-booking-reference">
+                <p>
+                    Booking ID: <span><b>{{bookingReference}}</b></span>
+                </p>
+                <p>Booking Date: <span>{{bookingDate}}</span></p>
+            </div>
+
+            <div class="pdf-flight-details">
+                {{itineraries}}
+                <!-- Passenger Details -->
+                <div class="pdf-passenger-details">
+                    <div class="pdf-table-header pdf-table-header--passenger">
+                        <div>
+                            <i
+                                class="pdf-passenger-details__icon fa-solid fa-user"
+                            ></i>
+                        </div>
+                        <div class="pdf-table-header__title">
+                            <p>Passenger(s) Details</p>
+                        </div>
+                        <div>Passport Details</div>
+                        <div>PNR</div>
+                        <div>FF</div>
+                        <div>E-ticket</div>
+                        <div>Insurance No.</div>
+                        <div>Status</div>
+                    </div>
+                    {{passengerDetails}}
+                </div>
+            </div>
+
+            <div class="pdf-payment-inclusions">
+                <!-- Payment Details -->
+                <div class="pdf-payment-details">
+                    <div class="pdf-table-header pdf-table-header--payment">
+                        <div class="pdf-table-header__title">
+                            <i class="fa-solid fa-credit-card"></i>
+                            <p>Payment Details</p>
+                        </div>
+                    </div>
+                    <div class="pdf-payment-details__data">
+                        <div class="pdf-payment-details__header">
+                            <div class="pdf-payment-details__col">Type</div>
+                            <div class="pdf-payment-details__col">
+                                Amount {{currency}}
+                            </div>
+                        </div>
+
+                        <div class="pdf-payment-details__body">
+                            <div class="pdf-payment-details__row">
+                                <div class="pdf-payment-details__label">
+                                    Base Fare
+                                </div>
+                                <div class="pdf-payment-details__value">
+                                    {{baseFare}}
+                                </div>
+                            </div>
+                            <div class="pdf-payment-details__row">
+                                <div class="pdf-payment-details__label">
+                                    Booking Fee &amp; Taxes
+                                </div>
+                                <div class="pdf-payment-details__value">
+                                    {{feesTaxes}}
+                                </div>
+                            </div>
+                            <div class="pdf-payment-details__row">
+                                <div class="pdf-payment-details__label">
+                                    LI Tax
+                                </div>
+                                <div class="pdf-payment-details__value">
+                                    {{liTax}}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pdf-payment-details__footer">
+                            <div class="pdf-payment-details__total-label">
+                                Total Fare
+                            </div>
+                            <div class="pdf-payment-details__total-value">
+                                {{totalFare}}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Flight Inclusions -->
+                <div class="pdf-inclusions">
+                    <div class="pdf-table-header pdf-table-header--inclusions">
+                        <div class="pdf-table-header__title">
+                            <i class="fa-solid fa-star"></i>
+                            <p>Flight Inclusions</p>
+                        </div>
+                    </div>
+                    <div class="pdf-inclusions__data">
+                        <div
+                            class="pdf-inclusions__row pdf-inclusions__row--border"
+                        >
+                            <div class="pdf-inclusions__label">
+                                Cabin Baggage (Pre-Included)
+                            </div>
+                            <div class="pdf-inclusions__value">
+                                <p>{{flightNumbers}}</p>
+                                <p>{{cabinBaggage}}</p>
+                            </div>
+                        </div>
+
+                        <div class="pdf-inclusions__row">
+                            <div class="pdf-inclusions__label">
+                                Check-in Baggage (Pre-Included)
+                            </div>
+                            <div class="pdf-inclusions__value">
+                                <p>{{flightNumbers}}</p>
+                                <p>{{checkedBaggage}}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pdf-info">
+                <p class="pdf-info__title">Important Information</p>
+                <p class="pdf-info__desc">
+                    All Guests, including children and infants, must present
+                    valid identification at check-in. <br />
+                    Check-in begins 3 hours prior to the flight for seat
+                    assignment and closes 75 minutes prior to the scheduled
+                    departure. <br />
+                    Carriage and other services provided by the carrier are
+                    subject to conditions of carriage, which are hereby
+                    incorporated by reference. These conditions may be obtained
+                    from the issuing carrier. <br />
+                    Transportation and other services provided by the carrier
+                    are subjected to conditions of contract and other important
+                    notices. Please ensure that you have received these notices,
+                    and if not, contact the booking partner or issuing carrier
+                    to obtain a copy prior to the commencement of your trip.
+                    <br />
+                    If the passenger journey involves an ultimate destination or
+                    stop in a country other than the country of departure, the
+                    Warsaw Convention may be applicable and this convention
+                    governs and on most case limits the liability of carriers
+                    for death or personal injury and in respect of loss of or
+                    damage to baggage. <br />
+                    Please check the figures / timings as they may change time
+                    to time without any notice to the passenger. <br />
+                    For Infants valid birth certificate is required.
+                </p>
+            </div>
+            <div class="pdf-contact">
+                <p>Lindela Travel And Tours</p>
+                <p>
+                    Unit 2215 Cityland 10 Tower II, H. V. Dela Costa Street
+                    Makati Metro Manila South Georgia And S Sandwich Island
+                </p>
+                <p>Phone: 9296106660</p>
+                <p>Email: lindelatravelandtours@gmail.com</p>
+            </div>
+        </main>
+    </body>
+</html>

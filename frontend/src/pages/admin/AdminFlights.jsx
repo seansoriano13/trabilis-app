@@ -18,7 +18,8 @@ import {
     FiNavigation,
     FiUserPlus,
     FiFileText,
-    FiDownload
+    FiDownload,
+    FiActivity
 } from 'react-icons/fi'
 import ReactPaginate from 'react-paginate'
 import './AdminFlights.css'
@@ -32,10 +33,11 @@ const AdminFlights = () => {
     const [page, setPage] = useState(0)
     const [total, setTotal] = useState(0)
     const [loading, setLoading] = useState(true)
+    const [searchLoading, setSearchLoading] = useState(false)
     const [error, setError] = useState(null)
     const [sort, setSort] = useState({
         key: 'booking_reference',
-        direction: 'asc',
+        direction: 'desc',
     })
     const [filters, setFilters] = useState({ status: 'All', destination: '', reference: '' })
     const [searchInput, setSearchInput] = useState('')
@@ -47,7 +49,7 @@ const AdminFlights = () => {
         bookingType: 'flight'
     })
 
-    const pageSize = 5
+    const pageSize = 20
     const jwt = localStorage.getItem('adminToken') // From your login flow
     const userRole = localStorage.getItem('admin_role')
 
@@ -78,7 +80,12 @@ const AdminFlights = () => {
     // Fetch data
     useEffect(() => {
         const fetchData = async () => {
-            setLoading(true)
+            if (loading) {
+                setLoading(true)
+            } else {
+                setSearchLoading(true)
+            }
+            setError(null)
             try {
                 let query = supabase
                     .from('flight_bookings')
@@ -136,10 +143,12 @@ const AdminFlights = () => {
                 setFlightStats(statsRes.data[0] || {})
                 setTotal(bookingsRes.count)
                 setLoading(false)
+                setSearchLoading(false)
             } catch (err) {
                 console.error(err)
                 setError('Failed to load flights. Please try again.')
                 setLoading(false)
+                setSearchLoading(false)
             }
         }
 
@@ -166,6 +175,10 @@ const AdminFlights = () => {
             if (valA === valB) return 0
             return sort.direction === 'asc' ? (valA > valB ? 1 : -1) : (valA < valB ? 1 : -1)
         })
+    }
+
+    const getNestedValue = (obj, path) => {
+        return path.split('.').reduce((o, k) => o?.[k], obj) || ''
     }
 
     const handleSort = (key) => {
@@ -404,6 +417,12 @@ const AdminFlights = () => {
                         <BsFillAirplaneFill size={24} />
                         <h2>Flight Bookings</h2>
                         <span className='flights__section-count'>({total} bookings)</span>
+                        {searchLoading && (
+                            <div className='flights__search-loading'>
+                                <div className='flights__search-spinner'></div>
+                                <span>Searching...</span>
+                            </div>
+                        )}
                     </div>
                     {/* <div className='flights__section-actions'>
                         <button className='flights__action-btn flights__action-btn--export'>
@@ -585,6 +604,12 @@ const AdminFlights = () => {
                                                         <span className='flights__assignment-staff-email'>
                                                             {booking.assigned_staff?.email}
                                                         </span>
+                                                        {!booking.assigned_by && (
+                                                            <span className='flights__assignment-auto'>
+                                                                <FiActivity size={12} />
+                                                                Auto-assigned
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <span className={`flights__assignment-status flights__assignment-status--${booking.assignment_status}`}>
                                                         {booking.assignment_status?.replace('_', ' ') || 'pending'}

@@ -2,8 +2,11 @@ import { useState, useRef } from 'react'
 import { IoChevronBack, IoChevronDown, IoChevronUp } from 'react-icons/io5'
 import adminClient from '../../api/adminClient.js'
 import axios from 'axios'
+import AsyncSelect from 'react-select/async'
 import './CreateTourPackage.css'
 import { useNavigate } from 'react-router-dom'
+import { loadCountryOptions, checkVisaRequirement } from '../../utils/countryOptionsLoader'
+import { formSelectStyles } from '../../styles/client/reactSelectStyles'
 
 const AdminPrimaryButton = ({ buttonText, onClick, disabled }) => (
     <button
@@ -23,13 +26,15 @@ export const AccordionSection = ({ title, isOpen, toggle, children }) => {
                 headerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
                 // If the environment doesn't respect scroll-margin-top, apply manual offset
                 setTimeout(() => {
-                    const offset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--default-padding-top')) || 64
+                    const _offset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--default-padding-top')) || 64
                     window.scrollBy({ top: -16, left: 0, behavior: 'instant' })
                 }, 300)
             } else {
                 window.scrollTo({ top: 0, behavior: 'smooth' })
             }
-        } catch (_) {}
+        } catch (_error) { // eslint-disable-line no-unused-vars
+            // Ignore scroll errors
+        }
     }
     return (
         <div className='accordion-section' ref={headerRef}>
@@ -57,10 +62,9 @@ export const DateGroup = ({
     dateGroup,
     updateDateGroup,
     removeDateGroup,
-    autofillDateGroup,
 }) => (
     <div className='date-group'>
-        <h3 className='date-group__title'>Date Group {index + 1}</h3>
+        <h3 className='date-group__title'>Tour Package Date {index + 1}</h3>
         <div className='form__fields'>
             <div className='date-group__form-field'>
                 <label className='form-label'>Start Date *</label>
@@ -137,12 +141,23 @@ export const DateGroup = ({
                     required
                 />
             </div>
+            <div className='date-group__form-field'>
+                <label className='form-label'>Available Slots</label>
+                <input
+                    type='number'
+                    value={dateGroup.available_slots}
+                    className='form-input form-input--readonly'
+                    readOnly
+                    disabled
+                />
+                <small className='form-help-text'>Available slots are automatically set to match total slots.</small>
+            </div>
             {index > 0 && (
                 <button
                     onClick={() => removeDateGroup(index)}
                     className='button-link button-link--remove'
                 >
-                    Remove Date Group
+                    Remove Tour Package Date
                 </button>
             )}
             {/* {index > 0 && (
@@ -178,6 +193,8 @@ function CreateTourPackage() {
         status: 'DRAFT',
         main_image_url: '',
         panellum_url: '',
+        destination_country: '', // New field for visa integration
+        visa_required: false, // Auto-enabled based on country
         dates: [
             {
                 start_date: '',
@@ -193,7 +210,7 @@ function CreateTourPackage() {
                 ],
             },
         ],
-        itineraries: [{ day_number: 1, title: '', description: '' }],
+        itineraries: [{ day_number: 1, title: '', description: '', image_url: '' }],
         inclusions: [''],
         exclusions: [''],
         payment_terms: [''],
@@ -217,6 +234,7 @@ function CreateTourPackage() {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [mainImagePreview, setMainImagePreview] = useState(null)
     const [panellumImagePreview, setPanellumImagePreview] = useState(null)
+    const [itineraryImagePreviews, setItineraryImagePreviews] = useState({})
     const navigate = useNavigate()
 
     const toggleSection = (section) => {
@@ -228,6 +246,42 @@ function CreateTourPackage() {
 
     const updateFormData = (field, value) => {
         setFormData((prev) => ({ ...prev, [field]: value }))
+    }
+
+    // Auto-enable visa based on country selection
+    const checkAndEnableVisa = (selectedCountry) => {
+        const countryName = selectedCountry?.value || ''
+        const visaRequired = checkVisaRequirement(countryName)
+        
+        setFormData(prev => ({
+            ...prev,
+            destination_country: countryName,
+            visa_required: visaRequired,
+            dates: prev.dates.map(date => {
+                if (visaRequired) {
+                    // Check if visa inclusion group already exists
+                    const hasVisaGroup = date.inclusion_groups.some(group => 
+                        group.category === 'Visa / Documentation'
+                    )
+                    
+                    if (!hasVisaGroup) {
+                        return {
+                            ...date,
+                            inclusion_groups: [
+                                ...date.inclusion_groups,
+                                {
+                                    title: 'Visa / Documentation',
+                                    category: 'Visa / Documentation',
+                                    removable: false, // Required for visa countries
+                                    items: ['Visa processing assistance']
+                                }
+                            ]
+                        }
+                    }
+                }
+                return date
+            })
+        }))
     }
 
     const updateDateGroup = (index, field, value) => {
@@ -347,22 +401,6 @@ function CreateTourPackage() {
         }))
     }
 
-    const autofillDateGroup = (index) => {
-        setFormData((prev) => {
-            const newDates = [...prev.dates]
-            const prevDateGroup = prev.dates[index - 1]
-            newDates[index] = {
-                ...newDates[index],
-                start_date: prevDateGroup.start_date,
-                end_date: prevDateGroup.end_date,
-                rate_per_pax: prevDateGroup.rate_per_pax,
-                total_slots: prevDateGroup.total_slots,
-                available_slots: prevDateGroup.total_slots,
-            }
-            return { ...prev, dates: newDates }
-        })
-    }
-
     const removeDateGroup = (index) => {
         setFormData((prev) => ({
             ...prev,
@@ -388,7 +426,7 @@ function CreateTourPackage() {
                 ...prev,
                 itineraries: [
                     ...prev.itineraries,
-                    { day_number: nextDay, title: '', description: '' },
+                    { day_number: nextDay, title: '', description: '', image_url: '' },
                 ],
             }
         })
@@ -399,30 +437,6 @@ function CreateTourPackage() {
             ...prev,
             itineraries: prev.itineraries.filter(
                 (_, index) => index !== itinIndex
-            ),
-        }))
-    }
-
-    const updateInclusion = (incIndex, value) => {
-        setFormData((prev) => {
-            const newInclusions = [...prev.inclusions]
-            newInclusions[incIndex] = value
-            return { ...prev, inclusions: newInclusions }
-        })
-    }
-
-    const addInclusion = () => {
-        setFormData((prev) => ({
-            ...prev,
-            inclusions: [...prev.inclusions, ''],
-        }))
-    }
-
-    const removeInclusion = (incIndex) => {
-        setFormData((prev) => ({
-            ...prev,
-            inclusions: prev.inclusions.filter(
-                (_, index) => index !== incIndex
             ),
         }))
     }
@@ -526,21 +540,29 @@ function CreateTourPackage() {
         formData.append('image', file)
         try {
             const response = await axios.post(
-                `${import.meta.env.VITE_IMG_BB_API_URL}?key=${
-                    import.meta.env.VITE_IMG_BB_API_KEY
-                }`,
-                formData
+                `${import.meta.env.VITE_BACKEND_URL}/api/v1/images/upload-image`,
+                formData,
+                {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                }
             )
             const imageUrl = response.data.data.url
-            updateFormData(field, imageUrl)
-            if (field === 'main_image_url') {
-                setMainImagePreview(URL.createObjectURL(file))
-            } else if (field === 'panellum_url') {
-                setPanellumImagePreview(URL.createObjectURL(file))
+            if (field.startsWith('itinerary_')) {
+                const itinIndex = parseInt(field.split('_')[1])
+                updateItinerary(itinIndex, 'image_url', imageUrl)
+            } else {
+                updateFormData(field, imageUrl)
+                if (field === 'main_image_url') {
+                    setMainImagePreview(URL.createObjectURL(file))
+                } else if (field === 'panellum_url') {
+                    setPanellumImagePreview(URL.createObjectURL(file))
+                }
             }
         } catch (error) {
             console.error('Error uploading image:', error)
-            alert('Failed to upload image to ImgBB.')
+            alert('Failed to upload image. Please try again.')
         }
     }
 
@@ -551,9 +573,21 @@ function CreateTourPackage() {
         }
     }
 
+    const handleItineraryImageChange = (e, itinIndex) => {
+        const file = e.target.files[0]
+        if (file) {
+            uploadImageToImgBB(file, `itinerary_${itinIndex}`)
+            setItineraryImagePreviews(prev => ({
+                ...prev,
+                [itinIndex]: URL.createObjectURL(file)
+            }))
+        }
+    }
+
     const validateForm = () => {
         if (!formData.title.trim()) return 'Title is required.'
         if (!formData.description.trim()) return 'Description is required.'
+        if (!formData.destination_country || !formData.destination_country.trim()) return 'Destination Country is required.'
         if (!formData.main_image_url) return 'Main Image is required.'
         if (!formData.panellum_url) return 'Panellum Image is required.'
         if (formData.dates.length === 0)
@@ -767,6 +801,44 @@ function CreateTourPackage() {
                         )}
                     </div>
                     <div className='date-group__form-field'>
+                        <label className='form-label'>Destination Country *</label>
+                        <AsyncSelect
+                            loadOptions={loadCountryOptions}
+                            onChange={checkAndEnableVisa}
+                            value={formData.destination_country ? { 
+                                value: formData.destination_country, 
+                                label: formData.destination_country,
+                                requiresVisa: checkVisaRequirement(formData.destination_country)
+                            } : null}
+                            styles={formSelectStyles}
+                            placeholder="Search for a country..."
+                            noOptionsMessage={() => "No countries found"}
+                            loadingMessage={() => "Loading countries..."}
+                            isClearable
+                            isSearchable
+                            cacheOptions
+                            defaultOptions
+                            formatOptionLabel={(option) => (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span>{option.label}</span>
+                                    <div style={{ display: 'flex', gap: '8px', fontSize: '12px', color: '#666' }}>
+                                        <span>{option.code}</span>
+                                        {option.requiresVisa && (
+                                            <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>VISA REQUIRED</span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        />
+                        {formData.visa_required && (
+                            <div className='visa-notice'>
+                                <p className='visa-notice__text'>
+                                    ✅ Visa processing will be automatically included for this destination
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                    <div className='date-group__form-field'>
                         <label className='form-label'>Status *</label>
                         <select
                             value={formData.status}
@@ -796,14 +868,13 @@ function CreateTourPackage() {
                             dateGroup={dateGroup}
                             updateDateGroup={updateDateGroup}
                             removeDateGroup={removeDateGroup}
-                            autofillDateGroup={autofillDateGroup}
                         />
                     ))}
                     <button
                         onClick={addDateGroup}
                         className='button-link'
                     >
-                        + Add another travel date
+                        + Add Tour Package Date
                     </button>
                 </div>
             </AccordionSection>
@@ -874,6 +945,24 @@ function CreateTourPackage() {
                                     placeholder='e.g., Airport pickup, transfer to hotel'
                                 />
                             </div>
+                            <div className='date-group__form-field'>
+                                <label className='form-label'>Day Image</label>
+                                <input
+                                    type='file'
+                                    accept='image/jpeg,image/png,image/gif,image/webp'
+                                    onChange={(e) =>
+                                        handleItineraryImageChange(e, itinIndex)
+                                    }
+                                    className='form-input'
+                                />
+                                {itineraryImagePreviews[itinIndex] && (
+                                    <img
+                                        src={itineraryImagePreviews[itinIndex]}
+                                        alt={`Day ${itinerary.day_number} Preview`}
+                                        className='image-preview'
+                                    />
+                                )}
+                            </div>
                             {formData.itineraries.length > 1 && (
                                 <button
                                     onClick={() => removeItinerary(itinIndex)}
@@ -901,7 +990,7 @@ function CreateTourPackage() {
                 <div className='form__fields'>
                     {formData.dates.map((dateGroup, dIdx) => (
                         <div key={dIdx} className='date-group'>
-                            <h3 className='date-group__title'>Date {dIdx + 1}</h3>
+                            <h3 className='date-group__title'>Tour Package Date {dIdx + 1}</h3>
                             <div className='form__fields'>
                                 <div className='date-group__form-field'>
                                     <label className='form-label'>Per Removed Group (PHP)</label>
@@ -933,7 +1022,7 @@ function CreateTourPackage() {
                 <div className='form__fields'>
                     {formData.dates.map((dateGroup, dIdx) => (
                         <div key={dIdx} className='date-group'>
-                            <h3 className='date-group__title'>Date {dIdx + 1}</h3>
+                            <h3 className='date-group__title'>Tour Package Date {dIdx + 1}</h3>
                             <div className='grid gap-4'>
                                 {(dateGroup.inclusion_groups || []).map((group, gIdx) => (
                                     <div key={gIdx} className='border rounded-md p-3 border-gray-300'>
@@ -979,54 +1068,6 @@ function CreateTourPackage() {
                     ))}
                 </div>
             </AccordionSection>
-
-            {/* <AccordionSection
-                title='Inclusions'
-                isOpen={openSections.inclusions}
-                toggle={() => toggleSection('inclusions')}
-            >
-                <div className='form__fields'>
-                    {formData.inclusions.map((inclusion, incIndex) => (
-                        <div
-                            key={incIndex}
-                            className='inclusions__item'
-                        >
-                            <div className='date-group__form-field'>
-                                <label className='form-label'>
-                                    Inclusion *
-                                </label>
-                                <input
-                                    type='text'
-                                    value={inclusion}
-                                    onChange={(e) =>
-                                        updateInclusion(
-                                            incIndex,
-                                            e.target.value
-                                        )
-                                    }
-                                    className='form-input'
-                                    required
-                                    placeholder='e.g., Round trip airfare'
-                                />
-                            </div>
-                            {formData.inclusions.length > 1 && (
-                                <button
-                                    onClick={() => removeInclusion(incIndex)}
-                                    className='button-link button-link--remove'
-                                >
-                                    Remove Inclusion
-                                </button>
-                            )}
-                        </div>
-                    ))}
-                    <button
-                        onClick={addInclusion}
-                        className='button-link'
-                    >
-                        + Add another inclusion
-                    </button>
-                </div>
-            </AccordionSection> */}
 
             <AccordionSection
                 title='Exclusions'

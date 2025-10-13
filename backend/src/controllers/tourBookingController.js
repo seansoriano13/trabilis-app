@@ -1,6 +1,7 @@
 import stripe from '../config/stripe.js'
 import { supabase } from '../config/supabaseClient.js'
 import { v4 as uuidv4 } from 'uuid'
+import { autoAssignBooking } from '../services/assignmentService.js'
 
 const TourBookingController = {
     async initiateTourBooking(req, res) {
@@ -12,6 +13,7 @@ const TourBookingController = {
                 passenger_details, // optional: array of all passenger details
                 payment_type = 'FULL',
                 customization, // optional: { enabled, removedInclusionGroupIds: number[], restDayNumbers: number[], clientTotals? }
+                visa_statuses, // optional: array of visa statuses per passenger
             } = req.body
 
             if (
@@ -178,6 +180,85 @@ const TourBookingController = {
                 return res
                     .status(500)
                     .json({ error: 'Failed to create booking' })
+            }
+
+            // Create visa processings if visa_statuses are provided and tour package requires visa
+            if (visa_statuses && Array.isArray(visa_statuses) && visa_statuses.length > 0) {
+                try {
+                    // Get tour package info to check if visa is required
+                    const { data: packageInfo, error: packageInfoError } = await supabase
+                        .from('package_dates')
+                        .select(`
+                            tour_packages (
+                                id,
+                                title,
+                                destination_country,
+                                visa_required
+                            )
+                        `)
+                        .eq('id', package_date_id)
+                        .single()
+
+                    if (packageInfoError) {
+                        console.error('Error fetching package info:', packageInfoError)
+                        // Don't fail the booking if we can't get package info
+                    } else if (packageInfo?.tour_packages?.visa_required) {
+                        // Create visa processings for passengers who need visa processing
+                        const visaProcessingsToCreate = visa_statuses
+                            .filter(vs => vs.status === 'needs_processing')
+                            .map(vs => {
+                                // Determine if this is for an expired visa renewal
+                                const isExpiredVisaRenewal = vs.existing_visa_status === 'expired'
+                                
+                                return {
+                                    tour_booking_id: bookingData.id,
+                                    passenger_index: vs.passenger_index,
+                                    passenger_name: vs.passenger_name,
+                                    passenger_email: vs.passenger_email,
+                                    country: packageInfo.tour_packages.destination_country,
+                                    visa_type: 'tourist', // Default to tourist, can be updated later
+                                    status: 'PENDING',
+                                    existing_visa_status: vs.existing_visa_status || 'not_specified',
+                                    visa_expiry_date: vs.visa_expiry_date || null,
+                                    requirements_status: {},
+                                    notes: isExpiredVisaRenewal 
+                                        ? `Auto-created for tour booking ${bookingData.booking_reference} - Expired visa renewal assistance`
+                                        : `Auto-created for tour booking ${bookingData.booking_reference}`,
+                                    created_at: new Date().toISOString(),
+                                    updated_at: new Date().toISOString()
+                                }
+                            })
+
+                        if (visaProcessingsToCreate.length > 0) {
+                            const { error: visaProcessingError } = await supabase
+                                .from('visa_processings')
+                                .insert(visaProcessingsToCreate)
+
+                            if (visaProcessingError) {
+                                console.error('Error creating visa processings:', visaProcessingError)
+                                // Don't fail the booking if visa processing creation fails
+                            } else {
+                                console.log(`Created ${visaProcessingsToCreate.length} visa processings for booking ${bookingData.id}`)
+                            }
+                        }
+                    }
+                } catch (visaError) {
+                    console.error('Error in visa processing creation:', visaError)
+                    // Don't fail the booking if visa processing fails
+                }
+            }
+
+            // Auto-assign booking to accounting staff
+            try {
+                const assignmentResult = await autoAssignBooking('tour', bookingData.id)
+                if (assignmentResult.success) {
+                    console.log(`Tour booking ${bookingData.id} auto-assigned to ${assignmentResult.assignedStaff.name}`)
+                } else {
+                    console.warn(`Failed to auto-assign tour booking ${bookingData.id}:`, assignmentResult.error)
+                }
+            } catch (assignmentError) {
+                console.error('Auto-assignment error:', assignmentError)
+                // Don't fail the booking creation if auto-assignment fails
             }
 
             // Persist customization if any
