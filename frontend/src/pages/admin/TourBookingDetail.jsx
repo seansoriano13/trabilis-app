@@ -113,7 +113,6 @@ const TourBookingDetail = () => {
         setAircraftLoading(true)
         try {
             const response = await getAircraftOptions()
-            console.log('Aircraft options response:', response)
             if (response.success) {
                 setAircraftOptions(response.data || [])
             } else {
@@ -192,7 +191,6 @@ const TourBookingDetail = () => {
                 throw new Error('Booking not found')
             }
 
-            // console.log('Booking data received:', data)
             setBooking(data)
             setPackageDetails(data.package_dates)
 
@@ -430,7 +428,6 @@ const TourBookingDetail = () => {
                 const parsedDraft = JSON.parse(savedDraft)
                 initialFormData = parsedDraft
                 initialTripType = parsedDraft.tripType || 'round-trip'
-                console.log('Auto-loaded draft for booking', booking.id)
             } catch (error) {
                 console.error('Error parsing saved draft:', error)
                 // Fall back to fresh form if draft is corrupted

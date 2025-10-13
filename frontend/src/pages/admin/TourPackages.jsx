@@ -112,8 +112,7 @@ function TourPackages() {
                 dates: tour.dates || [] // Ensure dates is an array
             }
 
-            const response = await adminClient.put(`/tours/${id}`, updateData)
-            console.log('Publish response:', response.data)
+            await adminClient.put(`/tours/${id}`, updateData)
             setTourPackages(tourPackages.map(tour => 
                 tour.id === id ? { ...tour, status: 'PUBLISHED' } : tour
             ))
@@ -150,8 +149,7 @@ function TourPackages() {
                 dates: tour.dates || [] // Ensure dates is an array
             }
 
-            const response = await adminClient.put(`/tours/${id}`, updateData)
-            console.log('Unpublish response:', response.data)
+            await adminClient.put(`/tours/${id}`, updateData)
             setTourPackages(tourPackages.map(tour => 
                 tour.id === id ? { ...tour, status: 'DRAFT' } : tour
             ))

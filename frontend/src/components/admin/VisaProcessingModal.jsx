@@ -98,25 +98,18 @@ const VisaProcessingModal = ({
         setError(null)
         
         try {
-            console.log('Loading visa processing for booking:', bookingId, 'passenger:', passenger.name)
-            
             // Get visa processings for this booking
             const response = await adminClient.get(`/bookings/${bookingId}/visa-processings`, {
                 baseURL: import.meta.env.VITE_BACKEND_URL + '/api/v1/visa-processing'
             })
             
-            console.log('Visa processing response:', response.data)
-            
             if (response.data.success) {
                 // Find the visa processing for this passenger
                 const passengerName = `${passenger.name?.firstName || ''} ${passenger.name?.lastName || ''}`.trim()
-                console.log('Looking for passenger:', passengerName)
                 
                 const passengerProcessing = response.data.data.find(
                     vp => vp.passenger_name === passengerName
                 )
-                
-                console.log('Found passenger processing:', passengerProcessing)
                 
                 if (passengerProcessing) {
                     setVisaProcessing(passengerProcessing)
@@ -128,13 +121,8 @@ const VisaProcessingModal = ({
                         assigned_to: passengerProcessing.assigned_to,
                         assignment_status: passengerProcessing.assignment_status || 'pending'
                     })
-                    console.log('Updated form data:', {
-                        status: passengerProcessing.status,
-                        assignment_status: passengerProcessing.assignment_status
-                    })
                 } else {
                     // Create new visa processing if it doesn't exist
-                    console.log('No visa processing found, creating new one...')
                     await createVisaProcessing()
                 }
             }
@@ -197,8 +185,6 @@ const VisaProcessingModal = ({
         setError(null)
         
         try {
-            console.log('Saving visa processing with data:', formData)
-            
             // Update visa status
             const statusResponse = await adminClient.put(`/processings/${visaProcessing.id}/status`, {
                 status: formData.status,
@@ -206,7 +192,6 @@ const VisaProcessingModal = ({
             }, {
                 baseURL: import.meta.env.VITE_BACKEND_URL + '/api/v1/visa-processing'
             })
-            console.log('Status update response:', statusResponse.data)
             
             // Update local state with the returned data
             if (statusResponse.data.success && statusResponse.data.data) {
@@ -219,22 +204,20 @@ const VisaProcessingModal = ({
             }
 
             // Update requirements status
-            const requirementsResponse = await adminClient.put(`/processings/${visaProcessing.id}/requirements`, {
+            await adminClient.put(`/processings/${visaProcessing.id}/requirements`, {
                 requirements_status: formData.requirements_status
             }, {
                 baseURL: import.meta.env.VITE_BACKEND_URL + '/api/v1/visa-processing'
             })
-            console.log('Requirements update response:', requirementsResponse.data)
 
             // Assign if assigned_to is set
             if (formData.assigned_to) {
-                const assignResponse = await adminClient.post(`/processings/${visaProcessing.id}/assign`, {
+                await adminClient.post(`/processings/${visaProcessing.id}/assign`, {
                     assignedTo: formData.assigned_to,
                     assignedBy: localStorage.getItem('admin_email')
                 }, {
                     baseURL: import.meta.env.VITE_BACKEND_URL + '/api/v1/visa-processing'
                 })
-                console.log('Assignment response:', assignResponse.data)
 
                 // Update assignment status
                 const assignmentStatusResponse = await adminClient.put(`/processings/${visaProcessing.id}/assignment-status`, {
@@ -242,7 +225,6 @@ const VisaProcessingModal = ({
                 }, {
                     baseURL: import.meta.env.VITE_BACKEND_URL + '/api/v1/visa-processing'
                 })
-                console.log('Assignment status response:', assignmentStatusResponse.data)
                 
                 // Update local state with the returned data
                 if (assignmentStatusResponse.data.success && assignmentStatusResponse.data.data) {

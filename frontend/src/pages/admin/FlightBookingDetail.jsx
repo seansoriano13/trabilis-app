@@ -133,7 +133,6 @@ const FlightBookingDetail = () => {
                     throw new Error('Booking not found')
                 }
 
-                // console.log('Booking data received:', data)
                 setBooking(data)
 
                 // Fetch assigned admin name if assigned_to exists

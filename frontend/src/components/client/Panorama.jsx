@@ -40,7 +40,7 @@ function Panorama({ preview, image, aspectRatio = '16/9', id }) {
                 // Ensure the viewer is interactive
                 if (viewer) {
                     viewer.on('load', () => {
-                        console.log('Panorama loaded for', containerId)
+                        // Panorama loaded successfully
                     })
                 }
             }

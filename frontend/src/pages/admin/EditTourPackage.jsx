@@ -306,7 +306,6 @@ function EditTourPackage() {
         setHasUnsavedChanges(hasChanges)
     }, [formData, originalFormData])
 
-    console.log(formData)
     const toggleSection = (section) => {
         setOpenSections((prev) => ({
             ...prev,
