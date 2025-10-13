@@ -8,32 +8,81 @@
 # Build output
 /backend/dist/
 /frontend/dist/
+/frontend/build/
 
-# Environment variables
-*.env
-.env.*
-!/example.env  # (Optional: if you want to include a safe template)
+# Environment variables (EXCEPT .env.example)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+!**/.env.example
 
 # Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Test and development files
+/backend/test-outputs/
+/backend/test-*.png
+/backend/test-*.jpg
+*.test.local.*
+
+# Database files
+*.sql
+*.db
+*.sqlite
+*.sqlite3
 
 # System files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
 # IDE/editor settings
 .vscode/
+!.vscode/extensions.json
 .idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+.roo/
+.prettierrc
+
+# Optional: Vite cache
+/frontend/.vite/
+node_modules/.vite/
+
+# Optional: Package manager files
+.pnpm-store/
+.yarn/
+.npm/
+
+# Deployment and documentation (if keeping separate)
+/docs/internal/
+/roadmaps/
+TODO*.txt
+NOTES*.txt
 
 # OS-generated files
 *.swp
 *.swo
 
-# Optional: Vite cache
-/frontend/.vite/
-
-# Optional: Windows-specific files
-ehthumbs.db
-Desktop.ini
+# Temporary files
+*.tmp
+*.temp
+.cache/

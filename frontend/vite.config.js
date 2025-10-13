@@ -7,8 +7,23 @@ export default defineConfig({
     plugins: [react(), tailwindcss()],
     server: {
         proxy: {
-            '/api': 'http://localhost:3001',
-            // '/api': 'https://trabilis.onrender.com',
+            '/api': {
+                target: 'http://localhost:3001',
+                changeOrigin: true,
+                secure: false,
+            },
+        },
+    },
+    build: {
+        outDir: 'dist',
+        sourcemap: false,
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    vendor: ['react', 'react-dom', 'react-router-dom'],
+                    charts: ['chart.js', 'react-chartjs-2'],
+                },
+            },
         },
     },
 })

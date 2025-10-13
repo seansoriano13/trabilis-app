@@ -6,8 +6,56 @@ import { fileURLToPath } from 'url'
 import { supabase } from '../config/supabaseClient.js'
 import puppeteer from 'puppeteer'
 import chromium from '@sparticuz/chromium'
+import { formatSegment, getStopsLabel } from '../utils/flightutils.js'
+import { getAirlineInfo } from '../utils/airlinesUtils.js'
+import { getAircraftName } from '../utils/aircraftUtils.js'
+import { getAirportFull } from '../utils/airportUtils.js'
+import { generateTourBookingHTML } from '../controllers/admin/tourController.js'
+import airlines from '../data/airlines.json' with { type: 'json' }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// Helper function to parse airport information from string (from tourController.js)
+const parseAirportInfo = (airportString) => {
+    if (!airportString || airportString === 'TBA') {
+        return {
+            iata: 'TBA',
+            city: 'TBA',
+            airport: 'TBA',
+            terminal: 'TBA'
+        }
+    }
+    
+    // Try to extract IATA code from various patterns
+    let iata = 'TBA'
+    
+    // Pattern 1: IATA at the beginning (e.g., "MNL Manila")
+    const iataStartMatch = airportString.match(/^([A-Z]{3})\s/)
+    if (iataStartMatch) {
+        iata = iataStartMatch[1]
+    } else {
+        // Pattern 2: IATA in parentheses (e.g., "Ninoy Aquino International Airport (MNL)")
+        const iataParenMatch = airportString.match(/\(([A-Z]{3})\)/)
+        if (iataParenMatch) {
+            iata = iataParenMatch[1]
+        } else {
+            // Pattern 3: Try to find any 3-letter uppercase code
+            const anyIataMatch = airportString.match(/([A-Z]{3})/)
+            if (anyIataMatch) {
+                iata = anyIataMatch[1]
+            }
+        }
+    }
+    // Use airportUtils to get full airport information
+    const airportInfo = getAirportFull(iata)
+    
+    return {
+        iata: airportInfo.iata,
+        city: airportInfo.city,
+        airport: airportInfo.name,
+        terminal: 'TBA' // Default terminal - will be updated from form data
+    }
+}
 
 // Initialize Brevo API client
 const apiInstance = new brevo.TransactionalEmailsApi()
@@ -99,6 +147,11 @@ async function createPdfFromHtml(html) {
                     '--disable-gpu',
                     '--no-zygote',
                     '--font-render-hinting=medium',
+                    '--ignore-certificate-errors',
+                    '--ignore-ssl-errors',
+                    '--ignore-certificate-errors-spki-list',
+                    '--disable-web-security',
+                    '--allow-running-insecure-content',
                 ],
                 defaultViewport: isProduction ? chromium.defaultViewport : null,
                 userDataDir,
@@ -115,12 +168,29 @@ async function createPdfFromHtml(html) {
                     '--disable-gpu',
                     '--no-zygote',
                     '--font-render-hinting=medium',
+                    '--ignore-certificate-errors',
+                    '--ignore-ssl-errors',
+                    '--ignore-certificate-errors-spki-list',
+                    '--disable-web-security',
+                    '--allow-running-insecure-content',
                 ],
                 defaultViewport: isProduction ? chromium.defaultViewport : null,
                 userDataDir,
             })
         }
         const page = await browser.newPage()
+        
+        // Set real Chrome user-agent and headers for better image loading
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+        
+        // Set extra headers including Referer for kiwi.com images
+        await page.setExtraHTTPHeaders({
+            'Referer': 'https://www.kiwi.com',
+            'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Cache-Control': 'no-cache',
+        })
+        
         // Ensure UTF-8 charset and base styles are respected
         const normalizedHtml = html.includes('<meta charset="utf-8"')
             ? html
@@ -128,7 +198,27 @@ async function createPdfFromHtml(html) {
                   /<head>/i,
                   '<head><meta charset="utf-8">'
               )
-        await page.setContent(normalizedHtml, { waitUntil: 'networkidle0' })
+        
+        // Load content with networkidle0 to wait for all resources
+        await page.setContent(normalizedHtml, { 
+            waitUntil: 'networkidle0',
+            timeout: 30000 // 30 second timeout for image loading
+        })
+        
+        // Wait for all images to load completely
+        await page.evaluate(() => {
+            return Promise.all(
+                Array.from(document.images)
+                    .filter(img => !img.complete)
+                    .map(img => new Promise(resolve => {
+                        img.onload = img.onerror = resolve
+                    }))
+            )
+        })
+        
+        // Additional wait to ensure all images are fully rendered
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        
         const pdfBuffer = await page.pdf({
             format: 'A4',
             printBackground: true,
@@ -149,162 +239,237 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
     const templatePath = path.join(
         __dirname,
         'templates',
-        'flight-itinerary-template.html'
+        'flight.html'
     )
 
     let html = await fs.readFile(templatePath, 'utf-8')
 
-    // 1. Itineraries
-    const itinerariesHtml = bookingDetails.amadeus_flight_offer.itineraries
+    // Set base URL for images - auto-detect from Render or environment
+    const baseUrl = process.env.RENDER_EXTERNAL_URL || 
+                    process.env.BACKEND_URL || 
+                    'http://localhost:3001'
+
+    // 1. Generate Itineraries HTML (matching template structure)
+    const itinerariesHtml = (bookingDetails.amadeus_flight_offer?.itineraries || [])
         .map((itinerary, index) => {
-            const headerClass = index === 0 ? '' : 'return'
-            const headerTitle = index === 0 ? 'Onward' : 'Return'
-            const segmentsHtml = itinerary.segments
+            const segmentsHtml = (itinerary.segments || [])
                 .map((segment) => {
-                    // In a real app, you might map 'PR' to a logo URL.
-                    // const airlineLogoUrl = getLogoForCarrier(segment.carrierCode);
+                    const {
+                        airline,
+                        aircraft,
+                        departure,
+                        arrival,
+                        stopsLabel,
+                        duration: flightDuration,
+                    } = formatSegment(segment)
+
                     return `
-                <div class="flight-details-row">
-                    <div class="flight-col airline">
-                        <div>
-                            <strong>${segment.carrierCode}</strong><br>
-                            ${segment.number}
+                    <div class="pdf-flight-details__data">
+                        <div class="pdf-flight-details__airline">
+                        ${airline.logo ? `
+                            <img
+                                class="pdf-flight-details__airline-logo"
+                                src="${airline.logo}"
+                                alt="${airline.name}"
+                                onerror="this.style.display='none';"
+                            />
+                        ` : ``}
+                        
+                            <div class="pdf-flight-details__airline-name">
+                                <p class="pdf-flight-details__airline-text">
+                                    <b>${airline.name}</b>
+                                </p>
+                                <p class="pdf-flight-details__airline-text">
+                                    ${aircraft}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="pdf-flight-details__departure">
+                            <p class="pdf-flight-details__airport-code">
+                                <b><span>${departure.iata}</span></b>
+                                <span>${departure.city}</span>
+                            </p>
+                            <p class="pdf-flight-details__airport-name">
+                                <span>${departure.airport}</span>
+                            </p>
+                            <p class="pdf-flight-details__terminal">
+                                <span>Terminal ${departure.terminal || ''}</span>
+                            </p>
+                            <p class="pdf-flight-details__time">
+                                <b><span>${departure.time}</span></b>
+                            </p>
+                        </div>
+                        <div class="pdf-flight-details__arrival">
+                            <p class="pdf-flight-details__airport-code">
+                                <b><span>${arrival.iata}</span><span>${arrival.city}</span></b>
+                            </p>
+                            <p class="pdf-flight-details__airport-code">
+                                <span>${arrival.airport}</span>
+                            </p>
+                            <p class="pdf-flight-details__terminal">
+                                <span>Terminal ${arrival.terminal || ''}</span>
+                            </p>
+                            <p class="pdf-flight-details__time">
+                                <b><span>${arrival.time}</span></b>
+                            </p>
+                        </div>
+                        <div class="pdf-flight-details__leg">
+                            <p class="pdf-flight-details__stops">${stopsLabel}</p>
+                            <p class="pdf-flight-details__durations">${flightDuration}</p>
                         </div>
                     </div>
-                    <div class="flight-col departing">
-                        <h4>${segment.departure.iataCode}</h4>
-                        <p>${formatToLongDate(segment.departure.at)}</p>
-                        <p>Terminal ${segment.departure.terminal || 'N/A'}</p>
-                    </div>
-                    <div class="flight-col arriving">
-                        <h4>${segment.arrival.iataCode}</h4>
-                        <p>${formatToLongDate(segment.arrival.at)}</p>
-                        <p>Terminal ${segment.arrival.terminal || 'N/A'}</p>
-                    </div>
-                    <div class="flight-col duration">
-                        Non Stop<br>
-                        ${getDuration(segment.duration)}
-                    </div>
-                </div>
-            `
+                    `
                 })
                 .join('')
 
             return `
-            <div class="itinerary-section">
-                <div class="itinerary-header ${headerClass}">
-                    <span><svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M6.428 1.151C6.708.591 7.213 0 7.86 0h.28c.646 0 1.151.59 1.43 1.151l.445 1.039L14.73 4c.626.284.829.986.545 1.591l-2.155 4.223L13 14.85c.165.632-.22 1.252-.88 1.252h-.28c-.66 0-1.045-.62-1.21-1.252L10 11.691 7.918 7.073 5.5 11.691l-.21 1.252c-.165.632-.54 1.252-1.21 1.252h-.28c-.66 0-1.045-.62-.88-1.252l.21-1.252 2.155-4.223L1.724 5.591c-.284-.605-.081-1.307.545-1.591L6 2.19l.428-1.039z"/></svg> ${headerTitle}</span>
-                    <span class="non-refundable">Non-Refundable</span>
+            <div class="pdf-flight-details__section">
+                <div class="pdf-table-header">
+                    <div class="pdf-table-header__title">
+                        <i class="fa-solid fa-plane"></i>
+                        <p>
+                            <b>${index === 0 ? 'Onward' : 'Return'}</b>
+                            <span>${itinerary.segments?.length || 0}</span>
+                            Flight(s)
+                        </p>
+                    </div>
+                    <div><span>Non-Refundable</span></div>
                 </div>
-                <div class="flight-column-headers">
-                    <div class="flight-col airline">Airline & Flight</div>
-                    <div class="flight-col departing">Departure</div>
-                    <div class="flight-col arriving">Arrival</div>
-                    <div class="flight-col duration">Duration</div>
+                <div class="pdf-flight-details__subheader">
+                    <div class="pdf-flight-details__flight__index">
+                        <b>Flight <span>${index + 1}</span></b>
+                    </div>
+                    <div class="pdf-flight-details__subheader-title">
+                        <i class="fa-solid fa-plane-departure pdf-flight-details__icon"></i>
+                        <p>Departing</p>
+                    </div>
+                    <div class="pdf-flight-details__subheader-title">
+                        <i class="fa-solid fa-plane-arrival pdf-flight-details__icon"></i>
+                        <p>Arriving</p>
+                    </div>
                 </div>
                 ${segmentsHtml}
             </div>
-        `
+            `
         })
         .join('')
 
-    // 2. Passengers
-    let eTickets = bookingDetails.e_ticket_numbers || []
-    if (typeof eTickets === 'string') {
-        try {
-            eTickets = JSON.parse(eTickets)
-        } catch (err) {
-            console.error('Invalid e_ticket_numbers JSON:', eTickets)
-            eTickets = []
-        }
-    }
-    const passengersHtml = bookingDetails.passenger_details.travelers
-        .map(
-            (pax, index) => `
-        <tr>
-            <td>${index + 1}</td>
-            <td><strong>${pax.title.toUpperCase()} ${pax.name.firstName} ${
-                pax.name.lastName
-            }</strong><br>Adult (${formatToLongDate(pax.dateOfBirth)})</td>
-            <td>${pax.documents[0]?.number || 'N/A'}<br>${formatToLongDate(
-                pax.documents[0]?.expiryDate
-            )}, ${pax.documents[0]?.nationality || ''}</td>
-            <td>${bookingDetails.pnr}</td>
-            <td>${eTickets[index] || 'N/A'}</td>
-            <td>${
-                bookingDetails.status === 'TICKETED'
-                    ? 'Confirmed'
-                    : bookingDetails.status
-            }</td>
-        </tr>
-    `
-        )
+    // 2. Generate Passenger Details HTML (matching template structure)
+    const passengerDetailsHtml = (bookingDetails.passenger_details?.travelers || [])
+        .map((passenger, index) => {
+            const title = passenger.title || ''
+            const name = `${passenger.name?.firstName || ''} ${passenger.name?.lastName || ''}`.trim().toUpperCase()
+            const type = passenger.type || 'Adult'
+            const dateOfBirth = passenger.dateOfBirth || ''
+            const psngrDocs = (passenger.documents || [])[0] || {}
+            const passport = {
+                number: psngrDocs.number || 'N/A',
+                expiry: psngrDocs.expiryDate || 'N/A',
+            }
+            const status = bookingDetails.status === 'TICKETED' ? 'CONFIRMED' : bookingDetails.status
+            
+            // Get e-ticket number for this passenger (if available)
+            const passengerETicket = Array.isArray(eTickets) && eTickets[index] ? eTickets[index] : 'N/A'
+
+            return `
+            <div class="pdf-passenger-details__data">
+                <div><span>${index + 1}</span></div>
+                <div class="pdf-passenger-details__data-name">
+                    <p><b>${title ? title.toUpperCase() + '. ' : ''}${name}</b></p>
+                    <p>${type} (${dateOfBirth})</p>
+                </div>
+                <div class="pdf-passenger-details__data-passport">
+                    <span>${passport.number}</span>
+                    <span>${passport.expiry}</span>
+                </div>
+                <p class="pdf-passenger-details__data-pnr">${bookingDetails.pnr || 'N/A'}</p>
+                <div>N/A</div>
+                <div>${passengerETicket}</div>
+                <div>N/A</div>
+                <div>${status || 'N/A'}</div>
+            </div>
+            `
+        })
         .join('')
-    // Price Summary
-    // 3. Payment Details
-    const price = bookingDetails.amadeus_flight_offer.price
-    const taxesAndFees = parseFloat(price.total) - parseFloat(price.base)
-    const paymentDetailsHtml = `
-        <table>
-            <tr>
-                <td>Base Fare</td>
-                <td align="right">${parseFloat(price.base).toLocaleString(
-                    'en-PH',
-                    { style: 'currency', currency: 'PHP' }
-                )}</td>
-            </tr>
-            <tr>
-                <td>Taxes & Fees</td>
-                <td align="right">${taxesAndFees.toLocaleString('en-PH', {
-                    style: 'currency',
-                    currency: 'PHP',
-                })}</td>
-            </tr>
-            <tr class="total">
-                <td>Total Fare</td>
-                <td align="right">${parseFloat(price.grandTotal).toLocaleString(
-                    'en-PH',
-                    { style: 'currency', currency: 'PHP' }
-                )}</td>
-            </tr>
-        </table>
-    `
+
+    // 3. Calculate Payment Details
+    const offerPrice = bookingDetails.amadeus_flight_offer?.price || {}
+    const currencyCode = offerPrice.currency || bookingDetails.currency || 'PHP'
+    const toNumber = (value) => Number(value ?? 0)
+    const baseFare = toNumber(offerPrice.base)
+    const totalFare = toNumber(offerPrice.total || offerPrice.grandTotal)
+    const refundableTaxes = toNumber(
+        bookingDetails.amadeus_flight_offer?.travelerPricings?.[0]?.price?.refundableTaxes
+    )
+    const liTax = refundableTaxes || 0
+    const feesAndTaxes = Math.max(0, totalFare - baseFare - liTax)
+    const formatAmount = (n) =>
+        toNumber(n).toLocaleString('en-PH', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        })
 
     // 4. Flight Inclusions
-    const baggageInfo =
-        bookingDetails.amadeus_flight_offer.travelerPricings[0]
-            .fareDetailsBySegment[0].includedCheckedBags
-    const flightInclusionsHtml = `
-        <h5>Cabin Baggage (Pre Included)</h5>
-        <p>Adult: 7 Kg Included</p>
-        <br>
-        <h5>Check-in Baggage (Pre Included)</h5>
-        <p>Adult: ${baggageInfo?.weight || 0} ${
-        baggageInfo?.weightUnit || 'KG'
-    } Included</p>
-    `
+    const flightNumbers = (bookingDetails.amadeus_flight_offer?.itineraries || [])
+        .flatMap((it) => it.segments || [])
+        .map((seg) => {
+            const code = seg.operating?.carrierCode || seg.carrierCode
+            return `${code}-${seg.number}`
+        })
+        .join(', ')
 
-    // --- Replace all placeholders ---
+    // Derive baggage from traveler pricing fareDetailsBySegment if available
+    const fareDetails = bookingDetails.amadeus_flight_offer?.travelerPricings?.[0]?.fareDetailsBySegment || []
+    const bagInfo = fareDetails.reduce(
+        (acc, f) => {
+            const includedBags = f.includedCheckedBags
+            if (includedBags) {
+                if (typeof includedBags.weight === 'number') {
+                    acc.checkedKg = Math.max(acc.checkedKg, includedBags.weight)
+                    acc.checkedUnit = includedBags.weightUnit || acc.checkedUnit
+                }
+                if (typeof includedBags.quantity === 'number') {
+                    acc.checkedPieces = Math.max(acc.checkedPieces, includedBags.quantity)
+                }
+            }
+            const cabin = f.cabinBags || f.cabin
+            if (cabin && typeof cabin.quantity === 'number') {
+                acc.cabinPieces = Math.max(acc.cabinPieces, cabin.quantity)
+            }
+            return acc
+        },
+        {
+            checkedKg: 0,
+            checkedUnit: 'KG',
+            checkedPieces: 0,
+            cabinPieces: 0,
+        }
+    )
+
+    const cabinBaggageText = `Adult: ${bagInfo.cabinPieces || 0} Pc Included`
+    const checkedBaggageText = bagInfo.checkedKg > 0
+        ? `Adult: ${bagInfo.checkedKg} ${bagInfo.checkedUnit}`
+        : `Adult: ${bagInfo.checkedPieces || 0} PC`
+
+    // 5. Replace all placeholders with correct values
     html = html
-        .replace(/{{companyName}}/g, 'Lindela Travel And Tours - Trabilis')
-        .replace(/{{companyEmail}}/g, 'lindelatravelctws@gmail.com')
-        .replace(
-            /{{companyAddress}}/g,
-            'Unit 2215 Cityland 10 Tower II, H. V. Dela Costa Street, Makati, Metro Manila'
-        ) // Replace with your actual address
-        .replace('{{bookingReference}}', bookingDetails.booking_reference)
-        .replace(
-            '{{bookingDate}}',
-            new Date().toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-            })
-        )
+        .replace(/{{baseUrl}}/g, baseUrl)
+        .replace(/{{bookingReference}}/g, bookingDetails.booking_reference || 'N/A')
+        .replace('{{bookingDate}}', new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+        }))
         .replace('{{itineraries}}', itinerariesHtml)
-        .replace('{{passengers}}', passengersHtml)
-        .replace('{{paymentDetails}}', paymentDetailsHtml)
-        .replace('{{flightInclusions}}', flightInclusionsHtml)
+        .replace('{{passengerDetails}}', passengerDetailsHtml)
+        .replace('{{currency}}', currencyCode)
+        .replace('{{baseFare}}', formatAmount(baseFare))
+        .replace('{{feesTaxes}}', formatAmount(feesAndTaxes))
+        .replace('{{liTax}}', formatAmount(liTax))
+        .replace('{{totalFare}}', formatAmount(totalFare))
+        .replace(/\{\{flightNumbers\}\}/g, flightNumbers)
+        .replace('{{cabinBaggage}}', cabinBaggageText)
+        .replace('{{checkedBaggage}}', checkedBaggageText)
 
     try {
         return await createPdfFromHtml(html)
@@ -315,161 +480,100 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
 }
 
 export const generateTourSummaryPDF = async (bookingDetails) => {
-    const templatePath = path.join(
-        __dirname,
-        'templates',
-        'tour-confirmation-template.html'
-    )
-
-    let html
     try {
-        html = await fs.readFile(templatePath, 'utf-8')
-    } catch (err) {
-        throw new Error(`Template not found: ${templatePath}`)
-    }
-
-    // Safely extract values with fallback
-    const {
-        bookingReference = 'N/A',
-        tourTitle = 'N/A',
-        startDate,
-        endDate,
-        passengerCount = 1,
-        passengers = [],
-        paymentType = 'FULL',
-        amount = 'N/A',
-        firstName = 'Guest',
-        lastName = '',
-        email = 'N/A',
-        phone = 'N/A',
-        status = 'CONFIRMED',
-        inclusions = 'As per package',
-        exclusions = '-',
-        notes = '-',
-        itinerary = '',
-        ratePerPax = 'N/A',
-        availableSlots = 'N/A',
-        totalSlots = 'N/A',
-        requirements = '-',
-        paymentTerms = '-',
-        tourDescription = '-',
-        mainImageUrl = '',
-        panellumUrl = '',
-    } = bookingDetails
-
-    // Derive flight details with TBA defaults (admin may later edit real details)
-    const flight = bookingDetails.flight_details || {}
-    const outboundSegs = Array.isArray(flight.outbound)
-        ? flight.outbound
-        : flight.outbound
-        ? [flight.outbound]
-        : []
-    const inboundSegs = Array.isArray(flight.return || flight.inbound)
-        ? flight.return || flight.inbound
-        : flight.return || flight.inbound
-        ? [flight.return || flight.inbound]
-        : []
-    const firstOutbound = outboundSegs[0] || {}
-    const lastInbound = inboundSegs[inboundSegs.length - 1] || {}
-
-    const outboundAirline = firstOutbound.airline || 'TBA'
-    const outboundFlightNo = firstOutbound.flight_no || firstOutbound.flightNo || 'TBA'
-    const outboundDeparture = firstOutbound.departure || 'TBA'
-    const outboundArrival = firstOutbound.arrival || 'TBA'
-    const outboundDate = firstOutbound.date || 'TBA'
-    const returnAirline = lastInbound.airline || 'TBA'
-    const returnFlightNo = lastInbound.flight_no || lastInbound.flightNo || 'TBA'
-    const returnDeparture = lastInbound.departure || 'TBA'
-    const returnArrival = lastInbound.arrival || 'TBA'
-    const returnDate = lastInbound.date || 'TBA'
-
-    // Generate passenger table rows
-    const passengerTableRows = passengers.map((passenger, index) => {
-        const email = passenger.contact?.emailAddress || '-'
-        const phone = passenger.contact?.phones?.[0]?.number 
-            ? `${passenger.contact.phones[0].countryCallingCode || ''} ${passenger.contact.phones[0].number}`
-            : '-'
-        const dateOfBirth = passenger.dateOfBirth || '-'
+        console.log('📧 Email PDF Generation - Received bookingDetails:', JSON.stringify(bookingDetails, null, 2))
         
-        return `
-            <tr>
-                <td>${index + 1}</td>
-                <td>${passenger.name?.firstName || ''} ${passenger.name?.lastName || ''}</td>
-                <td>${passenger.type || 'Adult'}</td>
-                <td>${email}</td>
-                <td>${phone}</td>
-                <td>${dateOfBirth}</td>
-            </tr>
-        `
-    }).join('')
+        // Transform flattened bookingDetails back to the structure expected by generateTourBookingHTML
+        const transformedBooking = {
+            booking_reference: bookingDetails.bookingReference,
+            lead_first_name: bookingDetails.firstName,
+            lead_last_name: bookingDetails.lastName,
+            lead_email: bookingDetails.email,
+            lead_phone: bookingDetails.phone || 'Not provided',
+            passenger_count: bookingDetails.passengerCount,
+            payment_type: bookingDetails.paymentType,
+            total_amount: parseFloat(bookingDetails.amount) || 0,
+            reservation_amount: parseFloat(bookingDetails.reservationAmount) || 0,
+            status: bookingDetails.status || 'CONFIRMED',
+            passenger_details: bookingDetails.passengers || [],
+            flight_details: bookingDetails.flight_details || {},
+            created_at: bookingDetails.created_at || new Date().toISOString(),
+            updated_at: bookingDetails.updated_at || new Date().toISOString(),
+            package_dates: {
+                id: bookingDetails.package_date_id || null,
+                start_date: bookingDetails.startDate,
+                end_date: bookingDetails.endDate,
+                total_slots: bookingDetails.totalSlots || bookingDetails.availableSlots || 0,
+                inclusions: bookingDetails.inclusions || [],
+                exclusions: bookingDetails.exclusions || [],
+                payment_terms: bookingDetails.paymentTerms || [],
+                requirements: bookingDetails.requirements || [],
+                notes: bookingDetails.notes || [],
+                tour_packages: {
+                    id: bookingDetails.tour_package_id || null,
+                    title: bookingDetails.tourTitle,
+                    description: bookingDetails.tourDescription
+                },
+                package_itineraries: (() => {
+                    // Handle itinerary data - it should be an array from package_itineraries table
+                    if (Array.isArray(bookingDetails.itinerary)) {
+                        console.log('✅ Itinerary received as array with', bookingDetails.itinerary.length, 'items')
+                        return bookingDetails.itinerary
+                    } else if (typeof bookingDetails.itinerary === 'string' && bookingDetails.itinerary.trim()) {
+                        // If it's a string, something went wrong in the data flow
+                        console.log('⚠️ Warning: Itinerary received as string instead of array!')
+                        console.log('⚠️ String content preview:', bookingDetails.itinerary.substring(0, 100) + '...')
+                        return []
+                    } else {
+                        console.log('⚠️ Warning: No itinerary data received')
+                        return []
+                    }
+                })(),
+                itinerary: (() => {
+                    // Generate itinerary string for PDF display
+                    if (Array.isArray(bookingDetails.itinerary)) {
+                        return bookingDetails.itinerary
+                            .sort((a, b) => (a.day_number || 0) - (b.day_number || 0))
+                            .map(day => `Day ${day.day_number || 'N/A'}: ${day.title || 'Tour Day'}\n${day.description || 'No description available'}`)
+                            .join('\n\n')
+                    } else if (typeof bookingDetails.itinerary === 'string' && bookingDetails.itinerary.trim()) {
+                        return bookingDetails.itinerary
+                    } else {
+                        return 'Detailed itinerary will be provided upon confirmation.'
+                    }
+                })()
+            }
+        }
 
-    html = html
-        .replace(/{{bookingReference}}/g, bookingReference)
-        .replace(/{{companyName}}/g, 'Lindela Travel And Tours - Trabilis')
-        .replace(/{{companyEmail}}/g, 'lindelatravelctws@gmail.com')
-        .replace(
-            /{{companyAddress}}/g,
-            'Unit 2215 Cityland 10 Tower II, H. V. Dela Costa Street, Makati, Metro Manila'
-        )
-        .replace(/{{bookingDate}}/g, formatDate(new Date()))
-        .replace(/{{tourTitle}}/g, tourTitle)
-        .replace(/{{startDate}}/g, formatDate(startDate))
-        .replace(/{{endDate}}/g, formatDate(endDate))
-        .replace(/{{passengerCount}}/g, passengerCount)
-        .replace(/{{paymentType}}/g, paymentType)
-        .replace(/{{amount}}/g, amount)
-        .replace(/{{leadFirstName}}/g, firstName)
-        .replace(/{{leadLastName}}/g, lastName)
-        .replace(/{{leadEmail}}/g, email)
-        .replace(/{{leadPhone}}/g, phone)
-        .replace(/{{status}}/g, status)
-        .replace(/{{inclusions}}/g, inclusions)
-        .replace(/{{exclusions}}/g, exclusions)
-        .replace(/{{notes}}/g, notes)
-        .replace(/{{itineraryDetails}}/g, itinerary)
-        .replace(/{{ratePerPax}}/g, ratePerPax)
-        .replace(/{{availableSlots}}/g, availableSlots)
-        .replace(/{{totalSlots}}/g, totalSlots)
-        .replace(/{{requirements}}/g, requirements)
-        .replace(/{{paymentTerms}}/g, paymentTerms)
-        .replace(/{{tourDescription}}/g, tourDescription)
-        .replace(/{{mainImageUrl}}/g, mainImageUrl)
-        .replace(/{{panellumUrl}}/g, panellumUrl)
-        // Flight placeholders (TBA defaults)
-        .replace(/{{outboundAirline}}/g, outboundAirline)
-        .replace(/{{outboundFlightNo}}/g, outboundFlightNo)
-        .replace(/{{outboundDeparture}}/g, outboundDeparture)
-        .replace(/{{outboundArrival}}/g, outboundArrival)
-        .replace(/{{outboundDate}}/g, outboundDate)
-        .replace(/{{returnAirline}}/g, returnAirline)
-        .replace(/{{returnFlightNo}}/g, returnFlightNo)
-        .replace(/{{returnDeparture}}/g, returnDeparture)
-        .replace(/{{returnArrival}}/g, returnArrival)
-        .replace(/{{returnDate}}/g, returnDate)
-        .replace(/{{passengerTableRows}}/g, passengerTableRows)
+        console.log('📧 Email PDF Generation - Transformed booking:', JSON.stringify(transformedBooking, null, 2))
 
-    try {
+        // Generate HTML using shared function
+        const html = await generateTourBookingHTML(transformedBooking)
+        
+        console.log('📧 Email PDF Generation - HTML generated successfully, length:', html.length)
+        
+        // Convert HTML to PDF using existing PDF generation logic
         return await createPdfFromHtml(html)
     } catch (err) {
-        console.error('Error generating Tour PDF:', err)
+        console.error('❌ Error generating Tour PDF:', err)
+        console.error('❌ Booking details received:', JSON.stringify(bookingDetails, null, 2))
         throw new Error('Could not generate the tour summary PDF.')
     }
 }
 
 export const getBookingByBookingReference = async (bookingReference) => {
     // This is your database logic, which should be correct.
-    const result = await query(
-        `SELECT * FROM flight_bookings WHERE booking_reference = ?`,
-        [bookingReference]
-    )
+    const { data, error } = await supabase
+        .from('flight_bookings')
+        .select('*')
+        .eq('booking_reference', bookingReference)
+        .single()
 
-    if (!result.rows.length) {
+    if (error || !data) {
         throw new Error(`No booking found with reference ${bookingReference}`)
     }
 
-    const booking = result.rows[0]
-
-    return booking
+    return data
 }
 
 export const getTourBookingByReference = async (bookingReference) => {
@@ -504,8 +608,13 @@ export const getTourBookingByReference = async (bookingReference) => {
 
 export const sendConfirmationEmail = async (bookingReference) => {
     const bookingDetails = await getBookingByBookingReference(bookingReference)
-    const customerEmail =
-        bookingDetails.passenger_details?.travelers[0]?.contact?.emailAddress
+    
+    // Find the first adult traveler with contact info (in case first passenger is a child)
+    const adultTraveler = bookingDetails.passenger_details?.travelers?.find(
+        traveler => traveler.type === 'ADULT' && traveler.contact?.emailAddress
+    )
+    
+    const customerEmail = adultTraveler?.contact?.emailAddress
 
     if (!customerEmail) {
         throw new Error('Customer email not found in booking details.')
@@ -550,7 +659,7 @@ export const sendConfirmationEmail = async (bookingReference) => {
         
         sendSmtpEmail.attachment = [{
             content: Buffer.from(pdfBuffer).toString('base64'),
-            name: `Itinerary-${bookingDetails.booking_reference}.pdf`
+            name: `Flight-Itinerary-${bookingDetails.booking_reference}.pdf`
         }]
 
         const data = await apiInstance.sendTransacEmail(sendSmtpEmail)
