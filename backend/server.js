@@ -16,7 +16,6 @@ import visaRoutes from './src/routes/visaRoutes.js'
 import visaProcessingRoutes from './src/routes/visaProcessingRoutes.js'
 import metadataRoutes from './src/routes/metadataRoutes.js'
 import imageUploadRoutes from './src/routes/imageUploadRoutes.js'
-import airportRoutes from './src/routes/airportRoutes.js'
 
 import {
     viewTourBookingHTML,
@@ -116,7 +115,6 @@ app.use(express.json())
 app.use('/api/v1/flights', flightRoutes)
 app.use('/api/v1/bookings', bookingRoutes)
 app.use('/api/v1/destinations', tourRoutes)
-app.use('/api/v1/airports', airportRoutes)
 
 // Test routes - only enabled in development
 if (process.env.NODE_ENV === 'development') {
