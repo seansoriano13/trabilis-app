@@ -54,11 +54,13 @@ export default function FlightResultCard({
         >
             <header className='flight-result__header'>
                 <div className='flight-result__info'>
-                    <img
-                        className='flight-result__logo'
-                        src={logo || ''}
-                        alt={name}
-                    />
+                    {logo && (
+                        <img
+                            className='flight-result__logo'
+                            src={logo}
+                            alt={name}
+                        />
+                    )}
                     <p className='flight-result__airport'>{name}</p>
                 </div>
                 <button

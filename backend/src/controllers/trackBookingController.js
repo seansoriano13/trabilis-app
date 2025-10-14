@@ -1,4 +1,4 @@
-import { amadeus } from '../config/amadeus.js'
+import { amadeus, logAmadeusError, logAmadeusSuccess } from '../config/amadeus.js'
 import { supabase } from '../config/supabaseClient.js'
 import dayjs from 'dayjs'
 

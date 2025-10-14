@@ -46,7 +46,7 @@ function FlightSearchResults() {
     const [allFlights, setAllFlights] = useState(state?.flights.flights ?? [])
 
     const [activeTab, setActiveTab] = useState('flights')
-    const [searchData, setSearchData] = useState(state)
+    const [_searchData, setSearchData] = useState(state)
 
     useEffect(() => {
         if (!state) {
@@ -92,11 +92,42 @@ function FlightSearchResults() {
     const [sortBy, setSortBy] = useState('best')
     const [flightIsFavorite, setflightIsFavorite] = useState({})
     const [isDisabled, setIsDisabled] = useState(false)
+    const [isDateLoading, setIsDateLoading] = useState(false)
+    const [loadingDate, setLoadingDate] = useState(null)
 
     // Nearby date fares state
     const [nearbyFares, setNearbyFares] = useState([])
     const [isNearbyLoading, setIsNearbyLoading] = useState(false)
     const [screenWidth, setScreenWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024)
+    
+    // Selected date index for UI
+    const [selectedDateIndex, setSelectedDateIndex] = useState(0)
+
+    // Persist selected date index
+    useEffect(() => {
+        const savedIndex = localStorage.getItem('selectedDateIndex')
+        if (savedIndex !== null) {
+            setSelectedDateIndex(parseInt(savedIndex))
+        }
+        
+        // Clear old cache entries on component mount
+        const keys = Object.keys(localStorage)
+        const oldCacheKeys = keys.filter(key => 
+            key.startsWith('flight_date_') || 
+            key.startsWith('date_cache_') ||
+            key.startsWith('nearby_fares_') // Clear all flexible dates cache
+        )
+        if (oldCacheKeys.length > 0) {
+            console.log('[FLEXIBLE DATES] Clearing old cache entries:', oldCacheKeys.length)
+            oldCacheKeys.forEach(key => localStorage.removeItem(key))
+        }
+    }, [])
+
+    // Save selected date index
+    useEffect(() => {
+        localStorage.setItem('selectedDateIndex', selectedDateIndex.toString())
+    }, [selectedDateIndex])
+
 
     // Window resize listener
     useEffect(() => {
@@ -359,37 +390,123 @@ function FlightSearchResults() {
         return copy
     }
 
-    // Fetch cheapest fare for a given date using existing backend endpoint
-    const fetchCheapestForDate = async (targetDate) => {
+    // Generate cache key based on search parameters
+    const getCacheKey = (origin, destination, cabinClass, travelerCount) => {
+        return `nearby_fares_${origin?.value}_${destination?.value}_${cabinClass?.value}_${travelerCount?.adults}_${travelerCount?.children}`
+    }
+
+    // Check if cache is valid (not expired)
+    const isCacheValid = (timestamp) => {
+        const TEN_MINUTES = 10 * 60 * 1000
+        // Use normal cache behavior to avoid excessive API calls
+        return Date.now() - timestamp < TEN_MINUTES
+    }
+
+    // Get cached data if valid
+    const getCachedFares = (cacheKey) => {
         try {
+            const cached = localStorage.getItem(cacheKey)
+            if (!cached) return null
+            const { data, timestamp } = JSON.parse(cached)
+            if (!isCacheValid(timestamp)) return null
+            
+            // Convert date strings back to Date objects
+            return data.map(item => ({
+                ...item,
+                date: new Date(item.date)
+            }))
+        } catch {
+            return null
+        }
+    }
+
+    // Simplified flexible dates fetch using single API call
+    const fetchFlexibleDates = async (dates) => {
+        try {
+            const originValue = filters.origin?.value
+            const destinationValue = filters.destination?.value
+            
+            if (!originValue || !destinationValue) {
+                throw new Error('Origin and destination are required')
+            }
+
+            console.log('[FLEXIBLE DATES] Fetching flexible dates for', dates.length, 'dates')
+            
+            // Clear old cache entries to avoid conflicts
+            const keys = Object.keys(localStorage)
+            const oldCacheKeys = keys.filter(key => key.startsWith('flight_date_') || key.startsWith('date_cache_'))
+            oldCacheKeys.forEach(key => {
+                localStorage.removeItem(key)
+                console.log('[FLEXIBLE DATES] Removed old cache:', key)
+            })
+            
+            // Check cache first
+            const cacheKey = getCacheKey(filters.origin, filters.destination, filters.cabinClass, filters.travelerCount)
+            const cachedData = getCachedFares(cacheKey)
+            if (cachedData) {
+                console.log('[FLEXIBLE DATES] Using cached data')
+                setNearbyFares(cachedData)
+                return
+            }
+            
+            // Single API call to get all dates at once
             const payload = {
-                tripType: searchData?.tripType || filters.tripType,
-                date: Array.isArray(searchData?.date || filters.date)
-                    ? [formatToYMD(targetDate), formatToYMD(targetDate)]
-                    : formatToYMD(targetDate),
-                origin: searchData?.origin || filters.origin,
-                destination: searchData?.destination || filters.destination,
-                travelerCount:
-                    searchData?.travelerCount || filters.travelerCount,
-                cabinClass: searchData?.cabinClass || filters.cabinClass,
+                origin: originValue,
+                destination: destinationValue,
+                travelerCount: filters.travelerCount,
+                cabinClass: filters.cabinClass?.value || 'ECONOMY'
             }
 
             const res = await axios.post(
-                `${import.meta.env.VITE_BACKEND_URL}/api/v1/flights/search`,
-                payload
+                `${import.meta.env.VITE_BACKEND_URL}/api/v1/flights/flexible-dates`,
+                payload,
+                { timeout: 15000 }
             )
-            const flights = res?.data?.flights?.outbound || []
-            if (!flights.length) return { price: null, currency: 'PHP' }
-            const cheapest = flights.reduce((min, f) => {
-                const p = parseFloat(f?.price?.total || Infinity)
-                return p < parseFloat(min?.price?.total || Infinity) ? f : min
-            }, flights[0])
-            return {
-                price: parseFloat(cheapest.price.total),
-                currency: cheapest.price.currency,
+            
+            const flightDates = res?.data?.data || []
+            console.log('[FLEXIBLE DATES] Received', flightDates.length, 'flight dates from API')
+            console.log('[FLEXIBLE DATES] API Response:', res?.data)
+            console.log('[FLEXIBLE DATES] Flight dates data:', flightDates)
+            
+            // Transform API response to match expected format
+            const transformedData = dates.map(d => {
+                const ymd = formatToYMD(d)
+                const flightDate = flightDates.find(fd => fd.departureDate === ymd)
+                
+                return {
+                    date: d,
+                    price: flightDate?.price || null,
+                    currency: flightDate?.currency || 'PHP',
+                    ymd: ymd,
+                    flights: flightDate?.flights || []
+                }
+            })
+            
+            console.log('[FLEXIBLE DATES] Transformed data:', transformedData)
+            setNearbyFares(transformedData)
+            
+            // Cache the results
+            try {
+                localStorage.setItem(cacheKey, JSON.stringify({
+                    data: transformedData,
+                    timestamp: Date.now()
+                }))
+                console.log('[FLEXIBLE DATES] Cached results')
+            } catch {
+                // Silently fail if localStorage is full
             }
-        } catch {
-            return { price: null, currency: 'PHP' }
+            
+        } catch (error) {
+            console.error('[FLEXIBLE DATES] Error fetching flexible dates:', error.message)
+            // Show empty data on error
+            const emptyData = dates.map(d => ({
+                date: d,
+                price: null,
+                currency: 'PHP',
+                ymd: formatToYMD(d),
+                flights: []
+            }))
+            setNearbyFares(emptyData)
         }
     }
 
@@ -403,32 +520,60 @@ function FlightSearchResults() {
 
         let isCancelled = false
         const loadNearby = async () => {
+            const cacheKey = getCacheKey(filters.origin, filters.destination, filters.cabinClass, filters.travelerCount)
+            
+            // Try to get from cache first
+            const cachedData = getCachedFares(cacheKey)
+            if (cachedData) {
+                console.log('[FLEXIBLE DATES] Using cached data')
+                
+                // Check if cached data has any prices - if not, skip cache
+                const hasAnyPrices = cachedData.some(d => d.price !== null)
+                if (!hasAnyPrices) {
+                    console.log('[FLEXIBLE DATES] Cached data has no prices, fetching fresh data...')
+                } else {
+                    setNearbyFares(cachedData)
+                    setIsNearbyLoading(false)
+                    return
+                }
+            }
+            
             setIsNearbyLoading(true)
             
-            // Responsive date offsets based on screen size
+            // Responsive date offsets based on screen size (future dates only)
             const getResponsiveOffsets = () => {
                 if (screenWidth < 640) { // Mobile: 3 days
-                    return [-1, 0, 1]
+                    return [0, 1, 2, 3]
                 } else if (screenWidth < 1024) { // Tablet: 5 days
-                    return [-2, -1, 0, 1, 2]
+                    return [0, 1, 2, 3, 4]
                 } else { // Desktop: 7 days
-                    return [-3, -2, -1, 0, 1, 2, 3]
+                    return [0, 1, 2, 3, 4, 5, 6]
                 }
             }
             
             const offsets = getResponsiveOffsets()
             const dates = offsets.map((o) => addDays(base, o))
+            
             try {
-                const results = await Promise.all(
-                    dates.map((d) => fetchCheapestForDate(d))
-                )
-                if (isCancelled) return
-                const data = dates.map((d, idx) => ({
-                    date: d,
-                    ...results[idx],
-                    ymd: formatToYMD(d),
+                console.log(`[FLEXIBLE DATES] Fetching ${offsets.length} dates using Flight Inspiration API`)
+                
+                // Use single API call for all dates
+                await fetchFlexibleDates(dates)
+                
+                console.log(`[FLEXIBLE DATES] Single API call completed for ${offsets.length} dates`)
+                
+            } catch (error) {
+                console.error('[FLEXIBLE DATES] Error in flexible dates fetch:', error)
+                
+                // Fallback: show empty prices
+                const emptyData = dates.map((d) => ({
+                            date: d,
+                            price: null,
+                            currency: 'PHP',
+                            ymd: formatToYMD(d),
+                    flights: []
                 }))
-                setNearbyFares(data)
+                setNearbyFares(emptyData)
             } finally {
                 if (!isCancelled) setIsNearbyLoading(false)
             }
@@ -440,33 +585,71 @@ function FlightSearchResults() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filters.origin, filters.destination, filters.cabinClass, filters.travelerCount, date, screenWidth])
 
-    const handleSelectNearbyDate = async (d) => {
-        setIsLoading(true)
+    const handleSelectNearbyDate = async (d, dateIndex) => {
+        console.log('[FLEXIBLE DATES] Date clicked:', d, 'Index:', dateIndex)
+        setIsDateLoading(true)
+        setLoadingDate(formatToYMD(d))
+        
+        // Update selected index immediately for UI feedback
+        setSelectedDateIndex(dateIndex)
+        
         try {
+            const dateStr = formatToYMD(d)
+            
+            // Check if we have flights for this date from the flexible dates response
+            const nearbyFare = nearbyFares.find(fare => fare.ymd === dateStr)
+            console.log('[FLEXIBLE DATES] Checking nearbyFare for', dateStr, ':', nearbyFare)
+            
+            if (nearbyFare && nearbyFare.flights && nearbyFare.flights.length > 0) {
+                console.log('[FLEXIBLE DATES] Using flights from flexible dates response for:', dateStr)
+                const formattedData = { outbound: nearbyFare.flights }
+                setAllFlights(formattedData)
+                setFilters((prev) => ({ ...prev, date: d }))
+                setCurrentPage(0)
+                return
+            }
+            
+            console.log('[FLEXIBLE DATES] No flights found in flexible response for:', dateStr)
+            console.log('[FLEXIBLE DATES] Available nearbyFares:', nearbyFares.map(f => ({ ymd: f.ymd, hasFlights: f.flights?.length > 0 })))
+            
+            // If no flights in flexible response, make a regular search
+            console.log('[FLEXIBLE DATES] No flights in flexible response, making regular search for:', dateStr)
+            setIsLoading(true)
+            
             const payload = {
                 tripType: filters.tripType,
-                date: Array.isArray(filters.date)
-                    ? [formatToYMD(d), formatToYMD(d)]
-                    : formatToYMD(d),
+                date: dateStr,
                 origin: filters.origin,
                 destination: filters.destination,
                 travelerCount: filters.travelerCount,
                 cabinClass: filters.cabinClass,
             }
+
             const res = await axios.post(
                 `${import.meta.env.VITE_BACKEND_URL}/api/v1/flights/search`,
-                payload
+                payload,
+                { timeout: 10000 }
             )
-            const data = res?.data?.flights || []
-            setAllFlights(data)
-            setFilters((prev) => ({ ...prev, date: d }))
-            setCurrentPage(0)
-        } catch {
-            // noop UI keeps previous results
+            
+            const flights = res?.data?.flights?.outbound || []
+            if (flights.length > 0) {
+                const formattedData = { outbound: flights }
+                setAllFlights(formattedData)
+                setFilters((prev) => ({ ...prev, date: d }))
+                setCurrentPage(0)
+            } else {
+                console.warn('[FLEXIBLE DATES] No flights found for selected date:', dateStr)
+            }
+        } catch (error) {
+            console.error('[FLEXIBLE DATES] Error selecting date:', error.message)
+            // UI keeps previous results on error
         } finally {
+            setIsDateLoading(false)
+            setLoadingDate(null)
             setIsLoading(false)
         }
     }
+
 
     return (
         <div className='flight-results pt-[var(--default-padding-top)] lg:pt-25 md:pt-35'>
@@ -638,7 +821,7 @@ function FlightSearchResults() {
                                 </div>
                             </div>
                             {/* Nearby dates fare strip */}
-                            <div className='mt-4 sm:mt-6 px-2 sm:px-4'>
+                            <div className='lg:mt-4 mt-6 px-0 lg:px-4 lg:px-0'>
                                 <div className='mb-2 sm:mb-3'>
                                     <h3 className='text-base sm:text-lg font-semibold text-gray-800 text-center'>
                                         Flexible Dates - Compare Prices
@@ -647,11 +830,13 @@ function FlightSearchResults() {
                                         Click on any date to see available flights
                                     </p>
                                 </div>
-                                <div className='flex justify-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar py-2 sm:py-4 px-1 sm:px-2'>
-                                    {(isNearbyLoading ? Array.from({ length: screenWidth < 640 ? 3 : screenWidth < 1024 ? 5 : 7 }) : nearbyFares).map((item, idx) => {
-                                        const isSelected = item && formatToYMD(item.date) === formatToYMD(Array.isArray(date) ? date[0] : date)
-                                        const isToday = item && formatToYMD(item.date) === formatToYMD(new Date())
-                                        const isWeekend = item && (item.date.getDay() === 0 || item.date.getDay() === 6)
+                                <div className='flex justify-evenly gap-3 lg:gap-4 overflow-x-auto no-scrollbar py-2 sm:py-4 lg:px-4 px-0'>
+                                    {(isNearbyLoading ? Array.from({ length: screenWidth < 640 ? 4 : screenWidth < 1024 ? 5 : 7 }) : nearbyFares).map((item, idx) => {
+                                        const dateObj = item?.date ? (item.date instanceof Date ? item.date : new Date(item.date)) : null
+                                        const isSelected = idx === selectedDateIndex
+                                        const isToday = item && dateObj && formatToYMD(dateObj) === formatToYMD(new Date())
+                                        const isWeekend = dateObj && (dateObj.getDay() === 0 || dateObj.getDay() === 6)
+                                        const isThisDateLoading = isDateLoading && loadingDate === formatToYMD(dateObj)
                                         
                                         return (
                                             <button
@@ -661,10 +846,18 @@ function FlightSearchResults() {
                                                     isSelected
                                                         ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 border-yellow-600 shadow-lg ring-2 ring-yellow-300 ring-opacity-50'
                                                         : 'bg-white border-gray-200 hover:border-yellow-300 hover:bg-yellow-50',
-                                                    isNearbyLoading && 'animate-pulse bg-gray-100'
+                                                    isNearbyLoading && 'animate-pulse bg-gray-100',
+                                                    isThisDateLoading && 'bg-blue-50 border-blue-300 animate-pulse'
                                                 )}
-                                                disabled={isNearbyLoading}
-                                                onClick={() => item && handleSelectNearbyDate(item.date)}
+                                                disabled={isNearbyLoading || isThisDateLoading}
+                                                onClick={() => {
+                                                    console.log('[FLEXIBLE DATES] Button clicked:', { item, dateObj, idx, isNearbyLoading, disabled: isNearbyLoading })
+                                                    if (item && dateObj && !isNearbyLoading) {
+                                                        handleSelectNearbyDate(dateObj, idx)
+                                                    } else {
+                                                        console.log('[FLEXIBLE DATES] Click ignored - missing data or loading')
+                                                    }
+                                                }}
                                             >
                                                 {/* Day indicator */}
                                                 <div className={clsx(
@@ -672,7 +865,7 @@ function FlightSearchResults() {
                                                     isSelected ? 'text-yellow-900' : 'text-gray-500',
                                                     isToday && 'text-blue-600 font-bold'
                                                 )}>
-                                                    {isToday ? 'TODAY' : formatToLongDate(item?.date || new Date()).split(',')[0].toUpperCase()}
+                                                    {isToday ? 'TODAY' : formatToLongDate(dateObj || new Date()).split(',')[0].toUpperCase()}
                                                 </div>
                                                 
                                                 {/* Date */}
@@ -681,18 +874,21 @@ function FlightSearchResults() {
                                                     isSelected ? 'text-yellow-900' : 'text-gray-800',
                                                     isWeekend && !isSelected && 'text-blue-600'
                                                 )}>
-                                                    {item?.date ? item.date.getDate() : '—'}
+                                                    {dateObj ? dateObj.getDate() : '—'}
                                                 </div>
                                                 
                                                 {/* Price */}
                                                 <div className={clsx(
                                                     'text-xs font-bold',
                                                     isSelected ? 'text-yellow-900' : 'text-gray-900',
-                                                    !item?.price && 'text-gray-400'
+                                                    !item?.price && 'text-gray-400',
+                                                    isThisDateLoading && 'text-blue-600'
                                                 )}>
-                                                    {item?.price
-                                                        ? `${item.currency} ${formatPrice(item.price)}`
-                                                        : isNearbyLoading ? '...' : '—'}
+                                                    {isThisDateLoading 
+                                                        ? 'Loading...' 
+                                                        : item?.price
+                                                            ? `${item.currency} ${formatPrice(item.price)}`
+                                                            : isNearbyLoading ? '...' : '—'}
                                                 </div>
                                                 
                                                 {/* Selected indicator */}
@@ -705,10 +901,17 @@ function FlightSearchResults() {
                                                     <div className='absolute top-1 right-1 w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-400 rounded-full'></div>
                                                 )}
                                                 
+                                                {/* Loading overlay */}
+                                                {isThisDateLoading && (
+                                                    <div className='absolute inset-0 rounded-lg sm:rounded-xl bg-blue-100 bg-opacity-50 flex items-center justify-center'>
+                                                        <div className='w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin'></div>
+                                                    </div>
+                                                )}
+                                                
                                                 {/* Hover effect overlay */}
                                                 <div className={clsx(
                                                     'absolute inset-0 rounded-lg sm:rounded-xl opacity-0 transition-opacity duration-200',
-                                                    !isSelected && 'group-hover:opacity-10 group-hover:bg-yellow-400'
+                                                    !isSelected && !isThisDateLoading && 'group-hover:opacity-10 group-hover:bg-yellow-400'
                                                 )}></div>
                                             </button>
                                         )

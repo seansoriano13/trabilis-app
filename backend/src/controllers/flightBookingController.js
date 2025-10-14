@@ -2,7 +2,7 @@ import { query } from '../config/db.js'
 import { supabase } from '../config/supabaseClient.js'
 import { v4 as uuidv4 } from 'uuid'
 import stripe from '../config/stripe.js'
-import { amadeus } from '../config/amadeus.js'
+import { amadeus, logAmadeusError, logAmadeusSuccess } from '../config/amadeus.js'
 import { checkBookingStatus } from '../services/bookingService.js'
 import { autoAssignBooking } from '../services/assignmentService.js'
 
@@ -112,43 +112,93 @@ export const initiateFlightBooking = async (req, res) => {
             })
         }
 
-        // Price the flight offer
+        // Price the flight offer with retry logic
         console.log('Attempting to price flight offer...')
         let priceCheckResponse
         let confirmedFlightOffer = flightOffer
-        try {
-            priceCheckResponse =
-                await amadeus.shopping.flightOffers.pricing.post({
+        const maxPricingRetries = 2
+        let pricingRetryCount = 0
+        
+        while (pricingRetryCount <= maxPricingRetries) {
+            try {
+                const pricingData = {
                     data: {
                         type: 'flight-offers-pricing',
                         flightOffers: [flightOffer],
                     },
+                }
+                
+                console.log(`[FLIGHT BOOKING] Pricing attempt ${pricingRetryCount + 1} for flight ${flightOffer.id}`)
+                
+                priceCheckResponse =
+                    await amadeus.shopping.flightOffers.pricing.post(pricingData)
+                
+                // Log successful pricing response
+                logAmadeusSuccess('flightOffers.pricing.post', priceCheckResponse, {
+                    originalPrice: flightOffer.price?.total,
+                    flightOfferId: flightOffer.id
                 })
-            confirmedFlightOffer = priceCheckResponse.data.flightOffers?.[0]
-            if (!confirmedFlightOffer) {
-                console.error('Pricing failed: No flight offer returned')
-                return res.status(400).json({
-                    error: 'Flight no longer available, please choose another flight',
-                })
-            }
-            console.log(
-                `✅ Price confirmed. Original: ${flightOffer.price.total}, Confirmed: ${confirmedFlightOffer.price.total}`
-            )
+                
+                confirmedFlightOffer = priceCheckResponse.data.flightOffers?.[0]
+                if (!confirmedFlightOffer) {
+                    console.error('[FLIGHT BOOKING] Pricing failed: No flight offer returned')
+                    return res.status(400).json({
+                        error: 'Flight no longer available, please choose another flight',
+                    })
+                }
+                console.log(`[FLIGHT BOOKING] ✅ Price confirmed: ${confirmedFlightOffer.price.total} ${confirmedFlightOffer.price.currency}`)
+                break // Success, exit retry loop
         } catch (amadeusError) {
-            console.error(
-                'Pricing error:',
-                amadeusError.response?.data || amadeusError
-            )
+            // Enhanced error logging for pricing failures
+            const errorInfo = logAmadeusError('flightOffers.pricing.post', amadeusError, {
+                flightOfferId: flightOffer.id,
+                originalPrice: flightOffer.price?.total,
+                travelerCount: passengerDetails.travelers.length
+            })
+            
+            // Handle ServerError (500) - usually temporary Amadeus issues
+            if (amadeusError.code === 'ServerError' || amadeusError.response?.status === 500) {
+                if (pricingRetryCount < maxPricingRetries) {
+                    console.log(`[FLIGHT BOOKING] Server error, retrying in 2s... (${pricingRetryCount + 1}/${maxPricingRetries})`)
+                    pricingRetryCount++
+                    await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds
+                    continue
+                } else {
+                    return res.status(503).json({
+                        error: 'Flight booking service temporarily unavailable',
+                        details: 'The flight booking service is experiencing technical difficulties. Please try again in a few minutes.',
+                        errorCode: amadeusError.code,
+                        suggestion: 'Please try again later or contact support if the issue persists'
+                    })
+                }
+            }
+            
             if (amadeusError.response?.data?.errors) {
                 const errors = amadeusError.response.data.errors
+                
+                // Handle Amadeus system errors (test environment issues)
+                const systemError = errors.find(err => err.code === 141)
+                if (systemError) {
+                    console.error('[FLIGHT BOOKING] Amadeus system error detected:', systemError)
+                    return res.status(503).json({
+                        error: 'Flight booking service temporarily unavailable',
+                        details: 'The flight booking service is experiencing technical difficulties. Please try again in a few minutes.',
+                        errorCode: systemError.code,
+                        suggestion: 'Please try again later or contact support if the issue persists'
+                    })
+                }
+                
                 const unavailabilityError = errors.find(
                     (err) =>
                         err.code === 34651 ||
                         err.title.includes('SEGMENT SELL FAILURE')
                 )
                 if (unavailabilityError) {
+                    console.error('[FLIGHT BOOKING] Segment sell failure detected:', unavailabilityError)
                     return res.status(400).json({
                         error: 'Flight no longer available, please choose another flight',
+                        errorCode: unavailabilityError.code,
+                        errorDetail: unavailabilityError.detail
                     })
                 }
             }
@@ -157,31 +207,14 @@ export const initiateFlightBooking = async (req, res) => {
                     amadeusError.message || 'Unknown error'
                 }`
             )
+            }
         }
 
         // Create Amadeus order with retry logic
-        console.log('Attempting to create Amadeus order...')
+        console.log('[FLIGHT BOOKING] Attempting to create Amadeus order...')
         
         // Ensure travelers match the flight offer pricing structure
         const flightOfferTravelers = confirmedFlightOffer.travelerPricings || []
-        console.log('Flight offer traveler pricings:', flightOfferTravelers.map((p, i) => ({ 
-            index: i, 
-            travelerType: p.travelerType, 
-            price: p.price?.total 
-        })))
-        console.log('Our travelers:', passengerDetails.travelers.map((t, i) => ({ 
-            index: i, 
-            type: t.type, 
-            id: t.id 
-        })))
-        console.log('Search criteria traveler count:', searchCriteria.travelerCount)
-        console.log('Original flight offer traveler pricings count:', flightOffer.travelerPricings?.length || 0)
-        console.log('Original flight offer traveler types:', flightOffer.travelerPricings?.map(p => p.travelerType) || [])
-        console.log('Search criteria breakdown:', {
-            adults: searchCriteria.travelerCount?.adults || 0,
-            children: searchCriteria.travelerCount?.children || 0,
-            total: (searchCriteria.travelerCount?.adults || 0) + (searchCriteria.travelerCount?.children || 0)
-        })
         
         // Define our traveler types first
         const ourTravelerTypes = [...new Set(passengerDetails.travelers.map(t => t.type === 'CHILD' ? 'CHILD' : 'ADULT'))]
@@ -193,20 +226,18 @@ export const initiateFlightBooking = async (req, res) => {
             const missingInOriginal = expectedTypes.filter(type => !originalTypes.includes(type))
             
             if (missingInOriginal.length > 0) {
-                console.warn(`⚠️ Original flight offer missing traveler types: ${missingInOriginal.join(', ')}`)
-                console.warn('This suggests the flight search may not have included all passenger types')
+                console.warn(`[FLIGHT BOOKING] ⚠️ Original flight offer missing traveler types: ${missingInOriginal.join(', ')}`)
+                console.warn('[FLIGHT BOOKING] This suggests the flight search may not have included all passenger types')
             }
         }
         
         // Validate that we have pricing for all traveler types
         const pricingTypes = [...new Set(flightOfferTravelers.map(p => p.travelerType))]
-        console.log('Our traveler types:', ourTravelerTypes)
-        console.log('Pricing types available:', pricingTypes)
         
         const missingTypes = ourTravelerTypes.filter(type => !pricingTypes.includes(type))
         if (missingTypes.length > 0) {
-            console.error(`❌ Flight offer missing pricing for traveler types: ${missingTypes.join(', ')}`)
-            console.error('This flight may not support the requested passenger types or the search criteria may be incorrect.')
+            console.error(`[FLIGHT BOOKING] ❌ Flight offer missing pricing for traveler types: ${missingTypes.join(', ')}`)
+            console.error('[FLIGHT BOOKING] This flight may not support the requested passenger types or the search criteria may be incorrect.')
             
             // Provide a more user-friendly error message
             const missingTypesText = missingTypes.map(type => 
@@ -233,8 +264,8 @@ export const initiateFlightBooking = async (req, res) => {
             )
             
             if (!pricing) {
-                console.error(`No pricing found for traveler type: ${traveler.type}`)
-                console.error('Available pricing types:', flightOfferTravelers.map(p => p.travelerType))
+                console.error(`[FLIGHT BOOKING] No pricing found for traveler type: ${traveler.type}`)
+                console.error('[FLIGHT BOOKING] Available pricing types:', flightOfferTravelers.map(p => p.travelerType))
                 throw new Error(`No pricing found for traveler ${index + 1} (${traveler.type})`)
             }
             
@@ -246,40 +277,73 @@ export const initiateFlightBooking = async (req, res) => {
                 gender: traveler.gender
             }
 
-            // Add contact information
+            // Add contact information - ensure it's properly structured for Amadeus
             if (traveler.contact) {
-                amadeusTraveler.contact = traveler.contact
+                amadeusTraveler.contact = {
+                    emailAddress: traveler.contact.emailAddress || '',
+                    phones: traveler.contact.phones || [],
+                    // Use simple format that Amadeus expects
+                    companyName: 'Amadeus', // Simple company name as per Amadeus example
+                    address: {
+                        lines: ['1 rue de Paris'], // Simple address line as per Amadeus example
+                        postalCode: '1227',
+                        cityName: 'Makati',
+                        countryCode: 'PH'
+                    }
+                }
+            } else {
+                // Fallback: create minimal contact structure if none provided
+                amadeusTraveler.contact = {
+                    emailAddress: '',
+                    phones: [],
+                    companyName: 'Amadeus',
+                    address: {
+                        lines: ['1 rue de Paris'],
+                        postalCode: '1227',
+                        cityName: 'Makati',
+                        countryCode: 'PH'
+                    }
+                }
             }
 
-            // Add documents only if they exist and are valid
-            if (traveler.documents && traveler.documents.length > 0 && traveler.documents[0].number) {
-                const doc = traveler.documents[0]
-                amadeusTraveler.documents = [{
-                    documentType: doc.documentType || 'PASSPORT',
-                    birthPlace: doc.placeOfBirth || doc.birthPlace || '',
-                    issuanceLocation: doc.issuanceLocation || doc.placeOfBirth || '',
-                    issuanceDate: doc.issuanceDate || '',
-                    number: doc.number,
-                    expiryDate: doc.expiryDate || '',
-                    issuanceCountry: doc.issuanceCountry || '',
-                    validityCountry: doc.validityCountry || doc.issuanceCountry || '',
-                    nationality: doc.nationality || '',
-                    holder: doc.holder !== undefined ? doc.holder : true
-                }]
+            // Add documents - only for adults, children don't need documents in Amadeus
+            if (traveler.type === 'ADULT') {
+                if (traveler.documents && traveler.documents.length > 0) {
+                    const doc = traveler.documents[0]
+                    amadeusTraveler.documents = [{
+                        documentType: doc.documentType || 'PASSPORT',
+                        birthPlace: doc.placeOfBirth || doc.birthPlace || '',
+                        issuanceLocation: doc.issuanceLocation || doc.placeOfBirth || '',
+                        issuanceDate: doc.issuanceDate || '',
+                        number: doc.number || '', // Allow empty number - Amadeus will validate
+                        expiryDate: doc.expiryDate || '',
+                        issuanceCountry: doc.issuanceCountry || '',
+                        validityCountry: doc.validityCountry || doc.issuanceCountry || '',
+                        nationality: doc.nationality || '',
+                        holder: doc.holder !== undefined ? doc.holder : true
+                    }]
+                } else {
+                    // Fallback: create minimal document structure if none provided
+                    amadeusTraveler.documents = [{
+                        documentType: 'PASSPORT',
+                        birthPlace: '',
+                        issuanceLocation: '',
+                        issuanceDate: '',
+                        number: '',
+                        expiryDate: '',
+                        issuanceCountry: '',
+                        validityCountry: '',
+                        nationality: '',
+                        holder: true
+                    }]
+                }
             }
+            // Children don't need documents according to the sample
 
             return amadeusTraveler
         })
         
-        console.log(`Sending ${amadeusTravelers.length} travelers to Amadeus`)
-        console.log('Final Amadeus travelers structure:', amadeusTravelers.map(t => ({
-            id: t.id,
-            name: t.name,
-            gender: t.gender,
-            hasContact: !!t.contact?.emailAddress,
-            hasDocuments: !!t.documents?.[0]?.number,
-            documentNumber: t.documents?.[0]?.number || 'N/A'
-        })))
+        console.log(`[FLIGHT BOOKING] Sending ${amadeusTravelers.length} travelers to Amadeus`)
         
         let orderResponse
         let orderId
@@ -288,7 +352,7 @@ export const initiateFlightBooking = async (req, res) => {
 
         while (retryCount <= maxRetries) {
             try {
-                orderResponse = await amadeus.booking.flightOrders.post({
+                const orderData = {
                     data: {
                         type: 'flight-order',
                         flightOffers: [confirmedFlightOffer],
@@ -305,33 +369,26 @@ export const initiateFlightBooking = async (req, res) => {
                             option: 'DELAY_TO_CANCEL',
                             delay: '6D'
                         },
-                        contacts: passengerDetails.contacts || [
-                            {
-                                addresseeName: {
-                                    firstName: 'LINDELA',
-                                    lastName: 'TRAVEL AND TOURS'
-                                },
-                                companyName: 'Lindela Travel And Tours',
-                                purpose: 'STANDARD',
-                                phones: [
-                                    {
-                                        deviceType: 'MOBILE',
-                                        countryCallingCode: '63',
-                                        number: '9296106660'
-                                    }
-                                ],
-                                emailAddress: 'lindelatravelandtours@gmail.com',
-                                address: {
-                                    lines: ['Unit 2215 Cityland 10 Tower II, H. V. Dela Costa Street'],
-                                    postalCode: '1227',
-                                    cityName: 'Makati',
-                                    stateName: 'Metro Manila',
-                                    countryCode: 'PH'
-                                }
-                            }
-                        ],
+                        contacts: passengerDetails.contacts,
                     },
+                }
+                
+                console.log(`[FLIGHT BOOKING] Creating order for flight ${confirmedFlightOffer.id} (${confirmedFlightOffer.price?.total} ${confirmedFlightOffer.price?.currency})`)
+                
+                try {
+                    orderResponse = await amadeus.booking.flightOrders.post(orderData)
+                } catch (sdkError) {
+                    console.error('[FLIGHT BOOKING] SDK error:', sdkError.message)
+                    throw sdkError
+                }
+                
+                // Log successful order creation
+                logAmadeusSuccess('booking.flightOrders.post', orderResponse, {
+                    flightOfferId: confirmedFlightOffer.id,
+                    travelerCount: amadeusTravelers.length,
+                    totalPrice: confirmedFlightOffer.price?.total
                 })
+                
                 orderId = orderResponse.data?.id
                 if (!orderId) {
                     throw new Error(
@@ -339,19 +396,25 @@ export const initiateFlightBooking = async (req, res) => {
                     )
                 }
                 console.log(
-                    `✅ Amadeus order created successfully with ID: ${orderId}`
+                    `[FLIGHT BOOKING] ✅ Amadeus order created successfully with ID: ${orderId}`
                 )
                 break
             } catch (amadeusError) {
-                console.error(
-                    `Order creation error (attempt ${retryCount + 1}):`,
-                    amadeusError.response?.data || amadeusError
-                )
+                // Enhanced error logging for order creation failures
+                const errorInfo = logAmadeusError('booking.flightOrders.post', amadeusError, {
+                    attempt: retryCount + 1,
+                    maxRetries: maxRetries + 1,
+                    flightOfferId: confirmedFlightOffer.id,
+                    travelerCount: amadeusTravelers.length,
+                    totalPrice: confirmedFlightOffer.price?.total
+                })
                 
                 // Log detailed error information for debugging
+                console.error('[FLIGHT BOOKING] Order creation failed:', amadeusError.message)
+                
                 if (amadeusError.response?.data?.errors) {
                     const errors = amadeusError.response.data.errors
-                    console.error('Detailed Amadeus errors:', errors)
+                    console.error('[FLIGHT BOOKING] Detailed Amadeus errors:', errors)
                     
                     // Handle specific error codes
                     const errorCode = errors[0]?.code
@@ -359,7 +422,7 @@ export const initiateFlightBooking = async (req, res) => {
                     const errorDetail = errors[0]?.detail
                     
                     if (errorCode === 34651) {
-                        console.error('Segment sell failure - could not sell segment')
+                        console.error('[FLIGHT BOOKING] Segment sell failure - could not sell segment')
                         return res.status(400).json({
                             error: 'Flight segment unavailable. This flight segment is no longer available for booking.',
                             details: {
@@ -372,7 +435,7 @@ export const initiateFlightBooking = async (req, res) => {
                     }
                     
                     if (errorCode === 34652) {
-                        console.error('Flight offer expired or no longer available')
+                        console.error('[FLIGHT BOOKING] Flight offer expired or no longer available')
                         return res.status(400).json({
                             error: 'Flight offer expired. This flight is no longer available for booking.',
                             details: {
@@ -385,7 +448,7 @@ export const initiateFlightBooking = async (req, res) => {
                     }
                     
                     if (errorCode === 34653) {
-                        console.error('Insufficient seats available')
+                        console.error('[FLIGHT BOOKING] Insufficient seats available')
                         return res.status(400).json({
                             error: 'Insufficient seats. Not enough seats available for your booking.',
                             details: {
@@ -404,8 +467,8 @@ export const initiateFlightBooking = async (req, res) => {
                         err.detail?.includes('priced')
                     )
                     if (travelerErrors.length > 0) {
-                        console.error('Traveler pricing errors:', travelerErrors)
-                        console.error('Current travelers being sent:', amadeusTravelers.map(t => ({
+                        console.error('[FLIGHT BOOKING] Traveler pricing errors:', travelerErrors)
+                        console.error('[FLIGHT BOOKING] Current travelers being sent:', amadeusTravelers.map(t => ({
                             id: t.id,
                             travelerType: t.travelerType,
                             type: t.type,
@@ -415,7 +478,7 @@ export const initiateFlightBooking = async (req, res) => {
                     
                     // Generic Amadeus error handling for unhandled codes
                     if (![34651, 34652, 34653, 4926].includes(errorCode)) {
-                        console.error(`Unhandled Amadeus error code: ${errorCode}`)
+                        console.error(`[FLIGHT BOOKING] Unhandled Amadeus error code: ${errorCode}`)
                         return res.status(400).json({
                             error: `Booking failed: ${errorTitle || 'Unknown error'}`,
                             details: {
@@ -434,33 +497,44 @@ export const initiateFlightBooking = async (req, res) => {
                     )
                     if (unavailabilityError && retryCount < maxRetries) {
                         console.log(
-                            `Retrying pricing due to unavailability error...`
+                            `[FLIGHT BOOKING] Retrying pricing due to unavailability error...`
                         )
                         retryCount++
                         try {
+                            const retryPricingData = {
+                                data: {
+                                    type: 'flight-offers-pricing',
+                                    flightOffers: [
+                                        confirmedFlightOffer,
+                                    ],
+                                },
+                            }
+                            
+                            console.log('[FLIGHT BOOKING] Retry pricing request:', retryPricingData)
+                            
                             priceCheckResponse =
                                 await amadeus.shopping.flightOffers.pricing.post(
-                                    {
-                                        data: {
-                                            type: 'flight-offers-pricing',
-                                            flightOffers: [
-                                                confirmedFlightOffer,
-                                            ],
-                                        },
-                                    }
+                                    retryPricingData
                                 )
+                                
+                            // Log retry pricing success
+                            logAmadeusSuccess('flightOffers.pricing.post (retry)', priceCheckResponse, {
+                                attempt: retryCount,
+                                flightOfferId: confirmedFlightOffer.id
+                            })
+                            
                             confirmedFlightOffer =
                                 priceCheckResponse.data.flightOffers?.[0]
                             if (!confirmedFlightOffer) {
                                 console.error(
-                                    'Retry pricing failed: No flight offer returned'
+                                    '[FLIGHT BOOKING] Retry pricing failed: No flight offer returned'
                                 )
                                 return res.status(400).json({
                                     error: 'Flight no longer available, please choose another flight',
                                 })
                             }
                             console.log(
-                                `✅ Retry price confirmed. Confirmed: ${confirmedFlightOffer.price.total}`
+                                `[FLIGHT BOOKING] ✅ Retry price confirmed. Confirmed: ${confirmedFlightOffer.price.total}`
                             )
                             
                             // Rebuild travelers for retry
@@ -472,8 +546,8 @@ export const initiateFlightBooking = async (req, res) => {
                                 )
                                 
                                 if (!pricing) {
-                                    console.error(`No pricing found for traveler type: ${traveler.type} on retry`)
-                                    console.error('Available pricing types:', retryFlightOfferTravelers.map(p => p.travelerType))
+                                    console.error(`[FLIGHT BOOKING] No pricing found for traveler type: ${traveler.type} on retry`)
+                                    console.error('[FLIGHT BOOKING] Available pricing types:', retryFlightOfferTravelers.map(p => p.travelerType))
                                     throw new Error(`No pricing found for traveler ${index + 1} (${traveler.type}) on retry`)
                                 }
                                 
@@ -513,10 +587,12 @@ export const initiateFlightBooking = async (req, res) => {
                             
                             continue
                         } catch (retryError) {
-                            console.error(
-                                'Retry pricing failed:',
-                                retryError.response?.data || retryError
-                            )
+                            // Log retry pricing error
+                            logAmadeusError('flightOffers.pricing.post (retry)', retryError, {
+                                attempt: retryCount,
+                                flightOfferId: confirmedFlightOffer.id
+                            })
+                            
                             return res.status(400).json({
                                 error: 'Flight no longer available, please choose another flight',
                             })

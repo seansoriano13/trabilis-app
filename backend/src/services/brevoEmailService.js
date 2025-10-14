@@ -419,6 +419,7 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
         .join('')
 
     // 2. Generate Passenger Details HTML (matching template structure)
+    const eTickets = bookingDetails.e_ticket_numbers || [] // Define eTickets with fallback to empty array
     const passengerDetailsHtml = (bookingDetails.passenger_details?.travelers || [])
         .map((passenger, index) => {
             const title = passenger.title || ''

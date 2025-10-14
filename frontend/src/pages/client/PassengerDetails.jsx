@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { FaArrowsAltH } from 'react-icons/fa'
 import { IoContractSharp, IoPersonSharp } from 'react-icons/io5'
 import { useState, useEffect } from 'react'
@@ -14,6 +14,7 @@ import axios from 'axios'
 import { calculateAge, formatPhoneForAmadeus } from '../../utils/stringUtils.js'
 import countries from '../../data/CountryCodes.json'
 import { getNationalityOptions } from '../../utils/nationalityMapping'
+import Modal from 'react-modal'
 
 import { FaArrowRightArrowLeft } from 'react-icons/fa6'
 import { FaArrowRight } from 'react-icons/fa6'
@@ -443,12 +444,12 @@ export function PassengerForm({
                                             onChange={(e) =>
                                                 handleChange(
                                                     index,
-                                                    'contact.phones[0]',
+                                                    'contact.phones[0].number',
                                                     formatPhoneForAmadeus(
                                                         e.target.value,
                                                         passenger.contact?.phones?.[0]
                                                             ?.countryCallingCode || '63'
-                                                    )
+                                                    ).number
                                                 )
                                             }
                                             required
@@ -457,7 +458,7 @@ export function PassengerForm({
                                             .filter(
                                                 (e) =>
                                                     e.index === index &&
-                                                    e.field === 'contact.phones[0]'
+                                                    e.field === 'contact.phones[0].number'
                                             )
                                             .map((e) => (
                                                 <p
@@ -712,9 +713,10 @@ export function PassengerForm({
                             </div>
                             <div className='passenger-form__field'>
                                 <label className='passenger-form__label'>
-                                    Validity Country (e.g., PH)
+                                    Validity Country (Auto Filled)
                                 </label>
                                 <Select
+                                    isDisabled={true}
                                     className='passenger-form__select'
                                     options={issuanceCountryOptions}
                                     value={
@@ -767,39 +769,6 @@ export function PassengerForm({
                             </div>
                             <div className='passenger-form__field'>
                                 <label className='passenger-form__label'>
-                                    Place of Birth
-                                </label>
-                                <input
-                                    type='text'
-                                    className='passenger-form__input'
-                                    value={passenger.documents[0]?.placeOfBirth || ''}
-                                    onChange={(e) =>
-                                        handleChange(
-                                            index,
-                                            'documents[0].placeOfBirth',
-                                            e.target.value
-                                        )
-                                    }
-                                />
-                                {validationErrors
-                                    .filter(
-                                        (e) =>
-                                            e.index === index &&
-                                            e.field === 'documents[0].placeOfBirth'
-                                    )
-                                    .map((e) => (
-                                        <p
-                                            key={`${e.index}-${e.field}-${
-                                                e.message
-                                            }-${Date.now()}`}
-                                            className='error-message'
-                                        >
-                                            {e.message}
-                                        </p>
-                                    ))}
-                            </div>
-                            <div className='passenger-form__field'>
-                                <label className='passenger-form__label'>
                                     Birth Place 
                                 </label>
                                 <input
@@ -833,7 +802,7 @@ export function PassengerForm({
                             </div>
                             <div className='passenger-form__field'>
                                 <label className='passenger-form__label'>
-                                    Issuance Location 
+                                    Issuance Location (e.g. New-York)
                                 </label>
                                 <input
                                     type='text'
@@ -1172,7 +1141,7 @@ function PassengerDetails() {
         }
     }, [state])
 
-    const navigate = useNavigate()
+    // const navigate = useNavigate() // Removed - no longer needed
 
     const { adults, children } = state.travelerCount
     const totalPassengers = adults + children
@@ -1186,22 +1155,21 @@ function PassengerDetails() {
                 id: `${i + 1}`,
                 type: isAdult ? 'ADULT' : 'CHILD',
                 name: {
-                    firstName: '',
-                    lastName: '',
+                    firstName: isAdult ? 'John' : 'Jane',
+                    lastName: 'Doe',
                 },
-                dateOfBirth: '',
+                dateOfBirth: isAdult ? '1990-01-15' : '2015-06-20',
                 documents: [
                     {
                         documentType: 'PASSPORT',
-                        number: '',
+                        number: isAdult ? 'P1234567' : 'P7654321',
                         nationality: 'PH',
                         issuanceCountry: 'PH',
-                        expiryDate: '',
-                        issuanceDate: '',
+                        expiryDate: '2030-12-31', // 5+ years in future
+                        issuanceDate: '2020-01-15', // Past date
                         validityCountry: 'PH',
-                        placeOfBirth: '',
-                        birthPlace: '', // For Amadeus compatibility
-                        issuanceLocation: '', // For Amadeus compatibility
+                        birthPlace: 'Manila', // For Amadeus compatibility
+                        issuanceLocation: 'Manila', // For Amadeus compatibility
                         holder: true,
                     },
                 ],
@@ -1209,23 +1177,23 @@ function PassengerDetails() {
 
             // Add adult-specific fields
             if (isAdult) {
-                basePassenger.title = ''
-                basePassenger.gender = ''
+                basePassenger.title = 'MR'
+                basePassenger.gender = 'MALE'
                 basePassenger.contact = {
-                    emailAddress: '',
+                    emailAddress: 'arkadatax03@gmail.com',
                     phones: [
                         {
                             deviceType: 'MOBILE',
                             countryCallingCode: '63',
-                            number: '',
+                            number: '9123456789',
                         },
                     ],
                 }
             } else {
                 // Add child-specific fields
-                basePassenger.gender = '' // No default gender for children
+                basePassenger.gender = 'FEMALE' // Default gender for children
                 // Link to the first adult (index 0, so id = '1')
-                basePassenger.linkedAdultId = '' // No default linked adult
+                basePassenger.linkedAdultId = '1' // Link to first adult
                 // Ensure children don't have contact fields in form data
                 basePassenger.contact = undefined
             }
@@ -1238,10 +1206,31 @@ function PassengerDetails() {
         const updated = [...passengers]
         const keys = field.split('.')
         let target = updated[index]
+        
+        // Handle nested field updates (like 'name.firstName', 'contact.emailAddress', etc.)
         for (let i = 0; i < keys.length - 1; i++) {
-            target = target[keys[i]] = target[keys[i]] || {}
+            if (keys[i].includes('[') && keys[i].includes(']')) {
+                // Handle array access like 'phones[0]'
+                const arrayName = keys[i].split('[')[0]
+                const arrayIndex = parseInt(keys[i].split('[')[1].split(']')[0])
+                target = target[arrayName] = target[arrayName] || []
+                target = target[arrayIndex] = target[arrayIndex] || {}
+            } else {
+                target = target[keys[i]] = target[keys[i]] || {}
+            }
         }
-        target[keys[keys.length - 1]] = value
+        
+        const finalKey = keys[keys.length - 1]
+        if (finalKey.includes('[') && finalKey.includes(']')) {
+            // Handle array access for final key
+            const arrayName = finalKey.split('[')[0]
+            const arrayIndex = parseInt(finalKey.split('[')[1].split(']')[0])
+            target[arrayName] = target[arrayName] || []
+            target[arrayName][arrayIndex] = value
+        } else {
+            target[finalKey] = value
+        }
+        
         setPassengers(updated)
     }
 
@@ -1254,6 +1243,7 @@ function PassengerDetails() {
     const [isLoading, setIsLoading] = useState(false)
     const [validationErrors, setValidationErrors] = useState([])
     const [termsAccepted, setTermsAccepted] = useState(false)
+    const [showTermsModal, setShowTermsModal] = useState(false)
 
     const handleSubmit = async () => {
         const errors = []
@@ -1262,6 +1252,19 @@ function PassengerDetails() {
         try {
             for (const [index, passenger] of passengers.entries()) {
                 try {
+                    // Validate date of birth before calculating age
+                    if (passenger.dateOfBirth) {
+                        const birthDate = new Date(passenger.dateOfBirth)
+                        if (isNaN(birthDate.getTime())) {
+                            errors.push({
+                                index,
+                                field: 'dateOfBirth',
+                                message: 'Invalid date format. Please use YYYY-MM-DD format',
+                            })
+                            continue // Skip age calculation for invalid dates
+                        }
+                    }
+                    
                     const age = calculateAge(passenger.dateOfBirth)
 
                     // Title validation - only for adults
@@ -1304,6 +1307,25 @@ function PassengerDetails() {
                             field: 'dateOfBirth',
                             message: 'Date of birth is required',
                         })
+                    } else {
+                        // Validate birth date is reasonable
+                        const birthDate = new Date(passenger.dateOfBirth)
+                        const today = new Date()
+                        const minDate = new Date(1900, 0, 1) // January 1, 1900
+                        
+                        if (birthDate > today) {
+                            errors.push({
+                                index,
+                                field: 'dateOfBirth',
+                                message: 'Date of birth cannot be in the future',
+                            })
+                        } else if (birthDate < minDate) {
+                            errors.push({
+                                index,
+                                field: 'dateOfBirth',
+                                message: 'Please enter a valid birth date',
+                            })
+                        }
                     }
 
                     if (passenger.type === 'CHILD' && age >= 12) {
@@ -1335,7 +1357,7 @@ function PassengerDetails() {
                             })
                             errors.push({
                                 index,
-                                field: 'contact.phones[0]',
+                                field: 'contact.phones[0].number',
                                 message: 'At least email or phone is required',
                             })
                         }
@@ -1384,15 +1406,44 @@ function PassengerDetails() {
 
                     // Passport validation - only if passport document exists
                     if (passenger.documents && passenger.documents[0]) {
-                        if (
-                            passenger.documents[0].documentType === 'PASSPORT' &&
-                            !passenger.documents[0].holder
-                        ) {
+                        const doc = passenger.documents[0]
+                        
+                        if (doc.documentType === 'PASSPORT' && !doc.holder) {
                             errors.push({
                                 index,
                                 field: 'documents[0].holder',
                                 message: 'Passport holder field is required',
                             })
+                        }
+                        
+                        // Validate passport expiry date (must be at least 6 months in the future)
+                        if (doc.expiryDate) {
+                            const expiryDate = new Date(doc.expiryDate)
+                            const today = new Date()
+                            const sixMonthsFromNow = new Date()
+                            sixMonthsFromNow.setMonth(today.getMonth() + 6)
+                            
+                            if (expiryDate <= sixMonthsFromNow) {
+                                errors.push({
+                                    index,
+                                    field: 'documents[0].expiryDate',
+                                    message: 'Passport must be valid for at least 6 months from today',
+                                })
+                            }
+                        }
+                        
+                        // Validate passport issuance date (cannot be in the future)
+                        if (doc.issuanceDate) {
+                            const issuanceDate = new Date(doc.issuanceDate)
+                            const today = new Date()
+                            
+                            if (issuanceDate > today) {
+                                errors.push({
+                                    index,
+                                    field: 'documents[0].issuanceDate',
+                                    message: 'Passport issuance date cannot be in the future',
+                                })
+                            }
                         }
                     }
                 } catch (error) {
@@ -1438,7 +1489,6 @@ function PassengerDetails() {
                             expiryDate: p.documents?.[0]?.expiryDate || '',
                             issuanceDate: p.documents?.[0]?.issuanceDate || '',
                             validityCountry: p.documents?.[0]?.validityCountry || 'PH',
-                            placeOfBirth: p.documents?.[0]?.placeOfBirth || '',
                             birthPlace: p.documents?.[0]?.birthPlace || '', // For Amadeus compatibility
                             issuanceLocation: p.documents?.[0]?.issuanceLocation || '', // For Amadeus compatibility
                             holder: Boolean(p.documents?.[0]?.holder),
@@ -1529,6 +1579,10 @@ function PassengerDetails() {
                             subType: 'GENERAL_MISCELLANEOUS',
                             text: 'ONLINE BOOKING FROM LINDELA TRAVEL AND TOURS',
                         },
+                        {
+                            subType: 'GENERAL_MISCELLANEOUS',
+                            text: 'TICKETING AGREEMENT: Reservation will be automatically cancelled if payment is not completed within 6 days. Cancellation occurs at 00:00 local time on the 6th day.',
+                        },
                     ],
                 },
                 ticketingAgreement: {
@@ -1541,7 +1595,7 @@ function PassengerDetails() {
                             firstName: 'LINDELA',
                             lastName: 'TRAVEL AND TOURS',
                         },
-                        companyName: 'LINDELA TRAVEL AND TOURS',
+                        companyName: 'Amadeus', // Use correct Amadeus format
                         purpose: 'STANDARD',
                         phones: [
                             {
@@ -1552,7 +1606,7 @@ function PassengerDetails() {
                         ],
                         emailAddress: 'lindelatravelandtours@gmail.com',
                         address: {
-                            lines: ['Unit 2215 Cityland 10 Tower II, H. V. Dela Costa Street'],
+                            lines: ['1 rue de Paris'], // Use correct Amadeus format
                             postalCode: '1227',
                             cityName: 'Makati',
                             countryCode: 'PH',
@@ -1605,19 +1659,48 @@ function PassengerDetails() {
         } catch (error) {
             console.error('Booking submission failed:', error)
             setIsLoading(false)
-            alert(
-                error.response?.data?.error ||
-                    'Booking failed. Please try again.'
-            )
-            navigate('/flights', {
-                state: {
-                    origin,
-                    destination,
-                    inboundDeparture,
-                    outboundDeparture,
-                    travelerCount: { adults, children },
-                },
-            })
+            
+            // Extract error message from response
+            let errorMessage = 'Booking failed. Please try again.'
+            let errorDetails = ''
+            
+            if (error.response?.data?.error) {
+                errorMessage = error.response.data.error
+                errorDetails = error.response.data.details || ''
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message
+            } else if (error.message) {
+                errorMessage = error.message
+            }
+            
+            // Check for specific Amadeus error codes and provide user-friendly messages
+            if (error.response?.data?.errors && error.response.data.errors.length > 0) {
+                const amadeusError = error.response.data.errors[0]
+                
+                if (amadeusError.code === 34651 && amadeusError.title === 'SEGMENT SELL FAILURE') {
+                    errorMessage = 'Flight No Longer Available'
+                    errorDetails = 'This flight segment is no longer available for booking. This commonly happens in our test environment. Please try selecting a different flight or search for new flights.'
+                } else if (amadeusError.code === 34652) {
+                    errorMessage = 'Flight Offer Expired'
+                    errorDetails = 'This flight offer has expired. Please search for new flights and try again.'
+                } else if (amadeusError.code === 34653) {
+                    errorMessage = 'Insufficient Seats'
+                    errorDetails = 'Not enough seats available for your booking. Please try with fewer passengers or select a different flight.'
+                } else if (amadeusError.code === 141) {
+                    errorMessage = 'Service Temporarily Unavailable'
+                    errorDetails = 'The flight booking service is experiencing technical difficulties. Please try again in a few minutes.'
+                }
+            }
+            
+            // Set validation errors to show in UI
+            setValidationErrors([{
+                index: -1,
+                field: 'booking',
+                message: errorMessage + (errorDetails ? ` - ${errorDetails}` : '')
+            }])
+            
+            // Scroll to top to show error
+            window.scrollTo({ top: 0, behavior: 'smooth' })
         }
     }
 
@@ -1652,10 +1735,121 @@ function PassengerDetails() {
                 </div>
             </div>
             <div className='passenger-details__form-wrapper'>
-                <h2 className='passenger-details__form-title'>
-                    <IoPersonCircle />
-                    Passenger Information
-                </h2>
+                {/* Booking Error Display */}
+                {validationErrors.some(error => error.field === 'booking') && (
+                    <div className='mb-6 p-4 bg-red-50 border border-red-200 rounded-lg'>
+                        <div className='flex items-start'>
+                            <div className='flex-shrink-0'>
+                                <svg className='h-5 w-5 text-red-400' viewBox='0 0 20 20' fill='currentColor'>
+                                    <path fillRule='evenodd' d='M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z' clipRule='evenodd' />
+                                </svg>
+                            </div>
+                            <div className='ml-3'>
+                                <h3 className='text-sm font-medium text-red-800'>
+                                    Booking Error
+                                </h3>
+                                <div className='mt-2 text-sm text-red-700'>
+                                    {validationErrors
+                                        .filter(error => error.field === 'booking')
+                                        .map((error, index) => (
+                                            <p key={index}>{error.message}</p>
+                                        ))
+                                    }
+                                </div>
+                                <div className='mt-3'>
+                                    <button
+                                        type='button'
+                                        onClick={() => setValidationErrors(prev => prev.filter(error => error.field !== 'booking'))}
+                                        className='text-sm font-medium text-red-800 hover:text-red-600 underline'
+                                    >
+                                        Dismiss
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                <div className='flex justify-between items-center mb-4'>
+                    <h2 className='passenger-details__form-title'>
+                        <IoPersonCircle />
+                        Passenger Information
+                    </h2>
+                    <div className='flex gap-2'>
+                        <button
+                            type='button'
+                            onClick={() => {
+                                if (confirm('Clear all passenger data and start fresh?')) {
+                                    setPassengers(prev => prev.map(p => ({
+                                        ...p,
+                                        name: { firstName: '', lastName: '' },
+                                        dateOfBirth: '',
+                                        gender: '',
+                                        title: '',
+                                        contact: p.type === 'ADULT' ? {
+                                            emailAddress: '',
+                                            phones: [{ deviceType: 'MOBILE', countryCallingCode: '63', number: '' }]
+                                        } : undefined,
+                                        documents: [{
+                                            ...p.documents[0],
+                                            number: '',
+                                            expiryDate: '',
+                                            issuanceDate: '',
+                                            birthPlace: '',
+                                            issuanceLocation: ''
+                                        }]
+                                    })))
+                                }
+                            }}
+                            className='px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors'
+                        >
+                            Clear All
+                        </button>
+                        <button
+                            type='button'
+                            onClick={() => {
+                                setPassengers(prev => prev.map((p) => {
+                                    const isAdult = p.type === 'ADULT'
+                                    return {
+                                        ...p,
+                                        name: {
+                                            firstName: isAdult ? 'John' : 'Jane',
+                                            lastName: 'Doe',
+                                        },
+                                        dateOfBirth: isAdult ? '1990-01-15' : '2015-06-20',
+                                        gender: isAdult ? 'MALE' : 'FEMALE',
+                                        title: isAdult ? 'MR' : '',
+                                        contact: isAdult ? {
+                                            emailAddress: 'test@example.com',
+                                            phones: [{
+                                                deviceType: 'MOBILE',
+                                                countryCallingCode: '63',
+                                                number: '9123456789',
+                                            }]
+                                        } : undefined,
+                                        documents: [{
+                                            ...p.documents[0],
+                                            number: isAdult ? 'P1234567' : 'P7654321',
+                                            expiryDate: '2030-12-31',
+                                            issuanceDate: '2020-01-15',
+                                            birthPlace: 'Manila',
+                                            issuanceLocation: 'Manila'
+                                        }]
+                                    }
+                                }))
+                            }}
+                            className='px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors'
+                        >
+                            Fill Test Data
+                        </button>
+                    </div>
+                </div>
+                <div className='mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg'>
+                    <p className='text-sm text-yellow-800'>
+                        <strong>Testing Mode:</strong> Form is pre-filled with valid test data. 
+                        You can modify any field or use the buttons above to clear/fill data.
+                    </p>
+                </div>
                 <PassengerForm
                     passengers={passengers}
                     handleChange={handleChange}
@@ -1665,41 +1859,90 @@ function PassengerDetails() {
             </div>
 
             {/* Terms and Conditions Section */}
-            <div className="terms-section">
-                <h3 className="terms-title">Terms and Conditions</h3>
-                <div className="terms-content">
-                    <div className="terms-text">
-                        <p><strong>Important Travel Information:</strong></p>
-                        <ul>
-                            <li>All Guests, including children and infants, must present valid identification at check-in.</li>
-                            <li>Check-in begins 3 hours prior to the flight for seat assignment and closes 75 minutes prior to the scheduled departure.</li>
-                            <li>Carriage and other services provided by the carrier are subject to conditions of carriage, which are hereby incorporated by reference. These conditions may be obtained from the issuing carrier.</li>
-                            <li>Transportation and other services provided by the carrier are subjected to conditions of contract and other important notices. Please ensure that you have received these notices, and if not, contact the booking partner or issuing carrier to obtain a copy prior to the commencement of your trip.</li>
-                            <li>If the passenger journey involves an ultimate destination or stop in a country other than the country of departure, the Warsaw Convention may be applicable and this convention governs and on most case limits the liability of carriers for death or personal injury and in respect of loss of or damage to baggage.</li>
-                            <li>Please check the figures / timings as they may change time to time without any notice to the passenger.</li>
-                            <li>For Infants valid birth certificate is required.</li>
-                        </ul>
+            <div className='mt-6 p-6 bg-yellow-50 rounded-lg border border-yellow-200 max-w-[1200px] mx-auto'>
+                <div className='flex items-start space-x-3'>
+                    <input
+                        type='checkbox'
+                        id='terms-checkbox'
+                        checked={termsAccepted}
+                        onChange={(e) => setTermsAccepted(e.target.checked)}
+                        className='mt-1 h-5 w-5 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded'
+                    />
+                    <label htmlFor='terms-checkbox' className='text-sm text-gray-700'>
+                        I have read and agree to the{' '}
+                        <button
+                            type='button'
+                            onClick={() => setShowTermsModal(true)}
+                            className='text-yellow-600 hover:text-yellow-800 underline font-semibold'
+                        >
+                            Terms and Conditions
+                        </button>
+                    </label>
+                </div>
+                {validationErrors.some(error => error.field === 'terms') && (
+                    <div className='mt-2 text-red-600 text-sm font-medium flex items-center gap-2'>
+                        <i className='bi-exclamation-triangle text-red-500'></i>
+                        {validationErrors.find(error => error.field === 'terms')?.message}
                     </div>
-                    <div className="terms-checkbox">
-                        <label className="checkbox-label">
-                            <input
-                                type="checkbox"
-                                checked={termsAccepted}
-                                onChange={(e) => setTermsAccepted(e.target.checked)}
-                                className="checkbox-input"
-                            />
-                            <span className="checkbox-text">
-                                I have read and agree to the terms and conditions above
-                            </span>
-                        </label>
-                        {validationErrors.some(error => error.field === 'terms') && (
-                            <div className="error-message">
-                                {validationErrors.find(error => error.field === 'terms')?.message}
-                            </div>
-                        )}
+                )}
+            </div>
+
+            {/* Terms and Conditions Modal */}
+            <Modal
+                isOpen={showTermsModal}
+                onRequestClose={() => setShowTermsModal(false)}
+                className='modal'
+                overlayClassName='modal__overlay'
+            >
+                <div className='bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden'>
+                    <div className='flex justify-between items-center p-6 border-b'>
+                        <h2 className='text-2xl font-bold text-gray-900'>Terms and Conditions</h2>
+                        <button
+                            onClick={() => setShowTermsModal(false)}
+                            className='text-gray-400 hover:text-gray-600 text-2xl'
+                        >
+                            ×
+                        </button>
+                    </div>
+                    <div className='p-6 overflow-y-auto max-h-[70vh]'>
+                        <div className='prose max-w-none text-sm text-gray-700 space-y-4'>
+                            {/* Flight Terms */}
+                            <section>
+                                <h3 className='text-lg font-semibold text-gray-900'>Important Travel Information</h3>
+                                <ul className='list-disc pl-6 space-y-1'>
+                                    <li>All Guests, including children and infants, must present valid identification at check-in.</li>
+                                    <li>Check-in begins 3 hours prior to the flight for seat assignment and closes 75 minutes prior to the scheduled departure.</li>
+                                    <li>Carriage and other services provided by the carrier are subject to conditions of carriage, which are hereby incorporated by reference. These conditions may be obtained from the issuing carrier.</li>
+                                    <li>Transportation and other services provided by the carrier are subjected to conditions of contract and other important notices. Please ensure that you have received these notices, and if not, contact the booking partner or issuing carrier to obtain a copy prior to the commencement of your trip.</li>
+                                    <li>If the passenger journey involves an ultimate destination or stop in a country other than the country of departure, the Warsaw Convention may be applicable and this convention governs and on most case limits the liability of carriers for death or personal injury and in respect of loss of or damage to baggage.</li>
+                                    <li>Please check the figures / timings as they may change time to time without any notice to the passenger.</li>
+                                    <li>For Infants valid birth certificate is required.</li>
+                                </ul>
+                            </section>
+
+                            {/* Ticketing Agreement Information */}
+                            <section>
+                                <h3 className='text-lg font-semibold text-gray-900'>Ticketing Agreement</h3>
+                                <p>By proceeding with this booking, you agree to the following ticketing terms:</p>
+                                <ul className='list-disc pl-6 space-y-1'>
+                                    <li><strong>Automatic Cancellation:</strong> If payment is not completed within 6 days of booking, your reservation will be automatically cancelled.</li>
+                                    <li><strong>Cancellation Time:</strong> The cancellation will occur at 00:00 (midnight) local time on the 6th day if no time is specified.</li>
+                                    <li><strong>Ticket Issuance:</strong> Tickets will be issued immediately upon successful payment confirmation.</li>
+                                    <li><strong>Important:</strong> Please ensure payment is completed promptly to secure your booking and prevent automatic cancellation.</li>
+                                </ul>
+                            </section>
+                        </div>
+                    </div>
+                    <div className='flex justify-end p-6 border-t'>
+                        <button
+                            onClick={() => setShowTermsModal(false)}
+                            className='px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700'
+                        >
+                            Close
+                        </button>
                     </div>
                 </div>
-            </div>
+            </Modal>
 
             <PrimaryButton
                 onClick={() => handleSubmit()}
