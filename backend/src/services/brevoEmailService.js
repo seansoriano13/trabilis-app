@@ -116,9 +116,10 @@ export const formatToLongDate = (date) => {
 // Reusable HTML -> PDF buffer generator using headless Chromium
 async function createPdfFromHtml(html) {
     let browser
+    const isProduction = process.env.NODE_ENV === 'production'
+    
     try {
         // Render-friendly Puppeteer launch options
-        const isProduction = process.env.NODE_ENV === 'production'
         const userDataDir = process.env.PUPPETEER_USER_DATA_DIR || '/tmp/puppeteer-user-data'
         const useSystemChrome = process.env.PUPPETEER_USE_SYSTEM_CHROME === 'true'
         const envExecutablePath = useSystemChrome ? process.env.PUPPETEER_EXECUTABLE_PATH : undefined
