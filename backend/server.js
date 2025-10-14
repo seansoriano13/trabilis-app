@@ -112,6 +112,15 @@ app.use('/api/v1/webhooks', webhookRoutes)
 
 app.use(express.json())
 
+// Add to server.js - doesn't touch existing code
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'ok', 
+        memory: process.memoryUsage(),
+        uptime: process.uptime()
+    })
+})
+
 app.use('/api/v1/flights', flightRoutes)
 app.use('/api/v1/bookings', bookingRoutes)
 app.use('/api/v1/destinations', tourRoutes)

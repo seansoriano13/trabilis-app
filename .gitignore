@@ -30,6 +30,7 @@ lerna-debug.log*
 /backend/test-outputs/
 /backend/test-*.png
 /backend/test-*.jpg
+/backend/test-*.pdf
 *.test.local.*
 
 # Database files
@@ -89,3 +90,15 @@ trabilis.sql
 *.tmp
 *.temp
 .cache/
+
+# Puppeteer and PDF generation
+/backend/test-pdfs/
+/backend/puppeteer-user-data/
+
+# Production environment files
+.env.production
+.env.staging
+
+# Deployment files (keep documentation, ignore sensitive configs)
+/deployment-configs/
+/secrets/

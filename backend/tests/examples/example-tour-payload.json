@@ -1,0 +1,117 @@
+{
+  "bookingReference": "TRB-TOUR-EXAMPLE123",
+  "email": "example@test.com",
+  "firstName": "Alice",
+  "lastName": "Johnson",
+  "phone": "+63-912-345-6789",
+  "tourTitle": "Breathtaking Boracay Adventure",
+  "startDate": "2024-04-10",
+  "endDate": "2024-04-15",
+  "passengerCount": 3,
+  "passengers": [
+    {
+      "name": { "firstName": "Alice", "lastName": "Johnson" },
+      "type": "Adult",
+      "contact": { "emailAddress": "example@test.com" },
+      "dateOfBirth": "1985-03-15"
+    },
+    {
+      "name": { "firstName": "Bob", "lastName": "Johnson" },
+      "type": "Adult",
+      "contact": { "emailAddress": "bob@test.com" },
+      "dateOfBirth": "1987-07-22"
+    },
+    {
+      "name": { "firstName": "Charlie", "lastName": "Johnson" },
+      "type": "Child",
+      "contact": { "emailAddress": "charlie@test.com" },
+      "dateOfBirth": "2015-11-08"
+    }
+  ],
+  "paymentType": "RESERVATION",
+  "amount": "₱75,000.00",
+  "reservationAmount": "₱25,000.00",
+  "status": "CONFIRMED",
+  "inclusions": [
+    "Round-trip airport transfers",
+    "4 nights accommodation at 4-star beachfront resort",
+    "Daily breakfast buffet",
+    "Welcome dinner with live entertainment",
+    "Island hopping tour with lunch",
+    "Sunset sailing experience",
+    "Professional tour guide",
+    "All entrance fees and permits",
+    "Complimentary welcome drinks"
+  ],
+  "exclusions": [
+    "International flights to/from Manila",
+    "Domestic flights Manila-Boracay-Manila",
+    "Personal expenses and shopping",
+    "Optional activities and tours",
+    "Travel insurance",
+    "Tips and gratuities",
+    "Alcoholic beverages (except welcome drinks)",
+    "Spa treatments and massages"
+  ],
+  "notes": [
+    "Check-in time: 2:00 PM, Check-out time: 12:00 PM",
+    "Bring swimwear, sunscreen, and comfortable beach attire",
+    "Camera recommended for beautiful sunset photos",
+    "Resort provides beach towels and basic amenities",
+    "WiFi available in all public areas"
+  ],
+  "requirements": [
+    "Valid passport (minimum 6 months validity)",
+    "Travel insurance (highly recommended)",
+    "Vaccination certificate if required by destination",
+    "Emergency contact information",
+    "Medical clearance for water activities (if applicable)"
+  ],
+  "paymentTerms": [
+    "Reservation deposit: ₱25,000 per person (non-refundable)",
+    "Full payment due 30 days before departure",
+    "Cancellation policy: 75% refund if cancelled 30+ days before",
+    "50% refund if cancelled 15-29 days before departure",
+    "No refund for cancellations within 14 days",
+    "Name changes subject to airline policies and fees"
+  ],
+  "itinerary": [
+    {
+      "day_number": 1,
+      "title": "Arrival in Paradise",
+      "description": "Welcome to Boracay! Airport pickup and scenic boat transfer to the island. Check into your beachfront resort and enjoy a welcome dinner with traditional Filipino cuisine and cultural show.",
+      "image_url": "https://example.com/boracay-day1.jpg"
+    },
+    {
+      "day_number": 2,
+      "title": "White Beach Exploration",
+      "description": "Start your day with a delicious breakfast buffet overlooking the crystal-clear waters. Spend the morning relaxing on the famous White Beach, known for its powdery white sand. Afternoon island orientation and optional water sports.",
+      "image_url": "https://example.com/boracay-day2.jpg"
+    },
+    {
+      "day_number": 3,
+      "title": "Island Hopping Adventure",
+      "description": "Full-day island hopping tour visiting Puka Beach, Crocodile Island, and Magic Island. Enjoy snorkeling in pristine waters, cliff jumping, and a delicious seafood lunch on the boat. Return to resort for sunset viewing.",
+      "image_url": "https://example.com/boracay-day3.jpg"
+    },
+    {
+      "day_number": 4,
+      "title": "Sunset Sailing & Free Time",
+      "description": "Morning at leisure to explore the island or relax at the resort. Afternoon sunset sailing experience on a traditional paraw boat. Evening free time to enjoy Boracay's vibrant nightlife and shopping.",
+      "image_url": "https://example.com/boracay-day4.jpg"
+    },
+    {
+      "day_number": 5,
+      "title": "Departure",
+      "description": "Final breakfast at the resort and check-out. Transfer to the pier for boat ride back to mainland, then to the airport for your departure flight. Take home unforgettable memories of paradise!",
+      "image_url": "https://example.com/boracay-day5.jpg"
+    }
+  ],
+  "tourDescription": "Discover the world-famous Boracay Island with our exclusive 5-day adventure package. Experience pristine white sand beaches, crystal-clear turquoise waters, and vibrant island culture. This comprehensive tour includes luxury beachfront accommodation, exciting island hopping, sunset sailing, and authentic Filipino experiences that will create memories to last a lifetime.",
+  "package_date_id": 789,
+  "tour_package_id": 456,
+  "totalSlots": 15,
+  "availableSlots": 12,
+  "created_at": "2024-01-15T10:30:00.000Z",
+  "updated_at": "2024-01-15T10:30:00.000Z"
+}

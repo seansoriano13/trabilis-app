@@ -117,47 +117,51 @@ export const formatToLongDate = (date) => {
 async function createPdfFromHtml(html) {
     let browser
     try {
-        console.log('🔍 PUPPETEER DEBUG - Starting PDF generation')
-        
         // Render-friendly Puppeteer launch options
         const isProduction = process.env.NODE_ENV === 'production'
         const userDataDir = process.env.PUPPETEER_USER_DATA_DIR || '/tmp/puppeteer-user-data'
         const useSystemChrome = process.env.PUPPETEER_USE_SYSTEM_CHROME === 'true'
         const envExecutablePath = useSystemChrome ? process.env.PUPPETEER_EXECUTABLE_PATH : undefined
         
-        console.log('🔍 PUPPETEER DEBUG - Environment check:', {
-            NODE_ENV: process.env.NODE_ENV,
-            isProduction,
-            userDataDir,
-            useSystemChrome,
-            envExecutablePath,
-            RENDER: !!process.env.RENDER,
-            RENDER_EXTERNAL_URL: process.env.RENDER_EXTERNAL_URL
-        })
+        if (!isProduction) {
+            console.log('🔍 PUPPETEER DEBUG - Starting PDF generation')
+            console.log('🔍 PUPPETEER DEBUG - Environment check:', {
+                NODE_ENV: process.env.NODE_ENV,
+                isProduction,
+                userDataDir,
+                useSystemChrome,
+                envExecutablePath,
+                RENDER: !!process.env.RENDER,
+                RENDER_EXTERNAL_URL: process.env.RENDER_EXTERNAL_URL
+            })
+        }
         
         let resolvedExecutablePath
         if (isProduction) {
-            console.log('🔍 PUPPETEER DEBUG - Getting Chromium executable path for production')
             try {
                 resolvedExecutablePath = await chromium.executablePath()
-                console.log('🔍 PUPPETEER DEBUG - Chromium path resolved:', resolvedExecutablePath)
             } catch (chromiumError) {
-                console.error('❌ PUPPETEER DEBUG - Chromium path resolution failed:', chromiumError.message)
+                console.error('❌ Chromium path resolution failed:', chromiumError.message)
                 resolvedExecutablePath = puppeteer.executablePath()
-                console.log('🔍 PUPPETEER DEBUG - Fallback to Puppeteer path:', resolvedExecutablePath)
             }
         } else if (envExecutablePath) {
             try {
                 await fs.access(envExecutablePath)
                 resolvedExecutablePath = envExecutablePath
-                console.log('🔍 PUPPETEER DEBUG - Using custom executable path:', resolvedExecutablePath)
+                if (!isProduction) {
+                    console.log('🔍 PUPPETEER DEBUG - Using custom executable path:', resolvedExecutablePath)
+                }
             } catch {
                 resolvedExecutablePath = puppeteer.executablePath()
-                console.log('🔍 PUPPETEER DEBUG - Custom path not accessible, using Puppeteer path:', resolvedExecutablePath)
+                if (!isProduction) {
+                    console.log('🔍 PUPPETEER DEBUG - Custom path not accessible, using Puppeteer path:', resolvedExecutablePath)
+                }
             }
         } else {
             resolvedExecutablePath = puppeteer.executablePath()
-            console.log('🔍 PUPPETEER DEBUG - Using default Puppeteer path:', resolvedExecutablePath)
+            if (!isProduction) {
+                console.log('🔍 PUPPETEER DEBUG - Using default Puppeteer path:', resolvedExecutablePath)
+            }
         }
 
         // Render-specific args for better compatibility
@@ -183,21 +187,25 @@ async function createPdfFromHtml(html) {
             '--disable-images',
             '--disable-javascript',
             '--memory-pressure-off',
-            '--max_old_space_size=4096'
+            '--max_old_space_size=512'
         ]
         
         const launchArgs = isProduction ? [...chromium.args, ...renderArgs] : renderArgs
         
-        console.log('🔍 PUPPETEER DEBUG - Launch configuration:', {
-            headless: 'new',
-            argsCount: launchArgs.length,
-            userDataDir,
-            executablePath: resolvedExecutablePath,
-            isProduction
-        })
+        if (!isProduction) {
+            console.log('🔍 PUPPETEER DEBUG - Launch configuration:', {
+                headless: 'new',
+                argsCount: launchArgs.length,
+                userDataDir,
+                executablePath: resolvedExecutablePath,
+                isProduction
+            })
+        }
 
         try {
-            console.log('🔍 PUPPETEER DEBUG - Attempting browser launch')
+            if (!isProduction) {
+                console.log('🔍 PUPPETEER DEBUG - Attempting browser launch')
+            }
             browser = await puppeteer.launch({
                 headless: 'new',
                 args: launchArgs,
@@ -206,10 +214,14 @@ async function createPdfFromHtml(html) {
                 executablePath: resolvedExecutablePath,
                 timeout: 30000, // 30 second timeout
             })
-            console.log('✅ PUPPETEER DEBUG - Browser launched successfully')
+            if (!isProduction) {
+                console.log('✅ PUPPETEER DEBUG - Browser launched successfully')
+            }
         } catch (launchErr) {
-            console.error('❌ PUPPETEER DEBUG - First launch attempt failed:', launchErr.message)
-            console.log('🔍 PUPPETEER DEBUG - Attempting fallback launch without explicit executablePath')
+            console.error('❌ Browser launch failed:', launchErr.message)
+            if (!isProduction) {
+                console.log('🔍 PUPPETEER DEBUG - Attempting fallback launch without explicit executablePath')
+            }
             
             // Fallback: try without explicit executablePath (let Puppeteer resolve bundled Chrome)
             browser = await puppeteer.launch({
@@ -219,14 +231,20 @@ async function createPdfFromHtml(html) {
                 userDataDir,
                 timeout: 30000,
             })
-            console.log('✅ PUPPETEER DEBUG - Fallback browser launch successful')
+            if (!isProduction) {
+                console.log('✅ PUPPETEER DEBUG - Fallback browser launch successful')
+            }
         }
         const page = await browser.newPage()
-        console.log('✅ PUPPETEER DEBUG - New page created')
+        if (!isProduction) {
+            console.log('✅ PUPPETEER DEBUG - New page created')
+        }
         
         // Set real Chrome user-agent and headers for better image loading
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
-        console.log('✅ PUPPETEER DEBUG - User agent set')
+        if (!isProduction) {
+            console.log('✅ PUPPETEER DEBUG - User agent set')
+        }
         
         // Set extra headers including Referer for kiwi.com images
         await page.setExtraHTTPHeaders({
@@ -235,7 +253,9 @@ async function createPdfFromHtml(html) {
             'Accept-Language': 'en-US,en;q=0.9',
             'Cache-Control': 'no-cache',
         })
-        console.log('✅ PUPPETEER DEBUG - HTTP headers set')
+        if (!isProduction) {
+            console.log('✅ PUPPETEER DEBUG - HTTP headers set')
+        }
         
         // Ensure UTF-8 charset and base styles are respected
         const normalizedHtml = html.includes('<meta charset="utf-8"')
@@ -245,18 +265,26 @@ async function createPdfFromHtml(html) {
                   '<head><meta charset="utf-8">'
               )
         
-        console.log('🔍 PUPPETEER DEBUG - HTML prepared, length:', normalizedHtml.length)
+        if (!isProduction) {
+            console.log('🔍 PUPPETEER DEBUG - HTML prepared, length:', normalizedHtml.length)
+        }
         
         // Load content with networkidle0 to wait for all resources
-        console.log('🔍 PUPPETEER DEBUG - Loading HTML content')
+        if (!isProduction) {
+            console.log('🔍 PUPPETEER DEBUG - Loading HTML content')
+        }
         await page.setContent(normalizedHtml, { 
             waitUntil: 'networkidle0',
             timeout: 30000 // 30 second timeout for image loading
         })
-        console.log('✅ PUPPETEER DEBUG - HTML content loaded')
+        if (!isProduction) {
+            console.log('✅ PUPPETEER DEBUG - HTML content loaded')
+        }
         
         // Wait for all images to load completely
-        console.log('🔍 PUPPETEER DEBUG - Waiting for images to load')
+        if (!isProduction) {
+            console.log('🔍 PUPPETEER DEBUG - Waiting for images to load')
+        }
         await page.evaluate(() => {
             return Promise.all(
                 Array.from(document.images)
@@ -266,33 +294,47 @@ async function createPdfFromHtml(html) {
                     }))
             )
         })
-        console.log('✅ PUPPETEER DEBUG - Images loaded')
+        if (!isProduction) {
+            console.log('✅ PUPPETEER DEBUG - Images loaded')
+        }
         
         // Additional wait to ensure all images are fully rendered
         await new Promise(resolve => setTimeout(resolve, 2000))
-        console.log('✅ PUPPETEER DEBUG - Additional render wait completed')
+        if (!isProduction) {
+            console.log('✅ PUPPETEER DEBUG - Additional render wait completed')
+        }
         
-        console.log('🔍 PUPPETEER DEBUG - Generating PDF')
+        if (!isProduction) {
+            console.log('🔍 PUPPETEER DEBUG - Generating PDF')
+        }
         const pdfBuffer = await page.pdf({
             format: 'A4',
             printBackground: true,
             preferCSSPageSize: false,
             margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' },
         })
-        console.log('✅ PUPPETEER DEBUG - PDF generated successfully, size:', pdfBuffer.length, 'bytes')
+        if (!isProduction) {
+            console.log('✅ PUPPETEER DEBUG - PDF generated successfully, size:', pdfBuffer.length, 'bytes')
+        }
         
         await page.close()
-        console.log('✅ PUPPETEER DEBUG - Page closed')
+        if (!isProduction) {
+            console.log('✅ PUPPETEER DEBUG - Page closed')
+        }
         
         return pdfBuffer
     } finally {
         if (browser) {
-            console.log('🔍 PUPPETEER DEBUG - Closing browser')
+            if (!isProduction) {
+                console.log('🔍 PUPPETEER DEBUG - Closing browser')
+            }
             try {
                 await browser.close()
-                console.log('✅ PUPPETEER DEBUG - Browser closed successfully')
+                if (!isProduction) {
+                    console.log('✅ PUPPETEER DEBUG - Browser closed successfully')
+                }
             } catch (closeError) {
-                console.error('❌ PUPPETEER DEBUG - Error closing browser:', closeError.message)
+                console.error('❌ Error closing browser:', closeError.message)
             }
         }
     }
@@ -736,7 +778,7 @@ export const sendConfirmationEmail = async (bookingReference) => {
         }]
 
         const data = await apiInstance.sendTransacEmail(sendSmtpEmail)
-        console.log('✅ Flight confirmation email sent via Brevo API:', data)
+        console.log('✅ Flight confirmation email sent via Brevo API:', data.response.statusMessage)
     } catch (err) {
         console.error('❌ Error sending flight confirmation email:', err)
         throw err
