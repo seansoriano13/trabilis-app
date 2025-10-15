@@ -272,7 +272,7 @@ const AdminVisa = () => {
             'APPROVED': { color: 'approved', label: 'Approved' },
             'REJECTED': { color: 'rejected', label: 'Rejected' },
             'CANCELLED': { color: 'cancelled', label: 'Cancelled' },
-            'COMPLETED': { color: 'completed', label: 'Completed' }
+            'COMPLETED': { color: 'completed', label: 'Approved' }
         }
         
         const config = statusConfig[status] || { color: 'default', label: status }
@@ -287,7 +287,7 @@ const AdminVisa = () => {
         const statusConfig = {
             'pending': { color: 'pending', label: 'Pending' },
             'in_progress': { color: 'in-progress', label: 'In Progress' },
-            'completed': { color: 'completed', label: 'Completed' }
+            'completed': { color: 'completed', label: 'Approved' }
         }
         
         const config = statusConfig[assignmentStatus] || { color: 'default', label: assignmentStatus }
@@ -388,7 +388,7 @@ const AdminVisa = () => {
                             </div>
                             <div className="stat-content">
                                 <h3>{inquiries?.filter(i => i.status === 'COMPLETED').length || 0}</h3>
-                                <p>Completed</p>
+                                <p>Approved</p>
                             </div>
                         </div>
                     </div>

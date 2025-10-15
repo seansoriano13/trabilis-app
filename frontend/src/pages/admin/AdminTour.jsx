@@ -86,7 +86,7 @@ const AdminTours = () => {
     const assignmentStatusOptions = [
         { value: 'pending', label: 'Pending' },
         { value: 'in_progress', label: 'In Progress' },
-        { value: 'completed', label: 'Completed' },
+        { value: 'completed', label: 'Approved' },
     ]
     
     // const dateRangeOptions = [
@@ -620,7 +620,7 @@ const AdminTours = () => {
                                     <option value='All'>All Assignments</option>
                                     <option value='pending'>Pending</option>
                                     <option value='in_progress'>In Progress</option>
-                                    <option value='completed'>Completed</option>
+                                    <option value='completed'>Approved</option>
                                 </select>
                             </div>
                             <div className='tours__filter-group'>
