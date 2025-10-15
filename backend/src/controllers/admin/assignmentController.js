@@ -106,23 +106,6 @@ export const assignBooking = async (req, res) => {
             console.error('Staff lookup error:', staffError)
         }
 
-        // Create notification
-        const notificationMessage = getNotificationMessage(bookingType, bookingReference, booking)
-        const { error: notificationError } = await supabase
-            .from('admin_notifications')
-            .insert([{
-                type: getNotificationType(bookingType),
-                message: notificationMessage,
-                booking_reference: bookingReference,
-                assigned_to: assignedTo,
-                assigned_by: assignedById,
-                booking_type: bookingType,
-                created_at: new Date().toISOString()
-            }])
-
-        if (notificationError) {
-            console.error('Notification insert error:', notificationError)
-        }
 
         // Send real-time notification
         const pusherData = getPusherData(bookingType, booking, bookingId, assignedTo)

@@ -1,6 +1,7 @@
 // AdminTour.jsx
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useSnackbar } from '../../context/SnackbarContext'
 import { 
     FiMap, 
     FiUsers, 
@@ -27,6 +28,7 @@ import AssignmentModal from '../../components/admin/AssignmentModal'
 import adminClient from '../../api/adminClient'
 
 const AdminTours = () => {
+    const { showSuccess, showError } = useSnackbar()
     const [tourBookings, setTourBookings] = useState([])
     const [tourStats, setTourStats] = useState({})
     const [page, setPage] = useState(0)
@@ -478,16 +480,16 @@ const AdminTours = () => {
                     )
                 )
                 handleCloseModal()
-                alert('Tour booking updated successfully!')
+                showSuccess('Tour booking updated successfully!')
             } else {
-                alert('Failed to update tour booking')
+                showError('Failed to update tour booking')
             }
         } catch (error) {
             console.error('Error updating tour booking:', error)
             if (error.response?.data?.error) {
-                alert(`Error: ${error.response.data.error}`)
+                showError(`Error: ${error.response.data.error}`)
             } else {
-                alert('Error updating tour booking. Please try again.')
+                showError('Error updating tour booking. Please try again.')
             }
         } finally {
             setEditLoading(false)

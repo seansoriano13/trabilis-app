@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useSnackbar } from '../../context/SnackbarContext'
 import { IoChevronBack } from 'react-icons/io5'
 import AdminPrimaryButton from '../../components/admin/AdminPrimaryButton'
 import adminClient from '../../api/adminClient.js'
@@ -132,6 +133,7 @@ const EditDateGroup = ({
 function EditTourPackage() {
     const { id } = useParams()
     const navigate = useNavigate()
+    const { showError } = useSnackbar()
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -729,12 +731,12 @@ function EditTourPackage() {
         const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
         
         if (file.size > maxSize) {
-            alert('Image file too large. Maximum size is 10MB.')
+            showError('Image file too large. Maximum size is 10MB.')
             return
         }
         
         if (!allowedTypes.includes(file.type)) {
-            alert('Unsupported image format. Please use JPEG, PNG, or WebP.')
+            showError('Unsupported image format. Please use JPEG, PNG, or WebP.')
             return
         }
         
@@ -765,7 +767,7 @@ function EditTourPackage() {
         } catch (error) {
             console.error('Error uploading image:', error)
             const errorMessage = error.response?.data?.error || error.message || 'Failed to upload image'
-            alert(`Image upload failed: ${errorMessage}. Please check your file size (max 10MB) and format (JPEG, PNG, WebP only).`)
+            showError(`Image upload failed: ${errorMessage}. Please check your file size (max 10MB) and format (JPEG, PNG, WebP only).`)
         }
     }
 

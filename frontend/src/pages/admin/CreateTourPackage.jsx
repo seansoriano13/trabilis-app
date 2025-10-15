@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { IoChevronBack, IoChevronDown, IoChevronUp } from 'react-icons/io5'
+import { useSnackbar } from '../../context/SnackbarContext'
 import adminClient from '../../api/adminClient.js'
 import axios from 'axios'
 import AsyncSelect from 'react-select/async'
@@ -173,6 +174,7 @@ export const DateGroup = ({
 )
 
 function CreateTourPackage() {
+    const { showError, showSuccess } = useSnackbar()
     const CATEGORY_OPTIONS = [
         'Air Travel',
         'Transfers',
@@ -562,7 +564,7 @@ function CreateTourPackage() {
             }
         } catch (error) {
             console.error('Error uploading image:', error)
-            alert('Failed to upload image. Please try again.')
+            showError('Failed to upload image. Please try again.')
         }
     }
 
@@ -648,7 +650,7 @@ function CreateTourPackage() {
     const handleSubmit = async () => {
         const validationError = validateForm()
         if (validationError) {
-            alert(validationError)
+            showError(validationError)
             return
         }
         setIsSubmitting(true)
@@ -705,11 +707,11 @@ function CreateTourPackage() {
                 }
             }
 
-            alert('Tour package created successfully!')
+            showSuccess('Tour package created successfully!')
             navigate('/admin/tours')
         } catch (error) {
             console.error('Error creating tour:', error)
-            alert('Failed to create tour package.')
+            showError('Failed to create tour package.')
         } finally {
             setIsSubmitting(false)
         }

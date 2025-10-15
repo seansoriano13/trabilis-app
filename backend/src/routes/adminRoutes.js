@@ -145,4 +145,5 @@ router.post('/visa/inquiries/assign', assignVisaInquiry)
 router.put('/visa/inquiries/assignment-status', updateVisaAssignmentStatus)
 router.get('/visa/inquiries/assigned', getAssignedVisaInquiries)
 
+
 export default router

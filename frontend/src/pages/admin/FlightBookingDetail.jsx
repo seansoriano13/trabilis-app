@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useSnackbar } from '../../context/SnackbarContext'
 import {
     BsFillAirplaneFill,
     BsArrowLeft,
@@ -28,6 +29,7 @@ import './FlightBookingDetail.css'
 const FlightBookingDetail = () => {
     const { id } = useParams()
     const navigate = useNavigate()
+    const { showSuccess, showError } = useSnackbar()
     const [booking, setBooking] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
@@ -220,7 +222,7 @@ const FlightBookingDetail = () => {
             }, 10000)
         } catch (error) {
             console.error('Error opening preview:', error)
-            alert('Failed to open preview. Please try again.')
+            showError('Failed to open preview. Please try again.')
         } finally {
             setPreviewLoading(false)
         }
@@ -308,16 +310,16 @@ const FlightBookingDetail = () => {
                 }
 
                 handleCloseEditModal()
-                alert('Booking updated successfully!')
+                showSuccess('Booking updated successfully!')
             } else {
-                alert('Failed to update booking')
+                showError('Failed to update booking')
             }
         } catch (error) {
             console.error('Error updating booking:', error)
             if (error.response?.data?.error) {
-                alert(`Error: ${error.response.data.error}`)
+                showError(`Error: ${error.response.data.error}`)
             } else {
-                alert('Error updating booking. Please try again.')
+                showError('Error updating booking. Please try again.')
             }
         } finally {
             setEditLoading(false)
@@ -418,7 +420,7 @@ const FlightBookingDetail = () => {
             }, 10000)
         } catch (error) {
             console.error('Error opening PDF for admin:', error)
-            alert('Failed to open PDF receipt. Please try again.')
+            showError('Failed to open PDF receipt. Please try again.')
         } finally {
             setPrintLoading(false)
         }

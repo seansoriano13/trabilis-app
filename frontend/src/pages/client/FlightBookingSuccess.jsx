@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import { useSnackbar } from '../../context/SnackbarContext'
 
 function FlightBookingSuccess() {
     const { search } = useLocation()
     const navigate = useNavigate()
+    const { showError } = useSnackbar()
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [bookingDetails, setBookingDetails] = useState(null)
@@ -34,7 +36,7 @@ function FlightBookingSuccess() {
             setLastUpdated(new Date())
 
             if (status.includes('TICKETING_FAILED')) {
-                alert(
+                showError(
                     'Booking failed due to ticketing issues. A refund has been issued. Please try booking again.'
                 )
                 navigate('/flights', {

@@ -18,7 +18,7 @@ import metadataRoutes from './src/routes/metadataRoutes.js'
 import imageUploadRoutes from './src/routes/imageUploadRoutes.js'
 
 import {
-    viewTourBookingHTML,
+    viewTourBookingHTML
 } from './src/controllers/admin/tourController.js'
 
 const app = express()

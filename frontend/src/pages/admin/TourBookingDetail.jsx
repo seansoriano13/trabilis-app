@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import Select from 'react-select'
 import AsyncSelect from 'react-select/async'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useSnackbar } from '../../context/SnackbarContext'
 import { 
     FiMap, 
     FiArrowLeft, 
@@ -37,6 +38,7 @@ import './TourBookingDetail.css'
 const TourBookingDetail = () => {
     const { id } = useParams()
     const navigate = useNavigate()
+    const { showSuccess, showError } = useSnackbar()
     const [booking, setBooking] = useState(null)
     const [packageDetails, setPackageDetails] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -317,7 +319,7 @@ const TourBookingDetail = () => {
             }, 10000)
         } catch (error) {
             console.error('Error opening preview:', error)
-            alert('Failed to open preview. Please try again.')
+            showError('Failed to open preview. Please try again.')
         } finally {
             setPreviewLoading(false)
         }
@@ -377,7 +379,7 @@ const TourBookingDetail = () => {
             }, 10000)
         } catch (error) {
             console.error('Error opening PDF for admin:', error)
-            alert('Failed to open PDF receipt. Please try again.')
+            showError('Failed to open PDF receipt. Please try again.')
         } finally {
             setPrintLoading(false)
         }
@@ -534,13 +536,13 @@ const TourBookingDetail = () => {
                 const parsed = JSON.parse(draftData)
                 setEditForm(parsed)
                 setTripType(parsed.tripType || 'round-trip')
-                alert('Draft loaded successfully!')
+                showSuccess('Draft loaded successfully!')
             } catch (error) {
                 console.error('Error loading draft:', error)
-                alert('Error loading draft. Please try again.')
+                showError('Error loading draft. Please try again.')
             }
         } else {
-            alert('No draft found for this booking.')
+            showError('No draft found for this booking.')
         }
     }
 
@@ -617,7 +619,7 @@ const TourBookingDetail = () => {
             })()
         })
         setTripType('round-trip')
-        alert('Draft cleared! Form reset to original booking data.')
+        showSuccess('Draft cleared! Form reset to original booking data.')
     }
 
     const handleEditFormChange = (field, value) => {
@@ -688,16 +690,16 @@ const TourBookingDetail = () => {
                     setAssignedAdminName('')
                 }
                 handleCloseEditModal()
-                alert('Booking updated successfully!')
+                showSuccess('Booking updated successfully!')
             } else {
-                alert('Failed to update booking')
+                showError('Failed to update booking')
             }
         } catch (error) {
             console.error('Error updating booking:', error)
             if (error.response?.data?.error) {
-                alert(`Error: ${error.response.data.error}`)
+                showError(`Error: ${error.response.data.error}`)
             } else {
-                alert('Error updating booking. Please try again.')
+                showError('Error updating booking. Please try again.')
             }
         } finally {
             setEditLoading(false)

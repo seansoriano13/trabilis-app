@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useSnackbar } from '../../context/SnackbarContext'
 import { 
     FiX, 
     FiUser, 
@@ -25,6 +26,7 @@ const VisaProcessingModal = ({
     bookingId, 
     onStatusUpdate 
 }) => {
+    const { showSuccess, showError } = useSnackbar()
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState(null)
@@ -242,7 +244,7 @@ const VisaProcessingModal = ({
                 onStatusUpdate(formData)
             }
             
-            alert('Visa processing updated successfully!')
+            showSuccess('Visa processing updated successfully!')
         } catch (error) {
             console.error('Error saving visa processing:', error)
             console.error('Error details:', error.response?.data)

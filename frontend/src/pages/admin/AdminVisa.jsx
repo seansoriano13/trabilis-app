@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useSnackbar } from '../../context/SnackbarContext'
 import { 
     FiShield, 
     FiUsers, 
@@ -35,6 +36,7 @@ import adminClient from '../../api/adminClient'
 import AssignmentModal from '../../components/admin/AssignmentModal'
 
 const AdminVisa = () => {
+    const { showInfo } = useSnackbar()
     // Tab state
     const [activeTab, setActiveTab] = useState('inquiries')
     
@@ -496,7 +498,7 @@ const AdminVisa = () => {
                                                         className="action-btn view-btn"
                                                         onClick={() => {
                                                             // TODO: Implement inquiry details modal
-                                                            alert(`View inquiry details for ${inquiry.reference}`)
+                                                            showInfo(`View inquiry details for ${inquiry.reference}`)
                                                         }}
                                                         title="View Details"
                                                     >
@@ -684,7 +686,7 @@ const AdminVisa = () => {
                                                         className="action-btn view-btn"
                                                         onClick={() => {
                                                             // TODO: Open processing details modal
-                                                            alert(`View processing details for #${processing.id}`)
+                                                            showInfo(`View processing details for #${processing.id}`)
                                                         }}
                                                         title="View Details"
                                                     >

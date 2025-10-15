@@ -8,6 +8,7 @@ import './PassengerDetails.css'
 import { IoPersonCircle } from 'react-icons/io5'
 import Select from 'react-select'
 import { formSelectStyles } from '../../styles/client/reactSelectStyles'
+import { useSnackbar } from '../../context/SnackbarContext'
 import PrimaryButton from '../../components/client/PrimaryButton'
 import { formatToYMD } from '../../utils/flightUtils.js'
 import axios from 'axios'
@@ -1131,6 +1132,7 @@ export function PassengerForm({
 
 function PassengerDetails() {
     const { state } = useLocation()
+    const { showError } = useSnackbar()
 
     const [, setPassengerData] = useState(state)
 
@@ -1637,7 +1639,7 @@ function PassengerDetails() {
             
             if (validationErrors.length > 0) {
                 console.error('Validation errors before API call:', validationErrors)
-                alert('Validation errors: ' + validationErrors.join(', '))
+                showError('Validation errors: ' + validationErrors.join(', '))
                 setIsLoading(false)
                 return
             }

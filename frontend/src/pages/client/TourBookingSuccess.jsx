@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import { useSnackbar } from '../../context/SnackbarContext'
 
 function TourBookingSuccess() {
     const { search } = useLocation()
     const navigate = useNavigate()
+    const { showSuccess, showError } = useSnackbar()
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [bookingDetails, setBookingDetails] = useState(null)
@@ -53,7 +55,7 @@ function TourBookingSuccess() {
             setLastUpdated(new Date())
 
             if (status === 'FAILED') {
-                alert(
+                showError(
                     'Tour booking failed. A refund has been issued. Please try booking again.'
                 )
                 navigate('/destinations')
@@ -169,6 +171,7 @@ function TourBookingSuccess() {
                                 {message}
                             </p>
                         </div>
+
 
                         {/* Booking Reference Card */}
                         {bookingReference && (

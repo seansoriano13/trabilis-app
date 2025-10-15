@@ -6,6 +6,7 @@ import Modal from 'react-modal'
 import './TourBooking.css'
 import flightsHeroDesktop from '/images/flights-hero-desktop.jpg'
 import { PassengerForm } from './PassengerDetails.jsx'
+// import { useSnackbar } from '../../context/SnackbarContext' // Available for future use
 
 const PrimaryButton = ({ onClick, className, buttonText, isBold, loading }) => (
     <button
@@ -28,6 +29,8 @@ function TourBooking() {
     const { state } = useLocation()
     const { selectedDateId, passengers, selectedDate, title, tourPackage } = state
     const totalPassengers = passengers.adults + passengers.children
+    // Snackbar available for future use
+    // const { showSuccess, showError, showWarning, showInfo } = useSnackbar()
 
 
     // passengers data like flights (but no documents)
@@ -252,6 +255,7 @@ function TourBooking() {
             </div>
 
             <div className='max-w-[1200px] mx-auto w-screen px-4 lg:px-0 pt-[var(--default-padding-top)] lg:pt-25 md:pt-35 bg-black'>
+                
                 <div className='grid lg:grid-cols-3 gap-6'>
                     <div className='lg:col-span-2'>
                         <div className='bg-white rounded-lg p-6 shadow-sm border border-gray-200'>

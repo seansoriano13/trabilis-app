@@ -1204,17 +1204,6 @@ export const editFlightBooking = async (req, res) => {
             throw updateError
         }
 
-        // Create admin notification for status changes
-        if (status && status !== existingBooking.status) {
-            await supabase.from('admin_notifications').insert({
-                    type: 'booking_status_changed',
-                    message: `Flight booking ${existingBooking.booking_reference} status changed from ${existingBooking.status} to ${status}`,
-                    booking_reference: existingBooking.booking_reference,
-                    booking_type: 'flight',
-                    booking_id: null,
-                created_at: new Date().toISOString(),
-                })
-        }
 
         // Create admin notification for assignment changes
         if (
@@ -1263,16 +1252,6 @@ export const editFlightBooking = async (req, res) => {
                 ? `Flight booking ${existingBooking.booking_reference} reassigned by ${assignerName} to ${assigneeName}`
                 : `Flight booking ${existingBooking.booking_reference} assigned by ${assignerName} to ${assigneeName}`
 
-            await supabase.from('admin_notifications').insert({
-                    type: notifType,
-                    message,
-                    booking_reference: existingBooking.booking_reference,
-                    booking_type: 'flight',
-                    booking_id: null,
-                    assigned_to: assigned_to || null,
-                    assigned_by: req.user?.id || null,
-                created_at: new Date().toISOString(),
-                })
 
             // Trigger realtime event via Pusher
             await pusher.trigger('admin-notifications', notifType, {
@@ -1287,14 +1266,6 @@ export const editFlightBooking = async (req, res) => {
             assignment_status &&
             assignment_status !== existingBooking.assignment_status
         ) {
-            await supabase.from('admin_notifications').insert({
-                    type: 'assignment_status_updated',
-                    message: `Flight booking ${existingBooking.booking_reference} assignment status: ${assignment_status}`,
-                    booking_reference: existingBooking.booking_reference,
-                    booking_type: 'flight',
-                    booking_id: null,
-                created_at: new Date().toISOString(),
-                })
 
             await pusher.trigger(
                 'admin-notifications',
@@ -1391,17 +1362,6 @@ export const cancelFlightBooking = async (req, res) => {
             throw updateError
         }
 
-        // Create admin notification
-        await supabase.from('admin_notifications').insert({
-                type: 'booking_cancelled',
-            message: `Flight booking ${
-                existingBooking.booking_reference
-            } has been cancelled${reason ? ` - Reason: ${reason}` : ''}`,
-                booking_reference: existingBooking.booking_reference,
-                booking_type: 'flight',
-                booking_id: null,
-            created_at: new Date().toISOString(),
-            })
 
         // TODO: Process refund if payment was made
         // This would integrate with Stripe or other payment processor

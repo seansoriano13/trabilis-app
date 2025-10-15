@@ -231,8 +231,8 @@ function TourPackages() {
                                 </div>
                             )}
                             <div className='tour-package-card__status-badge'>
-                                <span className={`tour-package-card__status tour-package-card__status--${tour.status.toLowerCase()}`}>
-                                    {tour.status}
+                                <span className={`tour-package-card__status tour-package-card__status--${(tour.status || 'draft').toLowerCase()}`}>
+                                    {tour.status || 'DRAFT'}
                                 </span>
                             </div>
                         </div>
@@ -266,7 +266,7 @@ function TourPackages() {
                                     <FiEdit3 size={16} />
                                     Edit
                                 </button>
-                                {tour.status === 'DRAFT' && (
+                                {(tour.status || 'DRAFT') === 'DRAFT' && (
                                     <button
                                         className='tour-package-card__button tour-package-card__button--publish'
                                         onClick={() => handlePublishClick(tour.id)}
@@ -286,7 +286,7 @@ function TourPackages() {
                                         )}
                                     </button>
                                 )}
-                                {tour.status === 'PUBLISHED' && (
+                                {(tour.status || 'DRAFT') === 'PUBLISHED' && (
                                     <button
                                         className='tour-package-card__button tour-package-card__button--unpublish'
                                         onClick={() => handleUnpublishClick(tour.id)}
