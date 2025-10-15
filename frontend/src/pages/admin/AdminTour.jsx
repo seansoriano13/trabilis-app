@@ -18,13 +18,15 @@ import {
     FiCalendar,
     FiX,
     FiUser,
-    FiActivity
+    FiActivity,
+    FiEye
 } from 'react-icons/fi'
 import Select from 'react-select'
 import ReactPaginate from 'react-paginate'
 import './AdminTour.css'
 import { supabase } from '../../api/supabaseClient'
 import AssignmentModal from '../../components/admin/AssignmentModal'
+import TourBookingEditModal from '../../components/admin/TourBookingEditModal'
 import adminClient from '../../api/adminClient'
 
 const AdminTours = () => {
@@ -36,6 +38,7 @@ const AdminTours = () => {
     const [loading, setLoading] = useState(true)
     const [searchLoading, setSearchLoading] = useState(false)
     const [error, setError] = useState(null)
+    
     const [sort, setSort] = useState({
         key: 'created_at',
         direction: 'desc',
@@ -62,32 +65,13 @@ const AdminTours = () => {
     
     // Edit modal states
     const [showEditModal, setShowEditModal] = useState(false)
-    const [editLoading, setEditLoading] = useState(false)
-    const [adminOptions, setAdminOptions] = useState([])
-    const [loadingAdmins, setLoadingAdmins] = useState(false)
-    const [editForm, setEditForm] = useState({
-        status: '',
-        assigned_to: '',
-        assignment_status: 'pending',
-    })
     const [selectedBooking, setSelectedBooking] = useState(null)
 
     const pageSize = 20
     const jwt = localStorage.getItem('adminToken')
     const userRole = localStorage.getItem('admin_role')
     
-    // Status options for dropdowns
-    const tourStatusOptions = [
-        { value: 'CONFIRMED', label: 'Confirmed', color: '#28a745' },
-        { value: 'PENDING_PAYMENT', label: 'Pending Payment', color: '#fd7e14' },
-        { value: 'CANCELLED', label: 'Cancelled', color: '#dc3545' }
-    ]
     
-    const assignmentStatusOptions = [
-        { value: 'pending', label: 'Pending' },
-        { value: 'in_progress', label: 'In Progress' },
-        { value: 'completed', label: 'Approved' },
-    ]
     
     // const dateRangeOptions = [
     //     { value: 'All', label: 'All Time' },
@@ -317,7 +301,7 @@ const AdminTours = () => {
         }
 
         fetchData()
-    }, [page, filters, sort, jwt])
+    }, [page, filters, sort, jwt, loading])
 
     const getNestedValue = (obj, path) => {
         return path.split('.').reduce((o, k) => o?.[k], obj) || ''
@@ -365,12 +349,13 @@ const AdminTours = () => {
         setPage(0)
     }
 
-    const handleAssignBooking = (bookingId, bookingReference) => {
+    const handleAssignBooking = (bookingId, bookingReference, currentAssignedStaffId) => {
         setAssignmentModal({
             isOpen: true,
             bookingId,
             bookingReference,
-            bookingType: 'tour'
+            bookingType: 'tour',
+            currentAssignedStaffId: currentAssignedStaffId
         })
     }
 
@@ -383,50 +368,10 @@ const AdminTours = () => {
         )
     }
     
-    // Fetch admin options for assignment dropdown
-    const fetchAdminOptions = async () => {
-        setLoadingAdmins(true)
-        try {
-            // Get all admins with accounting role from Supabase
-            const { data: admins, error } = await supabase
-                .from('admins')
-                .select('id, first_name, last_name, email, role')
-                .eq('role', 'accounting')
-            
-            if (error) {
-                console.error('Error fetching admins:', error)
-                throw error
-            }
-            
-            const options = admins.map((admin) => ({
-                value: admin.id,
-                label: `${admin.first_name} ${admin.last_name} (${admin.email})`,
-                email: admin.email,
-                name: `${admin.first_name} ${admin.last_name}`,
-            }))
-            setAdminOptions(options)
-        } catch (error) {
-            console.error('Error fetching admin options:', error)
-            // Fallback to empty array if there's an error
-            setAdminOptions([])
-        } finally {
-            setLoadingAdmins(false)
-        }
-    }
     
     // Handle edit modal
-    const handleEdit = async (booking) => {
-        await fetchAdminOptions()
+    const handleEdit = (booking) => {
         setSelectedBooking(booking)
-        
-        // Find the assigned staff option from adminOptions
-        // const assignedStaffOption = adminOptions.find(option => option.value === booking.assigned_to)
-        
-        setEditForm({
-            status: booking.status,
-            assigned_to: booking.assigned_to || '',
-            assignment_status: booking.assignment_status || 'pending',
-        })
         setShowEditModal(true)
     }
     
@@ -434,41 +379,14 @@ const AdminTours = () => {
     const handleCloseModal = () => {
         setShowEditModal(false)
         setSelectedBooking(null)
-        setEditForm({
-            status: '',
-            assigned_to: '',
-            assignment_status: 'pending',
-        })
     }
-    
-    // Handle form changes
-    const handleFormChange = (field, value) => {
-        setEditForm((prev) => ({
-            ...prev,
-            [field]: value,
-        }))
-    }
-    
-    // Submit handler
-    const handleEditSubmit = async (e) => {
-        e.preventDefault()
-        setEditLoading(true)
 
+    // Handle edit submit
+    const handleEditSubmit = async (submitData) => {
         try {
-            const submitData = {
-                status: editForm.status,
-                assigned_to: editForm.assigned_to || null,
-                assignment_status: editForm.assignment_status,
-            }
-
-            const response = await adminClient.put(
-                `/tours/${selectedBooking.id}/edit`,
-                submitData
-            )
-
+            const response = await adminClient.put(`/tours/${selectedBooking.id}/edit`, submitData)
             if (response.data.success) {
-                // Update local state
-                setTourBookings((prev) =>
+                setTourBookings(prev =>
                     prev.map((booking) =>
                         booking.id === selectedBooking.id
                             ? {
@@ -479,20 +397,20 @@ const AdminTours = () => {
                             : booking
                     )
                 )
-                handleCloseModal()
-                showSuccess('Tour booking updated successfully!')
+                showSuccess('Booking updated successfully!')
+                return true
             } else {
-                showError('Failed to update tour booking')
+                showError('Failed to update booking')
+                return false
             }
         } catch (error) {
-            console.error('Error updating tour booking:', error)
+            console.error('Error updating booking:', error)
             if (error.response?.data?.error) {
                 showError(`Error: ${error.response.data.error}`)
             } else {
-                showError('Error updating tour booking. Please try again.')
+                showError('Error updating booking. Please try again.')
             }
-        } finally {
-            setEditLoading(false)
+            throw error
         }
     }
 
@@ -941,19 +859,19 @@ const AdminTours = () => {
                                         <div className='tours__actions'>
                                             {userRole === 'admin' && (
                                                 <button 
-                                                    className='tours__action-btn tours__action-btn--assign'
+                                                    className='action-btn assign-btn'
                                                     title='Assign to Accounting'
-                                                    onClick={() => handleAssignBooking(booking.id, booking.booking_reference)}
+                                                    onClick={() => handleAssignBooking(booking.id, booking.booking_reference, booking.assigned_to)}
                                                 >
                                                     <FiUserPlus size={16} />
                                                 </button>
                                             )}
                                             <button 
-                                                className='tours__action-btn tours__action-btn--edit'
+                                                className='action-btn view-btn'
                                                 title='Edit Booking'
                                                 onClick={() => handleEdit(booking)}
                                             >
-                                                <FiEdit size={16} />
+                                                <FiEye size={16} />
                                             </button>
                                         </div>
                                     </td>
@@ -982,117 +900,22 @@ const AdminTours = () => {
             {/* Assignment Modal */}
             <AssignmentModal
                 isOpen={assignmentModal.isOpen}
-                onClose={() => setAssignmentModal({ isOpen: false, bookingId: null, bookingReference: '', bookingType: 'tour' })}
+                onClose={() => setAssignmentModal({ isOpen: false, bookingId: null, bookingReference: '', bookingType: 'tour', currentAssignedStaffId: null })}
                 bookingId={assignmentModal.bookingId}
                 bookingReference={assignmentModal.bookingReference}
                 bookingType={assignmentModal.bookingType}
+                currentAssignedStaffId={assignmentModal.currentAssignedStaffId}
                 onSuccess={handleAssignmentSuccess}
             />
             
             {/* Edit Modal */}
-            {showEditModal && (
-                <div className='modal-overlay' onClick={handleCloseModal}>
-                    <div className='modal-content' onClick={(e) => e.stopPropagation()}>
-                        <div className='modal-header'>
-                            <h3>Edit Tour Booking</h3>
-                            <button
-                                className='modal-close'
-                                onClick={handleCloseModal}
-                                disabled={editLoading}
-                            >
-                                <FiX />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleEditSubmit} className='edit-form'>
-                            <div className='form-group'>
-                                <label htmlFor='status'>Status</label>
-                                <Select
-                                    value={tourStatusOptions.find(
-                                        (option) => option.value === editForm.status
-                                    )}
-                                    onChange={(selectedOption) =>
-                                        handleFormChange('status', selectedOption?.value || '')
-                                    }
-                                    options={tourStatusOptions}
-                                    placeholder='Select status'
-                                    isSearchable={false}
-                                    className='react-select-container'
-                                    classNamePrefix='react-select'
-                                    formatOptionLabel={(option) => (
-                                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                                            <div
-                                                style={{
-                                                    width: 12,
-                                                    height: 12,
-                                                    borderRadius: '50%',
-                                                    backgroundColor: option.color,
-                                                    marginRight: 8,
-                                                }}
-                                            />
-                                            {option.label}
-                                        </div>
-                                    )}
-                                />
-                            </div>
-
-                            <div className='form-group'>
-                                <label htmlFor='assigned_to'>Assigned To</label>
-                                <Select
-                                    value={adminOptions.find(
-                                        (option) => option.value === editForm.assigned_to
-                                    )}
-                                    onChange={(selectedOption) =>
-                                        handleFormChange('assigned_to', selectedOption?.value || '')
-                                    }
-                                    options={adminOptions}
-                                    placeholder={loadingAdmins ? 'Loading admins...' : 'Select admin'}
-                                    isSearchable={true}
-                                    isLoading={loadingAdmins}
-                                    isClearable={true}
-                                    className='react-select-container'
-                                    classNamePrefix='react-select'
-                                />
-                            </div>
-
-                            <div className='form-group'>
-                                <label htmlFor='assignment_status'>Assignment Status</label>
-                                <Select
-                                    value={assignmentStatusOptions.find(
-                                        (option) => option.value === editForm.assignment_status
-                                    )}
-                                    onChange={(selectedOption) =>
-                                        handleFormChange('assignment_status', selectedOption?.value || 'pending')
-                                    }
-                                    options={assignmentStatusOptions}
-                                    placeholder='Select assignment status'
-                                    isSearchable={false}
-                                    className='react-select-container'
-                                    classNamePrefix='react-select'
-                                />
-                            </div>
-
-                            <div className='modal-actions'>
-                                <button
-                                    type='button'
-                                    className='btn btn-secondary'
-                                    onClick={handleCloseModal}
-                                    disabled={editLoading}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type='submit'
-                                    className='btn btn-primary'
-                                    disabled={editLoading}
-                                >
-                                    {editLoading ? 'Updating...' : 'Update Booking'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+            <TourBookingEditModal
+                isOpen={showEditModal}
+                booking={selectedBooking}
+                onClose={handleCloseModal}
+                onSubmit={handleEditSubmit}
+                context="admin"
+            />
         </div>
     )
 }

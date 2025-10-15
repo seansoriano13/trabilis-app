@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useSnackbar } from '../../context/SnackbarContext'
 import { BsFillAirplaneFill } from 'react-icons/bs'
 import { 
     FiUsers, 
@@ -24,9 +25,12 @@ import {
 import ReactPaginate from 'react-paginate'
 import './AdminFlights.css'
 import { supabase } from '../../api/supabaseClient'
+import adminClient from '../../api/adminClient'
 import AssignmentModal from '../../components/admin/AssignmentModal'
+import FlightBookingEditModal from '../../components/admin/FlightBookingEditModal'
 
 const AdminFlights = () => {
+    const { showSuccess, showError } = useSnackbar()
     const [flightBookings, setFlightBookings] = useState([])
     const [flightStats, setFlightStats] = useState({})
     const [page, setPage] = useState(0)
@@ -38,15 +42,29 @@ const AdminFlights = () => {
         key: 'booking_reference',
         direction: 'desc',
     })
-    const [filters, setFilters] = useState({ status: 'All', destination: '', reference: '' })
+    const [filters, setFilters] = useState({ 
+        status: 'All', 
+        destination: '', 
+        reference: '',
+        lead_name: '',
+        lead_email: '',
+        assignment_status: 'All',
+        date_range: 'All'
+    })
     const [searchInput, setSearchInput] = useState('')
     const [referenceInput, setReferenceInput] = useState('')
+    const [leadNameInput, setLeadNameInput] = useState('')
+    const [leadEmailInput, setLeadEmailInput] = useState('')
     const [assignmentModal, setAssignmentModal] = useState({
         isOpen: false,
         bookingId: null,
         bookingReference: '',
         bookingType: 'flight'
     })
+    
+    // Edit modal states
+    const [showEditModal, setShowEditModal] = useState(false)
+    const [selectedBooking, setSelectedBooking] = useState(null)
 
     const pageSize = 20
     const jwt = localStorage.getItem('adminToken') // From your login flow
@@ -75,6 +93,22 @@ const AdminFlights = () => {
 
         return () => clearTimeout(timer)
     }, [referenceInput])
+    
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setFilters((prev) => ({ ...prev, lead_name: leadNameInput }))
+        }, 500)
+
+        return () => clearTimeout(timer)
+    }, [leadNameInput])
+    
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setFilters((prev) => ({ ...prev, lead_email: leadEmailInput }))
+        }, 500)
+
+        return () => clearTimeout(timer)
+    }, [leadEmailInput])
 
     // Fetch data
     useEffect(() => {
@@ -122,6 +156,50 @@ const AdminFlights = () => {
                         `%${filters.reference}%`
                     )
                 }
+                if (filters.lead_name) {
+                    query = query.or(`passenger_details->>firstName.ilike.%${filters.lead_name}%,passenger_details->>lastName.ilike.%${filters.lead_name}%`)
+                }
+                if (filters.lead_email) {
+                    query = query.ilike('passenger_details->>email', `%${filters.lead_email}%`)
+                }
+                if (filters.assignment_status && filters.assignment_status !== 'All') {
+                    query = query.eq('assignment_status', filters.assignment_status)
+                }
+                
+                // Date range filtering
+                if (filters.date_range && filters.date_range !== 'All') {
+                    const now = new Date()
+                    let startDate, endDate
+                    
+                    switch (filters.date_range) {
+                        case 'today':
+                            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+                            endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+                            break
+                        case 'week':
+                            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7)
+                            endDate = new Date()
+                            break
+                        case 'month':
+                            startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+                            endDate = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+                            break
+                        case 'quarter': {
+                            const quarter = Math.floor(now.getMonth() / 3)
+                            startDate = new Date(now.getFullYear(), quarter * 3, 1)
+                            endDate = new Date(now.getFullYear(), quarter * 3 + 3, 1)
+                            break
+                        }
+                        case 'year':
+                            startDate = new Date(now.getFullYear(), 0, 1)
+                            endDate = new Date(now.getFullYear() + 1, 0, 1)
+                            break
+                    }
+                    
+                    if (startDate && endDate) {
+                        query = query.gte('created_at', startDate.toISOString()).lt('created_at', endDate.toISOString())
+                    }
+                }
 
                 const [bookingsRes, statsRes] = await Promise.all([
                     query,
@@ -152,7 +230,7 @@ const AdminFlights = () => {
         }
 
         fetchData()
-    }, [page, filters, sort, jwt])
+    }, [page, filters, sort, jwt, loading])
 
     // Sorting logic
     const sortData = (data, sort) => {
@@ -190,6 +268,10 @@ const AdminFlights = () => {
             setSearchInput(value)
         } else if (name === 'reference') {
             setReferenceInput(value)
+        } else if (name === 'lead_name') {
+            setLeadNameInput(value)
+        } else if (name === 'lead_email') {
+            setLeadEmailInput(value)
         } else {
             setFilters((prev) => ({ ...prev, [name]: value }))
             setPage(0) // Reset to first page on filter change
@@ -197,18 +279,74 @@ const AdminFlights = () => {
     }
 
     const clearFilters = () => {
-        setFilters({ status: 'All', destination: '', reference: '' })
+        setFilters({ 
+            status: 'All', 
+            destination: '', 
+            reference: '',
+            lead_name: '',
+            lead_email: '',
+            assignment_status: 'All',
+            date_range: 'All'
+        })
         setSearchInput('')
         setReferenceInput('')
+        setLeadNameInput('')
+        setLeadEmailInput('')
         setPage(0)
     }
 
-    const handleAssignBooking = (bookingId, bookingReference) => {
+    // Handle edit modal
+    const handleEdit = (booking) => {
+        setSelectedBooking(booking)
+        setShowEditModal(true)
+    }
+    
+    // Close modal
+    const handleCloseModal = () => {
+        setShowEditModal(false)
+        setSelectedBooking(null)
+    }
+
+    // Handle edit submit
+    const handleEditSubmit = async (submitData) => {
+        try {
+            const response = await adminClient.put(`/flights/${selectedBooking.id}/edit`, submitData)
+            if (response.data.success) {
+                setFlightBookings(prev =>
+                    prev.map((booking) =>
+                        booking.id === selectedBooking.id
+                            ? {
+                                ...booking,
+                                ...submitData,
+                                updated_at: new Date().toISOString(),
+                            }
+                            : booking
+                    )
+                )
+                showSuccess('Booking updated successfully!')
+                return true
+            } else {
+                showError('Failed to update booking')
+                return false
+            }
+        } catch (error) {
+            console.error('Error updating booking:', error)
+            if (error.response?.data?.error) {
+                showError(`Error: ${error.response.data.error}`)
+            } else {
+                showError('Error updating booking. Please try again.')
+            }
+            throw error
+        }
+    }
+
+    const handleAssignBooking = (bookingId, bookingReference, currentAssignedStaffId) => {
         setAssignmentModal({
             isOpen: true,
             bookingId,
             bookingReference,
-            bookingType: 'flight'
+            bookingType: 'flight',
+            currentAssignedStaffId: currentAssignedStaffId
         })
     }
 
@@ -303,84 +441,136 @@ const AdminFlights = () => {
                 </div>
             </div>
 
-            {/* Filter Bar */}
             <div className='flights__filter'>
                 <div className='flights__filter-header'>
-                    <FiFilter size={20} />
-                    <h3>Filters & Search</h3>
+                    <div className='flights__filter-title'>
+                        <FiFilter size={18} />
+                        <span>Filters & Search</span>
+                    </div>
+                    <button
+                        className='flights__filter-clear'
+                        onClick={clearFilters}
+                    >
+                        <FiRefreshCw size={14} />
+                        Clear All
+                    </button>
                 </div>
-                <div className='flights__filter-content'>
-                    <div className='flights__filter-group'>
-                        <label className='flights__filter-label'>
-                            <FiNavigation size={16} />
-                            Status
-                        </label>
-                        <select
-                            name='status'
-                            value={filters.status}
-                            onChange={handleFilterChange}
-                            className='flights__filter-select'
-                        >
-                            <option value='All'>All Statuses</option>
-                            <option value='TICKETED'>Confirmed</option>
-                            <option value='PENDING'>Pending</option>
-                            <option value='CANCELLED'>Cancelled</option>
-                        </select>
+                
+                <div className='flights__filter-grid'>
+                    {/* Quick Filters */}
+                    <div className='flights__filter-section'>
+                        <div className='flights__filter-section-title'>Quick Filters</div>
+                        <div className='flights__filter-row'>
+                            <div className='flights__filter-group'>
+                                <select
+                                    name='status'
+                                    value={filters.status}
+                                    onChange={handleFilterChange}
+                                    className='flights__filter-select'
+                                >
+                                    <option value='All'>All Statuses</option>
+                                    <option value='TICKETED'>Confirmed</option>
+                                    <option value='PENDING'>Pending</option>
+                                    <option value='CANCELLED'>Cancelled</option>
+                                </select>
+                            </div>
+                            <div className='flights__filter-group'>
+                                <select
+                                    name='assignment_status'
+                                    value={filters.assignment_status}
+                                    onChange={handleFilterChange}
+                                    className='flights__filter-select'
+                                >
+                                    <option value='All'>All Assignments</option>
+                                    <option value='pending'>Pending</option>
+                                    <option value='in_progress'>In Progress</option>
+                                    <option value='completed'>Approved</option>
+                                </select>
+                            </div>
+                            <div className='flights__filter-group'>
+                                <select
+                                    name='date_range'
+                                    value={filters.date_range}
+                                    onChange={handleFilterChange}
+                                    className='flights__filter-select'
+                                >
+                                    <option value='All'>All Time</option>
+                                    <option value='today'>Today</option>
+                                    <option value='week'>This Week</option>
+                                    <option value='month'>This Month</option>
+                                    <option value='quarter'>This Quarter</option>
+                                    <option value='year'>This Year</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
-                    <div className='flights__filter-group'>
-                        <label className='flights__filter-label'>
-                            <FiSearch size={16} />
-                            Search Destination
-                        </label>
-                        <input
-                            type='text'
-                            name='destination'
-                            value={searchInput}
-                            onChange={handleFilterChange}
-                            placeholder='Search Destination (e.g., CEB)'
-                            className='flights__filter-input'
-                        />
+
+                    {/* Search Fields */}
+                    <div className='flights__filter-section'>
+                        <div className='flights__filter-section-title'>Search</div>
+                        <div className='flights__filter-row'>
+                            <div className='flights__filter-group'>
+                                <input
+                                    type='text'
+                                    name='destination'
+                                    value={searchInput}
+                                    onChange={handleFilterChange}
+                                    placeholder='Destination...'
+                                    className='flights__filter-input'
+                                />
+                            </div>
+                            <div className='flights__filter-group'>
+                                <input
+                                    type='text'
+                                    name='reference'
+                                    value={referenceInput}
+                                    onChange={handleFilterChange}
+                                    placeholder='Booking reference...'
+                                    className='flights__filter-input'
+                                />
+                            </div>
+                            <div className='flights__filter-group'>
+                                <input
+                                    type='text'
+                                    name='lead_name'
+                                    value={leadNameInput}
+                                    onChange={handleFilterChange}
+                                    placeholder='Passenger name...'
+                                    className='flights__filter-input'
+                                />
+                            </div>
+                            <div className='flights__filter-group'>
+                                <input
+                                    type='text'
+                                    name='lead_email'
+                                    value={leadEmailInput}
+                                    onChange={handleFilterChange}
+                                    placeholder='Passenger email...'
+                                    className='flights__filter-input'
+                                />
+                            </div>
+                        </div>
                     </div>
-                    <div className='flights__filter-group'>
-                        <label className='flights__filter-label'>
-                            <FiSearch size={16} />
-                            Search Reference
-                        </label>
-                        <input
-                            type='text'
-                            name='reference'
-                            value={referenceInput}
-                            onChange={handleFilterChange}
-                            placeholder='Search Reference (e.g., FL123)'
-                            className='flights__filter-input'
-                        />
-                    </div>
-                    <div className='flights__filter-group'>
-                        <label className='flights__filter-label'>
-                            <FiFilter size={16} />
-                            Sort by Date
-                        </label>
-                        <select
-                            name='order'
-                            value={sort.key === 'updated_at' ? sort.direction : 'desc'}
-                            onChange={(e) => {
-                                setSort({ key: 'updated_at', direction: e.target.value })
-                                setPage(0)
-                            }}
-                            className='flights__filter-select'
-                        >
-                            <option value='desc'>Newest first</option>
-                            <option value='asc'>Oldest first</option>
-                        </select>
-                    </div>
-                    <div className='flights__filter-actions'>
-                        <button
-                            className='flights__filter-clear'
-                            onClick={clearFilters}
-                        >
-                            <FiRefreshCw size={16} />
-                            Clear Filters
-                        </button>
+
+                    {/* Sort */}
+                    <div className='flights__filter-section'>
+                        <div className='flights__filter-section-title'>Sort</div>
+                        <div className='flights__filter-row'>
+                            <div className='flights__filter-group'>
+                                <select
+                                    name='order'
+                                    value={sort.key === 'updated_at' ? sort.direction : 'desc'}
+                                    onChange={(e) => {
+                                        setSort({ key: 'updated_at', direction: e.target.value })
+                                        setPage(0)
+                                    }}
+                                    className='flights__filter-select'
+                                >
+                                    <option value='desc'>Newest first</option>
+                                    <option value='asc'>Oldest first</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -600,22 +790,22 @@ const AdminFlights = () => {
                                     </td>
                                     <td className='flights__table-cell flights__table-cell--actions'>
                                         <div className='flights__actions'>
-                                            <Link 
-                                                to={`/admin/flights/${booking.id}`}
-                                                className='flights__action-btn flights__action-btn--view'
-                                                title='View Details'
-                                            >
-                                                <FiEye size={16} />
-                                            </Link>
                                             {userRole === 'admin' && (
                                                 <button 
-                                                    className='flights__action-btn flights__action-btn--assign'
+                                                    className='action-btn assign-btn'
                                                     title='Assign to Accounting'
-                                                    onClick={() => handleAssignBooking(booking.id, booking.booking_reference)}
+                                                    onClick={() => handleAssignBooking(booking.id, booking.booking_reference, booking.assigned_to)}
                                                 >
                                                     <FiUserPlus size={16} />
                                                 </button>
                                             )}
+                                            <button 
+                                                className='action-btn view-btn'
+                                                title='Edit Booking'
+                                                onClick={() => handleEdit(booking)}
+                                            >
+                                                <FiEye size={16} />
+                                            </button>
                                             {/* <button 
                                                 className='flights__action-btn flights__action-btn--edit'
                                                 title='Edit Booking'
@@ -668,11 +858,21 @@ const AdminFlights = () => {
             {/* Assignment Modal */}
             <AssignmentModal
                 isOpen={assignmentModal.isOpen}
-                onClose={() => setAssignmentModal({ isOpen: false, bookingId: null, bookingReference: '', bookingType: 'flight' })}
+                onClose={() => setAssignmentModal({ isOpen: false, bookingId: null, bookingReference: '', bookingType: 'flight', currentAssignedStaffId: null })}
                 bookingId={assignmentModal.bookingId}
                 bookingReference={assignmentModal.bookingReference}
                 bookingType={assignmentModal.bookingType}
+                currentAssignedStaffId={assignmentModal.currentAssignedStaffId}
                 onSuccess={handleAssignmentSuccess}
+            />
+            
+            {/* Edit Modal */}
+            <FlightBookingEditModal
+                isOpen={showEditModal}
+                booking={selectedBooking}
+                onClose={handleCloseModal}
+                onSubmit={handleEditSubmit}
+                context="admin"
             />
         </div>
     )
