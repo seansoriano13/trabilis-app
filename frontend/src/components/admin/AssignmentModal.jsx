@@ -10,6 +10,7 @@ const AssignmentModal = ({
     bookingId, 
     bookingType, 
     bookingReference,
+    currentAssignedStaffId,
     // Legacy props for visa inquiries
     inquiryId,
     inquiryReference,
@@ -31,16 +32,33 @@ const AssignmentModal = ({
         }
     }, [isOpen, actualBookingType])
 
+    // Preselect currently assigned staff when modal opens
+    useEffect(() => {
+        if (isOpen && staff.length > 0 && currentAssignedStaffId) {
+            const currentStaff = staff.find(member => 
+                (member.user_id || member.id) === currentAssignedStaffId
+            )
+            
+            if (currentStaff) {
+                setSelectedStaff({
+                    value: currentStaff.user_id || currentStaff.id,
+                    label: `${currentStaff.first_name} ${currentStaff.last_name} (${currentStaff.email})`,
+                    role: currentStaff.role
+                })
+            }
+        }
+    }, [isOpen, staff, currentAssignedStaffId])
+
     const fetchAccountingStaff = async () => {
         try {
             // Use different endpoints based on booking type
-            const endpoint = actualBookingType === 'visa' ? '/appointments/all-staff' : '/appointments/staff'
+            const endpoint = (actualBookingType === 'visa' || actualBookingType === 'visa-inquiry' || actualBookingType === 'visa-processing') ? '/appointments/all-staff' : '/appointments/staff'
             const response = await adminClient.get(endpoint)
 
             
             if (response.data.success) {
                 // Filter for travel consultants only when booking type is visa
-                if (actualBookingType === 'visa') {
+                if (actualBookingType === 'visa' || actualBookingType === 'visa-inquiry' || actualBookingType === 'visa-processing') {
                    
                     const travelConsultants = response.data.data.filter(member => 
                         member.role === 'travel_consultant'

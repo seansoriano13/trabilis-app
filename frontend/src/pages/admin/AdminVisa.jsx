@@ -28,7 +28,8 @@ import {
     FiX,
     FiAlertCircle,
     FiClock as FiClockIcon,
-    FiPackage
+    FiPackage,
+    FiActivity
 } from 'react-icons/fi'
 import ReactPaginate from 'react-paginate'
 import './AdminVisa.css'
@@ -62,7 +63,8 @@ const AdminVisa = () => {
         isOpen: false,
         bookingId: null,
         bookingReference: '',
-        bookingType: 'visa-inquiry'
+        bookingType: 'visa-inquiry',
+        currentAssignedStaffId: null
     })
 
     // Visa Processing state (new functionality)
@@ -237,21 +239,23 @@ const AdminVisa = () => {
         }))
     }
 
-    const handleInquiryAssignment = (inquiryId, inquiryReference) => {
+    const handleInquiryAssignment = (inquiryId, inquiryReference, currentAssignedStaffId) => {
         setAssignmentModal({
             isOpen: true,
             bookingId: inquiryId,
             bookingReference: inquiryReference,
-            bookingType: 'visa-inquiry'
+            bookingType: 'visa-inquiry',
+            currentAssignedStaffId: currentAssignedStaffId
         })
     }
 
-    const handleProcessingAssignment = (processingId, processingReference) => {
+    const handleProcessingAssignment = (processingId, processingReference, currentAssignedStaffId) => {
         setAssignmentModal({
             isOpen: true,
             bookingId: processingId,
             bookingReference: processingReference,
-            bookingType: 'visa-processing'
+            bookingType: 'visa-processing',
+            currentAssignedStaffId: currentAssignedStaffId
         })
     }
 
@@ -266,19 +270,9 @@ const AdminVisa = () => {
     }
 
     const getStatusBadge = (status) => {
-        const statusConfig = {
-            'PENDING': { color: 'pending', label: 'Pending' },
-            'IN_PROGRESS': { color: 'in-progress', label: 'In Progress' },
-            'APPROVED': { color: 'approved', label: 'Approved' },
-            'REJECTED': { color: 'rejected', label: 'Rejected' },
-            'CANCELLED': { color: 'cancelled', label: 'Cancelled' },
-            'COMPLETED': { color: 'completed', label: 'Approved' }
-        }
-        
-        const config = statusConfig[status] || { color: 'default', label: status }
         return (
-            <span className={`status-badge status-badge--${config.color}`}>
-                {config.label}
+            <span className={`visa__status visa__status--${status.toLowerCase()}`}>
+                {status}
             </span>
         )
     }
@@ -394,26 +388,30 @@ const AdminVisa = () => {
                     </div>
 
                     {/* Inquiries Table */}
-                    <div className="table-container">
-                        <div className="table-header">
-                            <h3>Visa Inquiries</h3>
-                            {inquirySearchLoading && (
-                                <div className='visa__search-loading'>
-                                    <div className='visa__search-spinner'></div>
-                                    <span>Searching...</span>
-                                </div>
-                            )}
+                    <div className="visa__section">
+                        <div className="visa__section-header">
+                            <div className="visa__section-title">
+                                <FiMessageSquare size={24} />
+                                <h2>Visa Inquiries</h2>
+                                <span className="visa__section-count">({inquiryTotal} inquiries)</span>
+                                {inquirySearchLoading && (
+                                    <div className="visa__search-loading">
+                                        <div className="visa__search-spinner"></div>
+                                        <span>Searching...</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                         
                         {inquiryError && (
-                            <div className="error-message">
+                            <div className="visa__error-message">
                                 <FiAlertCircle />
                                 {inquiryError}
                             </div>
                         )}
 
-                        <div className="table-wrapper">
-                            <table className="data-table">
+                        <div className="visa__table-container">
+                            <table className="visa__table">
                                 <thead>
                                     <tr>
                                         <th onClick={() => handleInquirySort('reference')}>
@@ -438,7 +436,7 @@ const AdminVisa = () => {
                                     {inquiries?.map((inquiry) => (
                                         <tr key={inquiry.id}>
                                             <td className="reference-cell">
-                                                <span className="reference-text">{inquiry.reference}</span>
+                                                <span className="reference-text">{inquiry.inquiry_reference}</span>
                                             </td>
                                             <td>
                                                 {new Date(inquiry.created_at).toLocaleDateString()}
@@ -449,20 +447,20 @@ const AdminVisa = () => {
                                             <td>
                                                 <div className="name-cell">
                                                     <span className="name-text">
-                                                        {inquiry.first_name} {inquiry.last_name}
+                                                        {inquiry.full_name}
                                                     </span>
                                                 </div>
                                             </td>
                                             <td>
-                                                <a href={`mailto:${inquiry.email}`} className="email-link">
+                                                <a href={`mailto:${inquiry.email_address}`} className="email-link">
                                                     <FiMail size={14} />
-                                                    {inquiry.email}
+                                                    {inquiry.email_address}
                                                 </a>
                                             </td>
                                             <td>
-                                                <a href={`tel:${inquiry.phone}`} className="phone-link">
+                                                <a href={`tel:${inquiry.mobile_number}`} className="phone-link">
                                                     <FiPhone size={14} />
-                                                    {inquiry.phone}
+                                                    {inquiry.mobile_number}
                                                 </a>
                                             </td>
                                             <td>
@@ -471,24 +469,42 @@ const AdminVisa = () => {
                                             <td>
                                                 <span className="visa-type-text">{inquiry.visa_type}</span>
                                             </td>
-                                            <td>
-                                                {inquiry.assigned_to ? (
-                                                    <div className="assignment-info">
-                                                        <span className="assigned-staff">
-                                                            {inquiry.assigned_staff?.first_name} {inquiry.assigned_staff?.last_name}
-                                                        </span>
-                                                        {getAssignmentStatusBadge(inquiry.assignment_status)}
-                                                    </div>
-                                                ) : (
-                                                    <span className="unassigned">Unassigned</span>
-                                                )}
+                                            <td className="visa__table-cell visa__table-cell--assignment">
+                                                <div className="visa__assignment">
+                                                    {inquiry.assigned_to ? (
+                                                        <div className="visa__assignment-assigned">
+                                                            <div className="visa__assignment-staff">
+                                                                <span className="visa__assignment-staff-name">
+                                                                    {inquiry.assigned_staff?.first_name} {inquiry.assigned_staff?.last_name}
+                                                                </span>
+                                                                <span className="visa__assignment-staff-email">
+                                                                    {inquiry.assigned_staff?.email}
+                                                                </span>
+                                                                {!inquiry.assigned_by && (
+                                                                    <span className="visa__assignment-auto">
+                                                                        <FiActivity size={12} />
+                                                                        Auto-assigned
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <span className={`visa__assignment-status visa__assignment-status--${inquiry.assignment_status}`}>
+                                                                {inquiry.assignment_status?.replace('_', ' ') || 'pending'}
+                                                            </span>
+                                                            <span className="visa__assignment-date">
+                                                                {inquiry.assigned_at ? new Date(inquiry.assigned_at).toLocaleDateString() : '-'}
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="visa__assignment-unassigned">Unassigned</span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td>
                                                 <div className="action-buttons">
                                                     {userRole === 'admin' && (
                                                         <button 
                                                             className="action-btn assign-btn"
-                                                            onClick={() => handleInquiryAssignment(inquiry.id, inquiry.reference)}
+                                                            onClick={() => handleInquiryAssignment(inquiry.id, inquiry.inquiry_reference, inquiry.assigned_to)}
                                                             title="Assign Inquiry"
                                                         >
                                                             <FiUserPlus size={16} />
@@ -498,7 +514,7 @@ const AdminVisa = () => {
                                                         className="action-btn view-btn"
                                                         onClick={() => {
                                                             // TODO: Implement inquiry details modal
-                                                            showInfo(`View inquiry details for ${inquiry.reference}`)
+                                                            showInfo(`View inquiry details for ${inquiry.inquiry_reference}`)
                                                         }}
                                                         title="View Details"
                                                     >
@@ -512,14 +528,14 @@ const AdminVisa = () => {
                             </table>
                         </div>
 
-                        <div className="pagination-container">
+                        <div className="visa__pagination-container">
                             <ReactPaginate
                                 previousLabel={'← Previous'}
                                 nextLabel={'Next →'}
                                 pageCount={Math.ceil(inquiryTotal / pageSize)}
                                 onPageChange={({ selected }) => setInquiryPage(selected)}
-                                containerClassName={'pagination'}
-                                activeClassName={'pagination--active'}
+                                containerClassName={'visa__pagination'}
+                                activeClassName={'visa__pagination--active'}
                                 forcePage={inquiryPage}
                                 breakLabel={'...'}
                                 pageRangeDisplayed={3}
@@ -573,30 +589,34 @@ const AdminVisa = () => {
                     </div>
 
                     {/* Processing Table */}
-                    <div className="table-container">
-                        <div className="table-header">
-                            <h3>Visa Processing</h3>
-                            {processingSearchLoading && (
-                                <div className='visa__search-loading'>
-                                    <div className='visa__search-spinner'></div>
-                                    <span>Searching...</span>
-                                </div>
-                            )}
+                    <div className="visa__section">
+                        <div className="visa__section-header">
+                            <div className="visa__section-title">
+                                <FiPackage size={24} />
+                                <h2>Visa Processing</h2>
+                                <span className="visa__section-count">({processingTotal} processings)</span>
+                                {processingSearchLoading && (
+                                    <div className="visa__search-loading">
+                                        <div className="visa__search-spinner"></div>
+                                        <span>Searching...</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                         
                         {processingError && (
-                            <div className="error-message">
+                            <div className="visa__error-message">
                                 <FiAlertCircle />
                                 {processingError}
                             </div>
                         )}
 
-                        <div className="table-wrapper">
-                            <table className="data-table">
+                        <div className="visa__table-container">
+                            <table className="visa__table">
                                 <thead>
                                     <tr>
                                         <th onClick={() => handleProcessingSort('id')}>
-                                            ID
+                                            Reference
                                         </th>
                                         <th onClick={() => handleProcessingSort('created_at')}>
                                             Date
@@ -617,7 +637,7 @@ const AdminVisa = () => {
                                     {visaProcessings?.map((processing) => (
                                         <tr key={processing.id}>
                                             <td className="reference-cell">
-                                                <span className="reference-text">#{processing.id}</span>
+                                                <span className="reference-text">{processing.processing_reference}</span>
                                             </td>
                                             <td>
                                                 {new Date(processing.created_at).toLocaleDateString()}
@@ -659,24 +679,42 @@ const AdminVisa = () => {
                                                     View Booking
                                                 </a>
                                             </td>
-                                            <td>
-                                                {processing.assigned_to ? (
-                                                    <div className="assignment-info">
-                                                        <span className="assigned-staff">
-                                                            {processing.assigned_staff_first_name} {processing.assigned_staff_last_name}
-                                                        </span>
-                                                        {getAssignmentStatusBadge(processing.assignment_status)}
-                                                    </div>
-                                                ) : (
-                                                    <span className="unassigned">Unassigned</span>
-                                                )}
+                                            <td className="visa__table-cell visa__table-cell--assignment">
+                                                <div className="visa__assignment">
+                                                    {processing.assigned_to ? (
+                                                        <div className="visa__assignment-assigned">
+                                                            <div className="visa__assignment-staff">
+                                                                <span className="visa__assignment-staff-name">
+                                                                    {processing.assigned_staff_first_name} {processing.assigned_staff_last_name}
+                                                                </span>
+                                                                <span className="visa__assignment-staff-email">
+                                                                    {processing.assigned_staff_email}
+                                                                </span>
+                                                                {!processing.assigned_by && (
+                                                                    <span className="visa__assignment-auto">
+                                                                        <FiActivity size={12} />
+                                                                        Auto-assigned
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <span className={`visa__assignment-status visa__assignment-status--${processing.assignment_status}`}>
+                                                                {processing.assignment_status?.replace('_', ' ') || 'pending'}
+                                                            </span>
+                                                            <span className="visa__assignment-date">
+                                                                {processing.assigned_at ? new Date(processing.assigned_at).toLocaleDateString() : '-'}
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="visa__assignment-unassigned">Unassigned</span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td>
                                                 <div className="action-buttons">
                                                     {userRole === 'admin' && (
                                                         <button 
                                                             className="action-btn assign-btn"
-                                                            onClick={() => handleProcessingAssignment(processing.id, `#${processing.id}`)}
+                                                            onClick={() => handleProcessingAssignment(processing.id, processing.processing_reference, processing.assigned_to)}
                                                             title="Assign Processing"
                                                         >
                                                             <FiUserPlus size={16} />
@@ -686,7 +724,7 @@ const AdminVisa = () => {
                                                         className="action-btn view-btn"
                                                         onClick={() => {
                                                             // TODO: Open processing details modal
-                                                            showInfo(`View processing details for #${processing.id}`)
+                                                            showInfo(`View processing details for ${processing.processing_reference}`)
                                                         }}
                                                         title="View Details"
                                                     >
@@ -700,14 +738,14 @@ const AdminVisa = () => {
                             </table>
                         </div>
 
-                        <div className="pagination-container">
+                        <div className="visa__pagination-container">
                             <ReactPaginate
                                 previousLabel={'← Previous'}
                                 nextLabel={'Next →'}
                                 pageCount={Math.ceil(processingTotal / pageSize)}
                                 onPageChange={({ selected }) => setProcessingPage(selected)}
-                                containerClassName={'pagination'}
-                                activeClassName={'pagination--active'}
+                                containerClassName={'visa__pagination'}
+                                activeClassName={'visa__pagination--active'}
                                 forcePage={processingPage}
                                 breakLabel={'...'}
                                 pageRangeDisplayed={3}
@@ -721,10 +759,11 @@ const AdminVisa = () => {
             {/* Assignment Modal */}
             <AssignmentModal
                 isOpen={assignmentModal.isOpen}
-                onClose={() => setAssignmentModal({ isOpen: false, bookingId: null, bookingReference: '', bookingType: 'visa-inquiry' })}
+                onClose={() => setAssignmentModal({ isOpen: false, bookingId: null, bookingReference: '', bookingType: 'visa-inquiry', currentAssignedStaffId: null })}
                 bookingId={assignmentModal.bookingId}
                 bookingReference={assignmentModal.bookingReference}
                 bookingType={assignmentModal.bookingType}
+                currentAssignedStaffId={assignmentModal.currentAssignedStaffId}
                 onSuccess={handleAssignmentSuccess}
             />
         </div>
