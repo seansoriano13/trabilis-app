@@ -1,12 +1,14 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
-import { AirportProvider } from './context/AirportContext.jsx'
+import { SnackbarProvider } from './context/SnackbarContext.jsx'
+import Snackbar from './components/Snackbar.jsx'
 
 createRoot(document.getElementById('root')).render(
-    <AirportProvider>
+    <SnackbarProvider>
         <StrictMode>
             <App />
         </StrictMode>
-    </AirportProvider>
+        <Snackbar />
+    </SnackbarProvider>
 )
