@@ -37,6 +37,10 @@
     "main": "server.js",
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
+        "migrate:visa-references": "node run-migration.js",
+        "migrate:visa-processing-references": "node migrations/update-visa-processing-references.js",
+        "fix:visa-processing-references": "node migrations/fix-visa-processing-references.js",
+        "fix:visa-processing-simple": "node migrations/fix-visa-processing-simple.js",
         "start": "node server.js",
         "dev": "nodemon server.js"
     },

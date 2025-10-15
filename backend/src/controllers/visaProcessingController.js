@@ -1,5 +1,6 @@
 import { supabase, supabaseAdmin } from '../config/supabaseClient.js'
 import { autoAssignBooking } from '../services/assignmentService.js'
+import { v4 as uuidv4 } from 'uuid'
 import Pusher from 'pusher'
 
 const pusher = new Pusher({
@@ -46,6 +47,9 @@ export const createVisaProcessing = async (req, res) => {
             })
         }
 
+        // Generate processing reference
+        const processingReference = `TRB-VISA-${uuidv4().slice(0, 8).toUpperCase()}`
+
         // Create visa processing
         const { data: visaProcessing, error } = await supabaseAdmin
             .from('visa_processings')
@@ -59,6 +63,7 @@ export const createVisaProcessing = async (req, res) => {
                 status: 'PENDING',
                 requirements_status: {},
                 notes,
+                processing_reference: processingReference,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             }])

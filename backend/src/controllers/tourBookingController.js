@@ -221,6 +221,7 @@ const TourBookingController = {
                                     existing_visa_status: vs.existing_visa_status || 'not_specified',
                                     visa_expiry_date: vs.visa_expiry_date || null,
                                     requirements_status: {},
+                                    processing_reference: `TRB-VISA-${uuidv4().slice(0, 8).toUpperCase()}`,
                                     notes: isExpiredVisaRenewal 
                                         ? `Auto-created for tour booking ${bookingData.booking_reference} - Expired visa renewal assistance`
                                         : `Auto-created for tour booking ${bookingData.booking_reference}`,

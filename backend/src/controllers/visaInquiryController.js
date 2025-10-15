@@ -1,6 +1,7 @@
 import { sendVisaInquiryConfirmationEmail } from '../services/brevoEmailService.js'
 import { supabase, supabaseAdmin } from '../config/supabaseClient.js'
 import { autoAssignBooking } from '../services/assignmentService.js'
+import { v4 as uuidv4 } from 'uuid'
 import Pusher from 'pusher'
 
 const pusher = new Pusher({
@@ -32,8 +33,8 @@ export const submitVisaInquiry = async (req, res) => {
             })
         }
 
-        // Generate inquiry reference
-        const inquiryReference = `TRB-VISA-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`
+        // Generate inquiry reference (shorter UUID format like tours)
+        const inquiryReference = `TRB-VISA-${uuidv4().slice(0, 8).toUpperCase()}`
 
         // Insert inquiry into database (Supabase)
         const { data: inquiryData, error: insertError } = await supabaseAdmin
