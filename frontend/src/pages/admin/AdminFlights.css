@@ -202,91 +202,103 @@
     background: white;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    border: 1px solid #e9ecef;
     margin-bottom: 25px;
     overflow: hidden;
 }
 
 .flights__filter-header {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 12px;
-    padding: 20px 25px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 20px 24px;
+    background: #f8f9fa;
     border-bottom: 1px solid #e9ecef;
 }
 
-.flights__filter-header h3 {
-    margin: 0;
-    color: #333;
+.flights__filter-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #495057;
     font-size: 16px;
     font-weight: 600;
-}
-
-.flights__filter-content {
-    padding: 25px;
-    display: grid;
-    grid-template-columns: 1fr 2fr auto;
-    gap: 20px;
-    align-items: end;
-}
-
-.flights__filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.flights__filter-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #6c757d;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.flights__filter-select,
-.flights__filter-input {
-    padding: 12px 16px;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    font-size: 14px;
-    background: white;
-    color: #333;
-    transition: all 0.3s ease;
-}
-
-.flights__filter-select:focus,
-.flights__filter-input:focus {
-    outline: none;
-    border-color: #f7d100;
-    box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
-}
-
-.flights__filter-actions {
-    display: flex;
-    align-items: center;
 }
 
 .flights__filter-clear {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
+    gap: 6px;
+    padding: 8px 12px;
     background: #6c757d;
     color: white;
     border: none;
-    border-radius: 8px;
-    font-size: 14px;
+    border-radius: 6px;
+    font-size: 13px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
 }
 
 .flights__filter-clear:hover {
     background: #545b62;
-    transform: translateY(-1px);
+}
+
+.flights__filter-grid {
+    padding: 24px;
+}
+
+.flights__filter-section {
+    margin-bottom: 24px;
+}
+
+.flights__filter-section:last-child {
+    margin-bottom: 0;
+}
+
+.flights__filter-section-title {
+    color: #6c757d;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+}
+
+.flights__filter-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.flights__filter-input,
+.flights__filter-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    transition: all 0.2s ease;
+}
+
+.flights__filter-input:focus,
+.flights__filter-select:focus {
+    outline: none;
+    border-color: #f7d100;
+    box-shadow: 0 0 0 2px rgba(247, 209, 0, 0.15);
+}
+
+.flights__filter-input::placeholder {
+    color: #adb5bd;
+    font-size: 13px;
+}
+
+.flights__filter-select {
+    cursor: pointer;
+}
+
+.flights__filter-select:hover {
+    border-color: #adb5bd;
 }
 
 /* Section Styles */
@@ -736,13 +748,6 @@
         text-align: center;
     }
 
-    .flights__assignment-staff-name {
-        color: #d1d5db;
-    }
-
-    .flights__assignment-staff-email {
-        color: #9ca3af;
-    }
 
 /* Assignment Action Button */
 .flights__action-btn--assign {
@@ -778,13 +783,8 @@
 
 /* Responsive Design */
 @media (max-width: 1200px) {
-    .flights__filter-content {
-        grid-template-columns: 1fr;
-        gap: 15px;
-    }
-    
-    .flights__filter-actions {
-        justify-content: center;
+    .flights__filter-row {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     }
 }
 
@@ -844,8 +844,13 @@
         padding: 20px;
     }
     
-    .flights__filter-content {
+    .flights__filter-grid {
         padding: 20px;
+    }
+    
+    .flights__filter-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
     }
     
     .flights__table-cell {
