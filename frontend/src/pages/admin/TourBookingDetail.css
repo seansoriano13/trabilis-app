@@ -999,7 +999,6 @@
 .assignment-status {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 6px;
-    min-width: 250px;
     border-left: 4px solid rgba(255, 255, 255, 0.3);
 }
 .assignment-status__content { display: flex; gap: 12px; }
