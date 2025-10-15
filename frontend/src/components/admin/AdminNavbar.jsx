@@ -34,10 +34,13 @@ function AdminNavbar() {
     const [isScrolled, setIsScrolled] = useState(false)
     const [isMenuOpen, setMenuOpen] = useState(false)
     const [isProfileOpen, setProfileOpen] = useState(false)
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
     const [userRole, setUserRole] = useState(
         localStorage.getItem('admin_role') || null
     )
     const [loading, setLoading] = useState(true)
+    const [notifications, setNotifications] = useState([])
+    const [notificationsLoading, setNotificationsLoading] = useState(false)
     const location = useLocation()
     const jwt = localStorage.getItem('adminToken')
     const adminEmail = localStorage.getItem('admin_email')
@@ -86,14 +89,92 @@ function AdminNavbar() {
         fetchRole()
     }, [jwt, location.pathname])
 
+    // Fetch notifications
+    useEffect(() => {
+        const fetchNotifications = async () => {
+            if (!jwt) return
+            
+            setNotificationsLoading(true)
+            try {
+                const response = await adminClient.get('/dashboard/admin_notifications?limit=100')
+                if (response.data.data) {
+                    setNotifications(response.data.data)
+                }
+            } catch (error) {
+                console.error('Error fetching notifications:', error)
+            } finally {
+                setNotificationsLoading(false)
+            }
+        }
+
+        fetchNotifications()
+    }, [jwt])
+
+    // Pusher integration for real-time notifications
+    useEffect(() => {
+        if (!jwt) return
+
+        const pusher = new Pusher("371c6201af1a663a4f58", {
+            cluster: "ap1",
+            encrypted: true
+        })
+
+        const channel = pusher.subscribe('admin-notifications')
+        
+        // Listen for new notifications
+        channel.bind('new-booking', (data) => {
+            console.log('New booking notification:', data)
+            // Refresh notifications
+            const fetchNotifications = async () => {
+                try {
+                    const response = await adminClient.get('/dashboard/admin_notifications?limit=100')
+                    if (response.data.data) {
+                        setNotifications(response.data.data)
+                    }
+                } catch (error) {
+                    console.error('Error fetching notifications:', error)
+                }
+            }
+            fetchNotifications()
+        })
+
+        channel.bind('booking-assigned', (data) => {
+            console.log('Booking assigned notification:', data)
+            // Refresh notifications
+            const fetchNotifications = async () => {
+                try {
+                    const response = await adminClient.get('/dashboard/admin_notifications?limit=100')
+                    if (response.data.data) {
+                        setNotifications(response.data.data)
+                    }
+                } catch (error) {
+                    console.error('Error fetching notifications:', error)
+                }
+            }
+            fetchNotifications()
+        })
+
+        return () => {
+            pusher.unsubscribe('admin-notifications')
+        }
+    }, [jwt])
+
     const toggleMenu = () => {
         setMenuOpen((prev) => !prev)
         setProfileOpen(false)
+        setIsNotificationsOpen(false)
     }
 
     const toggleProfile = () => {
         setProfileOpen((prev) => !prev)
         setMenuOpen(false) // Close mobile menu when profile toggles
+        setIsNotificationsOpen(false)
+    }
+
+    const toggleNotifications = () => {
+        setIsNotificationsOpen((prev) => !prev)
+        setMenuOpen(false)
+        setProfileOpen(false)
     }
 
     const handleLogout = () => {
@@ -253,6 +334,21 @@ function AdminNavbar() {
                     </div>
 
                     <div className='admin-nav__actions'>
+                        {/* Notifications */}
+                        <div className='admin-nav__notifications-container'>
+                            <button
+                                className='admin-nav__notification-btn'
+                                onClick={toggleNotifications}
+                                aria-label='Toggle notifications'
+                            >
+                                <RiNotification4Line size={20} />
+                                {notifications.length > 0 && (
+                                    <span className='admin-nav__notification-badge'>
+                                        {notifications.length > 99 ? '99+' : notifications.length}
+                                    </span>
+                                )}
+                            </button>
+                        </div>
                         
                         <div className='admin-nav__profile-container'>
                             <button
@@ -285,6 +381,69 @@ function AdminNavbar() {
             </nav>
 
 
+
+            {/* Notifications Dropdown */}
+            <div
+                className={clsx(
+                    'admin-nav__notifications-dropdown',
+                    isNotificationsOpen && 'admin-nav__notifications-dropdown--open'
+                )}
+            >
+                <div className='admin-nav__notifications-header'>
+                    <h3 className='admin-nav__notifications-title'>Notifications</h3>
+                    <button
+                        className='admin-nav__notifications-close'
+                        onClick={() => setIsNotificationsOpen(false)}
+                    >
+                        <FiX size={18} />
+                    </button>
+                </div>
+                <div className='admin-nav__notifications-content'>
+                    {notificationsLoading ? (
+                        <div className='admin-nav__notifications-empty'>
+                            <div className='loading-spinner-small'></div>
+                            <p>Loading notifications...</p>
+                        </div>
+                    ) : notifications.length === 0 ? (
+                        <div className='admin-nav__notifications-empty'>
+                            <RiNotification4Line size={32} />
+                            <p>No notifications</p>
+                            <span>You're all caught up!</span>
+                        </div>
+                    ) : (
+                        <div className='admin-nav__notifications-list'>
+                            {notifications.slice(0, 10).map((notification, index) => (
+                                <div key={notification.id || index} className='admin-nav__notification-item'>
+                                    <Link
+                                        to={`/admin/${notification.booking_type === 'flight' ? 'flights' : 'tours'}`}
+                                        className='admin-nav__notification-link'
+                                        onClick={() => setIsNotificationsOpen(false)}
+                                    >
+                                        <div className='admin-nav__notification-icon'>
+                                            {notification.booking_type === 'flight' ? (
+                                                <FiNavigation size={16} />
+                                            ) : (
+                                                <FiPackage size={16} />
+                                            )}
+                                        </div>
+                                        <div className='admin-nav__notification-content'>
+                                            <div className='admin-nav__notification-title'>
+                                                {notification.title || 'New Booking'}
+                                            </div>
+                                            <div className='admin-nav__notification-desc'>
+                                                {notification.message || `New ${notification.booking_type} booking`}
+                                            </div>
+                                            <div className='admin-nav__notification-time'>
+                                                {new Date(notification.created_at).toLocaleString()}
+                                            </div>
+                                        </div>
+                                    </Link>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
 
             {/* Profile Dropdown */}
             <div

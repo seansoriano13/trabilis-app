@@ -91,7 +91,7 @@ export const getTourBookings = async (req, res) => {
 
 export const getAdminNotifications = async (req, res) => {
     const page = parseInt(req.query.page) || 1
-    const pageSize = 5
+    const pageSize = parseInt(req.query.limit) || 100
     const start = (page - 1) * pageSize
     const end = start + pageSize - 1
 
