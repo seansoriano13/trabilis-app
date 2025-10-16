@@ -1,6 +1,6 @@
 // assignmentController.js
 import { supabase } from '../../config/supabaseClient.js'
-import { autoAssignBooking, manualReassignBooking, getAssignmentStats } from '../../services/assignmentService.js'
+import { autoAssignBooking, manualReassignBooking, getAssignmentStats, syncTourBookingAssignmentStatus } from '../../services/assignmentService.js'
 import Pusher from 'pusher'
 
 const pusher = new Pusher({
@@ -187,6 +187,21 @@ export const updateAssignmentStatus = async (req, res) => {
                 success: false,
                 message: `${bookingType} booking not found`
             })
+        }
+
+        // Sync assignment status with related visa processings for tour bookings
+        if (bookingType === 'tour') {
+            try {
+                const syncResult = await syncTourBookingAssignmentStatus(bookingId, assignmentStatus, req.user?.id)
+                if (syncResult.success) {
+                    console.log(`Synced visa processing assignments: ${syncResult.message}`)
+                } else {
+                    console.warn(`Failed to sync visa processing assignments: ${syncResult.error}`)
+                }
+            } catch (syncError) {
+                console.error('Error syncing visa processing assignments:', syncError)
+                // Don't fail the main update if sync fails
+            }
         }
 
         res.json({

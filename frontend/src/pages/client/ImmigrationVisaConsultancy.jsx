@@ -1,18 +1,29 @@
 import './ImmigrationVisaConsultancy.css'
 import { useState } from 'react'
 import axios from 'axios'
+import Select from 'react-select'
+import countryCodes from '../../data/CountryCodes.json'
+import './ImmigrationVisaConsultancy.css'
 
 export default function ImmigrationVisaConsultancy() {
     const [formData, setFormData] = useState({
         visa_type: '',
         destination: '',
         full_name: '',
+        mobile_country_code: '63', // Default to Philippines
         mobile_number: '',
         email_address: '',
         message: ''
     })
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [submitMessage, setSubmitMessage] = useState('')
+
+    // Country options for mobile number (matching StandaloneVisaProcessingModal pattern)
+    const countryOptions = countryCodes.map((c) => ({
+        value: c.dial_code.replace('+', ''), // "63"
+        label: `${c.name} (${c.dial_code})`,
+        code: c.code,
+    }))
 
     const handleVisaBtn = () => {
         // Scroll to visa inquiry form
@@ -22,7 +33,7 @@ export default function ImmigrationVisaConsultancy() {
         }
     }
 
-    const handleViewDetails = (_visaType) => {
+    const handleViewDetails = () => {
         // Handle view details button click
         // TODO: Implement view details functionality
     }
@@ -40,6 +51,7 @@ export default function ImmigrationVisaConsultancy() {
         if (!formData.destination) return 'Please select a destination'
         if (!formData.full_name.trim()) return 'Please enter your full name'
         if (!formData.mobile_number.trim()) return 'Please enter your phone number'
+        if (!formData.mobile_country_code) return 'Please select a country code'
         if (!formData.email_address.trim()) return 'Please enter your email address'
         if (!formData.email_address.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
             return 'Please enter a valid email address'
@@ -61,9 +73,18 @@ export default function ImmigrationVisaConsultancy() {
         setSubmitMessage('')
 
         try {
+            // Prepare mobile number in the new jsonb format
+            const mobileNumberData = {
+                number: formData.mobile_number,
+                countryCallingCode: `+${formData.mobile_country_code}`
+            }
+
             const response = await axios.post(
                 `${import.meta.env.VITE_BACKEND_URL}/api/v1/visa/inquiry`,
-                formData,
+                {
+                    ...formData,
+                    mobile_number: mobileNumberData
+                },
                 { headers: { 'Content-Type': 'application/json' } }
             )
 
@@ -77,6 +98,7 @@ export default function ImmigrationVisaConsultancy() {
                     visa_type: '',
                     destination: '',
                     full_name: '',
+                    mobile_country_code: '63',
                     mobile_number: '',
                     email_address: '',
                     message: ''
@@ -148,7 +170,7 @@ export default function ImmigrationVisaConsultancy() {
                             <div>
                                 <button 
                                     className="visa-types__btn--view-details"
-                                    onClick={() => handleViewDetails('Tourist Visa')}
+                                    onClick={() => handleViewDetails()}
                                 >
                                     View Details
                                 </button>
@@ -175,7 +197,7 @@ export default function ImmigrationVisaConsultancy() {
                             <div>
                                 <button 
                                     className="visa-types__btn--view-details"
-                                    onClick={() => handleViewDetails('Student Visa')}
+                                    onClick={() => handleViewDetails()}
                                 >
                                     View Details
                                 </button>
@@ -202,7 +224,7 @@ export default function ImmigrationVisaConsultancy() {
                             <div>
                                 <button 
                                     className="visa-types__btn--view-details"
-                                    onClick={() => handleViewDetails('Spousal Visa')}
+                                    onClick={() => handleViewDetails()}
                                 >
                                     View Details
                                 </button>
@@ -229,7 +251,7 @@ export default function ImmigrationVisaConsultancy() {
                             <div>
                                 <button 
                                     className="visa-types__btn--view-details"
-                                    onClick={() => handleViewDetails('Fiancee Visa')}
+                                    onClick={() => handleViewDetails()}
                                 >
                                     View Details
                                 </button>
@@ -255,7 +277,7 @@ export default function ImmigrationVisaConsultancy() {
                             <div>
                                 <button 
                                     className="visa-types__btn--view-details"
-                                    onClick={() => handleViewDetails('Business Visa')}
+                                    onClick={() => handleViewDetails()}
                                 >
                                     View Details
                                 </button>
@@ -428,29 +450,70 @@ export default function ImmigrationVisaConsultancy() {
                                 </div>
                                 <div className="visa-inquiry__form-container inquiry-form-2-col">
                                     <div>
+                                        <label htmlFor="phone-country" className="block">Country Code</label>
+                                        <Select
+                                            className="visa-inquiry__country-select"
+                                            options={countryOptions}
+                                            value={countryOptions.find(opt => opt.value === formData.mobile_country_code) || null}
+                                            onChange={(selected) => setFormData(prev => ({
+                                                ...prev,
+                                                mobile_country_code: selected?.value || '63'
+                                            }))}
+                                            placeholder="Select country code"
+                                            isSearchable
+                                            styles={{
+                                                control: (provided) => ({
+                                                    ...provided,
+                                                    minHeight: '43px',
+                                                    height: '100%',
+                                                    fontSize: '0.875rem',
+                                                    padding: '0 8px'
+                                                }),
+                                                valueContainer: (provided) => ({
+                                                    ...provided,
+                                                    height: '30px',
+                                                    padding: '0 4px'
+                                                }),
+                                                input: (provided) => ({
+                                                    ...provided,
+                                                    margin: '0',
+                                                    padding: '0'
+                                                }),
+                                                indicatorsContainer: (provided) => ({
+                                                    ...provided,
+                                                    height: '30px'
+                                                }),
+                                                dropdownIndicator: (provided) => ({
+                                                    ...provided,
+                                                    padding: '4px'
+                                                })
+                                            }}
+                                        />
+                                    </div>
+                                    <div>
                                         <label htmlFor="phone" className="block">Phone Number</label>
                                         <input 
                                             type="text" 
                                             name="mobile_number" 
                                             id="phone"
-                                            placeholder="(+63 917 704 1582)"
+                                            placeholder="917 704 1582"
                                             value={formData.mobile_number}
                                             onChange={handleInputChange}
                                             required
                                         />
                                     </div>
-                                    <div>
-                                        <label htmlFor="email" className="block">Email</label>
-                                        <input 
-                                            type="email" 
-                                            name="email_address" 
-                                            id="email"
-                                            placeholder="Your email address"
-                                            value={formData.email_address}
-                                            onChange={handleInputChange}
-                                            required
-                                        />
-                                    </div>
+                                </div>
+                                <div className="visa-inquiry__form-container">
+                                    <label htmlFor="email" className="block">Email</label>
+                                    <input 
+                                        type="email" 
+                                        name="email_address" 
+                                        id="email"
+                                        placeholder="Your email address"
+                                        value={formData.email_address}
+                                        onChange={handleInputChange}
+                                        required
+                                    />
                                 </div>
                                 <div className="visa-inquiry__form-container">
                                     <label htmlFor="message" className="block">Message</label>

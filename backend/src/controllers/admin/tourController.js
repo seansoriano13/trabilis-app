@@ -1,4 +1,5 @@
 import { supabase, supabaseAdmin } from '../../config/supabaseClient.js'
+import { syncTourBookingAssignmentStatus } from '../../services/assignmentService.js'
 import Pusher from 'pusher'
 import fs from 'fs'
 import path from 'path'
@@ -1803,6 +1804,39 @@ export const editTourBooking = async (req, res) => {
                 bookingType: 'tour',
                 bookingId: id,
             })
+
+            // Sync assignment with related visa processings
+            if (assigned_to) {
+                try {
+                    // Get related visa processings and update their assignment
+                    const { data: visaProcessings, error: fetchError } = await supabase
+                        .from('visa_processings')
+                        .select('id')
+                        .eq('tour_booking_id', id)
+
+                    if (!fetchError && visaProcessings && visaProcessings.length > 0) {
+                        const visaProcessingIds = visaProcessings.map(vp => vp.id)
+                        
+                        const { error: updateError } = await supabase
+                            .from('visa_processings')
+                            .update({
+                                assigned_to: assigned_to,
+                                assigned_at: new Date().toISOString(),
+                                assigned_by: req.user?.id || null
+                            })
+                            .in('id', visaProcessingIds)
+
+                        if (updateError) {
+                            console.error('Error syncing visa processing assignments:', updateError)
+                        } else {
+                            console.log(`Synced ${visaProcessingIds.length} visa processings to new staff member`)
+                        }
+                    }
+                } catch (syncError) {
+                    console.error('Error syncing visa processing assignments:', syncError)
+                    // Don't fail the main update if sync fails
+                }
+            }
         }
 
         if (
@@ -1827,6 +1861,19 @@ export const editTourBooking = async (req, res) => {
                     status: assignment_status,
                 }
             )
+
+            // Sync assignment status with related visa processings
+            try {
+                const syncResult = await syncTourBookingAssignmentStatus(id, assignment_status, req.user?.id)
+                if (syncResult.success) {
+                    console.log(`Synced visa processing assignments: ${syncResult.message}`)
+                } else {
+                    console.warn(`Failed to sync visa processing assignments: ${syncResult.error}`)
+                }
+            } catch (syncError) {
+                console.error('Error syncing visa processing assignments:', syncError)
+                // Don't fail the main update if sync fails
+            }
         }
 
         return res.json({ success: true, data })

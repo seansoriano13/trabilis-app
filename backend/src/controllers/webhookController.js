@@ -1,13 +1,16 @@
 import stripe from '../config/stripe.js'
-import { supabase } from '../config/supabaseClient.js'
+import { supabase, supabaseAdmin } from '../config/supabaseClient.js'
 import { query } from '../config/db.js'
 import { finalizeFlightBooking } from '../services/bookingService.js'
+import { autoAssignBooking } from '../services/assignmentService.js'
+import { sendVisaProcessingStartedEmail } from '../services/brevoEmailService.js'
 import Pusher from 'pusher'
 import {
     sendTourConfirmationEmail,
     sendTourFailureEmail,
     generateFlightItineraryPDF,
 } from '../services/brevoEmailService.js'
+import { v4 as uuidv4 } from 'uuid'
 
 export const handleStripeWebhook = async (req, res) => {
     const sig = req.headers['stripe-signature']
@@ -28,12 +31,107 @@ export const handleStripeWebhook = async (req, res) => {
     }
 
     const session = event.data.object
-    let { booking_reference, product_type } = session.metadata || {}
+    let { booking_reference, product_type, type } = session.metadata || {}
     product_type = product_type || 'FLIGHT'
 
     console.log(`🔍 WEBHOOK DEBUG - Processing ${product_type} booking: ${booking_reference}`)
     console.log(`🔍 WEBHOOK DEBUG - Session metadata:`, session.metadata)
     console.log(`🔍 WEBHOOK DEBUG - Payment amount: ${session.amount_total} ${session.currency}`)
+
+    // Handle visa inquiry payment
+    if (type === 'visa_inquiry_payment') {
+        console.log(`🔍 WEBHOOK DEBUG - Processing visa inquiry payment`)
+        
+        const inquiryId = session.metadata.inquiry_id
+        const inquiryReference = session.metadata.inquiry_reference
+
+        if (!inquiryId) {
+            console.error('❌ Webhook session missing inquiry_id for visa payment')
+            return res.sendStatus(400)
+        }
+
+        try {
+            // Get inquiry details
+            const { data: inquiry, error: inquiryError } = await supabaseAdmin
+                .from('visa_inquiries')
+                .select('*')
+                .eq('id', inquiryId)
+                .single()
+
+            if (inquiryError || !inquiry) {
+                console.error('❌ Inquiry not found for payment:', inquiryId)
+                return res.sendStatus(400)
+            }
+
+            // Create visa processing record
+            const processingReference = `TRB-VISA-${uuidv4().slice(0, 8).toUpperCase()}`
+            
+            const { data: visaProcessing, error: processingError } = await supabaseAdmin
+                .from('visa_processings')
+                .insert([{
+                    tour_booking_id: null,
+                    source_type: 'VISA_INQUIRY',
+                    source_id: inquiry.id,
+                    passenger_index: 0,
+                    passenger_name: inquiry.full_name,
+                    passenger_email: inquiry.email_address,
+                    mobile_number: inquiry.mobile_number, // Include mobile number from inquiry
+                    country: inquiry.destination,
+                    visa_type: inquiry.visa_type,
+                    status: 'PENDING',
+                    payment_status: 'PAID',
+                    stripe_payment_id: session.payment_intent,
+                    amount_paid: session.amount_total / 100, // Convert from cents to dollars/php
+                    requirements_status: {},
+                    processing_reference: processingReference,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }])
+                .select()
+                .single()
+
+            if (processingError) {
+                console.error('❌ Error creating visa processing:', processingError)
+                return res.sendStatus(500)
+            }
+
+            // Update inquiry status
+            await supabaseAdmin
+                .from('visa_inquiries')
+                .update({
+                    conversion_status: 'CONVERTED',
+                    converted_to_processing_id: visaProcessing.id,
+                    status: 'COMPLETED',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', inquiryId)
+
+            // Auto-assign to travel consultant
+            try {
+                const assignmentResult = await autoAssignBooking('visa-processing', visaProcessing.id)
+                console.log(`✅ Visa processing ${visaProcessing.id} auto-assigned`)
+            } catch (err) {
+                console.error('⚠️ Auto-assignment error:', err)
+            }
+
+            // Send confirmation email
+            await sendVisaProcessingStartedEmail({
+                processingReference,
+                inquiryReference,
+                full_name: inquiry.full_name,
+                email_address: inquiry.email_address,
+                visa_type: inquiry.visa_type,
+                destination: inquiry.destination
+            })
+
+            console.log(`✅ Visa inquiry payment processed successfully: ${inquiryReference} -> ${processingReference}`)
+            return res.sendStatus(200)
+
+        } catch (err) {
+            console.error('❌ Error processing visa inquiry payment:', err)
+            return res.sendStatus(500)
+        }
+    }
 
     if (!booking_reference) {
         console.error('❌ Webhook session missing booking_reference')

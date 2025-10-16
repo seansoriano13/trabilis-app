@@ -107,3 +107,14 @@ export const checkVisaRequirement = (countryName) => {
 export const getCountryByName = (countryName) => {
     return countryCodes.find(country => country.name === countryName)
 }
+
+// Export visa required countries
+export { VISA_REQUIRED_COUNTRIES }
+
+// Get visa required country options for react-select
+export const getVisaRequiredCountryOptions = () => {
+    return VISA_REQUIRED_COUNTRIES.map(countryName => ({
+        value: countryName,
+        label: countryName
+    })).sort((a, b) => a.label.localeCompare(b.label))
+}

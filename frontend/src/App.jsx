@@ -34,6 +34,7 @@ import AdminTours from './pages/admin/AdminTour'
 import AdminUsers from './pages/admin/AdminUsers'
 import AdminVisa from './pages/admin/AdminVisa'
 import TrackBooking from './pages/client/TrackBooking'
+import VisaProcessingSuccess from './pages/client/VisaProcessingSuccess'
 import FlightBookingDetail from './pages/admin/FlightBookingDetail'
 import TourBookingDetail from './pages/admin/TourBookingDetail'
 import { AirportProvider } from './context/AirportContext'
@@ -71,6 +72,10 @@ function App() {
                     <Route
                         path='track-booking'
                         element={<TrackBooking />}
+                    />
+                    <Route
+                        path='visa-processing-success'
+                        element={<VisaProcessingSuccess />}
                     />
                     <Route
                         path='destinations'

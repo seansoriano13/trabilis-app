@@ -110,6 +110,7 @@ export const getVisaProcessings = async (req, res) => {
             status = 'ALL', 
             country = '', 
             assigned_to = '',
+            source_type = 'ALL',
             search = '' 
         } = req.query
         const offset = (page - 1) * limit
@@ -118,13 +119,13 @@ export const getVisaProcessings = async (req, res) => {
             .from('visa_processings')
             .select(`
                 *,
-                tour_bookings!inner(
+                tour_bookings(
                     booking_reference,
                     lead_first_name,
                     lead_last_name,
                     lead_email,
-                    package_dates!inner(
-                        tour_packages!inner(
+                    package_dates(
+                        tour_packages(
                             title,
                             destination_country
                         )
@@ -143,6 +144,10 @@ export const getVisaProcessings = async (req, res) => {
 
         if (assigned_to) {
             q = q.eq('assigned_to', assigned_to)
+        }
+
+        if (source_type !== 'ALL') {
+            q = q.eq('source_type', source_type)
         }
 
         if (search) {
@@ -175,6 +180,32 @@ export const getVisaProcessings = async (req, res) => {
                     assigned_staff_last_name: map.get(vp.assigned_to)?.last_name || '',
                     assigned_staff_email: map.get(vp.assigned_to)?.email || '',
                 }))
+            }
+        }
+
+        // Enrich with visa inquiry data for standalone processings
+        const visaInquiryIds = visaProcessings
+            .filter(vp => vp.source_type === 'VISA_INQUIRY' && vp.source_id)
+            .map(vp => vp.source_id)
+        
+        if (visaInquiryIds.length > 0) {
+            const { data: inquiryList, error: inquiryErr } = await supabaseAdmin
+                .from('visa_inquiries')
+                .select('id, inquiry_reference, full_name, email_address, mobile_number')
+                .in('id', visaInquiryIds)
+            
+            if (!inquiryErr && inquiryList) {
+                const inquiryMap = new Map(inquiryList.map(i => [i.id, i]))
+                enriched = enriched.map(vp => {
+                    if (vp.source_type === 'VISA_INQUIRY' && vp.source_id) {
+                        const inquiry = inquiryMap.get(vp.source_id)
+                        return {
+                            ...vp,
+                            visa_inquiries: inquiry || null
+                        }
+                    }
+                    return vp
+                })
             }
         }
 
@@ -695,6 +726,161 @@ export const createVisaProcessingsForBooking = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to create visa processings for booking'
+        })
+    }
+}
+
+export const getVisaProcessingById = async (req, res) => {
+    try {
+        const { id } = req.params
+
+        // Get visa processing with joined data
+        const { data: visaProcessing, error } = await supabaseAdmin
+            .from('visa_processings')
+            .select(`
+                *,
+                tour_bookings(
+                    booking_reference,
+                    lead_first_name,
+                    lead_last_name,
+                    lead_email,
+                    package_dates(
+                        tour_packages(
+                            title,
+                            destination_country
+                        )
+                    )
+                )
+            `)
+            .eq('id', id)
+            .single()
+
+        if (error) {
+            if (error.code === 'PGRST116') {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Visa processing not found'
+                })
+            }
+            throw error
+        }
+
+        // Enrich with assigned staff info
+        let enriched = visaProcessing
+        if (visaProcessing.assigned_to) {
+            const { data: staff, error: staffErr } = await supabaseAdmin
+                .from('admins')
+                .select('id, first_name, last_name, email')
+                .eq('id', visaProcessing.assigned_to)
+                .single()
+            
+            if (!staffErr && staff) {
+                enriched = {
+                    ...visaProcessing,
+                    assigned_staff_first_name: staff.first_name,
+                    assigned_staff_last_name: staff.last_name,
+                    assigned_staff_email: staff.email
+                }
+            }
+        }
+
+        // Enrich with visa inquiry data for standalone processings
+        if (visaProcessing.source_type === 'VISA_INQUIRY' && visaProcessing.source_id) {
+            const { data: inquiry, error: inquiryErr } = await supabaseAdmin
+                .from('visa_inquiries')
+                .select('id, inquiry_reference, full_name, email_address, mobile_number, visa_type, destination, message')
+                .eq('id', visaProcessing.source_id)
+                .single()
+            
+            if (!inquiryErr && inquiry) {
+                enriched = {
+                    ...enriched,
+                    visa_inquiries: inquiry
+                }
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            data: enriched
+        })
+
+    } catch (error) {
+        console.error('Error fetching visa processing by ID:', error)
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch visa processing details'
+        })
+    }
+}
+
+export const updateVisaProcessingDetails = async (req, res) => {
+    try {
+        const { id } = req.params
+        const { 
+            passenger_name, 
+            passenger_email, 
+            passport_number,
+            country, 
+            visa_type, 
+            notes,
+            mobile_number 
+        } = req.body
+
+        // Validate required fields
+        if (!passenger_name || !country || !visa_type) {
+            return res.status(400).json({
+                success: false,
+                message: 'passenger_name, country, and visa_type are required'
+            })
+        }
+
+        // Build update object
+        const updateData = {
+            passenger_name,
+            passenger_email: passenger_email || null,
+            passport_number: passport_number || null,
+            country,
+            visa_type,
+            notes: notes || null,
+            updated_at: new Date().toISOString()
+        }
+
+        // Add mobile_number JSON if provided
+        if (mobile_number) {
+            // mobile_number should be {countryCallingCode: "+63", number: "9123456789"}
+            updateData.mobile_number = mobile_number
+        }
+
+        const { data: updated, error: updErr } = await supabaseAdmin
+            .from('visa_processings')
+            .update(updateData)
+            .eq('id', id)
+            .select('*')
+            .single()
+
+        if (updErr) {
+            throw updErr
+        }
+
+        if (!updated) {
+            return res.status(404).json({
+                success: false,
+                message: 'Visa processing not found'
+            })
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Visa processing details updated successfully',
+            data: updated
+        })
+
+    } catch (error) {
+        console.error('Error updating visa processing details:', error)
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update visa processing details'
         })
     }
 }

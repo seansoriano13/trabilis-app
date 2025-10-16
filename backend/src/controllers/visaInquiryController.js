@@ -1,8 +1,9 @@
-import { sendVisaInquiryConfirmationEmail } from '../services/brevoEmailService.js'
+import { sendVisaInquiryConfirmationEmail, sendVisaProcessingStartedEmail } from '../services/brevoEmailService.js'
 import { supabase, supabaseAdmin } from '../config/supabaseClient.js'
 import { autoAssignBooking } from '../services/assignmentService.js'
 import { v4 as uuidv4 } from 'uuid'
 import Pusher from 'pusher'
+import Stripe from 'stripe'
 
 const pusher = new Pusher({
     appId: '2048372',
@@ -11,6 +12,8 @@ const pusher = new Pusher({
     cluster: 'ap1',
     useTLS: true,
 })
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
 export const submitVisaInquiry = async (req, res) => {
     try {
@@ -33,6 +36,36 @@ export const submitVisaInquiry = async (req, res) => {
             })
         }
 
+        // Handle mobile_number - it can be either a string (legacy) or an object (new format)
+        let mobileNumberData
+        if (typeof mobile_number === 'string') {
+            // Legacy format - assume Philippine number if no country code
+            if (mobile_number.startsWith('+')) {
+                const countryCode = mobile_number.match(/^\+(\d+)/)?.[1]
+                const number = mobile_number.replace(/^\+\d+/, '')
+                mobileNumberData = {
+                    number: number,
+                    countryCallingCode: `+${countryCode}`
+                }
+            } else {
+                mobileNumberData = {
+                    number: mobile_number,
+                    countryCallingCode: '+63'
+                }
+            }
+        } else if (typeof mobile_number === 'object' && mobile_number.number && mobile_number.countryCallingCode) {
+            // New format - validate structure
+            mobileNumberData = {
+                number: mobile_number.number,
+                countryCallingCode: mobile_number.countryCallingCode
+            }
+        } else {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid mobile number format'
+            })
+        }
+
         // Generate inquiry reference (shorter UUID format like tours)
         const inquiryReference = `TRB-VISA-${uuidv4().slice(0, 8).toUpperCase()}`
 
@@ -44,7 +77,7 @@ export const submitVisaInquiry = async (req, res) => {
                 visa_type,
                 destination,
                 full_name,
-                mobile_number,
+                mobile_number: mobileNumberData,
                 email_address,
                 message,
                 status: 'PENDING',
@@ -122,7 +155,8 @@ export const getVisaInquiries = async (req, res) => {
                     `inquiry_reference.ilike.${s}`,
                     `full_name.ilike.${s}`,
                     `email_address.ilike.${s}`,
-                    `mobile_number.ilike.${s}`,
+                    `mobile_number->>number.ilike.${s}`,
+                    `mobile_number->>countryCallingCode.ilike.${s}`,
                     `visa_type.ilike.${s}`,
                     `destination.ilike.${s}`,
                 ].join(',')
@@ -244,10 +278,19 @@ export const trackVisaInquiry = async (req, res) => {
         const { data, error } = await supabaseAdmin
             .from('visa_inquiries')
             .select(
-                'inquiry_reference, status, full_name, email_address, mobile_number, visa_type, destination, message, created_at'
+                'inquiry_reference, status, full_name, email_address, mobile_number, visa_type, destination, message, created_at, conversion_status, payment_amount, stripe_checkout_id, converted_to_processing_id'
             )
             .eq('inquiry_reference', inquiryReference)
             .single()
+
+        // Convert mobile_number to display format for backward compatibility
+        if (data && data.mobile_number) {
+            if (typeof data.mobile_number === 'object' && data.mobile_number.number && data.mobile_number.countryCallingCode) {
+                data.mobile_number_display = `${data.mobile_number.countryCallingCode}${data.mobile_number.number}`
+            } else {
+                data.mobile_number_display = data.mobile_number
+            }
+        }
 
         if (error || !data) {
             return res.status(404).json({
@@ -493,6 +536,229 @@ export const getAssignedVisaInquiries = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to fetch assigned visa inquiries'
+        })
+    }
+}
+
+// Create Stripe checkout for visa inquiry payment
+export const createVisaInquiryCheckout = async (req, res) => {
+    try {
+        const { inquiry_reference } = req.params
+        const { payment_amount } = req.body
+
+        // Validate payment amount
+        if (!payment_amount || payment_amount <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Valid payment amount is required'
+            })
+        }
+
+        // Get inquiry details
+        const { data: inquiry, error: inquiryError } = await supabaseAdmin
+            .from('visa_inquiries')
+            .select('*')
+            .eq('inquiry_reference', inquiry_reference)
+            .single()
+
+        if (inquiryError || !inquiry) {
+            return res.status(404).json({
+                success: false,
+                message: 'Visa inquiry not found'
+            })
+        }
+
+        // Check if already converted
+        if (inquiry.conversion_status === 'CONVERTED') {
+            return res.status(400).json({
+                success: false,
+                message: 'This inquiry has already been converted to processing'
+            })
+        }
+
+        // Create Stripe checkout session
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [{
+                price_data: {
+                    currency: 'php',
+                    product_data: {
+                        name: `Visa Processing - ${inquiry.visa_type}`,
+                        description: `Destination: ${inquiry.destination} | Reference: ${inquiry.inquiry_reference}`
+                    },
+                    unit_amount: Math.round(payment_amount * 100)
+                },
+                quantity: 1
+            }],
+            mode: 'payment',
+            success_url: `${process.env.FRONTEND_URL}/visa-processing-success?inquiry_reference=${inquiry.inquiry_reference}`,
+            cancel_url: `${process.env.FRONTEND_URL}/track-booking?ref=${inquiry.inquiry_reference}`,
+            metadata: {
+                inquiry_id: inquiry.id,
+                inquiry_reference: inquiry.inquiry_reference,
+                type: 'visa_inquiry_payment'
+            }
+        })
+
+        // Update inquiry with checkout session
+        await supabaseAdmin
+            .from('visa_inquiries')
+            .update({
+                stripe_checkout_id: session.id,
+                payment_amount: payment_amount,
+                conversion_status: 'AWAITING_PAYMENT',
+                updated_at: new Date().toISOString()
+            })
+            .eq('inquiry_reference', inquiry_reference)
+
+        res.status(200).json({
+            success: true,
+            checkout_url: session.url,
+            session_id: session.id
+        })
+
+    } catch (error) {
+        console.error('Error creating visa inquiry checkout:', error)
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create payment checkout'
+        })
+    }
+}
+
+// Mark inquiry as ready for payment
+export const markInquiryReadyForPayment = async (req, res) => {
+    try {
+        const { id } = req.params
+        const { payment_amount } = req.body
+
+        // Validate payment amount
+        if (!payment_amount || payment_amount <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Valid payment amount is required'
+            })
+        }
+
+        // Get inquiry details
+        const { data: inquiry, error: inquiryError } = await supabaseAdmin
+            .from('visa_inquiries')
+            .select('*')
+            .eq('id', id)
+            .single()
+
+        if (inquiryError || !inquiry) {
+            return res.status(404).json({
+                success: false,
+                message: 'Visa inquiry not found'
+            })
+        }
+
+        // Check if already converted
+        if (inquiry.conversion_status === 'CONVERTED') {
+            return res.status(400).json({
+                success: false,
+                message: 'This inquiry has already been converted to processing'
+            })
+        }
+
+        // Update inquiry status to AWAITING_PAYMENT
+        const { error: updateError } = await supabaseAdmin
+            .from('visa_inquiries')
+            .update({
+                conversion_status: 'AWAITING_PAYMENT',
+                payment_amount: payment_amount,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+
+        if (updateError) {
+            console.error('Error updating inquiry:', updateError)
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to update inquiry status'
+            })
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Inquiry marked as ready for payment',
+            data: {
+                inquiry_id: id,
+                conversion_status: 'AWAITING_PAYMENT',
+                payment_amount: payment_amount
+            }
+        })
+
+    } catch (error) {
+        console.error('Error marking inquiry as ready for payment:', error)
+        res.status(500).json({
+            success: false,
+            message: 'Failed to mark inquiry as ready for payment'
+        })
+    }
+}
+
+// Revert inquiry from AWAITING_PAYMENT to NOT_CONVERTED
+export const revertInquiryPayment = async (req, res) => {
+    try {
+        const { id } = req.params
+
+        // Get inquiry details
+        const { data: inquiry, error: inquiryError } = await supabaseAdmin
+            .from('visa_inquiries')
+            .select('*')
+            .eq('id', id)
+            .single()
+
+        if (inquiryError || !inquiry) {
+            return res.status(404).json({
+                success: false,
+                message: 'Visa inquiry not found'
+            })
+        }
+
+        // Check if inquiry is in AWAITING_PAYMENT status
+        if (inquiry.conversion_status !== 'AWAITING_PAYMENT') {
+            return res.status(400).json({
+                success: false,
+                message: 'Inquiry is not in AWAITING_PAYMENT status'
+            })
+        }
+
+        // Revert inquiry status to NOT_CONVERTED
+        const { error: updateError } = await supabaseAdmin
+            .from('visa_inquiries')
+            .update({
+                conversion_status: 'NOT_CONVERTED',
+                payment_amount: null,
+                stripe_checkout_id: null,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+
+        if (updateError) {
+            console.error('Error reverting inquiry:', updateError)
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to revert inquiry status'
+            })
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Inquiry reverted to NOT_CONVERTED status',
+            data: {
+                inquiry_id: id,
+                conversion_status: 'NOT_CONVERTED'
+            }
+        })
+
+    } catch (error) {
+        console.error('Error reverting inquiry payment:', error)
+        res.status(500).json({
+            success: false,
+            message: 'Failed to revert inquiry payment'
         })
     }
 }

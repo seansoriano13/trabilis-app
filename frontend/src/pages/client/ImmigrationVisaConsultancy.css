@@ -326,6 +326,68 @@
     gap: 2rem;
 }
 
+/* Country Select Styles */
+.visa-inquiry__country-select {
+    margin-top: 0.5rem;
+}
+
+.visa-inquiry__country-select .react-select__control {
+    border: 0;
+    border-bottom: 2px solid #6b7280;
+    border-radius: 0;
+    min-height: 48px;
+    box-shadow: none;
+    background: transparent;
+}
+
+.visa-inquiry__country-select .react-select__control:hover {
+    border-bottom-color: #6b7280;
+}
+
+.visa-inquiry__country-select .react-select__control--is-focused {
+    border-bottom-color: #f7d100;
+    box-shadow: none;
+}
+
+.visa-inquiry__country-select .react-select__value-container {
+    padding: 0;
+}
+
+.visa-inquiry__country-select .react-select__input-container {
+    margin: 0;
+    padding: 0;
+}
+
+.visa-inquiry__country-select .react-select__indicator-separator {
+    display: none;
+}
+
+.visa-inquiry__country-select .react-select__dropdown-indicator {
+    color: #6b7280;
+    padding: 0.5rem 0;
+}
+
+.visa-inquiry__country-select .react-select__menu {
+    z-index: 1000;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.visa-inquiry__country-select .react-select__option {
+    padding: 8px 12px;
+    font-size: 0.875rem;
+}
+
+.visa-inquiry__country-select .react-select__option--is-focused {
+    background-color: #f7d100;
+    color: #000;
+}
+
+.visa-inquiry__country-select .react-select__option--is-selected {
+    background-color: #e0c100;
+    color: #000;
+}
+
 .visa-inquiry-btn {
     color: #fff;
     font-weight: 700;

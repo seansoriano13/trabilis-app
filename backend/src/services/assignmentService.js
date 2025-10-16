@@ -238,8 +238,105 @@ const getStaffRole = (bookingType) => {
         : 'accounting'
 }
 
+/**
+ * Syncs visa processing assignments with tour booking assignment
+ * @param {Array} visaProcessingIds - Array of visa processing IDs to sync
+ * @param {string} staffId - The staff member ID to assign to
+ * @param {string} staffName - The staff member name for logging
+ * @returns {Object} - Sync result
+ */
+const syncVisaProcessingAssignments = async (visaProcessingIds, staffId, staffName) => {
+    try {
+        if (!visaProcessingIds || visaProcessingIds.length === 0) {
+            return { success: true, message: 'No visa processings to sync' }
+        }
+
+        // Update all visa processings with the same assignment
+        const { error: updateError } = await supabase
+            .from('visa_processings')
+            .update({
+                assigned_to: staffId,
+                assigned_at: new Date().toISOString(),
+                assignment_status: 'pending'
+            })
+            .in('id', visaProcessingIds)
+
+        if (updateError) {
+            console.error('Error syncing visa processing assignments:', updateError)
+            throw new Error(`Failed to sync visa processing assignments: ${updateError.message}`)
+        }
+
+        console.log(`Synced ${visaProcessingIds.length} visa processings to ${staffName}`)
+        return { 
+            success: true, 
+            message: `Synced ${visaProcessingIds.length} visa processings to ${staffName}`,
+            syncedCount: visaProcessingIds.length
+        }
+
+    } catch (error) {
+        console.error('Visa processing sync error:', error)
+        return { success: false, error: error.message }
+    }
+}
+
+/**
+ * Syncs assignment status between tour booking and related visa processings
+ * @param {string} tourBookingId - The tour booking ID
+ * @param {string} newStatus - The new assignment status
+ * @param {string} assignedBy - The admin making the change
+ * @returns {Object} - Sync result
+ */
+const syncTourBookingAssignmentStatus = async (tourBookingId, newStatus, assignedBy) => {
+    try {
+        // Get related visa processings
+        const { data: visaProcessings, error: fetchError } = await supabase
+            .from('visa_processings')
+            .select('id')
+            .eq('tour_booking_id', tourBookingId)
+
+        if (fetchError) {
+            console.error('Error fetching related visa processings:', fetchError)
+            return { success: false, error: fetchError.message }
+        }
+
+        if (!visaProcessings || visaProcessings.length === 0) {
+            return { success: true, message: 'No related visa processings found' }
+        }
+
+        const visaProcessingIds = visaProcessings.map(vp => vp.id)
+
+        // Update visa processing assignment status
+        const { error: updateError } = await supabase
+            .from('visa_processings')
+            .update({
+                assignment_status: newStatus,
+                assigned_by: assignedBy,
+                updated_at: new Date().toISOString()
+            })
+            .in('id', visaProcessingIds)
+
+        if (updateError) {
+            console.error('Error syncing visa processing status:', updateError)
+            return { success: false, error: updateError.message }
+        }
+
+        console.log(`Synced assignment status to ${newStatus} for ${visaProcessingIds.length} visa processings`)
+        return { 
+            success: true, 
+            message: `Synced status to ${newStatus} for ${visaProcessingIds.length} visa processings`,
+            syncedCount: visaProcessingIds.length
+        }
+
+    } catch (error) {
+        console.error('Assignment status sync error:', error)
+        return { success: false, error: error.message }
+    }
+}
+
 export {
     autoAssignBooking,
     manualReassignBooking,
-    getAssignmentStats
+    getAssignmentStats,
+    syncVisaProcessingAssignments,
+    syncTourBookingAssignmentStatus
 }

@@ -3,7 +3,9 @@ import { adminAuthMiddleware } from '../middlewares/adminAuthMIddleware.js'
 import {
     createVisaProcessing,
     getVisaProcessings,
+    getVisaProcessingById,
     updateVisaStatus,
+    updateVisaProcessingDetails,
     updateRequirementsStatus,
     assignVisaProcessing,
     updateVisaAssignmentStatus,
@@ -25,8 +27,10 @@ router.get('/requirements/:country', getVisaRequirementsByCountry)
 
 // Visa processing CRUD operations
 router.get('/processings', getVisaProcessings)
+router.get('/processings/:id', getVisaProcessingById)
 router.post('/processings', createVisaProcessing)
 router.put('/processings/:id/status', updateVisaStatus)
+router.put('/processings/:id/details', updateVisaProcessingDetails)
 router.put('/processings/:id/requirements', updateRequirementsStatus)
 
 // Assignment operations

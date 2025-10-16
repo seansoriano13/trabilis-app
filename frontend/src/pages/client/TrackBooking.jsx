@@ -8,6 +8,7 @@ import axios from 'axios'
 import { getStatusStyle } from '../../utils/statusStyles.js'
 import { useAirports } from '../../context/AirportContext.jsx'
 import { getAirportInfoByIata } from '../../utils/getAirportInfoByIata.js'
+import { formatMobileNumber } from '../../utils/mobileNumberUtils'
 import { getAirlineInfo } from '../../utils/metadataApi.js'
 
 // Component to handle async airline info loading
@@ -42,6 +43,7 @@ function TrackBooking() {
     const [bookingRef, setBookingRef] = useState('')
     const [bookingType, setBookingType] = useState('flight')
     const [result, setResult] = useState(null)
+    const [paymentLoading, setPaymentLoading] = useState(false)
 
     const { airports } = useAirports()
 
@@ -68,6 +70,26 @@ function TrackBooking() {
             console.error(err)
         } finally {
             setIsLoading(false)
+        }
+    }
+
+    const handleVisaPayment = async () => {
+        setPaymentLoading(true)
+        try {
+            const response = await axios.post(
+                `${import.meta.env.VITE_BACKEND_URL}/api/v1/visa/inquiries/${result.inquiry.inquiry_reference}/create-checkout`,
+                { payment_amount: result.inquiry.payment_amount || 5000 } // Default or from inquiry
+            )
+            
+            if (response.data.success) {
+                // Redirect to Stripe checkout
+                window.location.href = response.data.checkout_url
+            }
+        } catch (error) {
+            console.error('Payment error:', error)
+            alert('Failed to initiate payment. Please try again.')
+        } finally {
+            setPaymentLoading(false)
         }
     }
 
@@ -436,53 +458,6 @@ function TrackBooking() {
                         </div>
                     </div>
                 )}
-                {result?.type === 'visa' && result?.inquiry && (
-                    <div className='max-w-[1200px] mx-auto shadow-md rounded-lg border border-gray-200 p-6 bg-white mt-8'>
-                        <div className='text-lg font-semibold text-gray-800 mb-4'>
-                            Visa Inquiry Status
-                        </div>
-                        <div className='grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700'>
-                            <div>
-                                <div className='text-gray-500'>Reference</div>
-                                <div className='font-medium'>{result.inquiry.inquiry_reference}</div>
-                            </div>
-                            <div>
-                                <div className='text-gray-500'>Status</div>
-                                <div className='font-medium'>{result.inquiry.status}</div>
-                            </div>
-                            <div>
-                                <div className='text-gray-500'>Full Name</div>
-                                <div className='font-medium'>{result.inquiry.full_name}</div>
-                            </div>
-                            <div>
-                                <div className='text-gray-500'>Email</div>
-                                <div className='font-medium'>{result.inquiry.email_address}</div>
-                            </div>
-                            <div>
-                                <div className='text-gray-500'>Mobile</div>
-                                <div className='font-medium'>{result.inquiry.mobile_number}</div>
-                            </div>
-                            <div>
-                                <div className='text-gray-500'>Visa Type</div>
-                                <div className='font-medium'>{result.inquiry.visa_type}</div>
-                            </div>
-                            <div>
-                                <div className='text-gray-500'>Destination</div>
-                                <div className='font-medium'>{result.inquiry.destination}</div>
-                            </div>
-                            <div>
-                                <div className='text-gray-500'>Submitted</div>
-                                <div className='font-medium'>{new Date(result.inquiry.created_at).toLocaleString()}</div>
-                            </div>
-                        </div>
-                        {result.inquiry.message && (
-                            <div className='mt-4'>
-                                <div className='text-gray-500 text-sm mb-1'>Message</div>
-                                <div className='text-gray-700 text-sm whitespace-pre-line'>{result.inquiry.message}</div>
-                            </div>
-                        )}
-                    </div>
-                )}
                 {result?.type === 'booking' && bookingType === 'tour' && result?.bookingData?.tour && (
                     <div className='max-w-[1200px] mx-auto shadow-md rounded-lg border border-gray-200 p-6 bg-white mt-8'>
 						<div className='flex items-center justify-between mb-4'>
@@ -586,7 +561,101 @@ function TrackBooking() {
                                     )}
                                 </div>
                             )
-                        })()}
+                        })(                        )}
+                    </div>
+                )}
+                {result?.type === 'visa' && result?.inquiry && (
+                    <div className='max-w-[1200px] mx-auto shadow-md rounded-lg border border-gray-200 p-6 bg-white mt-8'>
+                        <div className='text-lg font-semibold text-gray-800 mb-4'>
+                            Visa Inquiry Status
+                        </div>
+                        <div className='grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700'>
+                            <div>
+                                <div className='text-gray-500'>Reference</div>
+                                <div className='font-medium'>{result.inquiry.inquiry_reference}</div>
+                            </div>
+                            <div>
+                                <div className='text-gray-500'>Status</div>
+                                <div className='font-medium'>{result.inquiry.status}</div>
+                            </div>
+                            <div>
+                                <div className='text-gray-500'>Full Name</div>
+                                <div className='font-medium'>{result.inquiry.full_name}</div>
+                            </div>
+                            <div>
+                                <div className='text-gray-500'>Email</div>
+                                <div className='font-medium'>{result.inquiry.email_address}</div>
+                            </div>
+                            <div>
+                                <div className='text-gray-500'>Mobile</div>
+                                <div className='font-medium'>
+                                    {formatMobileNumber(result.inquiry.mobile_number)}
+                                </div>
+                            </div>
+                            <div>
+                                <div className='text-gray-500'>Visa Type</div>
+                                <div className='font-medium'>{result.inquiry.visa_type}</div>
+                            </div>
+                            <div>
+                                <div className='text-gray-500'>Destination</div>
+                                <div className='font-medium'>{result.inquiry.destination}</div>
+                            </div>
+                            <div>
+                                <div className='text-gray-500'>Submitted</div>
+                                <div className='font-medium'>{new Date(result.inquiry.created_at).toLocaleString()}</div>
+                            </div>
+                        </div>
+                        {result.inquiry.message && (
+                            <div className='mt-4'>
+                                <div className='text-gray-500 text-sm mb-1'>Message</div>
+                                <div className='text-gray-700 text-sm whitespace-pre-line'>{result.inquiry.message}</div>
+                            </div>
+                        )}
+                        
+                        {/* Payment Section */}
+                        {result.inquiry.conversion_status === 'AWAITING_PAYMENT' && (
+                            <div className='mt-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-2xl p-6'>
+                                <div className='flex items-center gap-3 mb-4'>
+                                    <i className='bi-credit-card text-green-600 text-2xl'></i>
+                                    <h3 className='text-xl font-bold text-green-800'>Ready for Payment</h3>
+                                </div>
+                                <p className='text-gray-700 mb-4'>
+                                    Your inquiry has been reviewed and is ready for processing. Please proceed with payment to start your visa application.
+                                </p>
+                                <button
+                                    onClick={handleVisaPayment}
+                                    disabled={paymentLoading}
+                                    className='w-full px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed'
+                                >
+                                    {paymentLoading ? (
+                                        <>
+                                            <i className='bi-arrow-clockwise animate-spin mr-2'></i>
+                                            Processing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className='bi-credit-card mr-2'></i>
+                                            Pay Now - ₱ {result.inquiry.payment_amount?.toLocaleString() || '0'}
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        )}
+                        
+                        {result.inquiry.conversion_status === 'CONVERTED' && (
+                            <div className='mt-6 bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-300 rounded-2xl p-6'>
+                                <div className='flex items-center gap-3 mb-3'>
+                                    <i className='bi-check-circle-fill text-blue-600 text-2xl'></i>
+                                    <h3 className='text-xl font-bold text-blue-800'>Processing Started!</h3>
+                                </div>
+                                <p className='text-gray-700 mb-3'>
+                                    Your payment has been received and visa processing has begun.
+                                </p>
+                                <p className='text-sm text-gray-600'>
+                                    <strong>Processing Reference:</strong> Check your email for details
+                                </p>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

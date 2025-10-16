@@ -1,7 +1,11 @@
 import stripe from '../config/stripe.js'
 import { supabase } from '../config/supabaseClient.js'
 import { v4 as uuidv4 } from 'uuid'
-import { autoAssignBooking } from '../services/assignmentService.js'
+import {
+    autoAssignBooking,
+    syncVisaProcessingAssignments,
+    syncTourBookingAssignmentStatus,
+} from '../services/assignmentService.js'
 
 const TourBookingController = {
     async initiateTourBooking(req, res) {
@@ -40,16 +44,26 @@ const TourBookingController = {
             // Validate passenger_details if provided
             if (passenger_details) {
                 if (!Array.isArray(passenger_details)) {
-                    return res.status(400).json({ error: 'passenger_details must be an array' })
+                    return res
+                        .status(400)
+                        .json({ error: 'passenger_details must be an array' })
                 }
                 if (passenger_details.length !== num_pax) {
-                    return res.status(400).json({ error: 'passenger_details length must match num_pax' })
+                    return res.status(400).json({
+                        error: 'passenger_details length must match num_pax',
+                    })
                 }
                 // Basic validation for passenger structure
                 for (let i = 0; i < passenger_details.length; i++) {
                     const passenger = passenger_details[i]
-                    if (!passenger.name || !passenger.name.firstName || !passenger.name.lastName) {
-                        return res.status(400).json({ error: `Passenger ${i + 1} must have valid name structure` })
+                    if (
+                        !passenger.name ||
+                        !passenger.name.firstName ||
+                        !passenger.name.lastName
+                    ) {
+                        return res.status(400).json({
+                            error: `Passenger ${i + 1} must have valid name structure`,
+                        })
                     }
                 }
             }
@@ -77,7 +91,8 @@ const TourBookingController = {
                 .slice(0, 8)
                 .toUpperCase()}`
             const base_total_amount = packageData.rate_per_pax * num_pax
-            const total_reservation_fee = packageData.reservation_fee_per_pax * num_pax
+            const total_reservation_fee =
+                packageData.reservation_fee_per_pax * num_pax
 
             // Compute customization fee if provided
             let customization_fee = 0
@@ -92,23 +107,39 @@ const TourBookingController = {
                     .eq('package_date_id', package_date_id)
 
                 if (groupsError) {
-                    return res.status(500).json({ error: 'Failed to load inclusion groups' })
+                    return res
+                        .status(500)
+                        .json({ error: 'Failed to load inclusion groups' })
                 }
 
-                const validGroupMap = new Map((groupsData || []).map(g => [g.id, g]))
-                const requestedRemovedIds = Array.isArray(customization.removedInclusionGroupIds)
-                    ? customization.removedInclusionGroupIds.filter((v) => Number.isInteger(v))
+                const validGroupMap = new Map(
+                    (groupsData || []).map((g) => [g.id, g])
+                )
+                const requestedRemovedIds = Array.isArray(
+                    customization.removedInclusionGroupIds
+                )
+                    ? customization.removedInclusionGroupIds.filter((v) =>
+                          Number.isInteger(v)
+                      )
                     : []
 
                 // Filter only valid and removable groups
-                removedGroupIdsToPersist = requestedRemovedIds.filter((groupId) => {
-                    const g = validGroupMap.get(groupId)
-                    return g && g.removable === true
-                })
+                removedGroupIdsToPersist = requestedRemovedIds.filter(
+                    (groupId) => {
+                        const g = validGroupMap.get(groupId)
+                        return g && g.removable === true
+                    }
+                )
 
-                if (requestedRemovedIds.length && removedGroupIdsToPersist.length !== requestedRemovedIds.length) {
+                if (
+                    requestedRemovedIds.length &&
+                    removedGroupIdsToPersist.length !==
+                        requestedRemovedIds.length
+                ) {
                     // Some requested groups are invalid or not removable
-                    return res.status(400).json({ error: 'One or more inclusion groups are invalid or not removable' })
+                    return res.status(400).json({
+                        error: 'One or more inclusion groups are invalid or not removable',
+                    })
                 }
 
                 // Validate itinerary rest days by day_number existing
@@ -118,17 +149,32 @@ const TourBookingController = {
                     .eq('package_date_id', package_date_id)
 
                 if (itinError) {
-                    return res.status(500).json({ error: 'Failed to load itineraries' })
+                    return res
+                        .status(500)
+                        .json({ error: 'Failed to load itineraries' })
                 }
 
-                const validDayNumbers = new Set((itinData || []).map((i) => i.day_number))
-                const requestedRestDays = Array.isArray(customization.restDayNumbers)
-                    ? customization.restDayNumbers.filter((v) => Number.isInteger(v))
+                const validDayNumbers = new Set(
+                    (itinData || []).map((i) => i.day_number)
+                )
+                const requestedRestDays = Array.isArray(
+                    customization.restDayNumbers
+                )
+                    ? customization.restDayNumbers.filter((v) =>
+                          Number.isInteger(v)
+                      )
                     : []
-                restDayNumbersToPersist = requestedRestDays.filter((d) => validDayNumbers.has(d))
+                restDayNumbersToPersist = requestedRestDays.filter((d) =>
+                    validDayNumbers.has(d)
+                )
 
-                if (requestedRestDays.length && restDayNumbersToPersist.length !== requestedRestDays.length) {
-                    return res.status(400).json({ error: 'One or more rest day numbers are invalid' })
+                if (
+                    requestedRestDays.length &&
+                    restDayNumbersToPersist.length !== requestedRestDays.length
+                ) {
+                    return res.status(400).json({
+                        error: 'One or more rest day numbers are invalid',
+                    })
                 }
 
                 // Fee rules with defaults
@@ -138,17 +184,23 @@ const TourBookingController = {
                     minFee: 5000,
                     maxFee: 50000,
                 }
-                const fee_rules = packageData.fee_rules && typeof packageData.fee_rules === 'object'
-                    ? { ...DEFAULT_FEE_RULES, ...packageData.fee_rules }
-                    : { ...DEFAULT_FEE_RULES }
+                const fee_rules =
+                    packageData.fee_rules &&
+                    typeof packageData.fee_rules === 'object'
+                        ? { ...DEFAULT_FEE_RULES, ...packageData.fee_rules }
+                        : { ...DEFAULT_FEE_RULES }
 
                 const perGroup = Number(fee_rules.perRemovedGroup) || 0
                 const perRest = Number(fee_rules.perRestDay) || 0
                 const minFee = Number(fee_rules.minFee) || 0
-                const maxFee = Number(fee_rules.maxFee) || Number.MAX_SAFE_INTEGER
+                const maxFee =
+                    Number(fee_rules.maxFee) || Number.MAX_SAFE_INTEGER
 
-                customization_fee = (removedGroupIdsToPersist.length * perGroup) + (restDayNumbersToPersist.length * perRest)
-                if (customization_fee > 0 && customization_fee < minFee) customization_fee = minFee
+                customization_fee =
+                    removedGroupIdsToPersist.length * perGroup +
+                    restDayNumbersToPersist.length * perRest
+                if (customization_fee > 0 && customization_fee < minFee)
+                    customization_fee = minFee
                 if (customization_fee > maxFee) customization_fee = maxFee
             }
 
@@ -165,7 +217,9 @@ const TourBookingController = {
                     lead_last_name: lead_booker_details.lastName,
                     lead_email: lead_booker_details.email,
                     lead_phone: lead_booker_details.phone,
-                    passenger_details: Array.isArray(passenger_details) ? passenger_details : null,
+                    passenger_details: Array.isArray(passenger_details)
+                        ? passenger_details
+                        : null,
                     total_amount,
                     reservation_amount: total_reservation_fee,
                     status: 'PENDING_PAYMENT',
@@ -183,79 +237,138 @@ const TourBookingController = {
             }
 
             // Create visa processings if visa_statuses are provided and tour package requires visa
-            if (visa_statuses && Array.isArray(visa_statuses) && visa_statuses.length > 0) {
+            if (
+                visa_statuses &&
+                Array.isArray(visa_statuses) &&
+                visa_statuses.length > 0
+            ) {
                 try {
                     // Get tour package info to check if visa is required
-                    const { data: packageInfo, error: packageInfoError } = await supabase
-                        .from('package_dates')
-                        .select(`
+                    const { data: packageInfo, error: packageInfoError } =
+                        await supabase
+                            .from('package_dates')
+                            .select(
+                                `
                             tour_packages (
                                 id,
                                 title,
                                 destination_country,
                                 visa_required
                             )
-                        `)
-                        .eq('id', package_date_id)
-                        .single()
+                        `
+                            )
+                            .eq('id', package_date_id)
+                            .single()
 
                     if (packageInfoError) {
-                        console.error('Error fetching package info:', packageInfoError)
+                        console.error(
+                            'Error fetching package info:',
+                            packageInfoError
+                        )
                         // Don't fail the booking if we can't get package info
                     } else if (packageInfo?.tour_packages?.visa_required) {
                         // Create visa processings for passengers who need visa processing
                         const visaProcessingsToCreate = visa_statuses
-                            .filter(vs => vs.status === 'needs_processing')
-                            .map(vs => {
+                            .filter((vs) => vs.status === 'needs_processing')
+                            .map((vs) => {
                                 // Determine if this is for an expired visa renewal
-                                const isExpiredVisaRenewal = vs.existing_visa_status === 'expired'
-                                
+                                const isExpiredVisaRenewal =
+                                    vs.existing_visa_status === 'expired'
+
                                 return {
                                     tour_booking_id: bookingData.id,
                                     passenger_index: vs.passenger_index,
                                     passenger_name: vs.passenger_name,
                                     passenger_email: vs.passenger_email,
-                                    country: packageInfo.tour_packages.destination_country,
+                                    country:
+                                        packageInfo.tour_packages
+                                            .destination_country,
                                     visa_type: 'tourist', // Default to tourist, can be updated later
                                     status: 'PENDING',
-                                    existing_visa_status: vs.existing_visa_status || 'not_specified',
-                                    visa_expiry_date: vs.visa_expiry_date || null,
+                                    existing_visa_status:
+                                        vs.existing_visa_status ||
+                                        'not_specified',
+                                    visa_expiry_date:
+                                        vs.visa_expiry_date || null,
                                     requirements_status: {},
                                     processing_reference: `TRB-VISA-${uuidv4().slice(0, 8).toUpperCase()}`,
-                                    notes: isExpiredVisaRenewal 
+                                    notes: isExpiredVisaRenewal
                                         ? `Auto-created for tour booking ${bookingData.booking_reference} - Expired visa renewal assistance`
                                         : `Auto-created for tour booking ${bookingData.booking_reference}`,
                                     created_at: new Date().toISOString(),
-                                    updated_at: new Date().toISOString()
+                                    updated_at: new Date().toISOString(),
                                 }
                             })
 
                         if (visaProcessingsToCreate.length > 0) {
-                            const { error: visaProcessingError } = await supabase
-                                .from('visa_processings')
-                                .insert(visaProcessingsToCreate)
+                            const { error: visaProcessingError } =
+                                await supabase
+                                    .from('visa_processings')
+                                    .insert(visaProcessingsToCreate)
 
                             if (visaProcessingError) {
-                                console.error('Error creating visa processings:', visaProcessingError)
+                                console.error(
+                                    'Error creating visa processings:',
+                                    visaProcessingError
+                                )
                                 // Don't fail the booking if visa processing creation fails
                             } else {
-                                console.log(`Created ${visaProcessingsToCreate.length} visa processings for booking ${bookingData.id}`)
+                                console.log(
+                                    `Created ${visaProcessingsToCreate.length} visa processings for booking ${bookingData.id}`
+                                )
+
+                                // Store visa processing IDs for later assignment sync
+                                const visaProcessingIds =
+                                    visaProcessingsToCreate.map((vp) => vp.id)
+                                bookingData.visaProcessingIds =
+                                    visaProcessingIds
                             }
                         }
                     }
                 } catch (visaError) {
-                    console.error('Error in visa processing creation:', visaError)
+                    console.error(
+                        'Error in visa processing creation:',
+                        visaError
+                    )
                     // Don't fail the booking if visa processing fails
                 }
             }
 
             // Auto-assign booking to accounting staff
             try {
-                const assignmentResult = await autoAssignBooking('tour', bookingData.id)
+                const assignmentResult = await autoAssignBooking(
+                    'tour',
+                    bookingData.id
+                )
                 if (assignmentResult.success) {
-                    console.log(`Tour booking ${bookingData.id} auto-assigned to ${assignmentResult.assignedStaff.name}`)
+                    console.log(
+                        `Tour booking ${bookingData.id} auto-assigned to ${assignmentResult.assignedStaff.name}`
+                    )
+
+                    // Sync assignment to related visa processings
+                    if (
+                        bookingData.visaProcessingIds &&
+                        bookingData.visaProcessingIds.length > 0
+                    ) {
+                        try {
+                            await syncVisaProcessingAssignments(
+                                bookingData.visaProcessingIds,
+                                assignmentResult.assignedStaff.id,
+                                assignmentResult.assignedStaff.name
+                            )
+                        } catch (syncError) {
+                            console.error(
+                                'Error syncing visa processing assignments:',
+                                syncError
+                            )
+                            // Don't fail the booking if sync fails
+                        }
+                    }
                 } else {
-                    console.warn(`Failed to auto-assign tour booking ${bookingData.id}:`, assignmentResult.error)
+                    console.warn(
+                        `Failed to auto-assign tour booking ${bookingData.id}:`,
+                        assignmentResult.error
+                    )
                 }
             } catch (assignmentError) {
                 console.error('Auto-assignment error:', assignmentError)
@@ -263,7 +376,12 @@ const TourBookingController = {
             }
 
             // Persist customization if any
-            if (customization && customization.enabled === true && (removedGroupIdsToPersist.length > 0 || restDayNumbersToPersist.length > 0)) {
+            if (
+                customization &&
+                customization.enabled === true &&
+                (removedGroupIdsToPersist.length > 0 ||
+                    restDayNumbersToPersist.length > 0)
+            ) {
                 const snapshot = {
                     clientTotals: customization.clientTotals || null,
                 }
@@ -271,21 +389,28 @@ const TourBookingController = {
                     .from('tour_booking_customizations')
                     .insert({
                         tour_booking_id: bookingData.id,
-                        removed_inclusion_group_ids: JSON.stringify(removedGroupIdsToPersist),
+                        removed_inclusion_group_ids: JSON.stringify(
+                            removedGroupIdsToPersist
+                        ),
                         rest_day_ids: JSON.stringify(restDayNumbersToPersist),
                         customization_fee,
                         client_snapshot: snapshot,
                     })
 
                 if (custError) {
-                    console.error('Error saving booking customization:', custError)
-                    return res.status(500).json({ error: 'Failed to save booking customization' })
+                    console.error(
+                        'Error saving booking customization:',
+                        custError
+                    )
+                    return res
+                        .status(500)
+                        .json({ error: 'Failed to save booking customization' })
                 }
             }
 
             const amount =
                 payment_type === 'RESERVATION'
-                    ? (total_reservation_fee + customization_fee)
+                    ? total_reservation_fee + customization_fee
                     : total_amount
             if (!amount || amount <= 0) {
                 return res
@@ -390,9 +515,15 @@ const TourBookingController = {
                 passenger_details:
                     data.passenger_details == null
                         ? null
-                        : (typeof data.passenger_details === 'string'
-                            ? ((() => { try { return JSON.parse(data.passenger_details) } catch { return null } })())
-                            : data.passenger_details),
+                        : typeof data.passenger_details === 'string'
+                          ? (() => {
+                                try {
+                                    return JSON.parse(data.passenger_details)
+                                } catch {
+                                    return null
+                                }
+                            })()
+                          : data.passenger_details,
             }
 
             res.json(response)
