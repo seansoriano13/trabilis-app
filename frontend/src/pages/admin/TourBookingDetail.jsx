@@ -19,10 +19,12 @@ import {
     FiEye,
     FiPackage,
     FiDollarSign,
-    FiFile
+    FiFile,
+    FiX
 } from 'react-icons/fi'
 import { supabase } from '../../api/supabaseClient'
 import adminClient from '../../api/adminClient'
+import Select from 'react-select'
 import VisaProcessingModal from '../../components/admin/VisaProcessingModal'
 import TourBookingEditModal from '../../components/admin/TourBookingEditModal'
 import './TourBookingDetail.css'
@@ -47,6 +49,10 @@ const TourBookingDetail = () => {
         passenger: null,
         passengerIndex: null
     })
+
+    // Visa Status Update State
+    const [updatingVisaForPassenger, setUpdatingVisaForPassenger] = useState(null)
+    const [editingVisaField, setEditingVisaField] = useState(null) // { passengerIndex: number, passenger: object }
 
 
     const jwt = localStorage.getItem('adminToken')
@@ -333,6 +339,110 @@ const TourBookingDetail = () => {
     const handleVisaStatusUpdate = () => {
         // Refresh the booking data to show updated visa processing status
         fetchBooking()
+    }
+
+    // Compact select styles for table cells
+    const compactSelectStyles = {
+        control: (base) => ({
+            ...base,
+            minHeight: '40px',
+            fontSize: '14px',
+            border: '1px solid #d1d5db',
+            borderRadius: '6px',
+            boxShadow: 'none',
+            '&:hover': {
+                border: '1px solid #9ca3af'
+            }
+        }),
+        valueContainer: (base) => ({
+            ...base,
+            padding: '0 12px'
+        }),
+        input: (base) => ({
+            ...base,
+            margin: '0',
+            padding: '0'
+        }),
+        indicatorSeparator: () => ({
+            display: 'none'
+        }),
+        dropdownIndicator: (base) => ({
+            ...base,
+            padding: '8px'
+        }),
+        menu: (base) => ({
+            ...base,
+            fontSize: '14px',
+            zIndex: 1001
+        }),
+        option: (base) => ({
+            ...base,
+            padding: '12px',
+            fontSize: '14px'
+        })
+    }
+
+    // Handle visa status change
+    const handleVisaStatusChange = async (passengerIndex, field, value) => {
+        setUpdatingVisaForPassenger(passengerIndex)
+        
+        try {
+            // Get current passenger data
+            const passengers = typeof booking.passenger_details === 'string' 
+                ? JSON.parse(booking.passenger_details) 
+                : booking.passenger_details
+            
+            const passenger = passengers[passengerIndex]
+            
+            // Build updated visa data object
+            const updatedVisaData = {
+                visa_status: field === 'visa_status' ? value : passenger.visa_status,
+                visa_type: field === 'visa_type' ? value : passenger.visa_type,
+                existing_visa_status: field === 'existing_visa_status' ? value : passenger.existing_visa_status,
+                visa_expiry_date: field === 'visa_expiry_date' ? value : passenger.visa_expiry_date
+            }
+            
+            // Handle field dependencies
+            if (field === 'visa_status' && value !== 'already_has') {
+                updatedVisaData.visa_type = ''
+                updatedVisaData.existing_visa_status = 'not_specified'
+                updatedVisaData.visa_expiry_date = ''
+            }
+            
+            if (field === 'existing_visa_status' && value !== 'valid' && value !== 'expiring_soon') {
+                updatedVisaData.visa_expiry_date = ''
+            }
+            
+            // Call backend API
+            const response = await adminClient.put(
+                `/tours/${booking.id}/passenger/${passengerIndex}/visa-status`,
+                updatedVisaData
+            )
+            
+            if (response.data.success) {
+                // Update local state instead of reloading
+                const updatedPassengers = [...passengers]
+                updatedPassengers[passengerIndex] = {
+                    ...updatedPassengers[passengerIndex],
+                    ...updatedVisaData
+                }
+                
+                setBooking(prev => ({
+                    ...prev,
+                    passenger_details: updatedPassengers,
+                    updated_at: new Date().toISOString()
+                }))
+                
+                showSuccess('Visa status updated successfully')
+            } else {
+                showError('Failed to update visa status')
+            }
+        } catch (error) {
+            console.error('Error updating visa status:', error)
+            showError('Failed to update visa status')
+        } finally {
+            setUpdatingVisaForPassenger(null)
+        }
     }
 
     // const handleCancel = () => {
@@ -786,27 +896,30 @@ const TourBookingDetail = () => {
                                                                 <td>
                                                                     <div className="visa-status-cell">
                                                                         {tourPackage?.visa_required ? (
-                                                                            <>
-                                                                                <span className={`visa-status-badge visa-status--${passenger.visa_status || 'visa_required'}`}>
+                                                                            <div className="visa-status-container">
+                                                                                <span 
+                                                                                    className={`visa-status-badge visa-status--${passenger.visa_status || 'visa_required'} visa-badge-clickable`}
+                                                                                    onClick={() => setEditingVisaField({ passengerIndex: index, passenger: passenger })}
+                                                                                    title="Click to edit visa details"
+                                                                                >
                                                                                     {passenger.visa_status === 'needs_processing' ? 'Needs Processing' :
                                                                                      passenger.visa_status === 'already_has' ? 'Has Visa' :
                                                                                      'Visa Required'}
                                                                                 </span>
-                                                                                {passenger.visa_status === 'already_has' && passenger.existing_visa_status && (
-                                                                                    <div className="visa-details">
-                                                                                        <span className={`visa-existing-status visa-existing-status--${passenger.existing_visa_status}`}>
-                                                                                            {passenger.existing_visa_status === 'valid' ? 'Valid' :
-                                                                                             passenger.existing_visa_status === 'expired' ? 'Expired' :
-                                                                                             passenger.existing_visa_status === 'expiring_soon' ? 'Expiring Soon' : 'Not Specified'}
+                                                                                {passenger.visa_status === 'already_has' && 
+                                                                                 passenger.visa_expiry_date && (
+                                                                                    <div className="visa-expiry-info">
+                                                                                        <span className="visa-expiry-label">Expires:</span>
+                                                                                        <span className={`visa-expiry-date ${
+                                                                                            passenger.existing_visa_status === 'expired' ? 'expired' :
+                                                                                            passenger.existing_visa_status === 'expiring_soon' ? 'expiring-soon' :
+                                                                                            'valid'
+                                                                                        }`}>
+                                                                                            {new Date(passenger.visa_expiry_date).toLocaleDateString()}
                                                                                         </span>
-                                                                                        {passenger.visa_expiry_date && (
-                                                                                            <span className="visa-expiry">
-                                                                                                Expires: {new Date(passenger.visa_expiry_date).toLocaleDateString()}
-                                                                                            </span>
-                                                                                        )}
                                                                                     </div>
                                                                                 )}
-                                                                            </>
+                                                                            </div>
                                                                         ) : (
                                                                             <span className="visa-status-badge visa-status--not_applicable">
                                                                                 Not Applicable
@@ -1157,6 +1270,124 @@ const TourBookingDetail = () => {
                 bookingId={id}
                 onStatusUpdate={handleVisaStatusUpdate}
             />
+
+            {/* Visa Status Edit Modal */}
+            {editingVisaField && (() => {
+                // Get current passenger data from the updated booking state
+                const passengers = typeof booking.passenger_details === 'string' 
+                    ? JSON.parse(booking.passenger_details) 
+                    : booking.passenger_details
+                const currentPassenger = passengers[editingVisaField.passengerIndex]
+                
+                return (
+                    <div className="modal-overlay" onClick={() => setEditingVisaField(null)}>
+                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3>Edit Visa Status</h3>
+                                <button 
+                                    className="modal-close-btn"
+                                    onClick={() => setEditingVisaField(null)}
+                                >
+                                    <FiX size={20} />
+                                </button>
+                            </div>
+                            <div className="modal-body">
+                                <div className="form-group">
+                                    <label>Visa Status:</label>
+                                    <Select
+                                        value={{
+                                            value: currentPassenger.visa_status || 'not_applicable',
+                                            label: currentPassenger.visa_status === 'needs_processing' ? 'Needs Processing' :
+                                                   currentPassenger.visa_status === 'already_has' ? 'Has Visa' :
+                                                   'Not Applicable'
+                                        }}
+                                        options={[
+                                            { value: 'not_applicable', label: 'Not Applicable' },
+                                            { value: 'already_has', label: 'Has Visa' },
+                                            { value: 'needs_processing', label: 'Needs Processing' }
+                                        ]}
+                                        onChange={(selected) => handleVisaStatusChange(editingVisaField.passengerIndex, 'visa_status', selected.value)}
+                                        isDisabled={updatingVisaForPassenger === editingVisaField.passengerIndex}
+                                        styles={compactSelectStyles}
+                                    />
+                                </div>
+                                
+                                {/* Visa type dropdown - only show if visa_status === 'already_has' */}
+                                {currentPassenger.visa_status === 'already_has' && (
+                                    <div className="form-group">
+                                        <label>Visa Type:</label>
+                                        <Select
+                                            value={{
+                                                value: currentPassenger.visa_type || '',
+                                                label: currentPassenger.visa_type || 'Select Visa Type'
+                                            }}
+                                            options={[
+                                                { value: 'Tourist Visa', label: 'Tourist Visa' },
+                                                { value: 'Business Visa', label: 'Business Visa' },
+                                                { value: 'Student Visa', label: 'Student Visa' },
+                                                { value: 'Fiancee Visa', label: 'Fiancee Visa' },
+                                                { value: 'Spousal Visa', label: 'Spousal Visa' }
+                                            ]}
+                                            onChange={(selected) => handleVisaStatusChange(editingVisaField.passengerIndex, 'visa_type', selected.value)}
+                                            isDisabled={updatingVisaForPassenger === editingVisaField.passengerIndex}
+                                            styles={compactSelectStyles}
+                                            placeholder="Select Visa Type"
+                                        />
+                                    </div>
+                                )}
+                                
+                                {/* Existing visa status dropdown - only show if visa_status === 'already_has' */}
+                                {currentPassenger.visa_status === 'already_has' && (
+                                    <div className="form-group">
+                                        <label>Existing Visa Status:</label>
+                                        <Select
+                                            value={{
+                                                value: currentPassenger.existing_visa_status || 'not_specified',
+                                                label: currentPassenger.existing_visa_status === 'valid' ? 'Valid' :
+                                                       currentPassenger.existing_visa_status === 'expiring_soon' ? 'Expiring Soon' :
+                                                       currentPassenger.existing_visa_status === 'expired' ? 'Expired' :
+                                                       'Not Specified'
+                                            }}
+                                            options={[
+                                                { value: 'valid', label: 'Valid' },
+                                                { value: 'expiring_soon', label: 'Expiring Soon' },
+                                                { value: 'expired', label: 'Expired' },
+                                                { value: 'not_specified', label: 'Not Specified' }
+                                            ]}
+                                            onChange={(selected) => handleVisaStatusChange(editingVisaField.passengerIndex, 'existing_visa_status', selected.value)}
+                                            isDisabled={updatingVisaForPassenger === editingVisaField.passengerIndex}
+                                            styles={compactSelectStyles}
+                                        />
+                                    </div>
+                                )}
+                                
+                                {/* Visa expiry date - only show if existing_visa_status is 'valid' or 'expiring_soon' */}
+                                {currentPassenger.visa_status === 'already_has' && 
+                                 (currentPassenger.existing_visa_status === 'valid' || currentPassenger.existing_visa_status === 'expiring_soon') && (
+                                    <div className="form-group">
+                                        <label>Visa Expiry Date:</label>
+                                        <input
+                                            type="date"
+                                            value={currentPassenger.visa_expiry_date || ''}
+                                            onChange={(e) => handleVisaStatusChange(editingVisaField.passengerIndex, 'visa_expiry_date', e.target.value)}
+                                            disabled={updatingVisaForPassenger === editingVisaField.passengerIndex}
+                                            className="form-input"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="modal-footer">
+                                <button 
+                                    className="btn btn-secondary"
+                                    onClick={() => setEditingVisaField(null)}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            })()}
         </div>
     )
 }

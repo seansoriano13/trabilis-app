@@ -1,9 +1,322 @@
-/* Tour Booking Detail Styles */
-.tour-booking-detail {
+/* Visa Status Cell */
+.visa-status-cell {
+    position: relative;
+}
+
+.visa-status-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.visa-expiry-info {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 2px;
+}
+
+.visa-expiry-label {
+    font-weight: 500;
+    color: #9ca3af;
+}
+
+.visa-expiry-date {
+    font-weight: 600;
+    color: #374151;
+    background: rgba(59, 130, 246, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+/* Visa expiry date status colors */
+.visa-expiry-date.expiring-soon {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: #92400e;
+}
+
+.visa-expiry-date.expired {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #991b1b;
+}
+
+.visa-expiry-date.valid {
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.3);
+    color: #166534;
+}
+
+/* Visa Status Badge Styles */
+.visa-status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.visa-status--not_applicable {
+    background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+    color: #6b7280;
+    border: 1px solid #d1d5db;
+}
+
+.visa-status--already_has {
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    color: #065f46;
+    border: 1px solid #10b981;
+}
+
+.visa-status--needs_processing {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #92400e;
+    border: 1px solid #f59e0b;
+}
+
+.visa-status--visa_required {
+    background: linear-gradient(135deg, #fef2f2, #fecaca);
+    color: #991b1b;
+    border: 1px solid #ef4444;
+}
+
+/* Clickable Visa Badge Styles */
+.visa-badge-clickable {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.visa-badge-clickable:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.visa-badge-clickable:active {
+    transform: translateY(0);
+}
+
+.visa-badge-clickable::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: inherit;
+    background: rgba(255, 255, 255, 0.1);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.visa-badge-clickable:hover::after {
+    opacity: 1;
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    max-width: 600px;
+    width: 95%;
+    height: 80vh;
+    max-height: 80vh;
+    overflow: hidden;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: 2rem;
-    background: #f8fafc;
-    min-height: 100vh;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.modal-close-btn {
+    background: none;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.modal-body {
+    height: calc(80vh - 140px);
+    max-height: calc(75vh - 140px);
+    overflow-y: auto;
+    padding: 2rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 2rem;
+    border-top: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+.form-group {
+    margin-bottom: 2rem;
+}
+
+.form-group:last-child {
+    margin-bottom: 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.875rem;
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    color: #374151;
+    background: white;
+    transition: border-color 0.2s ease;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-input:disabled {
+    background: #f9fafb;
+    color: #9ca3af;
+    cursor: not-allowed;
+}
+
+/* Select styles for modal */
+.visa-status-select .react-select__control,
+.visa-type-select .react-select__control,
+.visa-existing-status-select .react-select__control {
+    min-height: 40px !important;
+    font-size: 14px !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+    background: white !important;
+}
+
+.visa-status-select .react-select__control:hover,
+.visa-type-select .react-select__control:hover,
+.visa-existing-status-select .react-select__control:hover {
+    border-color: #9ca3af !important;
+}
+
+.visa-status-select .react-select__control--is-focused,
+.visa-type-select .react-select__control--is-focused,
+.visa-existing-status-select .react-select__control--is-focused {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+.visa-status-select .react-select__control--is-disabled,
+.visa-type-select .react-select__control--is-disabled,
+.visa-existing-status-select .react-select__control--is-disabled {
+    background: #f9fafb !important;
+    color: #9ca3af !important;
+    cursor: not-allowed !important;
+}
+
+.visa-status-select .react-select__value-container,
+.visa-type-select .react-select__value-container,
+.visa-existing-status-select .react-select__value-container {
+    padding: 0 12px !important;
+}
+
+.visa-status-select .react-select__input,
+.visa-type-select .react-select__input,
+.visa-existing-status-select .react-select__input {
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 14px !important;
+}
+
+.visa-status-select .react-select__indicator-separator,
+.visa-type-select .react-select__indicator-separator,
+.visa-existing-status-select .react-select__indicator-separator {
+    display: none !important;
+}
+
+.visa-status-select .react-select__dropdown-indicator,
+.visa-type-select .react-select__dropdown-indicator,
+.visa-existing-status-select .react-select__dropdown-indicator {
+    padding: 8px !important;
+}
+
+.visa-status-select .react-select__menu,
+.visa-type-select .react-select__menu,
+.visa-existing-status-select .react-select__menu {
+    font-size: 14px !important;
+    z-index: 1001 !important;
+}
+
+.visa-status-select .react-select__option,
+.visa-type-select .react-select__option,
+.visa-existing-status-select .react-select__option {
+    padding: 12px !important;
+    font-size: 14px !important;
+}
+
+.visa-status-select .react-select__option--is-focused,
+.visa-type-select .react-select__option--is-focused,
+.visa-existing-status-select .react-select__option--is-focused {
+    background: #f3f4f6 !important;
+}
+
+.visa-status-select .react-select__option--is-selected,
+.visa-type-select .react-select__option--is-selected,
+.visa-existing-status-select .react-select__option--is-selected {
+    background: #3b82f6 !important;
+    color: white !important;
 }
 
 /* Loading and Error States */
@@ -1009,7 +1322,6 @@
 
 /* Modal & Select styles adapted from flight */
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-.modal-content { background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; animation: modalSlideIn 0.3s ease-out; }
 @keyframes modalSlideIn { from { opacity: 0; transform: translateY(-20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #e9ecef; background: #f8f9fa; border-radius: 12px 12px 0 0; }
 .modal-header-sticky { position: sticky; top: 0; z-index: 10; background: #f8f9fa; }

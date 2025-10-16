@@ -1864,3 +1864,146 @@ export const cancelTourBooking = async (req, res) => {
         return res.status(500).json({ error: 'Failed to cancel tour booking' })
     }
 }
+
+// Update Passenger Visa Status
+export const updatePassengerVisaStatus = async (req, res) => {
+    try {
+        const { id, index } = req.params
+        const { visa_status, visa_type, existing_visa_status, visa_expiry_date } = req.body
+
+        // Validate required fields
+        if (!id || index === undefined) {
+            return res.status(400).json({
+                success: false,
+                error: 'Booking ID and passenger index are required'
+            })
+        }
+
+        const passengerIndex = parseInt(index)
+        if (isNaN(passengerIndex) || passengerIndex < 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid passenger index'
+            })
+        }
+
+        // Validate visa_status if provided
+        if (visa_status && !['not_applicable', 'already_has', 'needs_processing'].includes(visa_status)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid visa_status. Must be one of: not_applicable, already_has, needs_processing'
+            })
+        }
+
+        // Validate visa_type if provided
+        if (visa_type && !['Tourist Visa', 'Business Visa', 'Student Visa', 'Fiancee Visa', 'Spousal Visa'].includes(visa_type)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid visa_type'
+            })
+        }
+
+        // Validate existing_visa_status if provided
+        if (existing_visa_status && !['valid', 'expiring_soon', 'expired', 'not_specified'].includes(existing_visa_status)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid existing_visa_status'
+            })
+        }
+
+        // Fetch existing booking
+        const { data: existingBooking, error: fetchError } = await supabase
+            .from('tour_bookings')
+            .select('*')
+            .eq('id', id)
+            .single()
+
+        if (fetchError || !existingBooking) {
+            return res.status(404).json({
+                success: false,
+                error: 'Booking not found'
+            })
+        }
+
+        // Parse passenger_details
+        let passengers = []
+        try {
+            passengers = typeof existingBooking.passenger_details === 'string' 
+                ? JSON.parse(existingBooking.passenger_details) 
+                : existingBooking.passenger_details || []
+        } catch (parseError) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid passenger_details format'
+            })
+        }
+
+        // Validate passenger index exists
+        if (passengerIndex >= passengers.length) {
+            return res.status(400).json({
+                success: false,
+                error: 'Passenger index out of range'
+            })
+        }
+
+        // Update passenger visa fields
+        const passenger = passengers[passengerIndex]
+        
+        // Update fields if provided
+        if (visa_status !== undefined) {
+            passenger.visa_status = visa_status
+            
+            // Clear dependent fields if visa_status changes away from 'already_has'
+            if (visa_status !== 'already_has') {
+                passenger.visa_type = ''
+                passenger.existing_visa_status = 'not_specified'
+                passenger.visa_expiry_date = ''
+            }
+        }
+        
+        if (visa_type !== undefined) {
+            passenger.visa_type = visa_type
+        }
+        
+        if (existing_visa_status !== undefined) {
+            passenger.existing_visa_status = existing_visa_status
+            
+            // Clear expiry date if status doesn't require it
+            if (existing_visa_status !== 'valid' && existing_visa_status !== 'expiring_soon') {
+                passenger.visa_expiry_date = ''
+            }
+        }
+        
+        if (visa_expiry_date !== undefined) {
+            passenger.visa_expiry_date = visa_expiry_date
+        }
+
+        // Update the booking with modified passenger_details
+        const { data: updatedBooking, error: updateError } = await supabase
+            .from('tour_bookings')
+            .update({
+                passenger_details: passengers,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+            .select()
+            .single()
+
+        if (updateError) {
+            throw updateError
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Passenger visa status updated successfully',
+            data: updatedBooking
+        })
+
+    } catch (error) {
+        console.error('Error updating passenger visa status:', error)
+        res.status(500).json({
+            success: false,
+            error: error.message
+        })
+    }
+}

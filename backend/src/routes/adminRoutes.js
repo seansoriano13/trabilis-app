@@ -9,6 +9,7 @@ import {
     updateTour,
     updateTourVisaSettings,
     getCountriesWithVisaRequirements,
+    updatePassengerVisaStatus,
 } from '../controllers/admin/tourController.js'
 import { adminLogin } from '../controllers/admin/loginController.js'
 import {
@@ -118,6 +119,7 @@ router.get('/tours/:id/print', pdfAuthMiddleware, (req, res) => {
 // Tour booking management
 router.put('/tours/:id/edit', editTourBooking)
 router.put('/tours/:id/cancel', cancelTourBooking)
+router.put('/tours/:id/passenger/:index/visa-status', updatePassengerVisaStatus)
 
 // Tour visa settings
 router.put('/tours/:id/visa-settings', updateTourVisaSettings)

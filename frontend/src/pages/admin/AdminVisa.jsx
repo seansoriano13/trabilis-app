@@ -475,10 +475,10 @@ const AdminVisa = () => {
                                                         <div className="visa__assignment-assigned">
                                                             <div className="visa__assignment-staff">
                                                                 <span className="visa__assignment-staff-name">
-                                                                    {inquiry.assigned_staff?.first_name} {inquiry.assigned_staff?.last_name}
+                                                                    {inquiry.assigned_staff_first_name} {inquiry.assigned_staff_last_name}
                                                                 </span>
                                                                 <span className="visa__assignment-staff-email">
-                                                                    {inquiry.assigned_staff?.email}
+                                                                    {inquiry.assigned_staff_email}
                                                                 </span>
                                                                 {!inquiry.assigned_by && (
                                                                     <span className="visa__assignment-auto">
