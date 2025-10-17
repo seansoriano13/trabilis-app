@@ -427,7 +427,8 @@
     padding: 1.5rem;
     margin-bottom: 2rem;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    gap: 1.5rem;
 }
 
 .tour-booking-detail__status.status-confirmed {
@@ -449,22 +450,25 @@
     display: flex;
     align-items: center;
     gap: 1rem;
+    flex: 1;
 }
 
 .status-icon {
     width: 1.5rem;
     height: 1.5rem;
+    opacity: 0.9;
 }
 
 .status-content h3 {
     font-size: 1.25rem;
     font-weight: 600;
     margin: 0 0 0.25rem 0;
+    opacity: 0.95;
 }
 
 .status-content p {
     font-size: 0.875rem;
-    opacity: 0.9;
+    opacity: 0.8;
     margin: 0;
 }
 
@@ -1283,42 +1287,223 @@
     flex-wrap: wrap;
 }
 
-.booking-detail__status {
-    padding: 15px 20px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 20px;
-}
-.booking-detail__status.status-confirmed {
-    background: #d4edda;
-    border: 1px solid #c3e6cb;
-    color: #155724;
-}
-.booking-detail__status.status-pending {
-    background: #fff3cd;
-    border: 1px solid #ffeaa7;
-    color: #856404;
-}
-.booking-detail__status.status-cancelled {
-    background: #f8d7da;
-    border: 1px solid #f5c6cb;
-    color: #721c24;
-}
-
 /* Assignment status styles */
 .assignment-status {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
-    border-left: 4px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 1.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    height: fit-content;
 }
-.assignment-status__content { display: flex; gap: 12px; }
-.assignment-status__icon { font-size: 1.5rem; flex-shrink: 0; opacity: 0.9; }
-.assignment-status__details h4 { margin: 0 0 5px 0; font-size: 1rem; font-weight: 600; opacity: 0.95; }
-.assignment-status__details p { margin: 0 0 3px 0; font-size: 0.85rem; opacity: 0.8; }
-.assignment-status__details p:last-child { margin-bottom: 0; }
+
+.assignment-status__content { 
+    display: flex; 
+    gap: 1rem; 
+    align-items: flex-start;
+}
+
+.assignment-status__icon { 
+    font-size: 1.25rem; 
+    flex-shrink: 0; 
+    opacity: 0.9;
+    margin-top: 0.125rem;
+}
+
+.assignment-status__details h4 { 
+    margin: 0 0 0.5rem 0; 
+    font-size: 1rem; 
+    font-weight: 600; 
+    opacity: 0.95; 
+}
+
+.assignment-status__details p { 
+    margin: 0 0 0.25rem 0; 
+    font-size: 0.875rem; 
+    opacity: 0.8; 
+}
+
+.assignment-status__details p:last-child { 
+    margin-bottom: 0; 
+}
+
+/* Visa Status Section - Separate from main status */
+.visa-status-section {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+}
+
+.visa-status-section__header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.visa-status-section__header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.visa-status-section__content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.visa-status-summary__header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.visa-status-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    opacity: 0.9;
+}
+
+.visa-status-summary__header h4 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    opacity: 0.95;
+}
+
+.visa-status-summary__content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.visa-status-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.visa-stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.5rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.visa-stat-item:hover {
+    background: #f1f5f9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.visa-stat-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.visa-stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+/* Visa Processing Progress */
+.visa-processing-progress {
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 1.5rem;
+    border: 1px solid #e5e7eb;
+}
+
+.visa-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.visa-progress-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.visa-progress-count {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #6b7280;
+    background: #e5e7eb;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+}
+
+.visa-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.visa-progress-fill {
+    height: 100%;
+    background: #10b981;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.visa-progress-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.visa-progress-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #374151;
+    padding: 0.5rem 0.75rem;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive Design for Status and Visa Summary */
+@media (max-width: 768px) {
+    .visa-status-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .visa-progress-details {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
 
 /* Modal & Select styles adapted from flight */
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }

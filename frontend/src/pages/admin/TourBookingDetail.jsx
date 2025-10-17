@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useSnackbar } from '../../context/SnackbarContext'
-import { 
-    FiMap, 
-    FiArrowLeft, 
-    FiUsers, 
-    FiCreditCard, 
+import {
+    FiMap,
+    FiArrowLeft,
+    FiUsers,
+    FiCreditCard,
     FiCalendar,
     FiPhone,
     FiMail,
@@ -50,7 +50,7 @@ const TourBookingDetail = () => {
     const [previewLoading, setPreviewLoading] = useState(false)
     const [showEditModal, setShowEditModal] = useState(false)
     const [assignedAdminName, setAssignedAdminName] = useState('')
-    
+
     // Visa Processing Modal State
     const [visaProcessingModal, setVisaProcessingModal] = useState({
         isOpen: false,
@@ -100,14 +100,19 @@ const TourBookingDetail = () => {
             if (data) {
                 setFlightData(data)
                 console.log('Flight data fetched successfully:', data)
-                
+
                 // Debug flight offer structure
                 if (data.amadeus_flight_offer) {
-                    const offer = typeof data.amadeus_flight_offer === 'string' 
-                        ? JSON.parse(data.amadeus_flight_offer) 
-                        : data.amadeus_flight_offer
+                    const offer =
+                        typeof data.amadeus_flight_offer === 'string'
+                            ? JSON.parse(data.amadeus_flight_offer)
+                            : data.amadeus_flight_offer
                     console.log('Flight offer structure:', offer)
-                    console.log('Flight offer itineraries:', offer?.itineraries || offer?.flightOffers?.[0]?.itineraries)
+                    console.log(
+                        'Flight offer itineraries:',
+                        offer?.itineraries ||
+                            offer?.flightOffers?.[0]?.itineraries
+                    )
                 }
             } else {
                 setFlightData(null)
@@ -259,7 +264,7 @@ const TourBookingDetail = () => {
 
     const handlePreview = async () => {
         if (!booking) return
-        
+
         setPreviewLoading(true)
         try {
             // Use admin client with proper authentication for preview
@@ -272,10 +277,10 @@ const TourBookingDetail = () => {
 
             const blob = new Blob([response.data], { type: 'text/html' })
             const url = URL.createObjectURL(blob)
-            
+
             // Open in new tab
             window.open(url, '_blank')
-            
+
             // Clean up after a delay
             setTimeout(() => {
                 URL.revokeObjectURL(url)
@@ -290,7 +295,7 @@ const TourBookingDetail = () => {
 
     const handlePrintReceipt = async () => {
         if (!booking) return
-        
+
         setPrintLoading(true)
         try {
             // Use the new print route with mode=print
@@ -303,14 +308,14 @@ const TourBookingDetail = () => {
 
             const blob = new Blob([response.data], { type: 'text/html' })
             const url = URL.createObjectURL(blob)
-            
+
             // Open in new tab with print dialog for PDF generation
             const newWindow = window.open(
                 url,
                 '_blank',
                 'width=800,height=600,scrollbars=yes,resizable=yes'
             )
-            
+
             if (newWindow) {
                 newWindow.onload = () => {
                     // Wait for styles to load, then trigger print dialog
@@ -318,7 +323,7 @@ const TourBookingDetail = () => {
                         newWindow.print()
                     }, 1000)
                 }
-                
+
                 // Handle popup blockers
                 newWindow.onerror = () => {
                     // Fallback: create download link
@@ -326,7 +331,7 @@ const TourBookingDetail = () => {
                     link.href = url
                     link.download = `Tour-Booking-${booking.booking_reference}.html`
                     link.style.display = 'none'
-                    
+
                     document.body.appendChild(link)
                     link.click()
                     document.body.removeChild(link)
@@ -337,12 +342,12 @@ const TourBookingDetail = () => {
                 link.href = url
                 link.download = `Tour-Booking-${booking.booking_reference}.html`
                 link.style.display = 'none'
-                
+
                 document.body.appendChild(link)
                 link.click()
                 document.body.removeChild(link)
             }
-            
+
             // Clean up after longer delay
             setTimeout(() => {
                 URL.revokeObjectURL(url)
@@ -375,16 +380,19 @@ const TourBookingDetail = () => {
                     ...submitData,
                     updated_at: new Date().toISOString(),
                 }))
-                
+
                 // Update flight data if flight_booking_reference changed
-                if (submitData.flight_booking_reference !== booking.flight_booking_reference) {
+                if (
+                    submitData.flight_booking_reference !==
+                    booking.flight_booking_reference
+                ) {
                     if (submitData.flight_booking_reference) {
                         fetchFlightData(submitData.flight_booking_reference)
                     } else {
                         setFlightData(null)
                     }
                 }
-                
+
                 if (
                     submitData.assigned_to &&
                     submitData.assigned_to !== booking.assigned_to
@@ -476,16 +484,16 @@ const TourBookingDetail = () => {
     // Handle visa status change
     const handleVisaStatusChange = async (passengerIndex, field, value) => {
         setUpdatingVisaForPassenger(passengerIndex)
-        
+
         try {
             // Get current passenger data
             const passengers =
                 typeof booking.passenger_details === 'string'
-                ? JSON.parse(booking.passenger_details) 
-                : booking.passenger_details
-            
+                    ? JSON.parse(booking.passenger_details)
+                    : booking.passenger_details
+
             const passenger = passengers[passengerIndex]
-            
+
             // Build updated visa data object
             const updatedVisaData = {
                 visa_status:
@@ -500,14 +508,14 @@ const TourBookingDetail = () => {
                         ? value
                         : passenger.visa_expiry_date,
             }
-            
+
             // Handle field dependencies
             if (field === 'visa_status' && value !== 'already_has') {
                 updatedVisaData.visa_type = ''
                 updatedVisaData.existing_visa_status = 'not_specified'
                 updatedVisaData.visa_expiry_date = ''
             }
-            
+
             if (
                 field === 'existing_visa_status' &&
                 value !== 'valid' &&
@@ -515,13 +523,13 @@ const TourBookingDetail = () => {
             ) {
                 updatedVisaData.visa_expiry_date = ''
             }
-            
+
             // Call backend API
             const response = await adminClient.put(
                 `/tours/${booking.id}/passenger/${passengerIndex}/visa-status`,
                 updatedVisaData
             )
-            
+
             if (response.data.success) {
                 // Update local state instead of reloading
                 const updatedPassengers = [...passengers]
@@ -529,13 +537,13 @@ const TourBookingDetail = () => {
                     ...updatedPassengers[passengerIndex],
                     ...updatedVisaData,
                 }
-                
+
                 setBooking((prev) => ({
                     ...prev,
                     passenger_details: updatedPassengers,
                     updated_at: new Date().toISOString(),
                 }))
-                
+
                 showSuccess('Visa status updated successfully')
             } else {
                 showError('Failed to update visa status')
@@ -601,7 +609,7 @@ const TourBookingDetail = () => {
                 <div className='tour-booking-detail__error'>
                     <h2>Error</h2>
                     <p>{error}</p>
-                    <button 
+                    <button
                         className='btn btn-primary'
                         onClick={() => navigate('/admin/tour-sales')}
                     >
@@ -618,7 +626,7 @@ const TourBookingDetail = () => {
                 <div className='tour-booking-detail__error'>
                     <h2>Booking Not Found</h2>
                     <p>The requested booking could not be found.</p>
-                    <button 
+                    <button
                         className='btn btn-primary'
                         onClick={() => navigate('/admin/tour-sales')}
                     >
@@ -645,14 +653,14 @@ const TourBookingDetail = () => {
                     <span className='breadcrumb-separator'>/</span>
                     <span className='breadcrumb-current'>Booking Details</span>
                 </div>
-                
+
                 <div className='tour-booking-detail__title'>
                     <FiMap className='title-icon' />
                     <h1>Tour Booking Details</h1>
                 </div>
 
                 <div className='booking-detail__actions'>
-                    <button 
+                    <button
                         className='btn btn-warning'
                         onClick={handleEdit}
                         disabled={booking.status === 'CANCELLED'}
@@ -674,9 +682,9 @@ const TourBookingDetail = () => {
                 </div>
             </div>
 
-            {/* Status Banner (reusing flight styles) */}
+            {/* Clean Status Banner */}
             <div
-                className={`booking-detail__status ${getStatusColor(booking.status)}`}
+                className={`booking-detail__status booking-detail__status--tour ${getStatusColor(booking.status)}`}
             >
                 <div className='status-content'>
                     {getStatusIcon(booking.status)}
@@ -689,12 +697,13 @@ const TourBookingDetail = () => {
                                     Cancelled on:{' '}
                                     {formatDateTime(booking.cancelled_at)}
                                 </p>
-                        )}
+                            )}
                         {booking.cancellation_reason && (
                             <p>Reason: {booking.cancellation_reason}</p>
                         )}
                     </div>
                 </div>
+
                 {/* Assignment Status */}
                 {booking.assignment_status && (
                     <div className='assignment-status'>
@@ -737,27 +746,171 @@ const TourBookingDetail = () => {
                 )}
             </div>
 
+            {/* Visa Status Summary - Separate Section */}
+            {tourPackage?.visa_required &&
+                (() => {
+                    const passengers =
+                        typeof booking.passenger_details === 'string'
+                            ? JSON.parse(booking.passenger_details)
+                            : booking.passenger_details
+
+                    if (!passengers || passengers.length === 0) return null
+
+                    const visaStatusCounts = passengers.reduce(
+                        (acc, passenger) => {
+                            const status =
+                                passenger.visa_status || 'not_applicable'
+                            acc[status] = (acc[status] || 0) + 1
+                            return acc
+                        },
+                        {}
+                    )
+
+                    const totalPassengers = passengers.length
+                    const needsProcessing =
+                        visaStatusCounts.needs_processing || 0
+                    const alreadyHas = visaStatusCounts.already_has || 0
+                    const notApplicable = visaStatusCounts.not_applicable || 0
+
+                    return (
+                        <div className='visa-status-section'>
+                            <div className='visa-status-section__header'>
+                                <FiFileText className='visa-status-icon' />
+                                <h3>Visa Status Summary</h3>
+                            </div>
+                            <div className='visa-status-section__content'>
+                                <div className='visa-status-stats'>
+                                    <div className='visa-stat-item'>
+                                        <span className='visa-stat-label'>
+                                            Total Passengers
+                                        </span>
+                                        <span className='visa-stat-value'>
+                                            {totalPassengers}
+                                        </span>
+                                    </div>
+                                    {needsProcessing > 0 && (
+                                        <div className='visa-stat-item'>
+                                            <span className='visa-stat-label'>
+                                                Needs Processing
+                                            </span>
+                                            <span className='visa-stat-value'>
+                                                {needsProcessing}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {alreadyHas > 0 && (
+                                        <div className='visa-stat-item'>
+                                            <span className='visa-stat-label'>
+                                                Has Visa
+                                            </span>
+                                            <span className='visa-stat-value'>
+                                                {alreadyHas}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {notApplicable > 0 && (
+                                        <div className='visa-stat-item'>
+                                            <span className='visa-stat-label'>
+                                                Not Applicable
+                                            </span>
+                                            <span className='visa-stat-value'>
+                                                {notApplicable}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Visa Processing Progress */}
+                                {needsProcessing > 0 &&
+                                    (() => {
+                                        const processingRecords =
+                                            booking.visa_processings || []
+                                        const completedCount =
+                                            processingRecords.filter(
+                                                (vp) => vp.status === 'APPROVED'
+                                            ).length
+                                        const inProgressCount =
+                                            processingRecords.filter(
+                                                (vp) =>
+                                                    vp.status === 'IN_PROGRESS'
+                                            ).length
+                                        const pendingCount =
+                                            processingRecords.filter(
+                                                (vp) => vp.status === 'PENDING'
+                                            ).length
+
+                                        return (
+                                            <div className='visa-processing-progress'>
+                                                <div className='visa-progress-header'>
+                                                    <span className='visa-progress-title'>
+                                                        Processing Progress
+                                                    </span>
+                                                    <span className='visa-progress-count'>
+                                                        {completedCount}/
+                                                        {needsProcessing}{' '}
+                                                        completed
+                                                    </span>
+                                                </div>
+                                                <div className='visa-progress-bar'>
+                                                    <div
+                                                        className='visa-progress-fill'
+                                                        style={{
+                                                            width: `${(completedCount / needsProcessing) * 100}%`,
+                                                        }}
+                                                    ></div>
+                                                </div>
+                                                <div className='visa-progress-details'>
+                                                    {completedCount > 0 && (
+                                                        <span className='visa-progress-item'>
+                                                            <FiCheckCircle />{' '}
+                                                            {completedCount}{' '}
+                                                            completed
+                                                        </span>
+                                                    )}
+                                                    {inProgressCount > 0 && (
+                                                        <span className='visa-progress-item'>
+                                                            <FiClock />{' '}
+                                                            {inProgressCount} in
+                                                            progress
+                                                        </span>
+                                                    )}
+                                                    {pendingCount > 0 && (
+                                                        <span className='visa-progress-item'>
+                                                            <FiClock />{' '}
+                                                            {pendingCount}{' '}
+                                                            pending
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )
+                                    })()}
+                            </div>
+                        </div>
+                    )
+                })()}
+
             {/* Tabs */}
             <div className='tour-booking-detail__tabs'>
-                <button 
+                <button
                     className={`tab ${activeTab === 'overview' ? 'active' : ''}`}
                     onClick={() => setActiveTab('overview')}
                 >
                     Overview
                 </button>
-                <button 
+                <button
                     className={`tab ${activeTab === 'package' ? 'active' : ''}`}
                     onClick={() => setActiveTab('package')}
                 >
                     <FiPackage /> Package Details
                 </button>
-                <button 
+                <button
                     className={`tab ${activeTab === 'passenger' ? 'active' : ''}`}
                     onClick={() => setActiveTab('passenger')}
                 >
                     <FiUsers /> Passenger Details
                 </button>
-                <button 
+                <button
                     className={`tab ${activeTab === 'payment' ? 'active' : ''}`}
                     onClick={() => setActiveTab('payment')}
                 >
@@ -769,7 +922,7 @@ const TourBookingDetail = () => {
                 >
                     <FiNavigation /> Flights
                 </button>
-                <button 
+                <button
                     className={`tab ${activeTab === 'pdf' ? 'active' : ''}`}
                     onClick={() => setActiveTab('pdf')}
                 >
@@ -787,7 +940,7 @@ const TourBookingDetail = () => {
                             </h3>
                             <p>Complete summary of your tour booking details</p>
                         </div>
-                        
+
                         <div className='overview-grid'>
                             <div className='overview-card'>
                                 <div className='card-header'>
@@ -938,7 +1091,7 @@ const TourBookingDetail = () => {
                                 Complete tour package information and itinerary
                             </p>
                         </div>
-                        
+
                         <div className='package-details'>
                             {tourPackage && (
                                 <div className='package-card'>
@@ -999,7 +1152,7 @@ const TourBookingDetail = () => {
                                                                     0
                                                             ).toLocaleString()}
                                                         </span>
-                                    </div>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -1030,7 +1183,7 @@ const TourBookingDetail = () => {
                                 Complete passenger information for all travelers
                             </p>
                         </div>
-                        
+
                         <div className='passenger-details passenger-details--tour-detail bg-white'>
                             {/* All Passengers Table */}
                             <div className='passenger-table-section'>
@@ -1041,7 +1194,7 @@ const TourBookingDetail = () => {
                                         {booking.passenger_count})
                                     </h5>
                                 </div>
-                                
+
                                 <div className='passenger-table-container'>
                                     <table className='passenger-table'>
                                         <thead>
@@ -1075,7 +1228,7 @@ const TourBookingDetail = () => {
                                                                 ? JSON.parse(
                                                                       booking.passenger_details
                                                                   )
-                                                            : booking.passenger_details
+                                                                : booking.passenger_details
                                                     }
                                                 } catch (error) {
                                                     console.error(
@@ -1084,7 +1237,7 @@ const TourBookingDetail = () => {
                                                     )
                                                     passengers = []
                                                 }
-                                                
+
                                                 if (
                                                     passengers &&
                                                     passengers.length > 0
@@ -1109,8 +1262,8 @@ const TourBookingDetail = () => {
                                                                 phoneObj?.number
                                                                     ? `${phoneObj.countryCallingCode || ''} ${phoneObj.number}`
                                                                     : null
-                                                        return (
-                                                            <tr key={index}>
+                                                            return (
+                                                                <tr key={index}>
                                                                     <td>
                                                                         {index +
                                                                             1}
@@ -1133,16 +1286,16 @@ const TourBookingDetail = () => {
                                                                                     Lead
                                                                                 </span>
                                                                             )}
-                                                                    </div>
-                                                                </td>
-                                                                <td>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>
                                                                         <span
                                                                             className={`passenger-type ${passenger.type?.toLowerCase() || 'adult'}`}
                                                                         >
                                                                             {passenger.type ||
                                                                                 'Adult'}
-                                                                    </span>
-                                                                </td>
+                                                                        </span>
+                                                                    </td>
                                                                     <td>
                                                                         {passenger.gender || (
                                                                             <span className='no-data'>
@@ -1164,15 +1317,15 @@ const TourBookingDetail = () => {
                                                                                         .contact
                                                                                         .emailAddress
                                                                                 }
-                                                                        </a>
-                                                                    ) : (
+                                                                            </a>
+                                                                        ) : (
                                                                             <span className='no-data'>
                                                                                 -
                                                                             </span>
-                                                                    )}
-                                                                </td>
-                                                                <td>
-                                                                    {phoneStr ? (
+                                                                        )}
+                                                                    </td>
+                                                                    <td>
+                                                                        {phoneStr ? (
                                                                             <a
                                                                                 href={`tel:${phoneObj?.countryCallingCode || ''}${phoneObj?.number || ''}`}
                                                                                 className='phone-link'
@@ -1181,26 +1334,26 @@ const TourBookingDetail = () => {
                                                                                 {
                                                                                     phoneStr
                                                                                 }
-                                                                        </a>
-                                                                    ) : (
+                                                                            </a>
+                                                                        ) : (
                                                                             <span className='no-data'>
                                                                                 -
                                                                             </span>
-                                                                    )}
-                                                                </td>
-                                                                <td>
-                                                                    {passenger.dateOfBirth ? (
+                                                                        )}
+                                                                    </td>
+                                                                    <td>
+                                                                        {passenger.dateOfBirth ? (
                                                                             <span className='date-of-birth'>
                                                                                 {new Date(
                                                                                     passenger.dateOfBirth
                                                                                 ).toLocaleDateString()}
-                                                                        </span>
-                                                                    ) : (
+                                                                            </span>
+                                                                        ) : (
                                                                             <span className='no-data'>
                                                                                 -
                                                                             </span>
-                                                                    )}
-                                                                </td>
+                                                                        )}
+                                                                    </td>
                                                                     <td>
                                                                         {doc?.number || (
                                                                             <span className='no-data'>
@@ -1228,10 +1381,10 @@ const TourBookingDetail = () => {
                                                                     </td>
                                                                     <td>
                                                                         <div className='visa-status-cell'>
-                                                                        {tourPackage?.visa_required ? (
+                                                                            {tourPackage?.visa_required ? (
                                                                                 <div className='visa-status-container'>
-                                                                                <span 
-                                                                                    className={`visa-status-badge visa-status--${passenger.visa_status || 'visa_required'} visa-badge-clickable`}
+                                                                                    <span
+                                                                                        className={`visa-status-badge visa-status--${passenger.visa_status || 'visa_required'} visa-badge-clickable`}
                                                                                         onClick={() =>
                                                                                             setEditingVisaField(
                                                                                                 {
@@ -1251,10 +1404,10 @@ const TourBookingDetail = () => {
                                                                                                 'already_has'
                                                                                               ? 'Has Visa'
                                                                                               : 'Visa Required'}
-                                                                                </span>
+                                                                                    </span>
                                                                                     {passenger.visa_status ===
                                                                                         'already_has' &&
-                                                                                 passenger.visa_expiry_date && (
+                                                                                        passenger.visa_expiry_date && (
                                                                                             <div className='visa-expiry-info'>
                                                                                                 <span className='visa-expiry-label'>
                                                                                                     Expires:
@@ -1273,22 +1426,22 @@ const TourBookingDetail = () => {
                                                                                                     {new Date(
                                                                                                         passenger.visa_expiry_date
                                                                                                     ).toLocaleDateString()}
-                                                                                        </span>
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                        ) : (
+                                                                                                </span>
+                                                                                            </div>
+                                                                                        )}
+                                                                                </div>
+                                                                            ) : (
                                                                                 <span className='visa-status-badge visa-status--not_applicable'>
                                                                                     Not
                                                                                     Applicable
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                </td>
-                                                                {tourPackage?.visa_required && (
-                                                                    <td>
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </td>
+                                                                    {tourPackage?.visa_required && (
+                                                                        <td>
                                                                             <div className='processing-status-cell'>
-                                                                            {(() => {
+                                                                                {(() => {
                                                                                     const visaProcessing =
                                                                                         booking.visa_processings?.find(
                                                                                             (
@@ -1300,16 +1453,16 @@ const TourBookingDetail = () => {
                                                                                     if (
                                                                                         visaProcessing
                                                                                     ) {
-                                                                                    return (
-                                                                                        <>
+                                                                                        return (
+                                                                                            <>
                                                                                                 <span
                                                                                                     className={`processing-status-badge processing-status--${visaProcessing.status.toLowerCase()}`}
                                                                                                 >
                                                                                                     {
                                                                                                         visaProcessing.status
                                                                                                     }
-                                                                                            </span>
-                                                                                            <button 
+                                                                                                </span>
+                                                                                                <button
                                                                                                     className='visa-process-btn'
                                                                                                     onClick={() =>
                                                                                                         handleVisaProcessing(
@@ -1318,17 +1471,17 @@ const TourBookingDetail = () => {
                                                                                                         )
                                                                                                     }
                                                                                                     title='Manage Visa Processing'
-                                                                                            >
-                                                                                                Manage
-                                                                                            </button>
-                                                                                        </>
-                                                                                    )
+                                                                                                >
+                                                                                                    Manage
+                                                                                                </button>
+                                                                                            </>
+                                                                                        )
                                                                                     } else if (
                                                                                         passenger.visa_status ===
                                                                                         'needs_processing'
                                                                                     ) {
-                                                                                    return (
-                                                                                        <button 
+                                                                                        return (
+                                                                                            <button
                                                                                                 className='visa-process-btn'
                                                                                                 onClick={() =>
                                                                                                     handleVisaProcessing(
@@ -1340,21 +1493,21 @@ const TourBookingDetail = () => {
                                                                                             >
                                                                                                 Start
                                                                                                 Processing
-                                                                                        </button>
-                                                                                    )
-                                                                                } else {
+                                                                                            </button>
+                                                                                        )
+                                                                                    } else {
                                                                                         return (
                                                                                             <span className='no-data'>
                                                                                                 -
                                                                                             </span>
                                                                                         )
-                                                                                }
-                                                                            })()}
-                                                                        </div>
-                                                                    </td>
-                                                                )}
-                                                            </tr>
-                                                        )
+                                                                                    }
+                                                                                })()}
+                                                                            </div>
+                                                                        </td>
+                                                                    )}
+                                                                </tr>
+                                                            )
                                                         }
                                                     )
                                                 } else {
@@ -1451,7 +1604,7 @@ const TourBookingDetail = () => {
                                     </table>
                                 </div>
                             </div>
-                            
+
                             {/* Lead Contact Summary */}
                             <div className='lead-contact-summary'>
                                 <div className='passenger-card'>
@@ -1468,7 +1621,7 @@ const TourBookingDetail = () => {
                                             </p>
                                         </div>
                                     </div>
-                                    
+
                                     <div className='passenger-sections'>
                                         <div className='info-section'>
                                             <div className='section-header'>
@@ -1537,7 +1690,7 @@ const TourBookingDetail = () => {
                                 information
                             </p>
                         </div>
-                        
+
                         <div className='payment-details'>
                             <div className='payment-card'>
                                 <div className='payment-card-header'>
@@ -1861,129 +2014,256 @@ const TourBookingDetail = () => {
                                         )}
 
                                         {/* Flight Itineraries */}
-                                        {flightData.amadeus_flight_offer && (() => {
-                                            try {
-                                                const amadeusOffer = typeof flightData.amadeus_flight_offer === 'string' 
-                                                    ? JSON.parse(flightData.amadeus_flight_offer) 
-                                                    : flightData.amadeus_flight_offer
-                                                
-                                                // Check if it's the correct structure with flightOffers array
-                                                const flightOffers = amadeusOffer?.flightOffers || amadeusOffer
-                                                const itineraries = flightOffers?.[0]?.itineraries || amadeusOffer?.itineraries
-                                                
-                                                console.log('Frontend - Found itineraries:', itineraries?.length)
-                                                console.log('Frontend - Itinerary details:', itineraries?.map(it => ({
-                                                    hasSegments: it.segments?.length > 0,
-                                                    segmentCount: it.segments?.length || 0,
-                                                    duration: it.duration
-                                                })))
-                                                
-                                                if (itineraries && itineraries.length > 0) {
-                                                    return (
-                                                        <div className='flight-itineraries'>
-                                                            <div className='section-header'>
-                                                                <h5>
-                                                                    <IoAirplaneOutline />{' '}
-                                                                    Flight Details
-                                                                </h5>
-                                                            </div>
-                                                            <div className='itineraries-container'>
-                                                                {itineraries.map((itinerary, index) => (
-                                                                    <div key={index} className='itinerary-card'>
-                                                                        <div className='itinerary-header'>
-                                                                            <h6>
-                                                                                {index === 0 ? 'Outbound Flight' : 'Return Flight'}
-                                                                            </h6>
-                                                                            <div className='itinerary-duration'>
-                                                                                <IoTimeOutline />
-                                                                                {itinerary.duration || itinerary.segments?.[0]?.duration || 'N/A'}
-                                                                            </div>
-                                                                        </div>
-                                                                        <div className='segments-container'>
-                                                                            {itinerary.segments.map((segment, segIndex) => {
-                                                                                console.log(`Frontend - Segment ${segIndex}:`, {
-                                                                                    id: segment.id,
-                                                                                    number: segment.number,
-                                                                                    carrierCode: segment.carrierCode,
-                                                                                    departure: segment.departure,
-                                                                                    arrival: segment.arrival,
-                                                                                    duration: segment.duration,
-                                                                                    aircraft: segment.aircraft
-                                                                                })
-                                                                                return (
-                                                                                <div key={segIndex} className='segment-card'>
-                                                                                    <div className='segment-route'>
-                                                                                        <div className='segment-airport'>
-                                                                                            <div className='airport-code'>
-                                                                                                {segment.departure?.iataCode}
-                                                                                            </div>
-                                                                                            <div className='airport-time'>
-                                                                                                {segment.departure?.at ? new Date(segment.departure.at).toLocaleTimeString('en-US', {
-                                                                                                    hour: '2-digit',
-                                                                                                    minute: '2-digit',
-                                                                                                    hour12: false
-                                                                                                }) : 'N/A'}
-                                                                                            </div>
-                                                                                            <div className='airport-date'>
-                                                                                                {segment.departure?.at ? new Date(segment.departure.at).toLocaleDateString('en-US', {
-                                                                                                    month: 'short',
-                                                                                                    day: 'numeric'
-                                                                                                }) : 'N/A'}
-                                                                                            </div>
-                                                                                        </div>
-                                                                                        <div className='segment-flight'>
-                                                                                            <div className='flight-line'></div>
-                                                                                            <div className='flight-info'>
-                                                                                                <div className='airline'>
-                                                                                                    {segment.carrierCode} {segment.number}
-                                                                                                </div>
-                                                                                                <div className='aircraft'>
-                                                                                                    {segment.aircraft?.code || 'N/A'}
-                                                                                                </div>
-                                                                                            </div>
-                                                                                        </div>
-                                                                                        <div className='segment-airport'>
-                                                                                            <div className='airport-code'>
-                                                                                                {segment.arrival?.iataCode}
-                                                                                            </div>
-                                                                                            <div className='airport-time'>
-                                                                                                {segment.arrival?.at ? new Date(segment.arrival.at).toLocaleTimeString('en-US', {
-                                                                                                    hour: '2-digit',
-                                                                                                    minute: '2-digit',
-                                                                                                    hour12: false
-                                                                                                }) : 'N/A'}
-                                                                                            </div>
-                                                                                            <div className='airport-date'>
-                                                                                                {segment.arrival?.at ? new Date(segment.arrival.at).toLocaleDateString('en-US', {
-                                                                                                    month: 'short',
-                                                                                                    day: 'numeric'
-                                                                                                }) : 'N/A'}
-                                                                                            </div>
-                                                                                        </div>
+                                        {flightData.amadeus_flight_offer &&
+                                            (() => {
+                                                try {
+                                                    const amadeusOffer =
+                                                        typeof flightData.amadeus_flight_offer ===
+                                                        'string'
+                                                            ? JSON.parse(
+                                                                  flightData.amadeus_flight_offer
+                                                              )
+                                                            : flightData.amadeus_flight_offer
+
+                                                    // Check if it's the correct structure with flightOffers array
+                                                    const flightOffers =
+                                                        amadeusOffer?.flightOffers ||
+                                                        amadeusOffer
+                                                    const itineraries =
+                                                        flightOffers?.[0]
+                                                            ?.itineraries ||
+                                                        amadeusOffer?.itineraries
+
+                                                    console.log(
+                                                        'Frontend - Found itineraries:',
+                                                        itineraries?.length
+                                                    )
+                                                    console.log(
+                                                        'Frontend - Itinerary details:',
+                                                        itineraries?.map(
+                                                            (it) => ({
+                                                                hasSegments:
+                                                                    it.segments
+                                                                        ?.length >
+                                                                    0,
+                                                                segmentCount:
+                                                                    it.segments
+                                                                        ?.length ||
+                                                                    0,
+                                                                duration:
+                                                                    it.duration,
+                                                            })
+                                                        )
+                                                    )
+
+                                                    if (
+                                                        itineraries &&
+                                                        itineraries.length > 0
+                                                    ) {
+                                                        return (
+                                                            <div className='flight-itineraries'>
+                                                                <div className='section-header'>
+                                                                    <h5>
+                                                                        <IoAirplaneOutline />{' '}
+                                                                        Flight
+                                                                        Details
+                                                                    </h5>
+                                                                </div>
+                                                                <div className='itineraries-container'>
+                                                                    {itineraries.map(
+                                                                        (
+                                                                            itinerary,
+                                                                            index
+                                                                        ) => (
+                                                                            <div
+                                                                                key={
+                                                                                    index
+                                                                                }
+                                                                                className='itinerary-card'
+                                                                            >
+                                                                                <div className='itinerary-header'>
+                                                                                    <h6>
+                                                                                        {index ===
+                                                                                        0
+                                                                                            ? 'Outbound Flight'
+                                                                                            : 'Return Flight'}
+                                                                                    </h6>
+                                                                                    <div className='itinerary-duration'>
+                                                                                        <IoTimeOutline />
+                                                                                        {itinerary.duration ||
+                                                                                            itinerary
+                                                                                                .segments?.[0]
+                                                                                                ?.duration ||
+                                                                                            'N/A'}
                                                                                     </div>
-                                                                                    {segment.numberOfStops > 0 && (
-                                                                                        <div className='segment-stops'>
-                                                                                            <span className='stops-badge'>
-                                                                                                {segment.numberOfStops} stop{segment.numberOfStops !== 1 ? 's' : ''}
-                                                                                            </span>
-                                                                                        </div>
+                                                                                </div>
+                                                                                <div className='segments-container'>
+                                                                                    {itinerary.segments.map(
+                                                                                        (
+                                                                                            segment,
+                                                                                            segIndex
+                                                                                        ) => {
+                                                                                            console.log(
+                                                                                                `Frontend - Segment ${segIndex}:`,
+                                                                                                {
+                                                                                                    id: segment.id,
+                                                                                                    number: segment.number,
+                                                                                                    carrierCode:
+                                                                                                        segment.carrierCode,
+                                                                                                    departure:
+                                                                                                        segment.departure,
+                                                                                                    arrival:
+                                                                                                        segment.arrival,
+                                                                                                    duration:
+                                                                                                        segment.duration,
+                                                                                                    aircraft:
+                                                                                                        segment.aircraft,
+                                                                                                }
+                                                                                            )
+                                                                                            return (
+                                                                                                <div
+                                                                                                    key={
+                                                                                                        segIndex
+                                                                                                    }
+                                                                                                    className='segment-card'
+                                                                                                >
+                                                                                                    <div className='segment-route'>
+                                                                                                        <div className='segment-airport'>
+                                                                                                            <div className='airport-code'>
+                                                                                                                {
+                                                                                                                    segment
+                                                                                                                        .departure
+                                                                                                                        ?.iataCode
+                                                                                                                }
+                                                                                                            </div>
+                                                                                                            <div className='airport-time'>
+                                                                                                                {segment
+                                                                                                                    .departure
+                                                                                                                    ?.at
+                                                                                                                    ? new Date(
+                                                                                                                          segment.departure.at
+                                                                                                                      ).toLocaleTimeString(
+                                                                                                                          'en-US',
+                                                                                                                          {
+                                                                                                                              hour: '2-digit',
+                                                                                                                              minute: '2-digit',
+                                                                                                                              hour12: false,
+                                                                                                                          }
+                                                                                                                      )
+                                                                                                                    : 'N/A'}
+                                                                                                            </div>
+                                                                                                            <div className='airport-date'>
+                                                                                                                {segment
+                                                                                                                    .departure
+                                                                                                                    ?.at
+                                                                                                                    ? new Date(
+                                                                                                                          segment.departure.at
+                                                                                                                      ).toLocaleDateString(
+                                                                                                                          'en-US',
+                                                                                                                          {
+                                                                                                                              month: 'short',
+                                                                                                                              day: 'numeric',
+                                                                                                                          }
+                                                                                                                      )
+                                                                                                                    : 'N/A'}
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                        <div className='segment-flight'>
+                                                                                                            <div className='flight-line'></div>
+                                                                                                            <div className='flight-info'>
+                                                                                                                <div className='airline'>
+                                                                                                                    {
+                                                                                                                        segment.carrierCode
+                                                                                                                    }{' '}
+                                                                                                                    {
+                                                                                                                        segment.number
+                                                                                                                    }
+                                                                                                                </div>
+                                                                                                                <div className='aircraft'>
+                                                                                                                    {segment
+                                                                                                                        .aircraft
+                                                                                                                        ?.code ||
+                                                                                                                        'N/A'}
+                                                                                                                </div>
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                        <div className='segment-airport'>
+                                                                                                            <div className='airport-code'>
+                                                                                                                {
+                                                                                                                    segment
+                                                                                                                        .arrival
+                                                                                                                        ?.iataCode
+                                                                                                                }
+                                                                                                            </div>
+                                                                                                            <div className='airport-time'>
+                                                                                                                {segment
+                                                                                                                    .arrival
+                                                                                                                    ?.at
+                                                                                                                    ? new Date(
+                                                                                                                          segment.arrival.at
+                                                                                                                      ).toLocaleTimeString(
+                                                                                                                          'en-US',
+                                                                                                                          {
+                                                                                                                              hour: '2-digit',
+                                                                                                                              minute: '2-digit',
+                                                                                                                              hour12: false,
+                                                                                                                          }
+                                                                                                                      )
+                                                                                                                    : 'N/A'}
+                                                                                                            </div>
+                                                                                                            <div className='airport-date'>
+                                                                                                                {segment
+                                                                                                                    .arrival
+                                                                                                                    ?.at
+                                                                                                                    ? new Date(
+                                                                                                                          segment.arrival.at
+                                                                                                                      ).toLocaleDateString(
+                                                                                                                          'en-US',
+                                                                                                                          {
+                                                                                                                              month: 'short',
+                                                                                                                              day: 'numeric',
+                                                                                                                          }
+                                                                                                                      )
+                                                                                                                    : 'N/A'}
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                    </div>
+                                                                                                    {segment.numberOfStops >
+                                                                                                        0 && (
+                                                                                                        <div className='segment-stops'>
+                                                                                                            <span className='stops-badge'>
+                                                                                                                {
+                                                                                                                    segment.numberOfStops
+                                                                                                                }{' '}
+                                                                                                                stop
+                                                                                                                {segment.numberOfStops !==
+                                                                                                                1
+                                                                                                                    ? 's'
+                                                                                                                    : ''}
+                                                                                                            </span>
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            )
+                                                                                        }
                                                                                     )}
                                                                                 </div>
-                                                                                )
-                                                                            })}
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
+                                                                            </div>
+                                                                        )
+                                                                    )}
+                                                                </div>
                                                             </div>
-                                                        </div>
+                                                        )
+                                                    }
+                                                    return null
+                                                } catch (error) {
+                                                    console.error(
+                                                        'Error parsing flight offer:',
+                                                        error
                                                     )
+                                                    return null
                                                 }
-                                                return null
-                                            } catch (error) {
-                                                console.error('Error parsing flight offer:', error)
-                                                return null
-                                            }
-                                        })()}
+                                            })()}
 
                                         {/* Passenger Information */}
                                         {flightData.search_criteria
@@ -2148,7 +2428,7 @@ const TourBookingDetail = () => {
 
                             <div className='pdf-actions'>
                                 <div className='pdf-actions-group'>
-                                    <button 
+                                    <button
                                         className='btn btn-info'
                                         onClick={handlePreview}
                                         disabled={previewLoading}
@@ -2164,7 +2444,7 @@ const TourBookingDetail = () => {
                                             </>
                                         )}
                                     </button>
-                                    <button 
+                                    <button
                                         className='btn btn-success'
                                         onClick={handlePrintReceipt}
                                         disabled={printLoading}
@@ -2222,7 +2502,7 @@ const TourBookingDetail = () => {
 
                             <div className='pdf-notes'>
                                 <h4>Notes</h4>
-                                <ul>                      
+                                <ul>
                                     <li>
                                         The document contains the complete tour
                                         booking details with all passenger and
@@ -2277,15 +2557,15 @@ const TourBookingDetail = () => {
             {/* Visa Status Edit Modal */}
             {editingVisaField &&
                 (() => {
-                // Get current passenger data from the updated booking state
+                    // Get current passenger data from the updated booking state
                     const passengers =
                         typeof booking.passenger_details === 'string'
-                    ? JSON.parse(booking.passenger_details) 
-                    : booking.passenger_details
+                            ? JSON.parse(booking.passenger_details)
+                            : booking.passenger_details
                     const currentPassenger =
                         passengers[editingVisaField.passengerIndex]
-                
-                return (
+
+                    return (
                         <div
                             className='modal-overlay'
                             onClick={() => setEditingVisaField(null)}
@@ -2295,21 +2575,21 @@ const TourBookingDetail = () => {
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 <div className='modal-header'>
-                                <h3>Edit Visa Status</h3>
-                                <button 
+                                    <h3>Edit Visa Status</h3>
+                                    <button
                                         className='modal-close-btn'
                                         onClick={() =>
                                             setEditingVisaField(null)
                                         }
-                                >
-                                    <FiX size={20} />
-                                </button>
-                            </div>
+                                    >
+                                        <FiX size={20} />
+                                    </button>
+                                </div>
                                 <div className='modal-body'>
                                     <div className='form-group'>
-                                    <label>Visa Status:</label>
-                                    <Select
-                                        value={{
+                                        <label>Visa Status:</label>
+                                        <Select
+                                            value={{
                                                 value:
                                                     currentPassenger.visa_status ||
                                                     'not_applicable',
@@ -2321,8 +2601,8 @@ const TourBookingDetail = () => {
                                                             'already_has'
                                                           ? 'Has Visa'
                                                           : 'Not Applicable',
-                                        }}
-                                        options={[
+                                            }}
+                                            options={[
                                                 {
                                                     value: 'not_applicable',
                                                     label: 'Not Applicable',
@@ -2347,25 +2627,25 @@ const TourBookingDetail = () => {
                                                 updatingVisaForPassenger ===
                                                 editingVisaField.passengerIndex
                                             }
-                                        styles={compactSelectStyles}
-                                    />
-                                </div>
-                                
-                                {/* Visa type dropdown - only show if visa_status === 'already_has' */}
+                                            styles={compactSelectStyles}
+                                        />
+                                    </div>
+
+                                    {/* Visa type dropdown - only show if visa_status === 'already_has' */}
                                     {currentPassenger.visa_status ===
                                         'already_has' && (
                                         <div className='form-group'>
-                                        <label>Visa Type:</label>
-                                        <Select
-                                            value={{
+                                            <label>Visa Type:</label>
+                                            <Select
+                                                value={{
                                                     value:
                                                         currentPassenger.visa_type ||
                                                         '',
                                                     label:
                                                         currentPassenger.visa_type ||
                                                         'Select Visa Type',
-                                            }}
-                                            options={[
+                                                }}
+                                                options={[
                                                     {
                                                         value: 'Tourist Visa',
                                                         label: 'Tourist Visa',
@@ -2398,19 +2678,19 @@ const TourBookingDetail = () => {
                                                     updatingVisaForPassenger ===
                                                     editingVisaField.passengerIndex
                                                 }
-                                            styles={compactSelectStyles}
+                                                styles={compactSelectStyles}
                                                 placeholder='Select Visa Type'
-                                        />
-                                    </div>
-                                )}
-                                
-                                {/* Existing visa status dropdown - only show if visa_status === 'already_has' */}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* Existing visa status dropdown - only show if visa_status === 'already_has' */}
                                     {currentPassenger.visa_status ===
                                         'already_has' && (
                                         <div className='form-group'>
-                                        <label>Existing Visa Status:</label>
-                                        <Select
-                                            value={{
+                                            <label>Existing Visa Status:</label>
+                                            <Select
+                                                value={{
                                                     value:
                                                         currentPassenger.existing_visa_status ||
                                                         'not_specified',
@@ -2425,8 +2705,8 @@ const TourBookingDetail = () => {
                                                                   'expired'
                                                                 ? 'Expired'
                                                                 : 'Not Specified',
-                                            }}
-                                            options={[
+                                                }}
+                                                options={[
                                                     {
                                                         value: 'valid',
                                                         label: 'Valid',
@@ -2455,12 +2735,12 @@ const TourBookingDetail = () => {
                                                     updatingVisaForPassenger ===
                                                     editingVisaField.passengerIndex
                                                 }
-                                            styles={compactSelectStyles}
-                                        />
-                                    </div>
-                                )}
-                                
-                                {/* Visa expiry date - only show if existing_visa_status is 'valid' or 'expiring_soon' */}
+                                                styles={compactSelectStyles}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* Visa expiry date - only show if existing_visa_status is 'valid' or 'expiring_soon' */}
                                     {currentPassenger.visa_status ===
                                         'already_has' &&
                                         (currentPassenger.existing_visa_status ===
@@ -2468,8 +2748,8 @@ const TourBookingDetail = () => {
                                             currentPassenger.existing_visa_status ===
                                                 'expiring_soon') && (
                                             <div className='form-group'>
-                                        <label>Visa Expiry Date:</label>
-                                        <input
+                                                <label>Visa Expiry Date:</label>
+                                                <input
                                                     type='date'
                                                     value={
                                                         currentPassenger.visa_expiry_date ||
@@ -2487,24 +2767,24 @@ const TourBookingDetail = () => {
                                                         editingVisaField.passengerIndex
                                                     }
                                                     className='form-input'
-                                        />
-                                    </div>
-                                )}
-                            </div>
+                                                />
+                                            </div>
+                                        )}
+                                </div>
                                 <div className='modal-footer'>
-                                <button 
+                                    <button
                                         className='btn btn-secondary'
                                         onClick={() =>
                                             setEditingVisaField(null)
                                         }
-                                >
-                                    Close
-                                </button>
+                                    >
+                                        Close
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )
-            })()}
+                    )
+                })()}
         </div>
     )
 }
