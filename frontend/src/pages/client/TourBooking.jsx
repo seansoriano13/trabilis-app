@@ -87,6 +87,7 @@ function TourBooking() {
     const [showTermsModal, setShowTermsModal] = useState(false)
     const [termsRef, setTermsRef] = useState(null)
     const reservation_per_pax = state.dates[0].reservation_fee_per_pax
+    const needsVisaDisclaimer = formData.passengers.some(p => p.visa_status === 'already_has')
 
     const handlePassengerChange = (index, field, value) => {
         setFormData((prev) => {
@@ -323,6 +324,14 @@ function TourBooking() {
 
                                 {/* Terms and Conditions Section */}
                                 <div ref={setTermsRef} className='mt-6 p-6 bg-yellow-50 rounded-lg '>
+                                    {needsVisaDisclaimer && (
+                                        <div className='mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2'>
+                                            <i className='bi-info-circle text-blue-500 mt-0.5'></i>
+                                            <p className='text-sm text-blue-800'>
+                                                <strong>Notice:</strong> Our Terms and Conditions have been updated to include important information about visa requirements. Please review them carefully.
+                                            </p>
+                                        </div>
+                                    )}
                                     <div className='flex items-start space-x-3'>
                                         <input
                                             type='checkbox'
@@ -435,6 +444,34 @@ function TourBooking() {
                                     <li><strong>"Force Majeure"</strong> means an act of God, peril of the sea, accident of navigation, war (including civil war), sabotage, riot, insurrection, civil commission, coup d'etat, national emergency, martial law, fire(including wildfire), explosion, lightning, flood, tsunami, cyclone, hurricane, tornado or other major weather events, earthquake, landslide, volcanic eruption or another natural catastrophe, epidemic, pandemic, quarantine, outbreaks of infectious disease or any other public health crisis, radiation or radioactive contamination, national strike or other major lack of availability of labor, raw materials or energy beyond the control of the affected party.</li>
                                 </ul>
                             </section>
+
+                            {needsVisaDisclaimer && (
+                                <section className='bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded mb-4'>
+                                    <h4 className='font-semibold text-gray-900 flex items-center gap-2'>
+                                        <i className='bi-exclamation-triangle text-yellow-600'></i>
+                                        IMPORTANT: VISA VALIDITY DISCLAIMER
+                                    </h4>
+                                    <p className='mt-2'>
+                                        You have indicated that one or more passengers already possess a valid visa for the destination country. 
+                                        <strong> You are solely responsible for ensuring that all visas are valid, current, and meet the entry requirements for your travel dates.</strong>
+                                    </p>
+                                    <p className='mt-2'>
+                                        Lindela Travel and Tours is not responsible for verifying the validity, authenticity, or compliance of existing visas. 
+                                        We strongly recommend that you:
+                                    </p>
+                                    <ul className='list-disc pl-6 space-y-1 mt-2'>
+                                        <li>Verify your visa expiry date is at least 6 months beyond your travel dates (or as required by the destination country)</li>
+                                        <li>Confirm your visa type permits the purpose of your travel</li>
+                                        <li>Check with the relevant embassy or consulate for current entry requirements</li>
+                                        <li>Ensure your passport validity meets destination country requirements</li>
+                                    </ul>
+                                    <p className='mt-2 font-semibold text-gray-900'>
+                                        Lindela Travel and Tours shall not be held liable for any denied boarding, entry refusal, deportation, fines, 
+                                        or other consequences arising from invalid, expired, or inappropriate visa documentation. Any costs incurred 
+                                        due to visa-related issues are your sole responsibility.
+                                    </p>
+                                </section>
+                            )}
 
                             <section>
                                 <h4 className='font-semibold text-gray-900'>Terms & Conditions</h4>
