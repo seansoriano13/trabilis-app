@@ -23,6 +23,10 @@ import {
 import ReactPaginate from 'react-paginate'
 import './AdminUsers.css'
 import adminClient from '../../api/adminClient.js'
+import useUnsavedChanges from '../../hooks/useUnsavedChanges'
+import useBlocker from '../../hooks/useBlocker'
+import UnsavedChangesModal from '../../components/UnsavedChangesModal'
+import '../../styles/unsaved-changes.css'
 
 const AdminUsers = () => {
     const [users, setUsers] = useState([])
@@ -40,8 +44,33 @@ const AdminUsers = () => {
         password: '',
         role: 'admin',
     })
+
+    // Initial empty form data for comparison
+    const initialFormData = {
+        first_name: '',
+        last_name: '',
+        email: '',
+        password: '',
+        role: 'admin',
+    }
+
+    // Unsaved changes hook
+    const {
+        hasUnsavedChanges,
+        resetUnsavedChanges
+    } = useUnsavedChanges(initialFormData, formData, {
+        enabled: true,
+        trackBeforeUnload: true
+    })
+
+    // Navigation blocker
+    useBlocker(hasUnsavedChanges, () => {
+        setShowUnsavedModal(true)
+    })
+
     const [formError, setFormError] = useState(null)
     const [editingUser, setEditingUser] = useState(null)
+    const [showUnsavedModal, setShowUnsavedModal] = useState(false)
     const navigate = useNavigate()
 
     const pageSize = 5
@@ -136,6 +165,7 @@ const AdminUsers = () => {
                 password: '',
                 role: 'admin',
             })
+            resetUnsavedChanges()
             // Refresh users
             const { data } = await adminClient.get(
                 `/users?page=${page + 1}&role=${filters.role}`
@@ -158,6 +188,7 @@ const AdminUsers = () => {
                 role: editingUser.role,
             })
             setEditingUser(null)
+            resetUnsavedChanges()
             // Refresh users
             const { data } = await adminClient.get(
                 `/users?page=${page + 1}&role=${filters.role}`
@@ -360,6 +391,9 @@ const AdminUsers = () => {
                         >
                             <FiUserPlus size={16} />
                             Create User
+                            {hasUnsavedChanges && (
+                                <span className='unsaved-indicator'>•</span>
+                            )}
                         </button>
                     </div>
                     {formError && (
@@ -611,6 +645,20 @@ const AdminUsers = () => {
                     />
                 </div>
             </div>
+
+            {/* Unsaved Changes Modal */}
+            <UnsavedChangesModal
+                isOpen={showUnsavedModal}
+                onConfirm={() => {
+                    setShowUnsavedModal(false)
+                    // Allow navigation to proceed
+                }}
+                onCancel={() => setShowUnsavedModal(false)}
+                title="Unsaved Changes"
+                message="You have unsaved changes. Are you sure you want to leave without saving?"
+                confirmText="Leave Without Saving"
+                cancelText="Stay on Page"
+            />
         </div>
     )
 }

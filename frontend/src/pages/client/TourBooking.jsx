@@ -6,6 +6,9 @@ import Modal from 'react-modal'
 import './TourBooking.css'
 import flightsHeroDesktop from '/images/flights-hero-desktop.jpg'
 import { PassengerForm } from './PassengerDetails.jsx'
+import useUnsavedChanges from '../../hooks/useUnsavedChanges'
+import UnsavedChangesModal from '../../components/UnsavedChangesModal'
+import '../../styles/unsaved-changes.css'
 // import { useSnackbar } from '../../context/SnackbarContext' // Available for future use
 
 const PrimaryButton = ({ onClick, className, buttonText, isBold, loading }) => (
@@ -81,11 +84,67 @@ function TourBooking() {
         payment_type: 'FULL',
     })
 
+    // Initial form data for comparison
+    const initialFormData = {
+        passengers: Array.from({ length: totalPassengers }, (_, i) => ({
+            id: `${i + 1}`,
+            type: i < passengers.adults ? 'ADULT' : 'CHILD',
+            title: i < passengers.adults ? (i === 0 ? 'Mr' : 'Ms') : undefined,
+            name: {
+                firstName: i < passengers.adults ? 
+                    (i === 0 ? 'John' : 'Jane') : 
+                    'Alex',
+                lastName: 'Smith',
+            },
+            gender: i < passengers.adults ? 'MALE' : 'FEMALE',
+            dateOfBirth: i < passengers.adults ? 
+                (i === 0 ? '1985-06-15' : '1990-03-22') : 
+                '2015-08-10',
+            contact: i < passengers.adults ? {
+                emailAddress: i === 0 ? 'arkadatax03@gmail.com' : '',
+                phones: [
+                    {
+                        deviceType: 'MOBILE',
+                        countryCallingCode: '63',
+                        number: i === 0 ? '9123456789' : '',
+                    },
+                ],
+            } : undefined,
+            documents: i < passengers.adults ? [{
+                documentType: 'PASSPORT',
+                number: `P${String(i + 1).padStart(7, '0')}${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+                nationality: 'PH',
+                issuanceCountry: 'PH',
+                expiryDate: '2027-12-31',
+                issuanceDate: '2022-01-01',
+                validityCountry: 'PH',
+                placeOfBirth: 'Manila',
+                birthPlace: 'Manila',
+                issuanceLocation: 'Manila',
+                holder: true,
+            }] : [],
+            visa_status: 'not_applicable',
+            visa_type: '',
+            existing_visa_status: 'not_specified',
+            visa_expiry_date: '',
+        })),
+        payment_type: 'FULL',
+    }
+
+    // Unsaved changes hook
+    const {
+        resetUnsavedChanges
+    } = useUnsavedChanges(initialFormData, formData, {
+        enabled: true,
+        trackBeforeUnload: true // Track browser close for client forms
+    })
+
     const [error, setError] = useState(null)
     const [loading, setLoading] = useState(false)
     const [termsAccepted, setTermsAccepted] = useState(false)
     const [showTermsModal, setShowTermsModal] = useState(false)
     const [termsRef, setTermsRef] = useState(null)
+    const [showUnsavedModal, setShowUnsavedModal] = useState(false)
     const reservation_per_pax = state.dates[0].reservation_fee_per_pax
     const needsVisaDisclaimer = formData.passengers.some(p => p.visa_status === 'already_has')
 
@@ -166,6 +225,15 @@ function TourBooking() {
         return null
     }
 
+    const handleConfirmLeave = () => {
+        setShowUnsavedModal(false)
+        // Allow navigation to proceed
+    }
+
+    const handleCancelLeave = () => {
+        setShowUnsavedModal(false)
+    }
+
     const handleSubmit = async (e) => {
         e.preventDefault()
         setError(null)
@@ -212,6 +280,7 @@ function TourBooking() {
             )
 
             if (response.data.checkoutUrl) {
+                resetUnsavedChanges()
                 window.location.href = response.data.checkoutUrl
             } else {
                 throw new Error('No checkout URL received')
@@ -552,6 +621,17 @@ function TourBooking() {
                     </div>
                 </div>
             </Modal>
+
+            {/* Unsaved Changes Modal */}
+            <UnsavedChangesModal
+                isOpen={showUnsavedModal}
+                onConfirm={handleConfirmLeave}
+                onCancel={handleCancelLeave}
+                title="Unsaved Changes"
+                message="You have unsaved changes. Are you sure you want to leave without saving?"
+                confirmText="Leave Without Saving"
+                cancelText="Stay on Page"
+            />
         </div>
     )
 }

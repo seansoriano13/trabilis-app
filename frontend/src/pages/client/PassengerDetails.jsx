@@ -16,6 +16,9 @@ import { calculateAge, formatPhoneForAmadeus } from '../../utils/stringUtils.js'
 import countries from '../../data/CountryCodes.json'
 import { getNationalityOptions } from '../../utils/nationalityMapping'
 import Modal from 'react-modal'
+import useUnsavedChanges from '../../hooks/useUnsavedChanges'
+import UnsavedChangesModal from '../../components/UnsavedChangesModal'
+import '../../styles/unsaved-changes.css'
 
 import { FaArrowRightArrowLeft } from 'react-icons/fa6'
 import { FaArrowRight } from 'react-icons/fa6'
@@ -1203,6 +1206,71 @@ function PassengerDetails() {
             return basePassenger
         })
     )
+
+    // Initial form data for comparison
+    const initialFormData = {
+        passengers: Array.from({ length: totalPassengers }, (_, i) => {
+            const isAdult = i < adults
+            const basePassenger = {
+                id: `${i + 1}`,
+                type: isAdult ? 'ADULT' : 'CHILD',
+                title: isAdult ? (i === 0 ? 'Mr' : 'Ms') : undefined,
+                name: {
+                    firstName: isAdult ? (i === 0 ? 'John' : 'Jane') : 'Alex',
+                    lastName: 'Smith',
+                },
+                gender: isAdult ? 'MALE' : 'FEMALE',
+                dateOfBirth: isAdult ? 
+                    (i === 0 ? '1985-06-15' : '1990-03-22') : 
+                    '2015-08-10',
+                contact: isAdult ? {
+                    emailAddress: i === 0 ? 'arkadatax03@gmail.com' : '',
+                    phones: [
+                        {
+                            deviceType: 'MOBILE',
+                            countryCallingCode: '63',
+                            number: i === 0 ? '9123456789' : '',
+                        },
+                    ],
+                } : undefined,
+                documents: isAdult ? [{
+                    documentType: 'PASSPORT',
+                    number: `P${String(i + 1).padStart(7, '0')}${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+                    nationality: 'PH',
+                    issuanceCountry: 'PH',
+                    expiryDate: '2027-12-31',
+                    issuanceDate: '2022-01-01',
+                    validityCountry: 'PH',
+                    placeOfBirth: 'Manila',
+                    birthPlace: 'Manila',
+                    issuanceLocation: 'Manila',
+                    holder: true,
+                }] : [],
+                visa_status: 'not_applicable',
+                visa_type: '',
+                existing_visa_status: 'not_specified',
+                visa_expiry_date: '',
+            }
+
+            if (!isAdult) {
+                // Link to the first adult (index 0, so id = '1')
+                basePassenger.linkedAdultId = '1' // Link to first adult
+                // Ensure children don't have contact fields in form data
+                basePassenger.contact = undefined
+            }
+
+            return basePassenger
+        })
+    }
+
+    // Unsaved changes hook
+    const {
+        resetUnsavedChanges
+    } = useUnsavedChanges(initialFormData, { passengers }, {
+        enabled: true,
+        trackBeforeUnload: true // Track browser close for client forms
+    })
+
     // HandleChange inputs
     const handleChange = (index, field, value) => {
         const updated = [...passengers]
@@ -1244,8 +1312,18 @@ function PassengerDetails() {
 
     const [isLoading, setIsLoading] = useState(false)
     const [validationErrors, setValidationErrors] = useState([])
+    const [showUnsavedModal, setShowUnsavedModal] = useState(false)
     const [termsAccepted, setTermsAccepted] = useState(false)
     const [showTermsModal, setShowTermsModal] = useState(false)
+
+    const handleConfirmLeave = () => {
+        setShowUnsavedModal(false)
+        // Allow navigation to proceed
+    }
+
+    const handleCancelLeave = () => {
+        setShowUnsavedModal(false)
+    }
 
     const handleSubmit = async () => {
         const errors = []
@@ -1657,6 +1735,7 @@ function PassengerDetails() {
             if (!checkoutUrl) throw new Error('Checkout URL missing')
 
             setIsLoading(false)
+            resetUnsavedChanges()
             window.location.href = checkoutUrl
         } catch (error) {
             console.error('Booking submission failed:', error)
@@ -1945,6 +2024,17 @@ function PassengerDetails() {
                     </div>
                 </div>
             </Modal>
+
+            {/* Unsaved Changes Modal */}
+            <UnsavedChangesModal
+                isOpen={showUnsavedModal}
+                onConfirm={handleConfirmLeave}
+                onCancel={handleCancelLeave}
+                title="Unsaved Changes"
+                message="You have unsaved changes. Are you sure you want to leave without saving?"
+                confirmText="Leave Without Saving"
+                cancelText="Stay on Page"
+            />
 
             <PrimaryButton
                 onClick={() => handleSubmit()}

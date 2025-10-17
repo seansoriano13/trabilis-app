@@ -8,6 +8,10 @@ import './CreateTourPackage.css'
 import { useNavigate } from 'react-router-dom'
 import { loadCountryOptions, checkVisaRequirement } from '../../utils/countryOptionsLoader'
 import { formSelectStyles } from '../../styles/client/reactSelectStyles'
+import useUnsavedChanges from '../../hooks/useUnsavedChanges'
+import useBlocker from '../../hooks/useBlocker'
+import UnsavedChangesModal from '../../components/UnsavedChangesModal'
+import '../../styles/unsaved-changes.css'
 
 const AdminPrimaryButton = ({ buttonText, onClick, disabled }) => (
     <button
@@ -219,6 +223,37 @@ function CreateTourPackage() {
         notes: [''],
     })
 
+    // Initial empty form data for comparison
+    const initialFormData = {
+        title: '',
+        description: '',
+        status: 'DRAFT',
+        main_image_url: '',
+        panellum_url: '',
+        destination_country: '',
+        visa_required: false,
+        fee_rules: { perRemovedGroup: 5000, perRestDay: 3000, minFee: 5000, maxFee: 50000 },
+        dates: [{ start_date: '', end_date: '', rate_per_pax: 0, reservation_fee_per_pax: 0, total_slots: 0, available_slots: 0, inclusion_groups: [] }],
+        itineraries: [{ day_number: 1, title: '', description: '', image_url: '' }],
+        exclusions: [''],
+        payment_terms: [''],
+        requirements: [''],
+        notes: [''],
+    }
+
+    // Unsaved changes hook
+    const {
+        hasUnsavedChanges
+    } = useUnsavedChanges(initialFormData, formData, {
+        enabled: true,
+        trackBeforeUnload: true
+    })
+
+    // Navigation blocker
+    useBlocker(hasUnsavedChanges, () => {
+        setShowUnsavedModal(true)
+    })
+
     const [openSections, setOpenSections] = useState({
         general: true,
         dates: false,
@@ -241,6 +276,7 @@ function CreateTourPackage() {
     const [mainImagePreview, setMainImagePreview] = useState(null)
     const [panellumImagePreview, setPanellumImagePreview] = useState(null)
     const [itineraryImagePreviews, setItineraryImagePreviews] = useState({})
+    const [showUnsavedModal, setShowUnsavedModal] = useState(false)
     const navigate = useNavigate()
 
     const toggleSection = (section) => {
@@ -754,8 +790,21 @@ function CreateTourPackage() {
         }
     }
 
-    const handleBackClick = () => {
+    const handleBackClick = async () => {
+        if (hasUnsavedChanges) {
+            setShowUnsavedModal(true)
+            return
+        }
         navigate('/admin/tours')
+    }
+
+    const handleConfirmLeave = () => {
+        setShowUnsavedModal(false)
+        navigate('/admin/tours')
+    }
+
+    const handleCancelLeave = () => {
+        setShowUnsavedModal(false)
     }
 
     return (
@@ -767,6 +816,9 @@ function CreateTourPackage() {
                 >
                     <IoChevronBack size={24} />
                     <p className='header__back-text'>Back to Tours</p>
+                    {hasUnsavedChanges && (
+                        <span className='unsaved-indicator'>•</span>
+                    )}
                 </div>
             </div>
 
@@ -1422,6 +1474,17 @@ function CreateTourPackage() {
                 buttonText='Save'
                 onClick={handleSubmit}
                 disabled={isSubmitting}
+            />
+
+            {/* Unsaved Changes Modal */}
+            <UnsavedChangesModal
+                isOpen={showUnsavedModal}
+                onConfirm={handleConfirmLeave}
+                onCancel={handleCancelLeave}
+                title="Unsaved Changes"
+                message="You have unsaved changes. Are you sure you want to leave without saving?"
+                confirmText="Leave Without Saving"
+                cancelText="Stay on Page"
             />
         </div>
     )

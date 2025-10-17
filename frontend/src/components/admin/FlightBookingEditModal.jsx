@@ -1,17 +1,19 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { BsX } from 'react-icons/bs'
 import Select from 'react-select'
 import adminClient from '../../api/adminClient'
 import { useSnackbar } from '../../context/SnackbarContext'
+import useUnsavedChanges from '../../hooks/useUnsavedChanges'
+import UnsavedChangesModal from '../UnsavedChangesModal'
+import '../../styles/unsaved-changes.css'
 
 const FlightBookingEditModal = ({ 
     isOpen, 
     booking, 
     onClose, 
-    onSubmit,
-    context = 'detail' // 'detail' or 'admin'
+    onSubmit
 }) => {
-    const { showSuccess, showError } = useSnackbar()
+    const { showError } = useSnackbar()
     const [editLoading, setEditLoading] = useState(false)
     const [editForm, setEditForm] = useState({
         status: '',
@@ -22,6 +24,25 @@ const FlightBookingEditModal = ({
     })
     const [adminOptions, setAdminOptions] = useState([])
     const [loadingAdmins, setLoadingAdmins] = useState(false)
+    const [showUnsavedModal, setShowUnsavedModal] = useState(false)
+
+    // Initial form data for comparison
+    const initialFormData = {
+        status: '',
+        pnr: '',
+        e_ticket_numbers: '',
+        assigned_to: '',
+        assignment_status: 'pending',
+    }
+
+    // Unsaved changes hook
+    const {
+        hasUnsavedChanges,
+        resetUnsavedChanges
+    } = useUnsavedChanges(initialFormData, editForm, {
+        enabled: isOpen,
+        trackBeforeUnload: false // Don't track browser close for modals
+    })
 
     // Status options for dropdown
     const statusOptions = [
@@ -43,7 +64,7 @@ const FlightBookingEditModal = ({
     ]
 
     // Fetch admin options for assignment dropdown
-    const fetchAdminOptions = async () => {
+    const fetchAdminOptions = useCallback(async () => {
         setLoadingAdmins(true)
         try {
             const response = await adminClient.get('/appointments/all-staff')
@@ -61,16 +82,9 @@ const FlightBookingEditModal = ({
         } finally {
             setLoadingAdmins(false)
         }
-    }
+    }, [])
 
-    // Initialize modal when booking changes
-    useEffect(() => {
-        if (isOpen && booking) {
-            initializeModal()
-        }
-    }, [isOpen, booking])
-
-    const initializeModal = async () => {
+    const initializeModal = useCallback(async () => {
         await fetchAdminOptions()
         
         // Populate form with current booking data
@@ -83,7 +97,14 @@ const FlightBookingEditModal = ({
             assigned_to: booking.assigned_to || '',
             assignment_status: booking.assignment_status || 'pending',
         })
-    }
+    }, [booking, fetchAdminOptions])
+
+    // Initialize modal when booking changes
+    useEffect(() => {
+        if (isOpen && booking) {
+            initializeModal()
+        }
+    }, [isOpen, booking, initializeModal])
 
     const handleFormChange = (field, value) => {
         setEditForm((prev) => ({
@@ -93,6 +114,11 @@ const FlightBookingEditModal = ({
     }
 
     const handleCloseModal = () => {
+        if (hasUnsavedChanges) {
+            setShowUnsavedModal(true)
+            return
+        }
+        
         setEditForm({
             status: '',
             pnr: '',
@@ -101,6 +127,22 @@ const FlightBookingEditModal = ({
             assignment_status: 'pending',
         })
         onClose()
+    }
+
+    const handleConfirmClose = () => {
+        setShowUnsavedModal(false)
+        setEditForm({
+            status: '',
+            pnr: '',
+            e_ticket_numbers: '',
+            assigned_to: '',
+            assignment_status: 'pending',
+        })
+        onClose()
+    }
+
+    const handleCancelClose = () => {
+        setShowUnsavedModal(false)
     }
 
     const handleEditSubmit = async (e) => {
@@ -125,6 +167,7 @@ const FlightBookingEditModal = ({
             }
 
             await onSubmit(submitData)
+            resetUnsavedChanges()
             handleCloseModal()
         } catch (error) {
             console.error('Error updating booking:', error)
@@ -140,7 +183,12 @@ const FlightBookingEditModal = ({
         <div className="modal-overlay" onClick={handleCloseModal}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h3>Edit Flight Booking</h3>
+                    <h3>
+                        Edit Flight Booking
+                        {hasUnsavedChanges && (
+                            <span className='unsaved-indicator'>•</span>
+                        )}
+                    </h3>
                     <button
                         className="modal-close"
                         onClick={handleCloseModal}
@@ -301,6 +349,17 @@ const FlightBookingEditModal = ({
                     </div>
                 </form>
             </div>
+
+            {/* Unsaved Changes Modal */}
+            <UnsavedChangesModal
+                isOpen={showUnsavedModal}
+                onConfirm={handleConfirmClose}
+                onCancel={handleCancelClose}
+                title="Unsaved Changes"
+                message="You have unsaved changes. Are you sure you want to close without saving?"
+                confirmText="Close Without Saving"
+                cancelText="Stay in Modal"
+            />
         </div>
     )
 }

@@ -10,13 +10,15 @@ import { loadOptions } from '../../utils/airportOptionsLoader'
 import { defaultAirportOptionsData } from '../../utils/defaultAirportOptions'
 import { getAircraftOptions } from '../../utils/metadataApi'
 import adminClient from '../../api/adminClient'
+import useUnsavedChanges from '../../hooks/useUnsavedChanges'
+import UnsavedChangesModal from '../UnsavedChangesModal'
+import '../../styles/unsaved-changes.css'
 
 const TourBookingEditModal = ({ 
     isOpen, 
     booking, 
     onClose, 
-    onSubmit,
-    context = 'detail' // 'detail' or 'admin'
+    onSubmit
 }) => {
     const { showSuccess, showError } = useSnackbar()
     const [editLoading, setEditLoading] = useState(false)
@@ -29,10 +31,31 @@ const TourBookingEditModal = ({
             return: [ { airline: '', pnr: '', departure: '', arrival: '', date: '' } ]
         }
     })
-    const [draftSaved, setDraftSaved] = useState(false)
+    const [, setDraftSaved] = useState(false)
     const [tripType, setTripType] = useState('round-trip')
     const [adminOptions, setAdminOptions] = useState([])
     const [loadingAdmins, setLoadingAdmins] = useState(false)
+    const [showUnsavedModal, setShowUnsavedModal] = useState(false)
+
+    // Initial form data for comparison
+    const initialFormData = {
+        status: '',
+        assigned_to: '',
+        assignment_status: 'pending',
+        flight_details: {
+            outbound: [ { airline: '', pnr: '', departure: '', arrival: '', date: '' } ],
+            return: [ { airline: '', pnr: '', departure: '', arrival: '', date: '' } ]
+        }
+    }
+
+    // Unsaved changes hook
+    const {
+        hasUnsavedChanges,
+        resetUnsavedChanges
+    } = useUnsavedChanges(initialFormData, editForm, {
+        enabled: isOpen,
+        trackBeforeUnload: false // Don't track browser close for modals
+    })
 
     // Context hooks for flight details
     const { airports } = useAirports()
@@ -106,7 +129,7 @@ const TourBookingEditModal = ({
     ]
 
     // Admin options for assignment
-    const fetchAdminOptions = async () => {
+    const fetchAdminOptions = useCallback(async () => {
         setLoadingAdmins(true)
         try {
             const response = await adminClient.get('/appointments/all-staff')
@@ -124,16 +147,9 @@ const TourBookingEditModal = ({
         } finally {
             setLoadingAdmins(false)
         }
-    }
+    }, [])
 
-    // Initialize modal when booking changes
-    useEffect(() => {
-        if (isOpen && booking) {
-            initializeModal()
-        }
-    }, [isOpen, booking])
-
-    const initializeModal = async () => {
+    const initializeModal = useCallback(async () => {
         await fetchAdminOptions()
         await loadAircraftOptions()
         
@@ -209,7 +225,7 @@ const TourBookingEditModal = ({
                     date: leg.date || '',
                     aircraft: leg.aircraft || '',
                     terminal: leg.terminal || '',
-                    arrival_date: seg.arrival_date || ''
+                    arrival_date: leg.arrival_date || ''
                 } ]
             }
             
@@ -238,7 +254,14 @@ const TourBookingEditModal = ({
         
         setEditForm(initialFormData)
         setTripType(initialTripType)
-    }
+    }, [booking, fetchAdminOptions, loadAircraftOptions])
+
+    // Initialize modal when booking changes
+    useEffect(() => {
+        if (isOpen && booking) {
+            initializeModal()
+        }
+    }, [isOpen, booking, initializeModal])
 
     // Save draft functionality
     const saveDraft = () => {
@@ -373,6 +396,11 @@ const TourBookingEditModal = ({
     }
 
     const handleCloseModal = () => {
+        if (hasUnsavedChanges) {
+            setShowUnsavedModal(true)
+            return
+        }
+        
         // Auto-save draft before closing
         saveDraft()
         
@@ -389,6 +417,28 @@ const TourBookingEditModal = ({
         onClose()
     }
 
+    const handleConfirmClose = () => {
+        setShowUnsavedModal(false)
+        // Auto-save draft before closing
+        saveDraft()
+        
+        setEditForm({
+            status: '',
+            assigned_to: '',
+            assignment_status: 'pending',
+            flight_details: {
+                outbound: [ { airline: '', pnr: '', departure: '', arrival: '', date: '' } ],
+                return: [ { airline: '', pnr: '', departure: '', arrival: '', date: '' } ]
+            }
+        })
+        setDraftSaved(false)
+        onClose()
+    }
+
+    const handleCancelClose = () => {
+        setShowUnsavedModal(false)
+    }
+
     const handleEditSubmit = async (e) => {
         e.preventDefault()
         setEditLoading(true)
@@ -398,17 +448,18 @@ const TourBookingEditModal = ({
                 assigned_to: editForm.assigned_to || null,
                 assignment_status: editForm.assignment_status,
                 flight_details: {
-                    outbound: (editForm.flight_details?.outbound || []).filter(seg => 
-                        seg.airline || seg.pnr || seg.departure || seg.arrival || seg.date
+                    outbound: (editForm.flight_details?.outbound || []).filter(segment => 
+                        segment.airline || segment.pnr || segment.departure || segment.arrival || segment.date
                     ),
                     return: tripType === 'round-trip' ? 
-                        (editForm.flight_details?.return || []).filter(seg => 
-                            seg.airline || seg.pnr || seg.departure || seg.arrival || seg.date
+                        (editForm.flight_details?.return || []).filter(segment => 
+                            segment.airline || segment.pnr || segment.departure || segment.arrival || segment.date
                         ) : []
                 }
             }
             
             await onSubmit(submitData)
+            resetUnsavedChanges()
             handleCloseModal()
         } catch (error) {
             console.error('Error updating booking:', error)
@@ -424,7 +475,12 @@ const TourBookingEditModal = ({
         <div className="modal-overlay" onClick={handleCloseModal}>
             <div className="modal-content modal-wide" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header modal-header-sticky">
-                    <h3>Edit Tour Booking</h3>
+                    <h3>
+                        Edit Tour Booking
+                        {hasUnsavedChanges && (
+                            <span className='unsaved-indicator'>•</span>
+                        )}
+                    </h3>
                     <div className="modal-header-actions">
                         <button 
                             className="modal-close" 
@@ -787,6 +843,17 @@ const TourBookingEditModal = ({
                     </div>
                 </form>
             </div>
+
+            {/* Unsaved Changes Modal */}
+            <UnsavedChangesModal
+                isOpen={showUnsavedModal}
+                onConfirm={handleConfirmClose}
+                onCancel={handleCancelClose}
+                title="Unsaved Changes"
+                message="You have unsaved changes. Are you sure you want to close without saving?"
+                confirmText="Close Without Saving"
+                cancelText="Stay in Modal"
+            />
         </div>
     )
 }

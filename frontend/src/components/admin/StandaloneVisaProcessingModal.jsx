@@ -23,6 +23,9 @@ import adminClient from '../../api/adminClient'
 import { getVisaRequiredCountryOptions } from '../../utils/countryOptionsLoader'
 import countryCodes from '../../data/CountryCodes.json'
 import './StandaloneVisaProcessingModal.css'
+import useUnsavedChanges from '../../hooks/useUnsavedChanges'
+import UnsavedChangesModal from '../UnsavedChangesModal'
+import '../../styles/unsaved-changes.css'
 
 const StandaloneVisaProcessingModal = ({ 
     isOpen, 
@@ -39,6 +42,23 @@ const StandaloneVisaProcessingModal = ({
     const [loadingAdmins, setLoadingAdmins] = useState(false)
     const [requirements, setRequirements] = useState([])
     const [loadingRequirements, setLoadingRequirements] = useState(false)
+    const [showUnsavedModal, setShowUnsavedModal] = useState(false)
+
+    // Initial form data for comparison
+    const initialFormData = {
+        passenger_name: '',
+        passenger_email: '',
+        mobile_country_code: '63',
+        mobile_number: '',
+        passport_number: '',
+        country: '',
+        visa_type: 'tourist',
+        status: 'PENDING',
+        requirements_status: {},
+        notes: '',
+        assigned_to: null,
+        assignment_status: 'pending'
+    }
 
     // Country options for mobile number (matching PassengerDetails pattern)
     const countryOptions = countryCodes.map((c) => ({
@@ -61,6 +81,15 @@ const StandaloneVisaProcessingModal = ({
         notes: '',
         assigned_to: null,
         assignment_status: 'pending'
+    })
+
+    // Unsaved changes hook
+    const {
+        hasUnsavedChanges,
+        resetUnsavedChanges
+    } = useUnsavedChanges(initialFormData, formData, {
+        enabled: isOpen,
+        trackBeforeUnload: false // Don't track browser close for modals
     })
 
     // Visa status options
@@ -244,6 +273,23 @@ const StandaloneVisaProcessingModal = ({
         }))
     }
 
+    const handleCloseModal = () => {
+        if (hasUnsavedChanges) {
+            setShowUnsavedModal(true)
+            return
+        }
+        onClose()
+    }
+
+    const handleConfirmClose = () => {
+        setShowUnsavedModal(false)
+        onClose()
+    }
+
+    const handleCancelClose = () => {
+        setShowUnsavedModal(false)
+    }
+
     const handleSave = async () => {
         if (!visaProcessing) return
         
@@ -304,6 +350,7 @@ const StandaloneVisaProcessingModal = ({
                 onStatusUpdate(formData)
             }
             
+            resetUnsavedChanges()
             showSuccess('Visa processing updated successfully!')
         } catch (error) {
             console.error('Error saving visa processing:', error)
@@ -316,14 +363,19 @@ const StandaloneVisaProcessingModal = ({
     if (!isOpen) return null
 
     return (
-        <div className="standalone-visa-modal-overlay" onClick={onClose}>
+        <div className="standalone-visa-modal-overlay" onClick={handleCloseModal}>
             <div className="standalone-visa-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="standalone-visa-modal__header">
                     <div className="standalone-visa-modal__title">
                         <FiUser className="modal-icon" />
-                        <h3>Standalone Visa Processing - {formData.passenger_name || 'Loading...'}</h3>
+                        <h3>
+                            Standalone Visa Processing - {formData.passenger_name || 'Loading...'}
+                            {hasUnsavedChanges && (
+                                <span className='unsaved-indicator'>•</span>
+                            )}
+                        </h3>
                     </div>
-                    <button className="standalone-visa-modal__close" onClick={onClose}>
+                    <button className="standalone-visa-modal__close" onClick={handleCloseModal}>
                         <FiX size={20} />
                     </button>
                 </div>
@@ -613,7 +665,7 @@ const StandaloneVisaProcessingModal = ({
                 <div className="standalone-visa-modal__footer">
                     <button 
                         className="btn btn--secondary" 
-                        onClick={onClose}
+                        onClick={handleCloseModal}
                         disabled={saving}
                     >
                         Cancel
@@ -636,6 +688,17 @@ const StandaloneVisaProcessingModal = ({
                         )}
                     </button>
                 </div>
+
+                {/* Unsaved Changes Modal */}
+                <UnsavedChangesModal
+                    isOpen={showUnsavedModal}
+                    onConfirm={handleConfirmClose}
+                    onCancel={handleCancelClose}
+                    title="Unsaved Changes"
+                    message="You have unsaved changes. Are you sure you want to close without saving?"
+                    confirmText="Close Without Saving"
+                    cancelText="Stay in Modal"
+                />
             </div>
         </div>
     )

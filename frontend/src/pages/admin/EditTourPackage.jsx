@@ -11,6 +11,10 @@ import './CreateTourPackage.css'
 import { AccordionSection } from './CreateTourPackage.jsx'
 import { loadCountryOptions, checkVisaRequirement } from '../../utils/countryOptionsLoader'
 import { formSelectStyles } from '../../styles/client/reactSelectStyles'
+import useUnsavedChanges from '../../hooks/useUnsavedChanges'
+import useBlocker from '../../hooks/useBlocker'
+import UnsavedChangesModal from '../../components/UnsavedChangesModal'
+import '../../styles/unsaved-changes.css'
 
 const CATEGORY_OPTIONS = [
     'Air Travel',
@@ -194,8 +198,22 @@ function EditTourPackage() {
     const [isLoading, setIsLoading] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState(null)
-    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
     const [originalFormData, setOriginalFormData] = useState(null)
+    const [showUnsavedModal, setShowUnsavedModal] = useState(false)
+
+    // Unsaved changes hook
+    const {
+        hasUnsavedChanges,
+        resetUnsavedChanges
+    } = useUnsavedChanges(originalFormData, formData, {
+        enabled: !!originalFormData,
+        trackBeforeUnload: true
+    })
+
+    // Navigation blocker
+    useBlocker(hasUnsavedChanges, () => {
+        setShowUnsavedModal(true)
+    })
 
     useEffect(() => {
         const fetchTour = async () => {
@@ -363,13 +381,6 @@ function EditTourPackage() {
         fetchTour()
     }, [id])
 
-    // Track changes to detect unsaved modifications
-    useEffect(() => {
-        if (!originalFormData) return
-
-        const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalFormData)
-        setHasUnsavedChanges(hasChanges)
-    }, [formData, originalFormData])
 
     const toggleSection = (section) => {
         setOpenSections((prev) => ({
@@ -824,14 +835,21 @@ function EditTourPackage() {
         }
     }
 
-    const handleBackClick = () => {
+    const handleBackClick = async () => {
         if (hasUnsavedChanges) {
-            const shouldLeave = window.confirm(
-                'You have unsaved changes. Are you sure you want to leave without saving?'
-            )
-            if (!shouldLeave) return
+            setShowUnsavedModal(true)
+            return
         }
         navigate('/admin/tours')
+    }
+
+    const handleConfirmLeave = () => {
+        setShowUnsavedModal(false)
+        navigate('/admin/tours')
+    }
+
+    const handleCancelLeave = () => {
+        setShowUnsavedModal(false)
     }
 
     const handleSubmit = async (e) => {
@@ -953,7 +971,7 @@ function EditTourPackage() {
             }
 
             if (response.data.message === 'Tour updated successfully') {
-                setHasUnsavedChanges(false)
+                resetUnsavedChanges()
                 navigate('/admin/tours')
             } else {
                 throw new Error('Unexpected response from server')
@@ -1679,8 +1697,20 @@ function EditTourPackage() {
             />
                 </div>
             </div>
+
+            {/* Unsaved Changes Modal */}
+            <UnsavedChangesModal
+                isOpen={showUnsavedModal}
+                onConfirm={handleConfirmLeave}
+                onCancel={handleCancelLeave}
+                title="Unsaved Changes"
+                message="You have unsaved changes. Are you sure you want to leave without saving?"
+                confirmText="Leave Without Saving"
+                cancelText="Stay on Page"
+            />
         </div>
     )
 }
 
 export default EditTourPackage
+
