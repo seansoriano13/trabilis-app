@@ -15,9 +15,9 @@ import { getStopsLabel } from '../../utils/flightutils.js'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-// Helper function to parse airport information from string
-const parseAirportInfo = (airportString) => {
-    if (!airportString || airportString === 'TBA') {
+// Helper function to parse airport information from Amadeus segment data
+const parseAirportFromSegment = (airportData) => {
+    if (!airportData || !airportData.iataCode) {
         return {
             iata: 'TBA',
             city: 'TBA',
@@ -26,34 +26,14 @@ const parseAirportInfo = (airportString) => {
         }
     }
     
-    // Try to extract IATA code from various patterns
-    let iata = 'TBA'
-    
-    // Pattern 1: IATA at the beginning (e.g., "MNL Manila")
-    const iataStartMatch = airportString.match(/^([A-Z]{3})\s/)
-    if (iataStartMatch) {
-        iata = iataStartMatch[1]
-    } else {
-        // Pattern 2: IATA in parentheses (e.g., "Ninoy Aquino International Airport (MNL)")
-        const iataParenMatch = airportString.match(/\(([A-Z]{3})\)/)
-        if (iataParenMatch) {
-            iata = iataParenMatch[1]
-        } else {
-            // Pattern 3: Try to find any 3-letter uppercase code
-            const anyIataMatch = airportString.match(/([A-Z]{3})/)
-            if (anyIataMatch) {
-                iata = anyIataMatch[1]
-            }
-        }
-    }
-    // Use airportUtils to get full airport information
-    const airportInfo = getAirportFull(iata)
+    // Use existing airportUtils to get full airport information
+    const airportInfo = getAirportFull(airportData.iataCode)
     
     return {
         iata: airportInfo.iata,
         city: airportInfo.city,
         airport: airportInfo.name,
-        terminal: 'TBA' // Default terminal - will be updated from form data
+        terminal: airportData.terminal || 'TBA'
     }
 }
 
@@ -580,8 +560,9 @@ export const generateTourBookingHTML = async (booking) => {
                         .trim()
                         .toUpperCase()
                     const type = passenger.type || 'Adult'
-                    // Get PNR from flight details instead of passenger details
-                    const flightPnr = (booking.flight_details?.outbound?.[0]?.pnr || booking.flight_details?.return?.[0]?.pnr || 'TBA')
+                    // Get PNR from flight booking data
+                    const flightPnr = booking.flight_booking_reference ? 
+                        (booking.flight_booking_reference.split('-').pop() || 'TBA') : 'TBA'
                     const dateOfBirth = passenger.dateOfBirth || 'N/A'
                     // Use lead passenger contact as fallback if individual passenger contact is missing
                     const email = passenger.contact?.emailAddress || booking.lead_email || 'Not provided'
@@ -696,18 +677,84 @@ export const generateTourBookingHTML = async (booking) => {
         Math.ceil((new Date(packageDate.end_date) - new Date(packageDate.start_date)) / (1000 * 60 * 60 * 24)) + 1 : 
         0
 
-    // Generate flight details from flight_details JSON field - restructured to match flight.html format
-    const flightDetails = booking.flight_details || {}
-    const outboundSegs = Array.isArray(flightDetails.outbound)
-        ? flightDetails.outbound
-        : flightDetails.outbound
-        ? [flightDetails.outbound]
-        : []
-    const inboundSegs = Array.isArray(flightDetails.return || flightDetails.inbound)
-        ? flightDetails.return || flightDetails.inbound
-        : flightDetails.return || flightDetails.inbound
-        ? [flightDetails.return || flightDetails.inbound]
-        : []
+    // Fetch flight details using flight_booking_reference
+    let flightDetails = {}
+    let outboundSegs = []
+    let inboundSegs = []
+    
+    if (booking.flight_booking_reference) {
+        try {
+            const { data: flightBooking, error: flightError } = await supabase
+                .from('flight_bookings')
+                .select('*')
+                .eq('booking_reference', booking.flight_booking_reference)
+                .single()
+
+            if (!flightError && flightBooking) {
+                console.log('Flight booking found:', flightBooking.booking_reference)
+                
+                // Parse flight details from the flight booking
+                const amadeusOffer = parseJsonField(flightBooking.amadeus_flight_offer)
+                console.log('Parsed flight offer structure:', amadeusOffer)
+                
+                // Handle both possible structures: direct itineraries or flightOffers array
+                let itineraries = []
+                if (amadeusOffer?.flightOffers?.[0]?.itineraries) {
+                    // Structure: { flightOffers: [{ itineraries: [...] }] }
+                    itineraries = amadeusOffer.flightOffers[0].itineraries
+                    console.log('Using flightOffers structure, found itineraries:', itineraries.length)
+                } else if (amadeusOffer?.itineraries) {
+                    // Structure: { itineraries: [...] }
+                    itineraries = amadeusOffer.itineraries
+                    console.log('Using direct itineraries structure, found itineraries:', itineraries.length)
+                }
+                
+                if (itineraries && itineraries.length > 0) {
+                    // Filter valid itineraries - only check for segments
+                    const validItineraries = itineraries.filter(it => it.segments?.length > 0)
+                    console.log('Valid itineraries:', validItineraries.length)
+                    console.log('Itinerary details:', validItineraries.map(it => ({
+                        hasSegments: it.segments?.length > 0,
+                        segmentCount: it.segments?.length || 0,
+                        duration: it.duration,
+                        firstSegmentDuration: it.segments?.[0]?.duration
+                    })))
+                    
+                    if (validItineraries.length > 0) {
+                        // First itinerary is outbound
+                        outboundSegs = validItineraries[0].segments || []
+                        console.log('Outbound segments:', outboundSegs.length)
+                        console.log('Outbound segment details:', outboundSegs.map(seg => ({
+                            id: seg.id,
+                            number: seg.number,
+                            carrierCode: seg.carrierCode,
+                            departure: seg.departure?.iataCode,
+                            arrival: seg.arrival?.iataCode,
+                            duration: seg.duration
+                        })))
+                        
+                        // Second itinerary is return (if exists)
+                        if (validItineraries.length > 1) {
+                            inboundSegs = validItineraries[1].segments || []
+                            console.log('Inbound segments:', inboundSegs.length)
+                        }
+                        
+                        flightDetails = {
+                            outbound: outboundSegs,
+                            return: inboundSegs
+                        }
+                        console.log('Flight details set:', flightDetails)
+                    }
+                } else {
+                    console.log('No itineraries found in flight offer')
+                }
+            } else {
+                console.log('Flight booking not found or error:', flightError)
+            }
+        } catch (error) {
+            console.error('Error fetching flight details:', error)
+        }
+    }
 
     // Generate flight itineraries similar to flight controller
     const flightItineraries = []
@@ -717,41 +764,26 @@ export const generateTourBookingHTML = async (booking) => {
         flightItineraries.push({
             type: 'outbound',
             segments: outboundSegs.map(seg => {
-                // Find airline by name instead of ID
-                const airlineName = seg.airline || 'TBA'
-                const airlineInfo = airlineName === 'TBA' 
-                    ? { name: 'TBA', id: 'TBA', logo: null }
-                    : airlines.find(airline => 
-                        airline.name.toLowerCase() === airlineName.toLowerCase() ||
-                        airline.name.toLowerCase().includes(airlineName.toLowerCase())
-                      ) || { name: airlineName, id: airlineName, logo: null }
+                // Get airline info from carrier code
+                const carrierCode = seg.carrierCode || seg.operating?.carrierCode
+                const airlineInfo = carrierCode ? getAirlineInfo(carrierCode) : { name: 'TBA', id: 'TBA', logo: null }
                 
-                const departureInfo = parseAirportInfo(seg.departure)
-                const arrivalInfo = parseAirportInfo(seg.arrival)
-                // Handle date format inconsistency: seg.date might be just date string, seg.arrival_date is full timestamp
-                let departureTime = null
-                let arrivalTime = null
+                const departureInfo = parseAirportFromSegment(seg.departure)
+                const arrivalInfo = parseAirportFromSegment(seg.arrival)
+                // Parse times from Amadeus segment structure
+                const departureTime = seg.departure?.at ? new Date(seg.departure.at) : null
+                const arrivalTime = seg.arrival?.at ? new Date(seg.arrival.at) : null
                 
-                if (seg.date) {
-                    // If seg.date is just a date string (YYYY-MM-DD), treat it as departure date at midnight
-                    // If it's a full timestamp, use it as is
-                    departureTime = new Date(seg.date)
-                }
-                
-                if (seg.arrival_date) {
-                    arrivalTime = new Date(seg.arrival_date)
-                }
-                
-                // If we only have departure date but no arrival time, we can't calculate duration properly
-                // This is a data consistency issue that should be addressed in the frontend
-                
-                // Calculate duration if both times are available
+                // Calculate duration from segment data
                 let duration = 'TBA'
                 if (departureTime && arrivalTime) {
                     const diffMs = arrivalTime - departureTime
                     const hours = Math.floor(diffMs / (1000 * 60 * 60))
                     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
                     duration = `${hours}h ${minutes}m`
+                } else if (seg.duration) {
+                    // Use Amadeus duration if available (e.g., "PT1H25M")
+                    duration = seg.duration.replace('PT', '').replace('H', 'h ').replace('M', 'm')
                 }
                 
                 return {
@@ -760,12 +792,12 @@ export const generateTourBookingHTML = async (booking) => {
                         code: airlineInfo.id || seg.airline || 'TBA',
                         logo: airlineInfo.logo || ''
                     },
-                    number: seg.pnr || seg.flight_no || 'TBA',
+                    number: `${carrierCode || ''}${seg.number || ''}`,
                     departure: {
                         iata: departureInfo.iata,
                         city: departureInfo.city,
                         airport: departureInfo.airport,
-                        terminal: seg.terminal || departureInfo.terminal,
+                        terminal: departureInfo.terminal,
                         time: departureTime ? departureTime.toLocaleString('en-US', { 
                             weekday: 'short',
                             month: 'short', 
@@ -780,7 +812,7 @@ export const generateTourBookingHTML = async (booking) => {
                         iata: arrivalInfo.iata,
                         city: arrivalInfo.city,
                         airport: arrivalInfo.airport,
-                        terminal: seg.terminal || arrivalInfo.terminal,
+                        terminal: arrivalInfo.terminal,
                         time: arrivalTime ? arrivalTime.toLocaleString('en-US', { 
                             weekday: 'short',
                             month: 'short', 
@@ -792,11 +824,11 @@ export const generateTourBookingHTML = async (booking) => {
                         at: arrivalTime ? arrivalTime.toISOString() : null
                     },
                     aircraft: {
-                        code: seg.aircraft || 'TBA',
-                        name: seg.aircraft ? getAircraftName(seg.aircraft) : 'TBA'
+                        code: seg.aircraft?.code || 'TBA',
+                        name: seg.aircraft?.code ? getAircraftName(seg.aircraft.code) : 'TBA'
                     },
                     duration: duration,
-                    stops: 0
+                    stops: seg.numberOfStops || 0
                 }
             })
         })
@@ -807,41 +839,26 @@ export const generateTourBookingHTML = async (booking) => {
         flightItineraries.push({
             type: 'return',
             segments: inboundSegs.map(seg => {
-                // Find airline by name instead of ID
-                const airlineName = seg.airline || 'TBA'
-                const airlineInfo = airlineName === 'TBA' 
-                    ? { name: 'TBA', id: 'TBA', logo: null }
-                    : airlines.find(airline => 
-                        airline.name.toLowerCase() === airlineName.toLowerCase() ||
-                        airline.name.toLowerCase().includes(airlineName.toLowerCase())
-                      ) || { name: airlineName, id: airlineName, logo: null }
+                // Get airline info from carrier code
+                const carrierCode = seg.carrierCode || seg.operating?.carrierCode
+                const airlineInfo = carrierCode ? getAirlineInfo(carrierCode) : { name: 'TBA', id: 'TBA', logo: null }
                 
-                const departureInfo = parseAirportInfo(seg.departure)
-                const arrivalInfo = parseAirportInfo(seg.arrival)
-                // Handle date format inconsistency: seg.date might be just date string, seg.arrival_date is full timestamp
-                let departureTime = null
-                let arrivalTime = null
+                const departureInfo = parseAirportFromSegment(seg.departure)
+                const arrivalInfo = parseAirportFromSegment(seg.arrival)
+                // Parse times from Amadeus segment structure
+                const departureTime = seg.departure?.at ? new Date(seg.departure.at) : null
+                const arrivalTime = seg.arrival?.at ? new Date(seg.arrival.at) : null
                 
-                if (seg.date) {
-                    // If seg.date is just a date string (YYYY-MM-DD), treat it as departure date at midnight
-                    // If it's a full timestamp, use it as is
-                    departureTime = new Date(seg.date)
-                }
-                
-                if (seg.arrival_date) {
-                    arrivalTime = new Date(seg.arrival_date)
-                }
-                
-                // If we only have departure date but no arrival time, we can't calculate duration properly
-                // This is a data consistency issue that should be addressed in the frontend
-                
-                // Calculate duration if both times are available
+                // Calculate duration from segment data
                 let duration = 'TBA'
                 if (departureTime && arrivalTime) {
                     const diffMs = arrivalTime - departureTime
                     const hours = Math.floor(diffMs / (1000 * 60 * 60))
                     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
                     duration = `${hours}h ${minutes}m`
+                } else if (seg.duration) {
+                    // Use Amadeus duration if available (e.g., "PT1H25M")
+                    duration = seg.duration.replace('PT', '').replace('H', 'h ').replace('M', 'm')
                 }
                 
                 return {
@@ -850,12 +867,12 @@ export const generateTourBookingHTML = async (booking) => {
                         code: airlineInfo.id || seg.airline || 'TBA',
                         logo: airlineInfo.logo || ''
                     },
-                    number: seg.pnr || seg.flight_no || 'TBA',
+                    number: `${carrierCode || ''}${seg.number || ''}`,
                     departure: {
                         iata: departureInfo.iata,
                         city: departureInfo.city,
                         airport: departureInfo.airport,
-                        terminal: seg.terminal || departureInfo.terminal,
+                        terminal: departureInfo.terminal,
                         time: departureTime ? departureTime.toLocaleString('en-US', { 
                             weekday: 'short',
                             month: 'short', 
@@ -870,7 +887,7 @@ export const generateTourBookingHTML = async (booking) => {
                         iata: arrivalInfo.iata,
                         city: arrivalInfo.city,
                         airport: arrivalInfo.airport,
-                        terminal: seg.terminal || arrivalInfo.terminal,
+                        terminal: arrivalInfo.terminal,
                         time: arrivalTime ? arrivalTime.toLocaleString('en-US', { 
                             weekday: 'short',
                             month: 'short', 
@@ -882,11 +899,11 @@ export const generateTourBookingHTML = async (booking) => {
                         at: arrivalTime ? arrivalTime.toISOString() : null
                     },
                     aircraft: {
-                        code: seg.aircraft || 'TBA',
-                        name: seg.aircraft ? getAircraftName(seg.aircraft) : 'TBA'
+                        code: seg.aircraft?.code || 'TBA',
+                        name: seg.aircraft?.code ? getAircraftName(seg.aircraft.code) : 'TBA'
                     },
                     duration: duration,
-                    stops: 0
+                    stops: seg.numberOfStops || 0
                 }
             })
         })
@@ -1970,7 +1987,7 @@ export const updateTourStatus = async (req, res) => {
 export const editTourBooking = async (req, res) => {
     try {
         const { id } = req.params
-        const { status, assigned_to, assignment_status, flight_details } =
+        const { status, assigned_to, assignment_status, flight_booking_reference } =
             req.body || {}
 
         // Fetch existing booking for comparison and reference
@@ -1990,9 +2007,23 @@ export const editTourBooking = async (req, res) => {
         if (typeof assignment_status !== 'undefined')
             updateData.assignment_status = assignment_status
 
-        // Allow storing flight_details JSON
-        if (typeof flight_details !== 'undefined') {
-            updateData.flight_details = flight_details
+        // Handle flight booking reference
+        if (typeof flight_booking_reference !== 'undefined') {
+            // If flight_booking_reference is provided, validate it exists
+            if (flight_booking_reference && flight_booking_reference.trim() !== '') {
+                const { data: flightBooking, error: flightError } = await supabase
+                    .from('flight_bookings')
+                    .select('id, booking_reference')
+                    .eq('booking_reference', flight_booking_reference.trim())
+                    .single()
+
+                if (flightError || !flightBooking) {
+                    return res.status(400).json({ 
+                        error: `Flight booking with reference '${flight_booking_reference}' not found` 
+                    })
+                }
+            }
+            updateData.flight_booking_reference = flight_booking_reference
         }
 
         if (typeof assigned_to === 'number' || assigned_to === null) {

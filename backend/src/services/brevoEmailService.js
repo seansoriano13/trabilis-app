@@ -15,47 +15,6 @@ import airlines from '../data/airlines.json' with { type: 'json' }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-// Helper function to parse airport information from string (from tourController.js)
-const parseAirportInfo = (airportString) => {
-    if (!airportString || airportString === 'TBA') {
-        return {
-            iata: 'TBA',
-            city: 'TBA',
-            airport: 'TBA',
-            terminal: 'TBA'
-        }
-    }
-    
-    // Try to extract IATA code from various patterns
-    let iata = 'TBA'
-    
-    // Pattern 1: IATA at the beginning (e.g., "MNL Manila")
-    const iataStartMatch = airportString.match(/^([A-Z]{3})\s/)
-    if (iataStartMatch) {
-        iata = iataStartMatch[1]
-    } else {
-        // Pattern 2: IATA in parentheses (e.g., "Ninoy Aquino International Airport (MNL)")
-        const iataParenMatch = airportString.match(/\(([A-Z]{3})\)/)
-        if (iataParenMatch) {
-            iata = iataParenMatch[1]
-        } else {
-            // Pattern 3: Try to find any 3-letter uppercase code
-            const anyIataMatch = airportString.match(/([A-Z]{3})/)
-            if (anyIataMatch) {
-                iata = anyIataMatch[1]
-            }
-        }
-    }
-    // Use airportUtils to get full airport information
-    const airportInfo = getAirportFull(iata)
-    
-    return {
-        iata: airportInfo.iata,
-        city: airportInfo.city,
-        airport: airportInfo.name,
-        terminal: 'TBA' // Default terminal - will be updated from form data
-    }
-}
 
 // Initialize Brevo API client
 const apiInstance = new brevo.TransactionalEmailsApi()
