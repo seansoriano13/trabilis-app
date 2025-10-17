@@ -7,6 +7,7 @@ import {
     getAllTours,
     getTour,
     updateTour,
+    updateTourStatus,
     updateTourVisaSettings,
     getCountriesWithVisaRequirements,
     updatePassengerVisaStatus,
@@ -27,14 +28,19 @@ import {
     backfillNotificationAssignees,
     resolveBookingByReference,
 } from '../controllers/admin/dashboardController.js'
-import { 
+import {
     generateFlightPDF,
     generateFlightPDFAdmin,
     viewFlightBookingHTML,
     editFlightBooking,
-    cancelFlightBooking
+    cancelFlightBooking,
 } from '../controllers/admin/flightController.js'
-import { generateTourPDFAdmin, viewTourBookingHTML, editTourBooking, cancelTourBooking } from '../controllers/admin/tourController.js'
+import {
+    generateTourPDFAdmin,
+    viewTourBookingHTML,
+    editTourBooking,
+    cancelTourBooking,
+} from '../controllers/admin/tourController.js'
 import {
     getAccountingStaff,
     getAllStaff,
@@ -42,10 +48,26 @@ import {
     assignFlightBooking,
     updateAssignmentStatus,
     getAssignedBookings,
-    reassignBooking
+    reassignBooking,
 } from '../controllers/admin/appointmentController.js'
-import { getVisaInquiries, updateVisaInquiryStatus, assignVisaInquiry, updateVisaAssignmentStatus, getAssignedVisaInquiries } from '../controllers/visaInquiryController.js'
-import { listInclusionGroups, createInclusionGroup, updateInclusionGroup, deleteInclusionGroup, listInclusionGroupItems, createInclusionGroupItem, updateInclusionGroupItem, deleteInclusionGroupItem, updateFeeRules } from '../controllers/admin/inclusionGroupController.js'
+import {
+    getVisaInquiries,
+    updateVisaInquiryStatus,
+    assignVisaInquiry,
+    updateVisaAssignmentStatus,
+    getAssignedVisaInquiries,
+} from '../controllers/visaInquiryController.js'
+import {
+    listInclusionGroups,
+    createInclusionGroup,
+    updateInclusionGroup,
+    deleteInclusionGroup,
+    listInclusionGroupItems,
+    createInclusionGroupItem,
+    updateInclusionGroupItem,
+    deleteInclusionGroupItem,
+    updateFeeRules,
+} from '../controllers/admin/inclusionGroupController.js'
 
 const router = express.Router()
 
@@ -65,6 +87,7 @@ router.get('/tours', getAllTours)
 router.get('/tours/countries-with-visa', getCountriesWithVisaRequirements)
 router.get('/tours/:id', getTour)
 router.put('/tours/:id', updateTour)
+router.put('/tours/:id/status', updateTourStatus)
 router.delete('/tours/:id', deleteTour)
 
 // Inclusion Groups Management
@@ -88,7 +111,10 @@ router.get('/dashboard/tour_bookings', getTourBookings)
 router.get('/dashboard/admin_notifications', getAdminNotifications)
 router.get('/dashboard/resolve', resolveBookingByReference)
 // One-time backfill endpoint
-router.post('/dashboard/admin_notifications/backfill', backfillNotificationAssignees)
+router.post(
+    '/dashboard/admin_notifications/backfill',
+    backfillNotificationAssignees
+)
 router.get('/dashboard/revenue', getRevenue)
 router.get('/dashboard/flight_stats', getFlightStats)
 router.get('/dashboard/tour_stats', getTourStats)
@@ -146,6 +172,5 @@ router.put('/visa/inquiries/:id/status', updateVisaInquiryStatus)
 router.post('/visa/inquiries/assign', assignVisaInquiry)
 router.put('/visa/inquiries/assignment-status', updateVisaAssignmentStatus)
 router.get('/visa/inquiries/assigned', getAssignedVisaInquiries)
-
 
 export default router

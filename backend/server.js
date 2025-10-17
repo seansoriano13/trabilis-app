@@ -17,9 +17,7 @@ import visaProcessingRoutes from './src/routes/visaProcessingRoutes.js'
 import metadataRoutes from './src/routes/metadataRoutes.js'
 import imageUploadRoutes from './src/routes/imageUploadRoutes.js'
 
-import {
-    viewTourBookingHTML
-} from './src/controllers/admin/tourController.js'
+import { viewTourBookingHTML } from './src/controllers/admin/tourController.js'
 
 const app = express()
 const port = process.env.PORT || 3001
@@ -30,13 +28,15 @@ const __dirname = path.dirname(__filename)
 const isProduction = process.env.NODE_ENV === 'production'
 
 // Backend URL - auto-detect from Render or use env variable
-const BACKEND_URL = process.env.RENDER_EXTERNAL_URL || 
-                    process.env.BACKEND_URL || 
-                    `http://localhost:${port}`
+const BACKEND_URL =
+    process.env.RENDER_EXTERNAL_URL ||
+    process.env.BACKEND_URL ||
+    `http://localhost:${port}`
 
 // Frontend URL - use env variable or default based on environment
-const FRONTEND_URL = process.env.FRONTEND_URL || 
-                     (isProduction ? 'https://trabilis.vercel.app' : 'http://localhost:5173')
+const FRONTEND_URL =
+    process.env.FRONTEND_URL ||
+    (isProduction ? 'https://trabilis.vercel.app' : 'http://localhost:5173')
 
 console.log(`🌍 Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`)
 console.log(`🔗 Backend URL: ${BACKEND_URL}`)
@@ -58,7 +58,9 @@ const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar])
 if (missingEnvVars.length > 0) {
     console.error('❌ Missing required environment variables:')
     missingEnvVars.forEach((envVar) => console.error(`   - ${envVar}`))
-    console.error('\n💡 Please check your .env file or environment configuration.')
+    console.error(
+        '\n💡 Please check your .env file or environment configuration.'
+    )
     console.error('   See .env.example for reference.\n')
     process.exit(1)
 }
@@ -114,10 +116,10 @@ app.use(express.json())
 
 // Add to server.js - doesn't touch existing code
 app.get('/health', (req, res) => {
-    res.json({ 
-        status: 'ok', 
+    res.json({
+        status: 'ok',
         memory: process.memoryUsage(),
-        uptime: process.uptime()
+        uptime: process.uptime(),
     })
 })
 
@@ -159,6 +161,6 @@ app.listen(port, () => {
     console.log(`\n✅ Trabilis Backend is running!`)
     console.log(`   ${BACKEND_URL}`)
     console.log(`\n📊 CORS configured for:`)
-    allowedOrigins.forEach(origin => console.log(`   - ${origin}`))
+    allowedOrigins.forEach((origin) => console.log(`   - ${origin}`))
     console.log(`\n🚀 Ready to accept requests!\n`)
 })

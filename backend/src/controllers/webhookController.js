@@ -150,8 +150,10 @@ export const handleStripeWebhook = async (req, res) => {
                     *,
                     package_dates (
                         *,
-                        tour_packages (*),
-                        package_itineraries (*)
+                        tour_packages (
+                            *,
+                            itineraries:package_itineraries!tour_package_id (*)
+                        )
                     )
                 `
                 )
@@ -204,21 +206,21 @@ export const handleStripeWebhook = async (req, res) => {
                         : bookingData.passenger_details)
                     : [],
                 inclusions:
-                    bookingData.package_dates.inclusions?.join('<br/>') ||
+                    bookingData.package_dates.tour_packages?.inclusions?.join('<br/>') ||
                     'As per package',
                 exclusions:
-                    bookingData.package_dates.exclusions?.join('<br/>') || '-',
-                notes: bookingData.package_dates.notes?.join('<br/>') || '-',
-                itinerary: bookingData.package_dates?.package_itineraries || [],
+                    bookingData.package_dates.tour_packages?.exclusions?.join('<br/>') || '-',
+                notes: bookingData.package_dates.tour_packages?.notes?.join('<br/>') || '-',
+                itinerary: bookingData.package_dates?.tour_packages?.itineraries || [],
                 ratePerPax: bookingData.package_dates.rate_per_pax || 'N/A',
                 availableSlots:
                     bookingData.package_dates.available_slots || 'N/A',
                 totalSlots: bookingData.package_dates.total_slots || 'N/A',
                 requirements:
-                    bookingData.package_dates.requirements?.join('<br/>') ||
+                    bookingData.package_dates.tour_packages?.requirements?.join('<br/>') ||
                     '-',
                 paymentTerms:
-                    bookingData.package_dates.payment_terms?.join('<br/>') ||
+                    bookingData.package_dates.tour_packages?.payment_terms?.join('<br/>') ||
                     '-',
                 tourDescription:
                     bookingData.package_dates.tour_packages.description || '-',

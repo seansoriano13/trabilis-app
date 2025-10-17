@@ -27,7 +27,7 @@ function TourBooking() {
     }, [])
 
     const { state } = useLocation()
-    const { selectedDateId, passengers, selectedDate, title, tourPackage } = state
+    const { selectedDateId, passengers, selectedDate, title, tourPackage, customization: customizationData } = state
     const totalPassengers = passengers.adults + passengers.children
     // Snackbar available for future use
     // const { showSuccess, showError, showWarning, showInfo } = useSnackbar()
@@ -205,6 +205,7 @@ function TourBooking() {
                         visa_expiry_date: passenger.visa_expiry_date || null
                     })),
                     payment_type: formData.payment_type,
+                    customization: customizationData,
                 },
                 { headers: { 'Content-Type': 'application/json' } }
             )
@@ -228,14 +229,13 @@ function TourBooking() {
     const perPax = selectedDate?.rate_per_pax || 0
     const baseTotal = perPax * paxCount
     const rules = selectedDate?.fee_rules || { perRemovedGroup: 5000, perRestDay: 3000, minFee: 5000, maxFee: 50000 }
-    const customization = state?.customization
     let customizationFee = 0
-    if (customization?.enabled) {
+    if (customizationData?.enabled) {
         // Prefer clientTotals from previous screen if present
-        customizationFee = customization?.clientTotals?.customizationFee ?? 0
-        if (!customization?.clientTotals) {
-            const groups = customization?.removedInclusionGroupIds?.length || 0
-            const rests = customization?.restDayNumbers?.length || 0
+        customizationFee = customizationData?.clientTotals?.customizationFee ?? 0
+        if (!customizationData?.clientTotals) {
+            const groups = customizationData?.removedInclusionGroupIds?.length || 0
+            const rests = customizationData?.restDayNumbers?.length || 0
             const uncapped = groups * (rules.perRemovedGroup || 0) + rests * (rules.perRestDay || 0)
             customizationFee = uncapped
             if (customizationFee > 0 && customizationFee < (rules.minFee || 0)) customizationFee = rules.minFee || 0
@@ -377,7 +377,7 @@ function TourBooking() {
                                     <span className='text-gray-600'>Base Total</span>
                                     <span className='font-semibold text-gray-800'>PHP {baseTotal.toLocaleString()}</span>
                                 </div>
-                                {customization?.enabled && (
+                                {customizationData?.enabled && (
                                     <div className='flex justify-between items-center'>
                                         <span className='text-gray-600'>Customization Fee</span>
                                         <span className='font-semibold text-gray-800'>PHP {customizationFee.toLocaleString()}</span>

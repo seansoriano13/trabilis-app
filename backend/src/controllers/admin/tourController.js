@@ -68,71 +68,67 @@ export const createTour = async (req, res) => {
             panellum_url,
             destination_country,
             visa_required,
+            fee_rules,
             dates,
+            itineraries,      // ✅ NEW: Tour-level
+            exclusions,       // ✅ NEW: Tour-level
+            payment_terms,    // ✅ NEW: Tour-level
+            requirements,     // ✅ NEW: Tour-level
+            notes,            // ✅ NEW: Tour-level
         } = req.body
 
         // 1️⃣ Insert tour package
         const { data: tour, error: tourError } = await supabase
             .from('tour_packages')
-            .insert([
-                { title, description, status, main_image_url, panellum_url, destination_country, visa_required },
-            ])
+            .insert([{ 
+            title, 
+            description, 
+            status, 
+            main_image_url, 
+            panellum_url, 
+            destination_country, 
+            visa_required,
+            fee_rules: fee_rules || { perRemovedGroup: 5000, perRestDay: 3000, minFee: 5000, maxFee: 50000 },
+            inclusions: inclusions || [],
+            exclusions: exclusions || [],
+            payment_terms: payment_terms || [],
+            requirements: requirements || [],
+            notes: notes || [],
+            }])
             .select()
             .single()
 
         if (tourError) return res.status(400).json({ error: tourError.message })
 
-        // 2️⃣ Insert package dates with JSON extras
+        // 2️⃣ Insert package dates (NO itineraries here!)
         for (const d of dates) {
-            const {
-                itineraries,
-                inclusions,
-                exclusions,
-                payment_terms,
-                requirements,
-                notes,
-                inclusion_groups, // ignore on insert; handled post-create via admin endpoints
-                ...dateData
-            } = d
-
-            console.log(dateData)
+            const { inclusion_groups, ...dateData } = d
 
             const { data: date, error: dateError } = await supabase
                 .from('package_dates')
-                .insert([
-                    {
-                        ...dateData,
-                        tour_package_id: tour.id,
-                        inclusions: inclusions || [],
-                        exclusions: exclusions || [],
-                        payment_terms: payment_terms || [],
-                        requirements: requirements || [],
-                        notes: notes || [],
-                    },
-                ])
+                .insert([{
+                    ...dateData,
+                    tour_package_id: tour.id,
+                }])
                 .select()
                 .single()
 
-            if (dateError)
-                return res.status(400).json({ error: dateError.message })
+            if (dateError) return res.status(400).json({ error: dateError.message })
+        }
 
-            // 3️⃣ Insert itineraries per date
-            for (const i of itineraries) {
-                const { data: itinerary, error: itineraryError } =
-                    await supabase
-                        .from('package_itineraries')
-                        .insert([{ 
-                            ...i, 
-                            package_date_id: date.id,
-                            image_url: i.image_url || null
-                        }])
-                        .select()
-                        .single()
+        // 3️⃣ Insert itineraries at TOUR level (once, not per date!)
+        for (const i of itineraries) {
+            const { error: itineraryError } = await supabase
+                .from('package_itineraries')
+                .insert([{ 
+                    ...i, 
+                    tour_package_id: tour.id,  // ✅ Link to tour, not date
+                    package_date_id: null,      // ✅ Not date-specific
+                    image_url: i.image_url || null
+                }])
 
-                if (itineraryError)
-                    return res
-                        .status(400)
-                        .json({ error: itineraryError.message })
+            if (itineraryError) {
+                return res.status(400).json({ error: itineraryError.message })
             }
         }
 
@@ -147,9 +143,21 @@ export const getAllTours = async (req, res) => {
     try {
         const { data, error } = await supabase.from('tour_packages').select(`
                 *,
+                itineraries:package_itineraries!tour_package_id (*, order:day_number),
                 dates:package_dates (
                     *,
-                    itineraries:package_itineraries (*, order:day_number)
+                    inclusion_groups:package_inclusion_groups (
+                        id,
+                        title,
+                        removable,
+                        fee_impact_per_group,
+                        position,
+                        items:package_inclusion_group_items (
+                            id,
+                            content,
+                            position
+                        )
+                    )
                 )
             `)
 
@@ -165,133 +173,264 @@ export const getTour = async (req, res) => {
 
     const { data, error } = await supabase
         .from('tour_packages')
-        .select(
-            `
+        .select(`
             *,
+            itineraries:package_itineraries!tour_package_id (*),
             dates:package_dates (
                 *,
-                itineraries:package_itineraries (*, order:day_number)
+                inclusion_groups:package_inclusion_groups (
+                    id, title, removable, fee_impact_per_group, position,
+                    items:package_inclusion_group_items (id, content, position)
+                )
             )
-        `
-        )
+        `)
         .eq('id', id)
         .single()
 
     if (error) return res.status(500).json({ error: error.message })
     if (!data) return res.status(404).json({ error: 'Tour not found' })
 
-    res.json(data)
+    // Transform and apply defaults
+    const DEFAULT_FEE_RULES = {
+        perRemovedGroup: 5000,
+        perRestDay: 3000,
+        minFee: 5000,
+        maxFee: 50000,
+    }
+
+    const tourFeeRules = data.fee_rules && typeof data.fee_rules === 'object'
+        ? { ...DEFAULT_FEE_RULES, ...data.fee_rules }
+        : { ...DEFAULT_FEE_RULES }
+
+    const transformed = {
+        ...data,
+        fee_rules: tourFeeRules,
+        itineraries: (data.itineraries || []).sort((a, b) => a.day_number - b.day_number),
+        dates: (data.dates || []).map((d) => {
+            const fee_rules = d.fee_rules && typeof d.fee_rules === 'object'
+                ? { ...tourFeeRules, ...d.fee_rules }
+                : { ...tourFeeRules }
+
+            const inclusion_groups = (d.inclusion_groups || [])
+                .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+                .map((g) => ({
+                    id: g.id,
+                    title: g.title,
+                    removable: g.removable,
+                    fee_impact_per_group: g.fee_impact_per_group,
+                    items: (g.items || [])
+                        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+                        .map((it) => it.content),
+                }))
+
+            return { ...d, fee_rules, inclusion_groups }
+        })
+    }
+
+    res.json(transformed)
 }
 
 // ✏ Update tour package
 export const updateTour = async (req, res) => {
     const { id } = req.params
-    const { title, description, status, main_image_url, panellum_url, destination_country, visa_required, dates } =
-        req.body
+        const { 
+            title, description, status, main_image_url, panellum_url, 
+            destination_country, visa_required, fee_rules, customFeeRules,
+            inclusions, exclusions, payment_terms, requirements, notes, 
+            dates, itineraries 
+        } = req.body
 
     try {
         // 1️⃣ Update tour package
         const { error: tourError } = await supabase
             .from('tour_packages')
             .update({
-                title,
-                description,
-                status,
-                main_image_url,
-                panellum_url,
-                destination_country,
-                visa_required,
+                title, description, status, main_image_url, panellum_url,
+                destination_country, visa_required,
+                fee_rules: fee_rules || { perRemovedGroup: 5000, perRestDay: 3000, minFee: 5000, maxFee: 50000 },
+                inclusions: inclusions || [],
+                exclusions: exclusions || [],
+                payment_terms: payment_terms || [],
+                requirements: requirements || [],
+                notes: notes || [],
             })
             .eq('id', id)
 
         if (tourError) return res.status(400).json({ error: tourError.message })
 
-        // 2️⃣ Loop through dates
-        for (const d of dates) {
-            const { id: dateId, itineraries, ...dateData } = d
+        // 2️⃣ Handle dates (delete removed, update existing, insert new)
+        const { data: currentDates } = await supabase
+            .from('package_dates')
+            .select('id')
+            .eq('tour_package_id', id)
 
-            let packageDateId = dateId
+        const currentDateIds = currentDates.map(d => d.id)
+        const incomingDateIds = dates.map(d => d.id).filter(Boolean)
+        const datesToDelete = currentDateIds.filter(id => !incomingDateIds.includes(id))
+
+        // Delete removed dates
+        for (const dateId of datesToDelete) {
+            // Delete inclusion groups and items first
+            const { data: groups } = await supabase
+                .from('package_inclusion_groups')
+                .select('id')
+                .eq('package_date_id', dateId)
+
+            if (groups) {
+                for (const group of groups) {
+                    await supabase
+                        .from('package_inclusion_group_items')
+                        .delete()
+                        .eq('inclusion_group_id', group.id)
+                    
+                    await supabase
+                        .from('package_inclusion_groups')
+                        .delete()
+                        .eq('id', group.id)
+                }
+            }
+
+            await supabase.from('package_dates').delete().eq('id', dateId)
+        }
+
+        // Update or insert dates
+        const createdDateIds = []
+        for (const d of dates) {
+            const { id: dateId, inclusion_groups, ...dateData } = d
 
             if (dateId) {
                 // Update existing date
-                const { error: dateErr } = await supabase
+                await supabase
                     .from('package_dates')
                     .update(dateData)
                     .eq('id', dateId)
-                if (dateErr)
-                    return res.status(400).json({ error: dateErr.message })
+                createdDateIds.push(dateId)
             } else {
                 // Insert new date
-                const { data: newDate, error: dateErr } = await supabase
+                const { data: newDate } = await supabase
                     .from('package_dates')
                     .insert([{ ...dateData, tour_package_id: id }])
                     .select()
                     .single()
-                if (dateErr)
-                    return res.status(400).json({ error: dateErr.message })
-                packageDateId = newDate.id
+                createdDateIds.push(newDate.id)
             }
+        }
 
-            // 3️⃣ Handle itineraries for this date
-            for (const i of itineraries) {
-                if (i.id) {
-                    // Update existing itinerary
-                    const { error: itErr } = await supabase
-                        .from('package_itineraries')
-                        .update({
-                            title: i.title,
-                            description: i.description,
-                            day_number: i.day_number,
-                            image_url: i.image_url || null,
-                        })
-                        .eq('id', i.id)
-                    if (itErr)
-                        return res.status(400).json({ error: itErr.message })
+        // 3️⃣ Apply date-specific fee rules (customFeeRules)
+        console.log('🔧 Custom fee rules received:', customFeeRules)
+        
+        // Get tour-level fee rules for resetting
+        const tourFeeRules = fee_rules || { perRemovedGroup: 5000, perRestDay: 3000, minFee: 5000, maxFee: 50000 }
+        
+        // First, reset ALL dates to tour-level fee rules
+        console.log('🔄 Resetting all dates to tour-level fee rules')
+        for (const date of dates) {
+            if (date.id) {
+                const { error: resetError } = await supabase
+                    .from('package_dates')
+                    .update({ fee_rules: tourFeeRules })
+                    .eq('id', date.id)
+                
+                if (resetError) {
+                    console.error(`❌ Error resetting fee rules for date ${date.id}:`, resetError)
                 } else {
-                    // Insert new itinerary
-                    const { error: itErr } = await supabase
-                        .from('package_itineraries')
-                        .insert([{ 
-                            ...i, 
-                            package_date_id: packageDateId,
-                            image_url: i.image_url || null
-                        }])
-                    if (itErr)
-                        return res.status(400).json({ error: itErr.message })
+                    console.log(`✅ Reset fee rules for date ${date.id} to tour-level`)
+                }
+            }
+        }
+        
+        // Then, apply custom fee rules for specific dates
+        if (customFeeRules && Array.isArray(customFeeRules)) {
+            console.log(`🔧 Processing ${customFeeRules.length} custom fee rules`)
+            
+            for (const rule of customFeeRules) {
+                if (rule.dateIndex !== undefined && rule.dateIndex >= 0 && rule.dateIndex < dates.length) {
+                    const targetDate = dates[rule.dateIndex]
+                    if (targetDate && targetDate.id) {
+                        console.log(`💰 Applying custom fee rules to existing date ${rule.dateIndex + 1} (ID: ${targetDate.id})`)
+                        
+                        const customFeeData = {
+                            perRemovedGroup: rule.perRemovedGroup || 0,
+                            perRestDay: rule.perRestDay || 0,
+                            minFee: rule.minFee || 0,
+                            maxFee: rule.maxFee || 0
+                        }
+                        
+                        const { error: feeError } = await supabase
+                            .from('package_dates')
+                            .update({ fee_rules: customFeeData })
+                            .eq('id', targetDate.id)
+                        
+                        if (feeError) {
+                            console.error(`❌ Error updating fee rules for date ${targetDate.id}:`, feeError)
+                        } else {
+                            console.log(`✅ Updated fee rules for date ${targetDate.id}:`, customFeeData)
+                        }
+                    }
                 }
             }
         }
 
-        // 4️⃣ Return updated tour with relations
-        const { data: updatedTour, error: fetchError } = await supabase
-            .from('tour_packages')
-            .select(
-                `
-                *,
-                package_dates (
-                    *,
-                    package_itineraries (*, order:day_number)
-                )
-            `
-            )
-            .eq('id', id)
-            .single()
+        // 4️⃣ Handle tour-level itineraries
+        const { data: currentItineraries } = await supabase
+            .from('package_itineraries')
+            .select('id')
+            .eq('tour_package_id', id)
 
-        if (fetchError)
-            return res.status(400).json({ error: fetchError.message })
+        const currentItinIds = currentItineraries.map(it => it.id)
+        const incomingItinIds = itineraries.map(it => it.id).filter(Boolean)
+        const itinsToDelete = currentItinIds.filter(id => !incomingItinIds.includes(id))
 
-        res.json({ message: 'Tour updated successfully', tour: updatedTour })
+        // Delete removed itineraries
+        for (const itinId of itinsToDelete) {
+            await supabase.from('package_itineraries').delete().eq('id', itinId)
+        }
+
+        // Update or insert itineraries
+        for (const i of itineraries) {
+            if (i.id) {
+                // Update existing
+                await supabase
+                    .from('package_itineraries')
+                    .update({
+                        title: i.title,
+                        description: i.description,
+                        day_number: i.day_number,
+                        image_url: i.image_url || null,
+                    })
+                    .eq('id', i.id)
+            } else {
+                // Insert new
+                await supabase
+                    .from('package_itineraries')
+                    .insert([{ 
+                        ...i, 
+                        tour_package_id: id,
+                        package_date_id: null,
+                        image_url: i.image_url || null
+                    }])
+            }
+        }
+
+        res.json({ message: 'Tour updated successfully' })
     } catch (err) {
         res.status(500).json({ error: err.message })
     }
 }
+
 
 // ❌ Delete tour package and related data
 export const deleteTour = async (req, res) => {
     const { id } = req.params
 
     try {
-        // Delete related itineraries first (via package_dates)
+        // Delete related itineraries first (tour-level)
+        await supabase
+            .from('package_itineraries')
+            .delete()
+            .eq('tour_package_id', id)
+
+        // Delete package dates
         const { data: dates } = await supabase
             .from('package_dates')
             .select('id')
@@ -299,10 +438,6 @@ export const deleteTour = async (req, res) => {
 
         if (dates?.length) {
             const dateIds = dates.map((d) => d.id)
-            await supabase
-                .from('package_itineraries')
-                .delete()
-                .in('package_date_id', dateIds)
             await supabase.from('package_dates').delete().in('id', dateIds)
         }
 
@@ -479,12 +614,75 @@ export const generateTourBookingHTML = async (booking) => {
                 .join('')}
         </div>
     `
-    
+
+    // Generate visa details section
+    const visaDetails = `
+        <div class="pdf-visa-details">
+            <div class="pdf-table-header pdf-table-header--visa">
+                <div>
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        height="25"
+                        width="25"
+                        fill="white"
+                        viewBox="0 0 640 640"
+                    >
+                        <path
+                            d="M502.1 295.3C502.1 295.3 509.7 332.5 511.4 340.3L478 340.3C481.3 331.4 494 296.8 494 296.8C493.8 297.1 497.3 287.7 499.3 281.9L502.1 295.3zM608 144L608 496C608 522.5 586.5 544 560 544L80 544C53.5 544 32 522.5 32 496L32 144C32 117.5 53.5 96 80 96L560 96C586.5 96 608 117.5 608 144zM184.5 395.2L247.7 240L205.2 240L165.9 346L161.6 324.5L147.6 253.1C145.3 243.2 138.2 240.4 129.4 240L64.7 240L64 243.1C79.8 247.1 93.9 252.9 106.2 260.2L142 395.2L184.5 395.2zM278.9 395.4L304.1 240L263.9 240L238.8 395.4L278.9 395.4zM418.8 344.6C419 326.9 408.2 313.4 385.1 302.3C371 295.2 362.4 290.4 362.4 283.1C362.6 276.5 369.7 269.7 385.5 269.7C398.6 269.4 408.2 272.5 415.4 275.6L419 277.3L424.5 243.7C416.6 240.6 404 237.1 388.5 237.1C348.8 237.1 320.9 258.3 320.7 288.5C320.4 310.8 340.7 323.2 355.9 330.7C371.4 338.3 376.7 343.3 376.7 350C376.5 360.4 364.1 365.2 352.6 365.2C336.6 365.2 328 362.7 314.9 356.9L309.6 354.4L304 389.3C313.4 393.6 330.8 397.4 348.8 397.6C391 397.7 418.5 376.8 418.8 344.6zM560 395.4L527.6 240L496.5 240C486.9 240 479.6 242.8 475.5 252.9L415.8 395.4L458 395.4C458 395.4 464.9 376.2 466.4 372.1L518 372.1C519.2 377.6 522.8 395.4 522.8 395.4L560 395.4z"
+                        />
+                    </svg>
+                </div>
+                <div class="pdf-table-header__title pdf-table-header__title--visa">
+                    <p>Visa Details</p>
+                </div>
+                <div>Status</div>
+                <div>Type</div>
+                <div>Expiry Date</div>
+                <div>Notes</div>
+            </div>
+            ${(passengerDetails || [])
+                .map((passenger, index) => {
+                    const title = passenger.title || ''
+                    const name = `${passenger.name?.firstName || ''} ${
+                        passenger.name?.lastName || ''
+                    }`
+                        .trim()
+                        .toUpperCase()
+                    
+                    // Extract visa information from passenger details
+                    const visaStatus = passenger.visa_status || 'Not Required'
+                    const visaType = passenger.visa_type || 'N/A'
+                    const visaExpiry = passenger.visa_expiry || 'N/A'
+                    const visaNotes = passenger.visa_notes || 'N/A'
+
+                    return `
+                        <div class="pdf-visa-details__data pdf-visa-details__data--visa">
+                            <div><span>${index + 1}</span></div>
+                            <div class="pdf-visa-details__data-name pdf-visa-details__data-name--visa">
+                                <p><b>${`${
+                                    title ? title.toUpperCase() + '. ' : ''
+                                }${name}`}</b></p>
+                            </div>
+                            <div class="pdf-visa-details__data-status">${visaStatus}</div>
+                            <div class="pdf-visa-details__data-type">${visaType}</div>
+                            <div class="pdf-visa-details__data-expiry">${visaExpiry}</div>
+                            <div>${visaNotes}</div>
+                        </div>
+                    `
+                })
+                .join('')}
+        </div>
+    `
 
     // Compute Payment Details
     const currencyCode = 'PHP'
     const toNumber = (value) => Number(value ?? 0)
-    const pricePerPerson = toNumber(booking.total_amount) / toNumber(booking.passenger_count)
+    
+    // Get customization data
+    const customization = booking.tour_booking_customizations?.[0]
+    const customizationFee = customization ? toNumber(customization.customization_fee) : 0
+    const baseAmount = toNumber(booking.total_amount) - customizationFee
+    const pricePerPerson = baseAmount / toNumber(booking.passenger_count)
     const totalAmount = toNumber(booking.total_amount)
     const reservationAmount = toNumber(booking.reservation_amount)
     const formatAmount = (n) =>
@@ -957,8 +1155,8 @@ export const generateTourBookingHTML = async (booking) => {
         `
     }
 
-    // Generate itinerary details from package_itineraries - consolidated under single header, sorted by day_number
-    const sortedItineraries = (packageDate?.package_itineraries || [])
+    // Generate itinerary details from tour-level itineraries - consolidated under single header, sorted by day_number
+    const sortedItineraries = (tourPackage?.itineraries || [])
         .sort((a, b) => {
             const dayA = parseInt(a.day_number) || 0
             const dayB = parseInt(b.day_number) || 0
@@ -1067,13 +1265,23 @@ export const generateTourBookingHTML = async (booking) => {
                 </div>
                 <div class="pdf-payment-details__body">
                     <div class="pdf-payment-details__row">
-                        <div class="pdf-payment-details__label">Price per Person</div>
+                        <div class="pdf-payment-details__label">Base Price per Person</div>
                         <div class="pdf-payment-details__value">${formatAmount(pricePerPerson)}</div>
                     </div>
                     <div class="pdf-payment-details__row">
                         <div class="pdf-payment-details__label">Number of Passengers</div>
                         <div class="pdf-payment-details__value">${booking.passenger_count || 0}</div>
                     </div>
+                    <div class="pdf-payment-details__row">
+                        <div class="pdf-payment-details__label">Base Total</div>
+                        <div class="pdf-payment-details__value">${formatAmount(baseAmount)}</div>
+                    </div>
+                    ${customizationFee > 0 ? `
+                    <div class="pdf-payment-details__row">
+                        <div class="pdf-payment-details__label">Customization Fee</div>
+                        <div class="pdf-payment-details__value">${formatAmount(customizationFee)}</div>
+                    </div>
+                    ` : ''}
                     <div class="pdf-payment-details__row">
                         <div class="pdf-payment-details__label">Payment Type</div>
                         <div class="pdf-payment-details__value">${booking.payment_type || 'N/A'}</div>
@@ -1117,6 +1325,47 @@ export const generateTourBookingHTML = async (booking) => {
         </div>
     `
 
+    // Generate customization details if applicable
+    let customizationDetails = ''
+    if (customization && customizationFee > 0) {
+        const removedGroupIds = customization.removed_inclusion_group_ids ? 
+            JSON.parse(customization.removed_inclusion_group_ids) : []
+        const restDayIds = customization.rest_day_ids ? 
+            JSON.parse(customization.rest_day_ids) : []
+        
+        let customizationItems = []
+        
+        if (removedGroupIds.length > 0) {
+            customizationItems.push(`<li><strong>Removed Inclusion Groups:</strong> ${removedGroupIds.join(', ')}</li>`)
+        }
+        
+        if (restDayIds.length > 0) {
+            customizationItems.push(`<li><strong>Rest Days:</strong> Day ${restDayIds.join(', ')}</li>`)
+        }
+        
+        if (customizationItems.length > 0) {
+            customizationDetails = `
+                <div class="pdf-customization">
+                    <div class="pdf-table-header pdf-table-header--customization">
+                        <div class="pdf-table-header__title">
+                            <i class="fa-solid fa-cogs"></i>
+                            <p>Package Customizations</p>
+                        </div>
+                    </div>
+                    <div class="pdf-customization__data">
+                        <div class="pdf-customization__list">
+                            <h5>Applied Customizations:</h5>
+                            <ul>
+                                ${customizationItems.join('')}
+                            </ul>
+                            <p><strong>Customization Fee:</strong> PHP ${formatAmount(customizationFee)}</p>
+                        </div>
+                    </div>
+                </div>
+            `
+        }
+    }
+
     // Inject values into template
     html = html.replace(/{{baseUrl}}/g, baseUrl)
     html = html.replace(
@@ -1128,8 +1377,10 @@ export const generateTourBookingHTML = async (booking) => {
     html = html.replace('{{flightDetails}}', flightDetailsHTML)
     html = html.replace('{{itineraryDetails}}', itineraryDetails)
     html = html.replace('{{passengerDetails}}', passengers)
+    html = html.replace('{{visaDetails}}', visaDetails)
     html = html.replace('{{paymentDetails}}', paymentDetails)
     html = html.replace('{{inclusionsDetails}}', inclusionsDetails)
+    html = html.replace('{{customizationDetails}}', customizationDetails)
     html = html.replace('{{currency}}', currencyCode)
     html = html.replace('{{pricePerPerson}}', formatAmount(pricePerPerson))
     html = html.replace('{{passengerCount}}', booking.passenger_count || 0)
@@ -1255,21 +1506,21 @@ export const viewTourBookingHTML = async (req, res) => {
                     end_date,
                     total_slots,
                     tour_package_id,
-                    inclusions,
-                    exclusions,
-                    payment_terms,
-                    requirements,
-                    notes,
                     tour_packages (
                         id,
                         title,
-                        description
-                    ),
-                    package_itineraries (
-                        id,
-                        day_number,
-                        title,
-                        description
+                        description,
+                        exclusions,
+                        payment_terms,
+                        requirements,
+                        notes,
+                        itineraries:package_itineraries!tour_package_id (
+                            id,
+                            day_number,
+                            title,
+                            description,
+                            image_url
+                        )
                     )
                 )
             `
@@ -1318,22 +1569,29 @@ export const generateTourPDFAdmin = async (req, res) => {
                     end_date,
                     total_slots,
                     tour_package_id,
-                    inclusions,
-                    exclusions,
-                    payment_terms,
-                    requirements,
-                    notes,
                     tour_packages (
                         id,
                         title,
-                        description
-                    ),
-                    package_itineraries (
-                        id,
-                        day_number,
-                        title,
-                        description
+                        description,
+                        exclusions,
+                        payment_terms,
+                        requirements,
+                        notes,
+                        itineraries:package_itineraries!tour_package_id (
+                            id,
+                            day_number,
+                            title,
+                            description,
+                            image_url
+                        )
                     )
+                ),
+                tour_booking_customizations (
+                    id,
+                    removed_inclusion_group_ids,
+                    rest_day_ids,
+                    customization_fee,
+                    client_snapshot
                 )
             `
             )
@@ -1671,6 +1929,42 @@ const pusher = new Pusher({
     cluster: 'ap1',
     useTLS: true,
 })
+
+// Simple tour status update (for publish/unpublish)
+export const updateTourStatus = async (req, res) => {
+    try {
+        const { id } = req.params
+        const { status } = req.body
+
+        if (!status || !['DRAFT', 'PUBLISHED'].includes(status)) {
+            return res.status(400).json({ error: 'Invalid status. Must be DRAFT or PUBLISHED' })
+        }
+
+        const { data, error } = await supabase
+            .from('tour_packages')
+            .update({ status })
+            .eq('id', id)
+            .select()
+            .single()
+
+        if (error) {
+            return res.status(400).json({ error: error.message })
+        }
+
+        if (!data) {
+            return res.status(404).json({ error: 'Tour not found' })
+        }
+
+        res.json({ 
+            success: true, 
+            message: `Tour ${status.toLowerCase()} successfully`,
+            tour: data 
+        })
+    } catch (err) {
+        console.error('Error updating tour status:', err)
+        res.status(500).json({ error: 'Failed to update tour status' })
+    }
+}
 
 // Edit Tour Booking (status/assignment updates)
 export const editTourBooking = async (req, res) => {

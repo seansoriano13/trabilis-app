@@ -21,6 +21,8 @@ export default function Destinations() {
     const [priceRange] = useState(null)
     const [currentPage, setCurrentPage] = useState(0)
 
+    
+
     const toursPerPage = 6
 
     useEffect(() => {
@@ -46,7 +48,7 @@ export default function Destinations() {
     }, [])
 
     useEffect(() => {
-        let filtered = tours
+        let filtered = tours.filter((tour) => tour.status === 'PUBLISHED')
 
         if (searchQuery) {
             filtered = filtered.filter((tour) =>
@@ -66,11 +68,13 @@ export default function Destinations() {
         setCurrentPage(0)
     }, [searchQuery, priceRange, tours])
 
-    const options = tours.map((tour) => ({
-        value: tour.title.toLowerCase(),
-        label: tour.title,
-        id: tour.id,
-    }))
+    const options = tours
+        .filter((tour) => tour.status === 'PUBLISHED')
+        .map((tour) => ({
+            value: tour.title.toLowerCase(),
+            label: tour.title,
+            id: tour.id,
+        }))
 
     const navigate = useNavigate()
 
@@ -83,6 +87,18 @@ export default function Destinations() {
 
     const handlePageClick = (data) => {
         setCurrentPage(data.selected)
+        
+        // Scroll to the tour grid section with navbar offset
+        const tourGridElement = document.getElementById('tour-grid')
+        if (tourGridElement) {
+            const navbarHeight = 120 // Adjust this value based on your navbar height
+            const elementPosition = tourGridElement.offsetTop - navbarHeight
+            
+            window.scrollTo({
+                top: elementPosition,
+                behavior: 'smooth'
+            })
+        }
     }
 
     const offset = currentPage * toursPerPage
@@ -150,7 +166,7 @@ export default function Destinations() {
                     </form>
                 </div>
             </section>
-            <div className='max-w-[1200px] px-5 my-8 mx-auto grid gap-8'>
+            <div id='tour-grid' className='max-w-[1200px] px-5 my-8 mx-auto grid gap-8'>
                 <h3 className='text-[#333] font-bold text-3xl lg:text-4xl mx-auto text-center mb-8'>
                     Tour Packages
                 </h3>
@@ -169,20 +185,20 @@ export default function Destinations() {
                     </div>
                 ) : (
                     <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'>
-                        {currentTours.map(
-                            (tour) =>
-                                tour.status === 'PUBLISHED' && (
-                                    <div
-                                        key={tour.id}
-                                        className='group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-yellow-200 transform hover:-translate-y-2 tour-card-enhanced'
-                                    >
+                        {currentTours.map((tour) => (
+                            <div
+                                key={tour.id}
+                                className='group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-yellow-200 transform hover:-translate-y-2 tour-card-enhanced'
+                            >
                                         {/* Image Section */}
                                         <div className='relative h-64 overflow-hidden'>
                                             <div className='tour-card-image h-full'>
                                                 <Panorama
                                                     id={tour.id}
                                                     image={tour.panellum_url}
-                                                    preview={tour.main_image_url}
+                                                    preview={
+                                                        tour.main_image_url
+                                                    }
                                                     aspectRatio='16/9'
                                                 />
                                             </div>
@@ -190,7 +206,8 @@ export default function Destinations() {
                                             <div className='absolute top-4 left-4 pointer-events-none'>
                                                 <div className='tour-card-badge rounded-full px-3 py-1 text-xs font-semibold text-gray-700 shadow-lg'>
                                                     <i className='bi-calendar-check mr-1'></i>
-                                                    {tour.dates?.length || 0} dates
+                                                    {tour.dates?.length || 0}{' '}
+                                                    dates
                                                 </div>
                                             </div>
                                         </div>
@@ -204,27 +221,44 @@ export default function Destinations() {
 
                                             {/* Description */}
                                             <p className='text-gray-600 text-sm mb-4 line-clamp-2'>
-                                                {tour.description || 'Discover amazing destinations with our carefully crafted tour packages.'}
+                                                {tour.description ||
+                                                    'Discover amazing destinations with our carefully crafted tour packages.'}
                                             </p>
 
                                             {/* Available Dates */}
                                             <div className='mb-4'>
                                                 <div className='flex items-center gap-2 mb-2'>
                                                     <i className='bi-calendar-event text-yellow-500'></i>
-                                                    <span className='text-sm font-semibold text-gray-700'>Available Dates</span>
+                                                    <span className='text-sm font-semibold text-gray-700'>
+                                                        Available Dates
+                                                    </span>
                                                 </div>
                                                 <div className='space-y-1 max-h-20 overflow-y-auto'>
-                                                    {tour.dates?.slice(0, 3).map((date, index) => (
-                                                        <div key={index} className='flex items-center gap-2 text-xs text-gray-600'>
-                                                            <div className='w-1.5 h-1.5 bg-yellow-400 rounded-full'></div>
-                                                            <span>
-                                                                {new Date(date.start_date).toLocaleDateString()} - {new Date(date.end_date).toLocaleDateString()}
-                                                            </span>
-                                                        </div>
-                                                    ))}
+                                                    {tour.dates
+                                                        ?.slice(0, 3)
+                                                        .map((date, index) => (
+                                                            <div
+                                                                key={index}
+                                                                className='flex items-center gap-2 text-xs text-gray-600'
+                                                            >
+                                                                <div className='w-1.5 h-1.5 bg-yellow-400 rounded-full'></div>
+                                                                <span>
+                                                                    {new Date(
+                                                                        date.start_date
+                                                                    ).toLocaleDateString()}{' '}
+                                                                    -{' '}
+                                                                    {new Date(
+                                                                        date.end_date
+                                                                    ).toLocaleDateString()}
+                                                                </span>
+                                                            </div>
+                                                        ))}
                                                     {tour.dates?.length > 3 && (
                                                         <div className='text-xs text-yellow-600 font-medium'>
-                                                            +{tour.dates.length - 3} more dates
+                                                            +
+                                                            {tour.dates.length -
+                                                                3}{' '}
+                                                            more dates
                                                         </div>
                                                     )}
                                                 </div>
@@ -235,28 +269,46 @@ export default function Destinations() {
                                                 <div className='flex items-center gap-2'>
                                                     <i className='bi-clock text-gray-400'></i>
                                                     <span className='text-sm text-gray-600'>
-                                                        {tour.dates?.[0] ? 
-                                                            Math.ceil((new Date(tour.dates[0].end_date) - new Date(tour.dates[0].start_date)) / (1000 * 60 * 60 * 24)) + 1 
-                                                            : 'N/A'
-                                                        } days
+                                                        {tour.dates?.[0]
+                                                            ? Math.ceil(
+                                                                  (new Date(
+                                                                      tour.dates[0].end_date
+                                                                  ) -
+                                                                      new Date(
+                                                                          tour.dates[0].start_date
+                                                                      )) /
+                                                                      (1000 *
+                                                                          60 *
+                                                                          60 *
+                                                                          24)
+                                                              ) + 1
+                                                            : 'N/A'}{' '}
+                                                        days
                                                     </span>
                                                 </div>
                                                 <div className='text-right'>
                                                     <div className='text-2xl font-bold tour-card-price'>
-                                                        {tour.dates && tour.dates[0]?.rate_per_pax
+                                                        {tour.dates &&
+                                                        tour.dates[0]
+                                                            ?.rate_per_pax
                                                             ? `₱${tour.dates[0].rate_per_pax.toLocaleString()}`
                                                             : 'Price N/A'}
                                                     </div>
-                                                    <div className='text-xs text-gray-500'>per person</div>
+                                                    <div className='text-xs text-gray-500'>
+                                                        per person
+                                                    </div>
                                                 </div>
                                             </div>
 
                                             {/* Action Button */}
                                             <button
                                                 onClick={() =>
-                                                    navigate(`tour/${tour.id}`, {
-                                                        state: tour,
-                                                    })
+                                                    navigate(
+                                                        `tour/${tour.id}`,
+                                                        {
+                                                            state: tour,
+                                                        }
+                                                    )
                                                 }
                                                 className='w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center gap-2 group/btn tour-card-button'
                                             >
@@ -268,11 +320,27 @@ export default function Destinations() {
                                         {/* Hover Overlay */}
                                         <div className='absolute inset-0 bg-gradient-to-t from-yellow-400/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none'></div>
                                     </div>
-                                )
-                        )}
+                        ))}
                     </div>
                 )}
             </div>
+
+            {pageCount > 1 && (
+                <ReactPaginate
+                    previousLabel={'← Previous'}
+                    nextLabel={'Next →'}
+                    pageCount={pageCount}
+                    onPageChange={handlePageClick}
+                    containerClassName={'tours__pagination'}
+                    previousLinkClassName={'tours__pagination-link'}
+                    nextLinkClassName={'tours__pagination-link'}
+                    disabledClassName={'tours__pagination--disabled'}
+                    activeClassName={'tours__pagination--active'}
+                    pageClassName={'tours__pagination-page'}
+                    breakLabel={'...'}
+                    breakClassName={'tours__pagination-break'}
+                />
+            )}
 
             <section
                 id='sectionBenefits'
@@ -329,23 +397,6 @@ export default function Destinations() {
                     </div>
                 </div>
             </section>
-
-            {pageCount > 1 && (
-                <ReactPaginate
-                    previousLabel={'← Previous'}
-                    nextLabel={'Next →'}
-                    pageCount={pageCount}
-                    onPageChange={handlePageClick}
-                    containerClassName={'tours__pagination'}
-                    previousLinkClassName={'tours__pagination-link'}
-                    nextLinkClassName={'tours__pagination-link'}
-                    disabledClassName={'tours__pagination--disabled'}
-                    activeClassName={'tours__pagination--active'}
-                    pageClassName={'tours__pagination-page'}
-                    breakLabel={'...'}
-                    breakClassName={'tours__pagination-break'}
-                />
-            )}
 
             <TestimonialsSection />
         </>

@@ -119,6 +119,25 @@
     transition: color 0.3s ease;
 }
 
+.accordion-section__toggle {
+    color: #6c757d;
+    transition: transform 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.accordion-section__toggle:hover {
+    color: #495057;
+}
+
+/* Ensure the toggle is visible and properly styled */
+.accordion-section__button .accordion-section__toggle {
+    opacity: 1;
+    visibility: visible;
+}
+
 .accordion-section__content {
     padding: 2rem;
     background: #fafafa;
@@ -515,4 +534,108 @@
     background: #e6c200;
 }
 
+/* Date Group Collapsible Styles */
+.date-group__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 1rem;
+}
+
+.date-group__header:hover {
+    background: #e9ecef;
+    border-color: #dee2e6;
+}
+
+.date-group__toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: #fff;
+    color: #6c757d;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.date-group__header:hover .date-group__toggle {
+    background: #f8f9fa;
+    color: #495057;
+}
+
+/* Badge Styles */
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.badge--default {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #7dd3fc;
+}
+
+.badge--custom {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.custom-fee-rule-item,
+.custom-inclusion-item {
+    border: 1px solid #e5e7eb;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
 /* Readonly Input Styles - Moved to EditTourPackage.css to avoid conflicts */
+
+/* Fee Rule Groups */
+.fee-rule-group {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    background: white;
+}
+
+.fee-rule-group__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.fee-rule-group__header:hover {
+    background: #f9fafb;
+}
+
+.fee-rule-group__title {
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+}
+
+.fee-rule-group__toggle {
+    color: #6b7280;
+    transition: transform 0.2s;
+}
+
+.fee-rule-group__content {
+    padding: 1rem;
+    border-top: 1px solid #e5e7eb;
+}

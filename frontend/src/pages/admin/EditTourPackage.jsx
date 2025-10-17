@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSnackbar } from '../../context/SnackbarContext'
-import { IoChevronBack } from 'react-icons/io5'
+import { IoChevronBack, IoChevronUp, IoChevronDown } from 'react-icons/io5'
 import AdminPrimaryButton from '../../components/admin/AdminPrimaryButton'
 import adminClient from '../../api/adminClient.js'
 import axios from 'axios'
@@ -32,101 +32,122 @@ const EditDateGroup = ({
     dateGroup,
     updateDateGroup,
     removeDateGroup,
+    isOpen,
+    onToggle,
 }) => (
     <div className='date-group'>
-        <h3 className='date-group__title'>Tour Package Date {index + 1}</h3>
-        <div className='form__fields'>
-            <div className='date-group__form-field'>
-                <label className='form-label'>Start Date *</label>
-                <input
-                    type='date'
-                    value={dateGroup.start_date}
-                    onChange={(e) =>
-                        updateDateGroup(index, 'start_date', e.target.value)
-                    }
-                    className='form-input'
-                    required
-                />
+        <div className='date-group__header' onClick={() => onToggle(index)}>
+            <h3 className='date-group__title'>Tour Package Date {index + 1}</h3>
+            <div className='date-group__toggle'>
+                {isOpen ? <IoChevronUp size={20} /> : <IoChevronDown size={20} />}
             </div>
-            <div className='date-group__form-field'>
-                <label className='form-label'>End Date *</label>
-                <input
-                    type='date'
-                    value={dateGroup.end_date}
-                    onChange={(e) =>
-                        updateDateGroup(index, 'end_date', e.target.value)
-                    }
-                    className='form-input'
-                    required
-                />
-            </div>
-            <div className='date-group__form-field'>
-                <label className='form-label'>Rate per Pax (PHP) *</label>
-                <input
-                    type='number'
-                    value={dateGroup.rate_per_pax}
-                    onChange={(e) =>
-                        updateDateGroup(
-                            index,
-                            'rate_per_pax',
-                            Number(e.target.value)
-                        )
-                    }
-                    className='form-input'
-                    min='0'
-                    required
-                />
-            </div>
-            <div className='date-group__form-field'>
-                <label className='form-label'>
-                    Rate per Pax - Reservation (PHP) *
-                </label>
-                <input
-                    type='number'
-                    value={dateGroup.reservation_fee_per_pax}
-                    onChange={(e) =>
-                        updateDateGroup(
-                            index,
-                            'reservation_fee_per_pax',
-                            Number(e.target.value)
-                        )
-                    }
-                    className='form-input'
-                    min='0'
-                    required
-                />
-            </div>
-            <div className='date-group__form-field'>
-                <label className='form-label'>Total Slots</label>
-                <input
-                    type='number'
-                    value={dateGroup.total_slots}
-                    className='form-input form-input--readonly'
-                    readOnly
-                    disabled
-                />
-                <small className='form-help-text'>Total slots cannot be changed. Create a new date group instead.</small>
-            </div>
-            <div className='date-group__form-field'>
-                <label className='form-label'>Available Slots</label>
-                <input
-                    type='number'
-                    value={dateGroup.available_slots}
-                    className='form-input form-input--readonly'
-                    readOnly
-                    disabled
-                />
-                <small className='form-help-text'>Available slots are automatically calculated.</small>
-            </div>
-            {index > 0 && (
-                <button
-                    onClick={() => removeDateGroup(index)}
-                    className='button-link button-link--remove'
-                >
-                    Remove Tour Package Date
-                </button>
-            )}
         </div>
+        {isOpen && (
+            <div className='form__fields'>
+                <div className='date-group__form-field'>
+                    <label className='form-label'>Start Date *</label>
+                    <input
+                        type='date'
+                        value={dateGroup.start_date}
+                        onChange={(e) =>
+                            updateDateGroup(index, 'start_date', e.target.value)
+                        }
+                        className='form-input'
+                        required
+                    />
+                </div>
+                <div className='date-group__form-field'>
+                    <label className='form-label'>End Date *</label>
+                    <input
+                        type='date'
+                        value={dateGroup.end_date}
+                        onChange={(e) =>
+                            updateDateGroup(index, 'end_date', e.target.value)
+                        }
+                        className='form-input'
+                        required
+                    />
+                </div>
+                <div className='date-group__form-field'>
+                    <label className='form-label'>Rate per Pax (PHP) *</label>
+                    <input
+                        type='number'
+                        value={dateGroup.rate_per_pax}
+                        onChange={(e) =>
+                            updateDateGroup(
+                                index,
+                                'rate_per_pax',
+                                Number(e.target.value)
+                            )
+                        }
+                        className='form-input'
+                        min='0'
+                        required
+                    />
+                </div>
+                <div className='date-group__form-field'>
+                    <label className='form-label'>
+                        Rate per Pax - Reservation (PHP) *
+                    </label>
+                    <input
+                        type='number'
+                        value={dateGroup.reservation_fee_per_pax}
+                        onChange={(e) =>
+                            updateDateGroup(
+                                index,
+                                'reservation_fee_per_pax',
+                                Number(e.target.value)
+                            )
+                        }
+                        className='form-input'
+                        min='0'
+                        required
+                    />
+                </div>
+                <div className='date-group__form-field'>
+                    <label className='form-label'>Total Slots {!dateGroup.id ? '*' : ''}</label>
+                    <input
+                        type='number'
+                        value={dateGroup.total_slots}
+                        onChange={!dateGroup.id ? (e) => {
+                            const slots = Number(e.target.value)
+                            updateDateGroup(index, 'total_slots', slots)
+                            updateDateGroup(index, 'available_slots', slots)
+                        } : undefined}
+                        className={!dateGroup.id ? 'form-input' : 'form-input form-input--readonly'}
+                        readOnly={!!dateGroup.id}
+                        disabled={!!dateGroup.id}
+                        min='1'
+                        required={!dateGroup.id}
+                    />
+                    <small className='form-help-text'>
+                        {dateGroup.id 
+                            ? 'Total slots cannot be changed for existing date groups. Create a new date group instead.' 
+                            : 'Set the total number of slots available for this date group.'
+                        }
+                    </small>
+                </div>
+                <div className='date-group__form-field'>
+                    <label className='form-label'>Available Slots</label>
+                    <input
+                        type='number'
+                        value={dateGroup.available_slots}
+                        className='form-input form-input--readonly'
+                        readOnly
+                        disabled
+                    />
+                    <small className='form-help-text'>Available slots are automatically calculated.</small>
+                </div>
+                {index > 0 && (
+                    <button
+                        onClick={() => removeDateGroup(index)}
+                        className='button-link button-link--remove'
+                    >
+                        Remove Tour Package Date
+                    </button>
+                )}
+            </div>
+        )}
     </div>
 )
 
@@ -142,26 +163,31 @@ function EditTourPackage() {
         status: 'DRAFT',
         destination_country: '', // New field for visa integration
         visa_required: false, // Auto-enabled based on country
+        fee_rules: { perRemovedGroup: 5000, perRestDay: 3000, minFee: 5000, maxFee: 50000 }, // Tour-level fee rules
+        customFeeRules: [], // Custom fee rules for specific dates
         dates: [],
         itineraries: [],
-        inclusions: [''],
         exclusions: [''],
         payment_terms: [''],
         requirements: [''],
         notes: [''],
     })
+    console.log(formData)
     const [openSections, setOpenSections] = useState({
         general: true,
         dates: false,
         fee_rules: false,
+        custom_fee_rules: false,
         inclusion_groups: false,
+        custom_inclusions: false,
         itinerary: false,
-        inclusions: false,
         exclusions: false,
         payment_terms: false,
         requirements: false,
         notes: false,
     })
+    const [openDateGroups, setOpenDateGroups] = useState({})
+    const [openFeeRuleGroups, setOpenFeeRuleGroups] = useState({ default: true })
     const [mainImagePreview, setMainImagePreview] = useState(null)
     const [panellumImagePreview, setPanellumImagePreview] = useState(null)
     const [itineraryImagePreviews, setItineraryImagePreviews] = useState({})
@@ -176,7 +202,7 @@ function EditTourPackage() {
             try {
                 const response = await adminClient.get(`/tours/${id}`)
                 const tour = response.data
-                // Build base dates
+                // Build base dates - ONLY date-specific data
                 const baseDates = tour.dates.map((date) => ({
                         id: date.id,
                         tour_package_id: date.tour_package_id,
@@ -186,25 +212,13 @@ function EditTourPackage() {
                     reservation_fee_per_pax: date.reservation_fee_per_pax || 0,
                         total_slots: date.total_slots || 0,
                         available_slots: date.available_slots || 0,
-                    // legacy flat fields retained
-                        inclusions: date.inclusions || [''],
-                        exclusions: date.exclusions || [''],
-                        payment_terms: date.payment_terms || [''],
-                        requirements: date.requirements || [''],
-                        notes: date.notes || [''],
-                    // phase 2 fields (to be fetched)
-                    fee_rules: {
-                        perRemovedGroup: Number(date.fee_rules?.perRemovedGroup) || 0,
-                        perRestDay: Number(date.fee_rules?.perRestDay) || 0,
-                        minFee: Number(date.fee_rules?.minFee) || 0,
-                        maxFee: Number(date.fee_rules?.maxFee) || 0,
-                    },
+                    // Only date-specific data
                     inclusion_groups: [],
                 }))
 
                 // Fetch fee rules and inclusion groups per date
                 const datesWithExtras = await Promise.all(
-                    baseDates.map(async (d) => {
+                    baseDates.map(async (d, index) => {
                         try {
                             // inclusion groups
                             const groupsRes = await adminClient.get(`/tours/dates/${d.id}/inclusion-groups`)
@@ -231,25 +245,72 @@ function EditTourPackage() {
                             return {
                                 ...d,
                                 inclusion_groups: groupsWithItems,
+                                dateIndex: index, // Store the index for inheritance logic
                             }
                         } catch (_error) { // eslint-disable-line no-unused-vars
                             // Ignore API errors for inclusion groups
-                            return d
+                            return { ...d, dateIndex: index }
                         }
                     })
                 )
 
-                // Build itineraries with proper date association
-                const allItineraries = tour.dates.flatMap((date) =>
-                    date.itineraries.map((it) => ({
-                        id: it.id,
-                        package_date_id: date.id,
-                        day_number: it.day_number || 0,
-                        title: it.title || '',
-                        description: it.description || '',
-                        image_url: it.image_url || '',
-                    }))
-                ).sort((a, b) => a.day_number - b.day_number)
+                // Apply inheritance: if a date has no inclusion groups, copy from the first date
+                const firstDateGroups = datesWithExtras[0]?.inclusion_groups || []
+                const datesWithInheritance = datesWithExtras.map((date, index) => {
+                    if (index === 0) {
+                        // First date keeps its own groups
+                        return date
+                    } else if (date.inclusion_groups?.length === 0 && firstDateGroups.length > 0) {
+                        // Other dates inherit from first date if they have no groups
+                        return {
+                            ...date,
+                            inclusion_groups: JSON.parse(JSON.stringify(firstDateGroups)) // Deep copy
+                        }
+                    } else {
+                        // Date has its own groups, keep them
+                        return date
+                    }
+                })
+
+                // Build itineraries from tour-level data (after migration)
+                const allItineraries = (tour.itineraries || []).map((it) => ({
+                    id: it.id,
+                    day_number: it.day_number || 0,
+                    title: it.title || '',
+                    description: it.description || '',
+                    image_url: it.image_url || '',
+                })).sort((a, b) => a.day_number - b.day_number)
+
+                // Build custom fee rules from dates that have different fee rules than tour-level
+                const customFeeRules = []
+                const tourFeeRules = tour.fee_rules || { perRemovedGroup: 5000, perRestDay: 3000, minFee: 5000, maxFee: 50000 }
+                
+                tour.dates.forEach((date, index) => {
+                    if (date.fee_rules && typeof date.fee_rules === 'object') {
+                        const isDifferent = Object.keys(tourFeeRules).some(key => 
+                            date.fee_rules[key] !== tourFeeRules[key]
+                        )
+                        
+                        if (isDifferent) {
+                            customFeeRules.push({
+                                dateIndex: index,
+                                perRemovedGroup: date.fee_rules.perRemovedGroup || 0,
+                                perRestDay: date.fee_rules.perRestDay || 0,
+                                minFee: date.fee_rules.minFee || 0,
+                                maxFee: date.fee_rules.maxFee || 0
+                            })
+                        }
+                    }
+                })
+                
+                console.log('🔍 Loaded custom fee rules:', customFeeRules)
+
+                // Initialize fee rule groups state
+                const initialFeeRuleGroups = { default: true }
+                customFeeRules.forEach((_, index) => {
+                    initialFeeRuleGroups[index] = true
+                })
+                setOpenFeeRuleGroups(initialFeeRuleGroups)
 
                 setFormData({
                     title: tour.title || '',
@@ -259,13 +320,14 @@ function EditTourPackage() {
                     status: tour.status || 'DRAFT',
                     destination_country: tour.destination_country || '',
                     visa_required: tour.visa_required || false,
-                    dates: datesWithExtras,
+                    fee_rules: tour.fee_rules || { perRemovedGroup: 5000, perRestDay: 3000, minFee: 5000, maxFee: 50000 },
+                    customFeeRules: customFeeRules,
+                    dates: datesWithInheritance,
                     itineraries: allItineraries,
-                    inclusions: tour.dates[0]?.inclusions || [''],
-                    exclusions: tour.dates[0]?.exclusions || [''],
-                    payment_terms: tour.dates[0]?.payment_terms || [''],
-                    requirements: tour.dates[0]?.requirements || [''],
-                    notes: tour.dates[0]?.notes || [''],
+                    exclusions: tour.exclusions || [''],
+                    payment_terms: tour.payment_terms || [''],
+                    requirements: tour.requirements || [''],
+                    notes: tour.notes || [''],
                 })
 
                 // Store original data for comparison
@@ -277,13 +339,14 @@ function EditTourPackage() {
                     status: tour.status || 'DRAFT',
                     destination_country: tour.destination_country || '',
                     visa_required: tour.visa_required || false,
-                    dates: datesWithExtras,
+                    fee_rules: tour.fee_rules || { perRemovedGroup: 5000, perRestDay: 3000, minFee: 5000, maxFee: 50000 },
+                    customFeeRules: customFeeRules,
+                    dates: datesWithInheritance,
                     itineraries: allItineraries,
-                    inclusions: tour.dates[0]?.inclusions || [''],
-                    exclusions: tour.dates[0]?.exclusions || [''],
-                    payment_terms: tour.dates[0]?.payment_terms || [''],
-                    requirements: tour.dates[0]?.requirements || [''],
-                    notes: tour.dates[0]?.notes || [''],
+                    exclusions: tour.exclusions || [''],
+                    payment_terms: tour.payment_terms || [''],
+                    requirements: tour.requirements || [''],
+                    notes: tour.notes || [''],
                 })
 
                 setMainImagePreview(tour.main_image_url || null)
@@ -312,6 +375,45 @@ function EditTourPackage() {
         setOpenSections((prev) => ({
             ...prev,
             [section]: !prev[section],
+        }))
+    }
+
+    const toggleDateGroup = (index) => {
+        setOpenDateGroups((prev) => ({
+            ...prev,
+            [index]: !prev[index],
+        }))
+    }
+
+    const toggleFeeRuleGroup = (index) => {
+        setOpenFeeRuleGroups((prev) => ({
+            ...prev,
+            [index]: !prev[index],
+        }))
+    }
+
+    const addCustomFeeRule = () => {
+        setFormData((prev) => ({
+            ...prev,
+            customFeeRules: [
+                ...(prev.customFeeRules || []),
+                { dateIndex: undefined, perRemovedGroup: 0, perRestDay: 0, minFee: 0, maxFee: 0 }
+            ]
+        }))
+    }
+
+    const updateCustomFeeRule = (idx, field, value) => {
+        setFormData((prev) => {
+            const rules = [...(prev.customFeeRules || [])]
+            rules[idx] = { ...rules[idx], [field]: value }
+            return { ...prev, customFeeRules: rules }
+        })
+    }
+
+    const removeCustomFeeRule = (idx) => {
+        setFormData((prev) => ({
+            ...prev,
+            customFeeRules: prev.customFeeRules.filter((_, i) => i !== idx)
         }))
     }
 
@@ -372,16 +474,6 @@ function EditTourPackage() {
         })
     }
 
-    // Fee rules per date
-    const updateFeeRule = (dateIdx, field, value) => {
-        setFormData((prev) => {
-            const newDates = [...prev.dates]
-            const fr = { ...(newDates[dateIdx].fee_rules || {}) }
-            fr[field] = value
-            newDates[dateIdx] = { ...newDates[dateIdx], fee_rules: fr }
-            return { ...prev, dates: newDates }
-        })
-    }
 
     // Inclusion groups per date
     const addInclusionGroupForDate = (dateIdx) => {
@@ -393,6 +485,7 @@ function EditTourPackage() {
             return { ...prev, dates: newDates }
         })
     }
+
 
     const duplicateInclusionGroup = (dateIdx, groupIdx) => {
         setFormData((prev) => {
@@ -499,42 +592,13 @@ function EditTourPackage() {
                 (() => {
                     const last = prev.dates[prev.dates.length - 1]
                     return {
-                    start_date: '',
-                    end_date: '',
-                        rate_per_pax:
-                            duplicatePricingFromPrevious && last
-                                ? last.rate_per_pax || 0
-                                : 0,
-                        reservation_fee_per_pax:
-                            duplicatePricingFromPrevious && last
-                                ? last.reservation_fee_per_pax || 0
-                                : 0,
-                        total_slots:
-                            duplicatePricingFromPrevious && last
-                                ? last.total_slots || 0
-                                : 0,
-                        available_slots:
-                            duplicatePricingFromPrevious && last
-                                ? last.total_slots || 0
-                                : 0,
-                    inclusions: [''],
-                    exclusions: [''],
-                    payment_terms: [''],
-                    requirements: [''],
-                    notes: [''],
-                        fee_rules:
-                            duplicatePricingFromPrevious && last && last.fee_rules
-                                ? { ...last.fee_rules }
-                                : { perRemovedGroup: 0, perRestDay: 0, minFee: 0, maxFee: 0 },
-                        inclusion_groups:
-                            duplicatePricingFromPrevious && last && Array.isArray(last.inclusion_groups)
-                                ? last.inclusion_groups.map((g) => ({
-                                      title: g.title || '',
-                                      category: g.category || 'Custom…',
-                                      removable: g.removable !== false,
-                                      items: Array.isArray(g.items) ? [...g.items] : [''],
-                                  }))
-                                : [],
+                        start_date: '',
+                        end_date: '',
+                        rate_per_pax: duplicatePricingFromPrevious && last ? last.rate_per_pax || 0 : 0,
+                        reservation_fee_per_pax: duplicatePricingFromPrevious && last ? last.reservation_fee_per_pax || 0 : 0,
+                        total_slots: duplicatePricingFromPrevious && last ? last.total_slots || 0 : 0,
+                        available_slots: duplicatePricingFromPrevious && last ? last.total_slots || 0 : 0,
+                        inclusion_groups: [], // Empty - only dates & pricing
                     }
                 })(),
             ],
@@ -578,7 +642,7 @@ function EditTourPackage() {
                         title: '',
                         description: '',
                         image_url: '',
-                        package_date_id: prev.dates[0]?.id || null,
+                        // ✅ No package_date_id needed - itineraries are now tour-level
                     },
                 ],
             }
@@ -597,28 +661,6 @@ function EditTourPackage() {
             })
             return { ...prev, itineraries: newItineraries }
         })
-    }
-
-    const updateInclusion = (index, value) => {
-        setFormData((prev) => {
-            const newInclusions = [...prev.inclusions]
-            newInclusions[index] = value
-            return { ...prev, inclusions: newInclusions }
-        })
-    }
-
-    const addInclusion = () => {
-        setFormData((prev) => ({
-            ...prev,
-            inclusions: [...prev.inclusions, ''],
-        }))
-    }
-
-    const removeInclusion = (index) => {
-        setFormData((prev) => ({
-            ...prev,
-            inclusions: prev.inclusions.filter((_, i) => i !== index),
-        }))
     }
 
     const updateExclusion = (index, value) => {
@@ -834,6 +876,21 @@ function EditTourPackage() {
                 status: formData.status,
                 destination_country: formData.destination_country,
                 visa_required: formData.visa_required,
+                fee_rules: formData.fee_rules,
+                customFeeRules: formData.customFeeRules || [],
+                // ✅ Tour-level data
+                itineraries: formData.itineraries.map((it) => ({
+                    id: it.id || undefined,
+                    day_number: Number(it.day_number) || 0,
+                    title: it.title || '',
+                    description: it.description || '',
+                    image_url: it.image_url || '',
+                })),
+                inclusions: [], // Empty array since we use inclusion_groups now
+                exclusions: formData.exclusions.filter(Boolean),
+                payment_terms: formData.payment_terms.filter(Boolean),
+                requirements: formData.requirements.filter(Boolean),
+                notes: formData.notes.filter(Boolean),
                 dates: formData.dates.map((date) => ({
                     id: date.id || undefined,
                     start_date: date.start_date,
@@ -844,31 +901,7 @@ function EditTourPackage() {
                         : null,
                     total_slots: Number(date.total_slots) || 0,
                     available_slots: Number(date.available_slots) || 0,
-                    inclusions: date.inclusions.filter(Boolean),
-                    exclusions: date.exclusions.filter(Boolean),
-                    payment_terms: date.payment_terms.filter(Boolean),
-                    requirements: date.requirements.filter(Boolean),
-                    notes: date.notes.filter(Boolean),
-                    itineraries: formData.itineraries
-                        .filter((it) => {
-                            // For existing dates, match by package_date_id
-                            if (date.id) {
-                                return it.package_date_id === date.id
-                            } else {
-                                // For new dates, assign itineraries that don't have a package_date_id
-                                // or assign to the first new date
-                                const dateIndex = formData.dates.findIndex(d => d === date)
-                                const isFirstNewDate = dateIndex === formData.dates.findIndex(d => !d.id)
-                                return !it.package_date_id && isFirstNewDate
-                            }
-                        })
-                        .map((it) => ({
-                            id: it.id || undefined,
-                            day_number: Number(it.day_number) || 0,
-                            title: it.title || '',
-                            description: it.description || '',
-                            image_url: it.image_url || '',
-                        })),
+                    // ✅ No itineraries here - they're tour-level now
                 })),
             }
             const response = await adminClient.put(`/tours/${id}`, payload)
@@ -1092,6 +1125,8 @@ function EditTourPackage() {
                             dateGroup={dateGroup}
                             updateDateGroup={updateDateGroup}
                             removeDateGroup={removeDateGroup}
+                            isOpen={openDateGroups[index] !== false}
+                            onToggle={toggleDateGroup}
                         />
                     ))}
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -1107,29 +1142,151 @@ function EditTourPackage() {
                 toggle={() => toggleSection('fee_rules')}
             >
                 <div className='form__fields'>
-                    {formData.dates.map((dateGroup, dIdx) => (
-                        <div key={dIdx} className='date-group'>
-                            <h3 className='date-group__title'>Date {dIdx + 1}</h3>
-                            <div className='form__fields'>
+                    {/* Default Fee Rules Group - Always first, labeled "Default" */}
+                    <div className='fee-rule-group'>
+                        <div className='fee-rule-group__header' onClick={() => toggleFeeRuleGroup('default')}>
+                            <h3 className='fee-rule-group__title'>Default (All Dates)</h3>
+                            <div className='fee-rule-group__toggle'>
+                                {openFeeRuleGroups['default'] ? <IoChevronUp /> : <IoChevronDown />}
+                            </div>
+                        </div>
+                        {openFeeRuleGroups['default'] && (
+                            <div className='fee-rule-group__content'>
                                 <div className='date-group__form-field'>
                                     <label className='form-label'>Per Removed Group (PHP)</label>
-                                    <input type='number' className='form-input' min='0' value={dateGroup.fee_rules?.perRemovedGroup || 0} onChange={(e) => updateFeeRule(dIdx, 'perRemovedGroup', Number(e.target.value))} />
+                                    <input 
+                                        type='number' 
+                                        className='form-input' 
+                                        min='0' 
+                                        value={formData.fee_rules?.perRemovedGroup || 0} 
+                                        onChange={(e) => updateFormData('fee_rules', {...formData.fee_rules, perRemovedGroup: Number(e.target.value)})} 
+                                    />
                                 </div>
                                 <div className='date-group__form-field'>
                                     <label className='form-label'>Per Rest Day (PHP)</label>
-                                    <input type='number' className='form-input' min='0' value={dateGroup.fee_rules?.perRestDay || 0} onChange={(e) => updateFeeRule(dIdx, 'perRestDay', Number(e.target.value))} />
+                                    <input 
+                                        type='number' 
+                                        className='form-input' 
+                                        min='0' 
+                                        value={formData.fee_rules?.perRestDay || 0} 
+                                        onChange={(e) => updateFormData('fee_rules', {...formData.fee_rules, perRestDay: Number(e.target.value)})} 
+                                    />
                                 </div>
                                 <div className='date-group__form-field'>
                                     <label className='form-label'>Minimum Fee (PHP)</label>
-                                    <input type='number' className='form-input' min='0' value={dateGroup.fee_rules?.minFee || 0} onChange={(e) => updateFeeRule(dIdx, 'minFee', Number(e.target.value))} />
+                                    <input 
+                                        type='number' 
+                                        className='form-input' 
+                                        min='0' 
+                                        value={formData.fee_rules?.minFee || 0} 
+                                        onChange={(e) => updateFormData('fee_rules', {...formData.fee_rules, minFee: Number(e.target.value)})} 
+                                    />
                                 </div>
                                 <div className='date-group__form-field'>
                                     <label className='form-label'>Maximum Fee (PHP)</label>
-                                    <input type='number' className='form-input' min='0' value={dateGroup.fee_rules?.maxFee || 0} onChange={(e) => updateFeeRule(dIdx, 'maxFee', Number(e.target.value))} />
+                                    <input 
+                                        type='number' 
+                                        className='form-input' 
+                                        min='0' 
+                                        value={formData.fee_rules?.maxFee || 0} 
+                                        onChange={(e) => updateFormData('fee_rules', {...formData.fee_rules, maxFee: Number(e.target.value)})} 
+                                    />
                                 </div>
                             </div>
+                        )}
+                    </div>
+
+                    {/* Custom Fee Rules - Only show if 2+ date groups exist */}
+                    {formData.dates.length >= 2 && formData.customFeeRules?.map((rule, idx) => (
+                        <div key={idx} className='fee-rule-group'>
+                            <div className='fee-rule-group__header' onClick={() => toggleFeeRuleGroup(idx)}>
+                                <h3 className='fee-rule-group__title'>
+                                    {rule.dateIndex !== undefined ? `Date ${rule.dateIndex + 1}` : 'Unassigned'}
+                                </h3>
+                                <div className='fee-rule-group__toggle'>
+                                    {openFeeRuleGroups[idx] ? <IoChevronUp /> : <IoChevronDown />}
+                                </div>
+                            </div>
+                            {openFeeRuleGroups[idx] && (
+                                <div className='fee-rule-group__content'>
+                                    <div className='date-group__form-field'>
+                                        <label className='form-label'>Assign to Date</label>
+                                        <select 
+                                            className='form-input'
+                                            value={rule.dateIndex !== undefined ? rule.dateIndex : ''} 
+                                            onChange={(e) => updateCustomFeeRule(idx, 'dateIndex', e.target.value ? Number(e.target.value) : undefined)}
+                                        >
+                                            <option value="">Select Date</option>
+                                            {formData.dates.map((d, i) => (
+                                                <option key={i} value={i}>
+                                                    Date {i + 1}: {d.start_date} - {d.end_date}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className='date-group__form-field'>
+                                        <label className='form-label'>Per Removed Group (PHP)</label>
+                                        <input 
+                                            type='number' 
+                                            className='form-input' 
+                                            min='0' 
+                                            value={rule.perRemovedGroup || 0} 
+                                            onChange={(e) => updateCustomFeeRule(idx, 'perRemovedGroup', Number(e.target.value))} 
+                                        />
+                                    </div>
+                                    <div className='date-group__form-field'>
+                                        <label className='form-label'>Per Rest Day (PHP)</label>
+                                        <input 
+                                            type='number' 
+                                            className='form-input' 
+                                            min='0' 
+                                            value={rule.perRestDay || 0} 
+                                            onChange={(e) => updateCustomFeeRule(idx, 'perRestDay', Number(e.target.value))} 
+                                        />
+                                    </div>
+                                    <div className='date-group__form-field'>
+                                        <label className='form-label'>Minimum Fee (PHP)</label>
+                                        <input 
+                                            type='number' 
+                                            className='form-input' 
+                                            min='0' 
+                                            value={rule.minFee || 0} 
+                                            onChange={(e) => updateCustomFeeRule(idx, 'minFee', Number(e.target.value))} 
+                                        />
+                                    </div>
+                                    <div className='date-group__form-field'>
+                                        <label className='form-label'>Maximum Fee (PHP)</label>
+                                        <input 
+                                            type='number' 
+                                            className='form-input' 
+                                            min='0' 
+                                            value={rule.maxFee || 0} 
+                                            onChange={(e) => updateCustomFeeRule(idx, 'maxFee', Number(e.target.value))} 
+                                        />
+                                    </div>
+                                    <div className='date-group__form-field'>
+                                        <button 
+                                            type='button'
+                                            onClick={() => removeCustomFeeRule(idx)} 
+                                            className='button-link text-red-600'
+                                        >
+                                            Remove Fee Rule
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     ))}
+
+                    {formData.dates.length >= 2 && (
+                        <button 
+                            type='button'
+                            onClick={addCustomFeeRule} 
+                            className='button-link'
+                        >
+                            + Add Fee Rule for Specific Date
+                        </button>
+                    )}
                 </div>
             </AccordionSection>
 
@@ -1141,7 +1298,15 @@ function EditTourPackage() {
                 <div className='form__fields'>
                     {formData.dates.map((dateGroup, dIdx) => (
                         <div key={dIdx} className='date-group'>
-                            <h3 className='date-group__title'>Date {dIdx + 1}</h3>
+                            <h3 className='date-group__title'>
+                                Date {dIdx + 1}
+                                {dIdx > 0 && dateGroup.inclusion_groups?.length === 0 && (
+                                    <span className='badge badge--default ml-2'>Using Default Inclusions</span>
+                                )}
+                                {dIdx > 0 && dateGroup.inclusion_groups?.length > 0 && (
+                                    <span className='badge badge--custom ml-2'>Custom Inclusions</span>
+                                )}
+                            </h3>
                             <div className='grid gap-4'>
                                 {(dateGroup.inclusion_groups || []).map((group, gIdx) => (
                                     <div key={gIdx} className='border rounded-md p-3 border-gray-300'>
@@ -1189,6 +1354,19 @@ function EditTourPackage() {
                                         </div>
                                     </div>
                                 ))}
+                                {dIdx > 0 && dateGroup.inclusion_groups?.length === 0 && formData.dates[0]?.inclusion_groups?.length > 0 && (
+                                    <button onClick={() => {
+                                        const newDates = [...formData.dates]
+                                        const firstDateGroups = newDates[0]?.inclusion_groups || []
+                                        newDates[dIdx] = { 
+                                            ...newDates[dIdx], 
+                                            inclusion_groups: JSON.parse(JSON.stringify(firstDateGroups))
+                                        }
+                                        setFormData(prev => ({ ...prev, dates: newDates }))
+                                    }} className='button-link button-link--primary'>
+                                        📋 Use Date 1 Template
+                                    </button>
+                                )}
                                 <button onClick={() => addInclusionGroupForDate(dIdx)} className='button-link'>+ Add inclusion group</button>
                             </div>
                         </div>
@@ -1301,53 +1479,6 @@ function EditTourPackage() {
                 </div>
             </AccordionSection>
 
-            <AccordionSection
-                title='Inclusions'
-                isOpen={openSections.inclusions}
-                toggle={() => toggleSection('inclusions')}
-            >
-                <div className='form__fields'>
-                    {formData.inclusions.map((inclusion, incIndex) => (
-                        <div
-                            key={`inclusion-${incIndex}`}
-                            className='inclusions__item'
-                        >
-                            <div className='date-group__form-field'>
-                                <label className='form-label'>
-                                    Inclusion *
-                                </label>
-                                <input
-                                    type='text'
-                                    value={inclusion}
-                                    onChange={(e) =>
-                                        updateInclusion(
-                                            incIndex,
-                                            e.target.value
-                                        )
-                                    }
-                                    className='form-input'
-                                    required
-                                    placeholder='e.g., Round trip airfare'
-                                />
-                            </div>
-                            {formData.inclusions.length > 1 && (
-                                <button
-                                    onClick={() => removeInclusion(incIndex)}
-                                    className='button-link button-link--remove'
-                                >
-                                    Remove Inclusion
-                                </button>
-                            )}
-                        </div>
-                    ))}
-                    <button
-                        onClick={addInclusion}
-                        className='button-link'
-                    >
-                        + Add another inclusion
-                    </button>
-                </div>
-            </AccordionSection>
 
             <AccordionSection
                 title='Exclusions'

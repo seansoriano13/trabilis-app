@@ -18,11 +18,13 @@ function Tour() {
     const [showFullDescription, setShowFullDescription] = useState(false)
     const [isDescHidden, setIsDescHidden] = useState({})
     const [selectedTab, setSelectedTab] = useState('inclusions')
-    const [selectedDateId, setSelectedDateId] = useState(0)
+    const [selectedDateId, setSelectedDateId] = useState(null)
     const [passengers, setPassengers] = useState({
         adults: 1,
         children: 0,
     })
+
+    console.log(tour)
 
     // Customization state
     const [customizeEnabled, setCustomizeEnabled] = useState(false)
@@ -40,6 +42,14 @@ function Tour() {
                         import.meta.env.VITE_BACKEND_URL
                     }/api/v1/destinations/tour/${state.id}`
                 )
+                console.log('🔍 FRONTEND DEBUG - Tour data received:', {
+                    tourId: state.id,
+                    datesCount: response.data.dates?.length || 0,
+                    firstDateInclusionGroups: response.data.dates?.[0]?.inclusion_groups?.length || 0,
+                    firstDateInclusionGroupsData: response.data.dates?.[0]?.inclusion_groups || [],
+                    tourLevelFeeRules: response.data.fee_rules || {},
+                    firstDateFeeRules: response.data.dates?.[0]?.fee_rules || {},
+                })
                 setTour(response.data)
                 if (response.data.dates && response.data.dates.length > 0) {
                     setSelectedDateId(response.data.dates[0].id)
@@ -65,7 +75,7 @@ function Tour() {
     }
 
     const handleDateClick = (dateId) => {
-        setSelectedDateId(selectedDateId === dateId ? null : dateId)
+        setSelectedDateId(dateId)
         setPassengers({ adults: 1, children: 0 })
         // Reset customization when switching dates
         setCustomizeEnabled(false)
@@ -78,7 +88,8 @@ function Tour() {
     const handleBookClick = () => {
         const paxCount = passengers.adults + passengers.children
         const baseTotal = (selectedDate?.rate_per_pax || 0) * paxCount
-        const feeRules = selectedDate?.fee_rules || {
+        // Use tour-level fee_rules as default, with per-date overrides
+        const feeRules = selectedDate?.fee_rules || tour.fee_rules || {
             perRemovedGroup: 5000,
             perRestDay: 3000,
             minFee: 5000,
@@ -133,7 +144,7 @@ function Tour() {
         </button>
     ))
 
-    const itineraries = selectedDate?.itineraries
+    const itineraries = tour?.itineraries
         ?.sort((a, b) => {
             const dayA = parseInt(a.day_number) || 0
             const dayB = parseInt(b.day_number) || 0
@@ -285,7 +296,7 @@ function Tour() {
         return str.replace(/^"+|"+$/g, '').trim()
     }
 
-    const legacyInclusions = selectedDate?.inclusions?.map((inclusion, idx) => {
+    const legacyInclusions = tour?.inclusions?.map((inclusion, idx) => {
         const text = sanitizeText(inclusion)
         return text ? (
             <div key={idx} className='flex items-center gap-1'>
@@ -339,7 +350,7 @@ function Tour() {
             </div>
         )
     })
-    const exclusions = selectedDate?.exclusions?.map((exclusion, idx) => {
+    const exclusions = tour?.exclusions?.map((exclusion, idx) => {
         const text = sanitizeText(exclusion)
         return text ? (
             <div key={idx} className='flex items-center gap-1'>
@@ -349,7 +360,7 @@ function Tour() {
         ) : null
     })
 
-    const notes = selectedDate?.notes?.map((note, idx) => {
+    const notes = tour?.notes?.map((note, idx) => {
         const text = sanitizeText(note)
         return text ? (
             <div key={idx} className='flex items-center gap-1'>
@@ -359,7 +370,7 @@ function Tour() {
         ) : null
     })
 
-    const payment_terms = selectedDate?.payment_terms?.map((term, idx) => {
+    const payment_terms = tour?.payment_terms?.map((term, idx) => {
         const text = sanitizeText(term)
         return text ? (
             <div key={idx} className='flex items-center gap-1'>
@@ -369,7 +380,7 @@ function Tour() {
         ) : null
     })
 
-    const requirements = selectedDate?.requirements?.map((requirement, idx) => {
+    const requirements = tour?.requirements?.map((requirement, idx) => {
         const text = sanitizeText(requirement)
         return text ? (
             <div key={idx} className='flex items-center gap-1'>
@@ -514,14 +525,14 @@ function Tour() {
                         <div className='font-bold flex items-start gap-2 text-sm lg:text-base text-[#646466]'>
                             <i className='bi-calendar2-week'></i>
                             <span>
-                                {tourDates.length > 0 &&
+                                {selectedDate &&
                                     `${Math.ceil(
-                                        (new Date(tourDates[0].end_date) -
-                                            new Date(tourDates[0].start_date)) /
+                                        (new Date(selectedDate.end_date) -
+                                            new Date(selectedDate.start_date)) /
                                             (1000 * 60 * 60 * 24)
                                     )} Days & ${Math.ceil(
-                                        (new Date(tourDates[0].end_date) -
-                                            new Date(tourDates[0].start_date)) /
+                                        (new Date(selectedDate.end_date) -
+                                            new Date(selectedDate.start_date)) /
                                             (1000 * 60 * 60 * 24) -
                                             1
                                     )} Nights`}

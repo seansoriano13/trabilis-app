@@ -212,23 +212,22 @@ export async function finalizeTourBooking(bookingReference) {
           end_date,
           total_slots,
           available_slots,
-          inclusions,
-          exclusions,
-          payment_terms,
-          requirements,
-          notes,
           tour_packages!inner (
             id,
             title,
-            description
-          ),
-          package_itineraries (
-            id,
-            day_number,
-            title,
             description,
-            image_url,
-            image_metadata
+            exclusions,
+            payment_terms,
+            requirements,
+            notes,
+            itineraries:package_itineraries!tour_package_id (
+              id,
+              day_number,
+              title,
+              description,
+              image_url,
+              image_metadata
+            )
           )
         )
       `
@@ -242,29 +241,10 @@ export async function finalizeTourBooking(bookingReference) {
 
         console.log('📧 BookingService - Raw booking data from Supabase:')
         console.log('📧 BookingService - package_dates:', booking.package_dates)
-        console.log('📧 BookingService - package_itineraries:', booking.package_dates?.package_itineraries)
-        console.log('📧 BookingService - package_itineraries type:', typeof booking.package_dates?.package_itineraries)
-        console.log('📧 BookingService - package_itineraries length:', booking.package_dates?.package_itineraries?.length)
-
-        // Debug: Check if package_itineraries data exists directly
-        if (booking.package_dates?.id) {
-            const { data: directItineraries, error: itineraryError } = await supabase
-                .from('package_itineraries')
-                .select('*')
-                .eq('package_date_id', booking.package_dates.id)
-                .order('day_number')
-            
-            console.log('📧 BookingService - Direct itinerary query result:')
-            console.log('📧 BookingService - Direct itineraries:', directItineraries)
-            console.log('📧 BookingService - Direct itineraries length:', directItineraries?.length)
-            console.log('📧 BookingService - Direct itinerary error:', itineraryError)
-            
-            // If we found itineraries directly, use them instead of the nested query result
-            if (directItineraries && directItineraries.length > 0) {
-                console.log('📧 BookingService - Using direct itineraries instead of nested query')
-                booking.package_dates.package_itineraries = directItineraries
-            }
-        }
+        console.log('📧 BookingService - tour_packages:', booking.package_dates?.tour_packages)
+        console.log('📧 BookingService - itineraries:', booking.package_dates?.tour_packages?.itineraries)
+        console.log('📧 BookingService - itineraries type:', typeof booking.package_dates?.tour_packages?.itineraries)
+        console.log('📧 BookingService - itineraries length:', booking.package_dates?.tour_packages?.itineraries?.length)
 
         if (booking.status !== 'CONFIRMED') {
             throw new Error(
@@ -297,8 +277,8 @@ export async function finalizeTourBooking(bookingReference) {
 
         // Send confirmation email
         try {
-            // Pass raw package_itineraries data for PDF generation
-            const packageItineraries = booking.package_dates?.package_itineraries || []
+            // Pass raw itineraries data for PDF generation (now from tour_packages)
+            const packageItineraries = booking.package_dates?.tour_packages?.itineraries || []
             
             console.log('📧 BookingService - packageItineraries type:', typeof packageItineraries)
             console.log('📧 BookingService - packageItineraries length:', packageItineraries.length)

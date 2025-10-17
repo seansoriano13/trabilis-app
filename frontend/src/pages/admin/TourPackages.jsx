@@ -38,6 +38,13 @@ function TourPackages() {
             try {
                 const response = await adminClient.get('/tours')
                 let sortedPackages = response.data
+                
+                // Ensure all tours have proper dates array structure
+                sortedPackages = sortedPackages.map(tour => ({
+                    ...tour,
+                    dates: Array.isArray(tour.dates) ? tour.dates : []
+                }))
+                
                 if (sortOrder === 'newest') {
                     sortedPackages = sortedPackages.sort(
                         (a, b) =>
@@ -51,7 +58,8 @@ function TourPackages() {
                 }
                 setTourPackages(sortedPackages)
                 setIsLoading(false)
-            } catch (_err) {
+            } catch (err) {
+                console.error('Failed to load tour packages:', err)
                 setError('Failed to load tour packages')
                 setIsLoading(false)
             }
@@ -72,7 +80,8 @@ function TourPackages() {
             await adminClient.delete(`/tours/${id}`)
             setTourPackages(tourPackages.filter((tour) => tour.id !== id))
             setShowDeleteConfirm(null)
-        } catch (_err) {
+        } catch (err) {
+            console.error('Failed to delete tour package:', err)
             setError('Failed to delete tour package')
         }
     }
@@ -95,24 +104,7 @@ function TourPackages() {
     const handlePublishClick = async (id) => {
         setPublishingTours(prev => new Set(prev).add(id))
         try {
-            // Find the tour to get its current data
-            const tour = tourPackages.find(t => t.id === id)
-            if (!tour) {
-                setError('Tour not found')
-                return
-            }
-
-            // Send minimal required data for status update
-            const updateData = {
-                title: tour.title,
-                description: tour.description,
-                status: 'PUBLISHED',
-                main_image_url: tour.main_image_url,
-                panellum_url: tour.panellum_url,
-                dates: tour.dates || [] // Ensure dates is an array
-            }
-
-            await adminClient.put(`/tours/${id}`, updateData)
+            await adminClient.put(`/tours/${id}/status`, { status: 'PUBLISHED' })
             setTourPackages(tourPackages.map(tour => 
                 tour.id === id ? { ...tour, status: 'PUBLISHED' } : tour
             ))
@@ -132,24 +124,7 @@ function TourPackages() {
     const handleUnpublishClick = async (id) => {
         setPublishingTours(prev => new Set(prev).add(id))
         try {
-            // Find the tour to get its current data
-            const tour = tourPackages.find(t => t.id === id)
-            if (!tour) {
-                setError('Tour not found')
-                return
-            }
-
-            // Send minimal required data for status update
-            const updateData = {
-                title: tour.title,
-                description: tour.description,
-                status: 'DRAFT',
-                main_image_url: tour.main_image_url,
-                panellum_url: tour.panellum_url,
-                dates: tour.dates || [] // Ensure dates is an array
-            }
-
-            await adminClient.put(`/tours/${id}`, updateData)
+            await adminClient.put(`/tours/${id}/status`, { status: 'DRAFT' })
             setTourPackages(tourPackages.map(tour => 
                 tour.id === id ? { ...tour, status: 'DRAFT' } : tour
             ))
@@ -253,7 +228,7 @@ function TourPackages() {
                                 </div>
                                 <div className='tour-package-card__info-item'>
                                     <FiUsers size={16} />
-                                    <span>Available slots: {tour.dates?.[0]?.available_slots || 0}</span>
+                                    <span>Available slots: {tour.dates && Array.isArray(tour.dates) && tour.dates.length > 0 ? tour.dates[0].available_slots || 0 : 0}</span>
                                 </div>
                             </div>
 

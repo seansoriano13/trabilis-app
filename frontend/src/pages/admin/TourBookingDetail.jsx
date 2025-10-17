@@ -196,7 +196,7 @@ const TourBookingDetail = () => {
         setPreviewLoading(true)
         try {
             // Use admin client with proper authentication for preview
-            const response = await adminClient.get(`/tours/${booking.id}/html?t=${Date.now()}`, {
+            const response = await adminClient.get(`/tours/${booking.id}/html`, {
                 responseType: 'blob'
             })
 

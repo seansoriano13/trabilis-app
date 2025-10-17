@@ -142,11 +142,22 @@ const TourBookingController = {
                     })
                 }
 
-                // Validate itinerary rest days by day_number existing
+                // Get tour_package_id from package_date_id first
+                const { data: dateData, error: dateError } = await supabase
+                    .from('package_dates')
+                    .select('tour_package_id')
+                    .eq('id', package_date_id)
+                    .single()
+
+                if (dateError || !dateData) {
+                    return res.status(400).json({ error: 'Invalid package date' })
+                }
+
+                // Validate itinerary rest days by day_number existing (tour-level)
                 const { data: itinData, error: itinError } = await supabase
                     .from('package_itineraries')
                     .select('day_number')
-                    .eq('package_date_id', package_date_id)
+                    .eq('tour_package_id', dateData.tour_package_id)
 
                 if (itinError) {
                     return res

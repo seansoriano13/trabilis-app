@@ -167,7 +167,6 @@
 }
 
 .tours__pagination--active {
-    background-color: #1976d2;
     color: #ffffff;
     border-radius: 4px;
 }

@@ -24,8 +24,10 @@
                 size: letter;
                 margin: 10mm;
             }
+         
             :root {
                 --pdf-passenger-grid: auto 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+                --pdf-passenger-grid-visa: auto 1fr 1fr 1fr 1fr 1fr;
                 --pdf-color-primary: hsl(358, 85%, 52%);
                 --pdf-fs-small: 0.625rem;
 
@@ -93,6 +95,10 @@
                 background-color: var(--pdf-color-primary);
                 color: white;
             }
+            .pdf-table-header--visa {
+                display: grid;
+                grid-template-columns: var(--pdf-passenger-grid-visa);
+            }
             .pdf-table-header--flight{
                 padding: 0 2rem;
                 background-color: hsl(0, 0%, 40%);
@@ -104,8 +110,14 @@
                 grid-template-columns: var(--pdf-passenger-grid);
                 align-items: center;
             }
+            .pdf-visa-details__data {
+                display: grid;
+                grid-template-columns: var(--pdf-passenger-grid);
+                align-items: center;
+            }
 
             .pdf-table-header--passenger,
+            .pdf-table-header--visa,
             .pdf-table-header--payment,
             .pdf-table-header--inclusions {
                 background-color: hsl(0, 0%, 40%);
@@ -116,7 +128,11 @@
                 grid-column: auto;
                 text-align: start;
             }
-            .pdf-table-header--passenger > :nth-child(2) {
+            .pdf-table-header--visa > :first-child {
+                margin-right: 1rem;
+            }
+            .pdf-table-header--passenger > :nth-child(2),
+            .pdf-table-header--visa > :nth-child(2) {
                 text-align: start;
             }
             .pdf-table-header--passenger > :nth-child(3) {
@@ -128,6 +144,9 @@
                 align-items: center;
                 gap: 5px;
                 grid-column: span 2;
+            }
+            .pdf-table-header__title--visa {
+                grid-column: span 1;
             }
             .pdf-table-header__icon {
                 transform: rotate(180deg);
@@ -241,6 +260,45 @@
             .pdf-passenger-details__icon {
                 height: 1rem;
             }
+            .pdf-visa-details {
+                border: var(--pdf-border-light);
+                margin-bottom: 1rem;
+            }
+            .pdf-visa-details__data {
+                padding: 1rem 2rem;
+                text-align: center;
+            }
+            .pdf-visa-details__data--visa {
+                grid-template-columns: var(--pdf-passenger-grid-visa);
+            }
+            .pdf-visa-details__data-name {
+                text-align: start;
+            }
+
+            .pdf-visa-details__data-name :nth-child(2) {
+                font-size: var(--pdf-fs-small);
+                filter: opacity(70%);
+            }
+            .pdf-visa-details__data-name p {
+                margin: 0;
+            }
+            .pdf-visa-details__data > :first-child {
+                margin-right: 2rem;
+            }
+            .pdf-visa-details__data-status {
+                color: var(--pdf-color-primary);
+                font-weight: 700;
+            }
+            .pdf-visa-details__data-type {
+                font-weight: 600;
+            }
+            .pdf-visa-details__data-expiry {
+                font-size: var(--pdf-fs-small);
+                filter: opacity(80%);
+            }
+            .pdf-visa-details__icon {
+                height: 1rem;
+            }
             .pdf-payment-inclusions {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
@@ -346,6 +404,44 @@
             .pdf-inclusions__list li {
                 margin-bottom: 0.25rem;
                 color: #495057;
+            }
+            .pdf-customization {
+                border: var(--pdf-border-light);
+                margin-top: 1rem;
+            }
+            .pdf-table-header--customization {
+                background-color: hsl(0, 0%, 40%);
+                text-align: center;
+            }
+            .pdf-customization__data {
+                padding: 1rem;
+            }
+            .pdf-customization__list {
+                margin-bottom: 1rem;
+            }
+            .pdf-customization__list h5 {
+                margin: 0 0 0.5rem 0;
+                font-size: 0.75rem;
+                font-weight: 600;
+                color: #2c3e50;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            .pdf-customization__list ul {
+                margin: 0;
+                padding-left: 1rem;
+                font-size: 0.625rem;
+                line-height: 1.4;
+            }
+            .pdf-customization__list li {
+                margin-bottom: 0.25rem;
+                color: #495057;
+            }
+            .pdf-customization__list p {
+                margin: 0.5rem 0 0 0;
+                font-size: 0.625rem;
+                font-weight: 600;
+                color: #2c3e50;
             }
             .pdf-info__content {
                 display: grid;
@@ -475,6 +571,8 @@
                 {{itineraryDetails}}
                 
                 {{passengerDetails}}
+
+                {{visaDetails}}
             </div>
 
             <div class="pdf-payment-inclusions">
@@ -482,6 +580,8 @@
 
                 {{inclusionsDetails}}
             </div>
+
+            {{customizationDetails}}
 
             <div class="pdf-info">
                 <p class="pdf-info__title">Important Information</p>
