@@ -621,40 +621,28 @@ export const generateTourSummaryPDF = async (bookingDetails) => {
                 tour_packages: {
                     id: bookingDetails.tour_package_id || null,
                     title: bookingDetails.tourTitle,
-                    description: bookingDetails.tourDescription
-                },
-                package_itineraries: (() => {
-                    // Handle itinerary data - it should be an array from package_itineraries table
-                    if (Array.isArray(bookingDetails.itinerary)) {
-                        console.log('✅ Itinerary received as array with', bookingDetails.itinerary.length, 'items')
-                        return bookingDetails.itinerary
-                    } else if (typeof bookingDetails.itinerary === 'string' && bookingDetails.itinerary.trim()) {
-                        // If it's a string, something went wrong in the data flow
-                        console.log('⚠️ Warning: Itinerary received as string instead of array!')
-                        console.log('⚠️ String content preview:', bookingDetails.itinerary.substring(0, 100) + '...')
-                        return []
-                    } else {
-                        console.log('⚠️ Warning: No itinerary data received')
-                        return []
-                    }
-                })(),
-                itinerary: (() => {
-                    // Generate itinerary string for PDF display
-                    if (Array.isArray(bookingDetails.itinerary)) {
-                        return bookingDetails.itinerary
-                            .sort((a, b) => (a.day_number || 0) - (b.day_number || 0))
-                            .map(day => `Day ${day.day_number || 'N/A'}: ${day.title || 'Tour Day'}\n${day.description || 'No description available'}`)
-                            .join('\n\n')
-                    } else if (typeof bookingDetails.itinerary === 'string' && bookingDetails.itinerary.trim()) {
-                        return bookingDetails.itinerary
-                    } else {
-                        return 'Detailed itinerary will be provided upon confirmation.'
-                    }
-                })()
+                    description: bookingDetails.tourDescription,
+                    itineraries: (() => {
+                        // Handle itinerary data - it should be an array from package_itineraries table
+                        if (Array.isArray(bookingDetails.itinerary)) {
+                            console.log('✅ Itinerary received as array with', bookingDetails.itinerary.length, 'items')
+                            return bookingDetails.itinerary
+                        } else if (typeof bookingDetails.itinerary === 'string' && bookingDetails.itinerary.trim()) {
+                            // If it's a string, something went wrong in the data flow
+                            console.log('⚠️ Warning: Itinerary received as string instead of array!')
+                            console.log('⚠️ String content preview:', bookingDetails.itinerary.substring(0, 100) + '...')
+                            return []
+                        } else {
+                            console.log('⚠️ Warning: No itinerary data received')
+                            return []
+                        }
+                    })()
+                }
             }
         }
 
         console.log('📧 Email PDF Generation - Transformed booking:', JSON.stringify(transformedBooking, null, 2))
+        console.log('📧 Email PDF Generation - Itineraries in transformed booking:', transformedBooking.package_dates?.tour_packages?.itineraries?.length || 0, 'items')
 
         // Generate HTML using shared function
         console.log('🔍 PDF DEBUG - Generating HTML from template')
