@@ -143,6 +143,7 @@ export default function Flights() {
 
             setIsLoading(false)
 
+            // Check if we have flights with outbound results
             if (flights?.flights?.outbound?.length > 0) {
                 const searchData = {
                     flights,
@@ -161,6 +162,7 @@ export default function Flights() {
 
                 navigate('search-result', { state: searchData })
             } else {
+                // No flights found - this handles both empty results and 404 responses
                 setNoFlightsFound(true)
                 setIsFlightSearchErr(false)
             }
@@ -195,6 +197,13 @@ export default function Flights() {
             return res.data
         } catch (err) {
             console.error('Flight search failed:', err)
+            
+            // Handle 404 specifically for no flights found
+            if (err.response?.status === 404) {
+                // Return the response data which contains the no flights message
+                return err.response.data
+            }
+            
             throw err
         }
     }
