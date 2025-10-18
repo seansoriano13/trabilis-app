@@ -25,6 +25,53 @@ function formatPoint(point) {
     }
 }
 
+async function fetchLiveFlightData(amadeusOrderId) {
+    try {
+        console.log(`[TRACK BOOKING] Fetching live data for order: ${amadeusOrderId}`)
+        const response = await amadeus.booking.flightOrder(amadeusOrderId).get()
+        const order = response.data
+        
+        logAmadeusSuccess('booking.flightOrder.get', response, {
+            orderId: amadeusOrderId
+        })
+        
+        // Extract flight segments from live order
+        const flightOffer = order.flightOffers?.[0]
+        if (!flightOffer) {
+            console.warn('[TRACK BOOKING] No flight offers in Amadeus response')
+            return null
+        }
+        
+        const allSegments = flightOffer.itineraries.flatMap(itin => itin.segments)
+        
+        if (allSegments.length > 0) {
+            const firstSeg = allSegments[0]
+            const lastSeg = allSegments.at(-1)
+            
+            return {
+                outbound: {
+                    departure: formatPoint(firstSeg.departure),
+                    arrival: formatPoint(firstSeg.arrival),
+                },
+                inbound: allSegments.length > 1 ? {
+                    departure: formatPoint(lastSeg.departure),
+                    arrival: formatPoint(lastSeg.arrival),
+                } : null,
+                source: 'live', // Indicate this is live data
+                lastUpdated: new Date().toISOString()
+            }
+        }
+        
+        return null
+    } catch (error) {
+        console.warn('[TRACK BOOKING] Failed to fetch live data from Amadeus:', error.message)
+        logAmadeusError('booking.flightOrder.get', error, {
+            orderId: amadeusOrderId
+        })
+        return null
+    }
+}
+
 export const trackBookingStatus = async (req, res) => {
     try {
         const { bookingReference, bookingType } = req.query
@@ -61,31 +108,43 @@ export const trackBookingStatus = async (req, res) => {
         let bookingData = null
 
         if (isFlight) {
-            const flightOffer =
-                typeof data.amadeus_flight_offer === 'string'
+            // Try to fetch live data from Amadeus first
+            let liveData = null
+            if (data.amadeus_order_id) {
+                liveData = await fetchLiveFlightData(data.amadeus_order_id)
+            }
+            
+            if (liveData) {
+                // Use live data from Amadeus
+                console.log('[TRACK BOOKING] Using live Amadeus data')
+                bookingData = liveData
+            } else {
+                // Fallback to database data
+                console.log('[TRACK BOOKING] Using database fallback data')
+                const flightOffer = typeof data.amadeus_flight_offer === 'string'
                     ? JSON.parse(data.amadeus_flight_offer)
                     : data.amadeus_flight_offer
 
-            const allSegments = flightOffer.itineraries.flatMap(
-                (itinerary) => itinerary.segments
-            )
+                const allSegments = flightOffer.itineraries.flatMap(
+                    (itinerary) => itinerary.segments
+                )
 
-            if (allSegments.length > 0) {
-                const firstSeg = allSegments[0]
-                const lastSeg = allSegments.at(-1)
+                if (allSegments.length > 0) {
+                    const firstSeg = allSegments[0]
+                    const lastSeg = allSegments.at(-1)
 
-                bookingData = {
-                    outbound: {
-                        departure: formatPoint(firstSeg.departure),
-                        arrival: formatPoint(firstSeg.arrival),
-                    },
-                    inbound:
-                        allSegments.length > 1
-                            ? {
-                                  departure: formatPoint(lastSeg.departure),
-                                  arrival: formatPoint(lastSeg.arrival),
-                              }
-                            : null,
+                    bookingData = {
+                        outbound: {
+                            departure: formatPoint(firstSeg.departure),
+                            arrival: formatPoint(firstSeg.arrival),
+                        },
+                        inbound: allSegments.length > 1 ? {
+                            departure: formatPoint(lastSeg.departure),
+                            arrival: formatPoint(lastSeg.arrival),
+                        } : null,
+                        source: 'database', // Indicate this is cached data
+                        lastUpdated: data.updated_at || data.created_at
+                    }
                 }
             }
         } else if (bookingType === 'tour') {

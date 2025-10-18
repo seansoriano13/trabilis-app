@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import './TrackBooking.css'
 import PrimaryButton from '../../components/client/PrimaryButton'
 import greatPyramidOfGazaDesktop from '/images/great-pyramid.jpg'
@@ -46,6 +47,7 @@ function TrackBooking() {
     const [paymentLoading, setPaymentLoading] = useState(false)
 
     const { airports } = useAirports()
+    const location = useLocation()
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -108,6 +110,45 @@ function TrackBooking() {
         }
     }, [result])
 
+    // Auto-search when coming from success page
+    useEffect(() => {
+        if (location.state?.autoSearch && location.state?.bookingRef) {
+            // Clear any existing results and localStorage when auto-searching
+            setResult(null)
+            localStorage.removeItem('bookingResult')
+            
+            setBookingRef(location.state.bookingRef)
+            setBookingType(location.state.bookingType || 'flight')
+            
+            // Trigger search automatically
+            const autoSearch = async () => {
+                setIsLoading(true)
+                try {
+                    const type = location.state.bookingType || 'flight'
+                    const ref = location.state.bookingRef
+                    
+                    if (type === 'visa') {
+                        const res = await axios.get(
+                            `${import.meta.env.VITE_BACKEND_URL}/api/v1/visa/inquiries/track?inquiryReference=${ref}`
+                        )
+                        setResult({ type: 'visa', inquiry: res.data })
+                    } else {
+                        const res = await axios.get(
+                            `${import.meta.env.VITE_BACKEND_URL}/api/v1/bookings/track-booking?bookingReference=${ref}&bookingType=${type}`
+                        )
+                        setResult({ type: 'booking', ...res.data })
+                    }
+                } catch (err) {
+                    console.error('Auto-search failed:', err)
+                } finally {
+                    setIsLoading(false)
+                }
+            }
+            
+            autoSearch()
+        }
+    }, [location.state])
+
     return (
         <section className='track-booking'>
             <picture>
@@ -139,125 +180,128 @@ function TrackBooking() {
                 </div>
                 <form
                     onSubmit={handleSubmit}
-                    className='max-w-[1200px] mx-auto shadow-md rounded-lg border border-gray-200 p-8 mt-8'
+                    className='max-w-[1200px] mx-auto shadow-xl rounded-2xl border border-gray-100 p-6 sm:p-8 mt-8 bg-gradient-to-br from-white to-gray-50 hover:shadow-2xl transition-all duration-300'
                 >
-                    <div className='lg:flex md:flex gap-8 justify-between grid'>
-                        <div className='grid lg:flex md:flex gap-8 items-center'>
-                            <div className='flex flex-wrap gap-4'>
-                                <label className='flex items-center cursor-pointer group radio-option'>
-                                    <input
-                                        type='radio'
-                                        name='value-radio'
-                                        value='flight'
-                                        checked={bookingType === 'flight'}
-                                        onChange={(e) =>
-                                            setBookingType(e.target.value)
-                                        }
-                                        className='sr-only'
-                                    />
-                                    <div className={`flex items-center gap-3 px-6 py-3 rounded-xl border-2 transition-all duration-200 group-hover:shadow-md ${
+                    {/* Radio Button Options */}
+                    <div className='mb-6'>
+                        <div className='flex flex-wrap gap-3 sm:gap-4 justify-center lg:justify-start'>
+                            <label className='flex items-center cursor-pointer group radio-option'>
+                                <input
+                                    type='radio'
+                                    name='value-radio'
+                                    value='flight'
+                                    checked={bookingType === 'flight'}
+                                    onChange={(e) =>
+                                        setBookingType(e.target.value)
+                                    }
+                                    className='sr-only'
+                                />
+                                <div className={`flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2 sm:py-3 rounded-2xl border-2 transition-all duration-300 group-hover:shadow-lg ${
+                                    bookingType === 'flight'
+                                        ? 'bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-500 text-gray-900 shadow-lg'
+                                        : 'bg-gradient-to-r from-white to-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 hover:shadow-md'
+                                }`}>
+                                    <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 radio-dot relative ${
                                         bookingType === 'flight'
-                                            ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-md'
-                                            : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
+                                            ? 'border-yellow-500 bg-yellow-500'
+                                            : 'border-gray-300 group-hover:border-gray-400'
                                     }`}>
-                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 radio-dot relative ${
-                                            bookingType === 'flight'
-                                                ? 'border-blue-500 bg-blue-500'
-                                                : 'border-gray-300 group-hover:border-gray-400'
-                                        }`}>
-                                            {bookingType === 'flight' && (
-                                                <div className='w-2 h-2 rounded-full bg-white'></div>
-                                            )}
-                                        </div>
-                                        <i className='bi-airplane text-lg'></i>
-                                        <span className='font-medium'>Flight</span>
+                                        {bookingType === 'flight' && (
+                                            <div className='w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white'></div>
+                                        )}
                                     </div>
-                                </label>
-                                
-                                <label className='flex items-center cursor-pointer group radio-option'>
-                                    <input
-                                        type='radio'
-                                        name='value-radio'
-                                        value='tour'
-                                        checked={bookingType === 'tour'}
-                                        onChange={(e) =>
-                                            setBookingType(e.target.value)
-                                        }
-                                        className='sr-only'
-                                    />
-                                    <div className={`flex items-center gap-3 px-6 py-3 rounded-xl border-2 transition-all duration-200 group-hover:shadow-md ${
-                                        bookingType === 'tour'
-                                            ? 'bg-amber-50 border-amber-500 text-amber-700 shadow-md'
-                                            : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
-                                    }`}>
-                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 radio-dot relative ${
-                                            bookingType === 'tour'
-                                                ? 'border-amber-500 bg-amber-500'
-                                                : 'border-gray-300 group-hover:border-gray-400'
-                                        }`}>
-                                            {bookingType === 'tour' && (
-                                                <div className='w-2 h-2 rounded-full bg-white'></div>
-                                            )}
-                                        </div>
-                                        <i className='bi-compass text-lg'></i>
-                                        <span className='font-medium'>Tour Package</span>
-                                    </div>
-                                </label>
-                                
-                                <label className='flex items-center cursor-pointer group radio-option'>
-                                    <input
-                                        type='radio'
-                                        name='value-radio'
-                                        value='visa'
-                                        checked={bookingType === 'visa'}
-                                        onChange={(e) =>
-                                            setBookingType(e.target.value)
-                                        }
-                                        className='sr-only'
-                                    />
-                                    <div className={`flex items-center gap-3 px-6 py-3 rounded-xl border-2 transition-all duration-200 group-hover:shadow-md ${
-                                        bookingType === 'visa'
-                                            ? 'bg-green-50 border-green-500 text-green-700 shadow-md'
-                                            : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
-                                    }`}>
-                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 radio-dot relative ${
-                                            bookingType === 'visa'
-                                                ? 'border-green-500 bg-green-500'
-                                                : 'border-gray-300 group-hover:border-gray-400'
-                                        }`}>
-                                            {bookingType === 'visa' && (
-                                                <div className='w-2 h-2 rounded-full bg-white'></div>
-                                            )}
-                                        </div>
-                                        <i className='bi-passport text-lg'></i>
-                                        <span className='font-medium'>Visa Inquiry</span>
-                                    </div>
-                                </label>
-                            </div>
-                            <div className='flex-1'>
-                                <div className='relative'>
-                                    <input
-                                        type='text'
-                                        className='w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200 text-gray-700 placeholder-gray-400 track-input'
-                                        placeholder='Enter your booking reference'
-                                        value={bookingRef}
-                                        onChange={(e) =>
-                                            setBookingRef(e.target.value)
-                                        }
-                                    />
-                                    <i className='bi-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400'></i>
+                                    <i className='bi-airplane text-sm sm:text-lg'></i>
+                                    <span className='font-medium text-sm sm:text-base'>Flight</span>
                                 </div>
+                            </label>
+                            
+                            <label className='flex items-center cursor-pointer group radio-option'>
+                                <input
+                                    type='radio'
+                                    name='value-radio'
+                                    value='tour'
+                                    checked={bookingType === 'tour'}
+                                    onChange={(e) =>
+                                        setBookingType(e.target.value)
+                                    }
+                                    className='sr-only'
+                                />
+                                <div className={`flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2 sm:py-3 rounded-2xl border-2 transition-all duration-300 group-hover:shadow-lg ${
+                                    bookingType === 'tour'
+                                        ? 'bg-gradient-to-r from-amber-50 to-amber-100 border-amber-500 text-amber-700 shadow-lg'
+                                        : 'bg-gradient-to-r from-white to-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 hover:shadow-md'
+                                }`}>
+                                    <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 radio-dot relative ${
+                                        bookingType === 'tour'
+                                            ? 'border-amber-500 bg-amber-500'
+                                            : 'border-gray-300 group-hover:border-gray-400'
+                                    }`}>
+                                        {bookingType === 'tour' && (
+                                            <div className='w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white'></div>
+                                        )}
+                                    </div>
+                                    <i className='bi-compass text-sm sm:text-lg'></i>
+                                    <span className='font-medium text-sm sm:text-base'>Tour Package</span>
+                                </div>
+                            </label>
+                            
+                            <label className='flex items-center cursor-pointer group radio-option'>
+                                <input
+                                    type='radio'
+                                    name='value-radio'
+                                    value='visa'
+                                    checked={bookingType === 'visa'}
+                                    onChange={(e) =>
+                                        setBookingType(e.target.value)
+                                    }
+                                    className='sr-only'
+                                />
+                                <div className={`flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2 sm:py-3 rounded-2xl border-2 transition-all duration-300 group-hover:shadow-lg ${
+                                    bookingType === 'visa'
+                                        ? 'bg-gradient-to-r from-green-50 to-green-100 border-green-500 text-green-700 shadow-lg'
+                                        : 'bg-gradient-to-r from-white to-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 hover:shadow-md'
+                                }`}>
+                                    <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 radio-dot relative ${
+                                        bookingType === 'visa'
+                                            ? 'border-green-500 bg-green-500'
+                                            : 'border-gray-300 group-hover:border-gray-400'
+                                    }`}>
+                                        {bookingType === 'visa' && (
+                                            <div className='w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white'></div>
+                                        )}
+                                    </div>
+                                    <i className='bi-passport text-sm sm:text-lg'></i>
+                                    <span className='font-medium text-sm sm:text-base'>Visa Inquiry</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* Search Input and Button */}
+                    <div className='flex flex-col sm:flex-row gap-4 items-stretch sm:items-center'>
+                        <div className='flex-1'>
+                            <div className='relative'>
+                                <input
+                                    type='text'
+                                    className='w-full px-4 py-3 rounded-2xl border-2 border-gray-200 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-200 focus:outline-none transition-all duration-300 text-gray-700 placeholder-gray-400 track-input bg-gradient-to-r from-white to-gray-50 hover:shadow-md focus:shadow-lg text-sm sm:text-base'
+                                    placeholder='Enter your booking reference'
+                                    value={bookingRef}
+                                    onChange={(e) =>
+                                        setBookingRef(e.target.value)
+                                    }
+                                />
+                                <i className='bi-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400'></i>
                             </div>
                         </div>
 
-                        <div className='flex items-center'>
+                        <div className='flex items-center justify-center sm:justify-end'>
                             <button
                                 type='submit'
                                 disabled={isLoading}
-                                className={`px-8 py-3 rounded-xl font-semibold text-white transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 ${
+                                className={`w-full sm:w-auto px-6 sm:px-8 py-3 rounded-2xl font-semibold text-white transition-all duration-300 flex items-center justify-center gap-2 shadow-xl hover:shadow-2xl transform hover:-translate-y-1 ${
                                     isLoading
                                         ? 'bg-gray-400 cursor-not-allowed btn-loading'
-                                        : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
+                                        : 'bg-black hover:bg-gray-800'
                                 }`}
                             >
                                 {isLoading ? (
@@ -276,15 +320,15 @@ function TrackBooking() {
                     </div>
                     
                     {/* Format notice at bottom */}
-                    <div className='mt-4 pt-4 border-t border-gray-100'>
-                        <div className='text-xs text-gray-500 flex items-center gap-1'>
-                            <i className='bi-info-circle'></i>
+                    <div className='mt-6 pt-4 border-t border-gray-200'>
+                        <div className='text-xs text-gray-500 flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl'>
+                            <i className='bi-info-circle text-yellow-500'></i>
                             <span>Format: TRB-FLT (Flight) / TRB-TOUR (Tour) / TRB-VISA (Visa)</span>
                         </div>
                     </div>
                 </form>
                 {result?.type === 'booking' && bookingType === 'flight' && result?.bookingData?.outbound && (
-                    <div className='max-w-[1200px] mx-auto flight-card shadow-md rounded-lg border border-gray-200 p-6 bg-white mt-8'>
+                    <div className='max-w-[1200px] mx-auto flight-card shadow-xl rounded-2xl border border-gray-100 p-8 bg-gradient-to-br from-white to-gray-50 mt-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1'>
                         {/* Route */}
                         <div className='text-lg font-semibold text-gray-800 mb-4'>
                             {
@@ -456,10 +500,23 @@ function TrackBooking() {
                             </div>
                             <AirlineInfo airlineCode={result.airlineCode} />
                         </div>
+                        {result.bookingData?.source && (
+                            <div className='text-xs text-gray-500 flex items-center gap-1 mt-2'>
+                                <i className={`bi-${result.bookingData.source === 'live' ? 'broadcast' : 'database'}`}></i>
+                                <span>
+                                    {result.bookingData.source === 'live' ? 'Real-time data' : 'Cached data'}
+                                </span>
+                                {result.bookingData.lastUpdated && (
+                                    <span className='ml-2'>
+                                        Updated: {new Date(result.bookingData.lastUpdated).toLocaleTimeString()}
+                                    </span>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
                 {result?.type === 'booking' && bookingType === 'tour' && result?.bookingData?.tour && (
-                    <div className='max-w-[1200px] mx-auto shadow-md rounded-lg border border-gray-200 p-6 bg-white mt-8'>
+                    <div className='max-w-[1200px] mx-auto shadow-xl rounded-2xl border border-gray-100 p-8 bg-gradient-to-br from-white to-gray-50 mt-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1'>
 						<div className='flex items-center justify-between mb-4'>
 							<div className='text-lg font-semibold text-gray-800'>
 								Tour Booking Details
@@ -565,7 +622,7 @@ function TrackBooking() {
                     </div>
                 )}
                 {result?.type === 'visa' && result?.inquiry && (
-                    <div className='max-w-[1200px] mx-auto shadow-md rounded-lg border border-gray-200 p-6 bg-white mt-8'>
+                    <div className='max-w-[1200px] mx-auto shadow-xl rounded-2xl border border-gray-100 p-8 bg-gradient-to-br from-white to-gray-50 mt-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1'>
                         <div className='text-lg font-semibold text-gray-800 mb-4'>
                             Visa Inquiry Status
                         </div>

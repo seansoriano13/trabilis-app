@@ -11,7 +11,6 @@ function FlightBookingSuccess() {
     const [error, setError] = useState(null)
     const [bookingDetails, setBookingDetails] = useState(null)
     const [lastUpdated, setLastUpdated] = useState(null)
-    const [polling, setPolling] = useState(false)
     const pollingRef = useRef(null)
     const [_attempts, setAttempts] = useState(0)
 
@@ -61,7 +60,6 @@ function FlightBookingSuccess() {
     useEffect(() => {
         let intervalId = null
         const startPolling = async () => {
-            setPolling(true)
             await fetchStatus()
             setAttempts((a) => a + 1)
 
@@ -70,7 +68,6 @@ function FlightBookingSuccess() {
                 const status = bookingDetails?.status
                 if (status === 'TICKETED' || status?.includes('FAILED')) {
                     clearInterval(intervalId)
-                    setPolling(false)
                     return
                 }
                 // Limit attempts to avoid infinite polling
@@ -259,12 +256,17 @@ function FlightBookingSuccess() {
                 {/* Action Buttons */}
                 <div className='flex flex-wrap items-center justify-center gap-3 mt-6'>
                     <button
-                        onClick={() => fetchStatus()}
-                        className='px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
-                        disabled={polling}
+                        onClick={() => navigate('/track-booking', { 
+                            state: { 
+                                bookingRef: bookingReference, 
+                                bookingType: 'flight', 
+                                autoSearch: true 
+                            } 
+                        })}
+                        className='px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
                     >
-                        <i className={`bi-arrow-clockwise mr-2 ${polling ? 'animate-spin' : ''}`}></i>
-                        {polling ? 'Refreshing…' : 'Refresh status'}
+                        <i className='bi-radar mr-2'></i>
+                        Track Flight
                     </button>
                     <button
                         onClick={() => navigate('/')}
