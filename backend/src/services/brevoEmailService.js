@@ -15,10 +15,19 @@ import airlines from '../data/airlines.json' with { type: 'json' }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-
 // Initialize Brevo API client
 const apiInstance = new brevo.TransactionalEmailsApi()
-apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY)
+apiInstance.setApiKey(
+    brevo.TransactionalEmailsApiApiKeys.apiKey,
+    process.env.BREVO_API_KEY
+)
+
+// Debug Brevo configuration
+console.log(`[BREVO] 🔍 API Key configured: ${!!process.env.BREVO_API_KEY}`)
+console.log(`[BREVO] 🔍 From Email: ${process.env.BREVO_FROM_EMAIL}`)
+console.log(
+    `[BREVO] 🔍 API Key length: ${process.env.BREVO_API_KEY?.length || 0}`
+)
 
 const formatDate = (date) => {
     if (!date) return 'N/A'
@@ -76,13 +85,17 @@ export const formatToLongDate = (date) => {
 async function createPdfFromHtml(html) {
     let browser
     const isProduction = process.env.NODE_ENV === 'production'
-    
+
     try {
         // Render-friendly Puppeteer launch options
-        const userDataDir = process.env.PUPPETEER_USER_DATA_DIR || '/tmp/puppeteer-user-data'
-        const useSystemChrome = process.env.PUPPETEER_USE_SYSTEM_CHROME === 'true'
-        const envExecutablePath = useSystemChrome ? process.env.PUPPETEER_EXECUTABLE_PATH : undefined
-        
+        const userDataDir =
+            process.env.PUPPETEER_USER_DATA_DIR || '/tmp/puppeteer-user-data'
+        const useSystemChrome =
+            process.env.PUPPETEER_USE_SYSTEM_CHROME === 'true'
+        const envExecutablePath = useSystemChrome
+            ? process.env.PUPPETEER_EXECUTABLE_PATH
+            : undefined
+
         if (!isProduction) {
             console.log('🔍 PUPPETEER DEBUG - Starting PDF generation')
             console.log('🔍 PUPPETEER DEBUG - Environment check:', {
@@ -92,16 +105,19 @@ async function createPdfFromHtml(html) {
                 useSystemChrome,
                 envExecutablePath,
                 RENDER: !!process.env.RENDER,
-                RENDER_EXTERNAL_URL: process.env.RENDER_EXTERNAL_URL
+                RENDER_EXTERNAL_URL: process.env.RENDER_EXTERNAL_URL,
             })
         }
-        
+
         let resolvedExecutablePath
         if (isProduction) {
             try {
                 resolvedExecutablePath = await chromium.executablePath()
             } catch (chromiumError) {
-                console.error('❌ Chromium path resolution failed:', chromiumError.message)
+                console.error(
+                    '❌ Chromium path resolution failed:',
+                    chromiumError.message
+                )
                 resolvedExecutablePath = puppeteer.executablePath()
             }
         } else if (envExecutablePath) {
@@ -109,18 +125,27 @@ async function createPdfFromHtml(html) {
                 await fs.access(envExecutablePath)
                 resolvedExecutablePath = envExecutablePath
                 if (!isProduction) {
-                    console.log('🔍 PUPPETEER DEBUG - Using custom executable path:', resolvedExecutablePath)
+                    console.log(
+                        '🔍 PUPPETEER DEBUG - Using custom executable path:',
+                        resolvedExecutablePath
+                    )
                 }
             } catch {
                 resolvedExecutablePath = puppeteer.executablePath()
                 if (!isProduction) {
-                    console.log('🔍 PUPPETEER DEBUG - Custom path not accessible, using Puppeteer path:', resolvedExecutablePath)
+                    console.log(
+                        '🔍 PUPPETEER DEBUG - Custom path not accessible, using Puppeteer path:',
+                        resolvedExecutablePath
+                    )
                 }
             }
         } else {
             resolvedExecutablePath = puppeteer.executablePath()
             if (!isProduction) {
-                console.log('🔍 PUPPETEER DEBUG - Using default Puppeteer path:', resolvedExecutablePath)
+                console.log(
+                    '🔍 PUPPETEER DEBUG - Using default Puppeteer path:',
+                    resolvedExecutablePath
+                )
             }
         }
 
@@ -147,18 +172,20 @@ async function createPdfFromHtml(html) {
             '--disable-images',
             '--disable-javascript',
             '--memory-pressure-off',
-            '--max_old_space_size=512'
+            '--max_old_space_size=512',
         ]
-        
-        const launchArgs = isProduction ? [...chromium.args, ...renderArgs] : renderArgs
-        
+
+        const launchArgs = isProduction
+            ? [...chromium.args, ...renderArgs]
+            : renderArgs
+
         if (!isProduction) {
             console.log('🔍 PUPPETEER DEBUG - Launch configuration:', {
                 headless: 'new',
                 argsCount: launchArgs.length,
                 userDataDir,
                 executablePath: resolvedExecutablePath,
-                isProduction
+                isProduction,
             })
         }
 
@@ -175,14 +202,18 @@ async function createPdfFromHtml(html) {
                 timeout: 30000, // 30 second timeout
             })
             if (!isProduction) {
-                console.log('✅ PUPPETEER DEBUG - Browser launched successfully')
+                console.log(
+                    '✅ PUPPETEER DEBUG - Browser launched successfully'
+                )
             }
         } catch (launchErr) {
             console.error('❌ Browser launch failed:', launchErr.message)
             if (!isProduction) {
-                console.log('🔍 PUPPETEER DEBUG - Attempting fallback launch without explicit executablePath')
+                console.log(
+                    '🔍 PUPPETEER DEBUG - Attempting fallback launch without explicit executablePath'
+                )
             }
-            
+
             // Fallback: try without explicit executablePath (let Puppeteer resolve bundled Chrome)
             browser = await puppeteer.launch({
                 headless: 'new',
@@ -192,55 +223,59 @@ async function createPdfFromHtml(html) {
                 timeout: 30000,
             })
             if (!isProduction) {
-                console.log('✅ PUPPETEER DEBUG - Fallback browser launch successful')
+                console.log(
+                    '✅ PUPPETEER DEBUG - Fallback browser launch successful'
+                )
             }
         }
         const page = await browser.newPage()
         if (!isProduction) {
             console.log('✅ PUPPETEER DEBUG - New page created')
         }
-        
+
         // Set real Chrome user-agent and headers for better image loading
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+        await page.setUserAgent(
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        )
         if (!isProduction) {
             console.log('✅ PUPPETEER DEBUG - User agent set')
         }
-        
+
         // Set extra headers including Referer for kiwi.com images
         await page.setExtraHTTPHeaders({
-            'Referer': 'https://www.kiwi.com',
-            'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+            Referer: 'https://www.kiwi.com',
+            Accept: 'image/webp,image/apng,image/*,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9',
             'Cache-Control': 'no-cache',
         })
         if (!isProduction) {
             console.log('✅ PUPPETEER DEBUG - HTTP headers set')
         }
-        
+
         // Ensure UTF-8 charset and base styles are respected
         const normalizedHtml = html.includes('<meta charset="utf-8"')
             ? html
-            : html.replace(
-                  /<head>/i,
-                  '<head><meta charset="utf-8">'
-              )
-        
+            : html.replace(/<head>/i, '<head><meta charset="utf-8">')
+
         if (!isProduction) {
-            console.log('🔍 PUPPETEER DEBUG - HTML prepared, length:', normalizedHtml.length)
+            console.log(
+                '🔍 PUPPETEER DEBUG - HTML prepared, length:',
+                normalizedHtml.length
+            )
         }
-        
+
         // Load content with networkidle0 to wait for all resources
         if (!isProduction) {
             console.log('🔍 PUPPETEER DEBUG - Loading HTML content')
         }
-        await page.setContent(normalizedHtml, { 
+        await page.setContent(normalizedHtml, {
             waitUntil: 'networkidle0',
-            timeout: 30000 // 30 second timeout for image loading
+            timeout: 30000, // 30 second timeout for image loading
         })
         if (!isProduction) {
             console.log('✅ PUPPETEER DEBUG - HTML content loaded')
         }
-        
+
         // Wait for all images to load completely
         if (!isProduction) {
             console.log('🔍 PUPPETEER DEBUG - Waiting for images to load')
@@ -248,22 +283,25 @@ async function createPdfFromHtml(html) {
         await page.evaluate(() => {
             return Promise.all(
                 Array.from(document.images)
-                    .filter(img => !img.complete)
-                    .map(img => new Promise(resolve => {
-                        img.onload = img.onerror = resolve
-                    }))
+                    .filter((img) => !img.complete)
+                    .map(
+                        (img) =>
+                            new Promise((resolve) => {
+                                img.onload = img.onerror = resolve
+                            })
+                    )
             )
         })
         if (!isProduction) {
             console.log('✅ PUPPETEER DEBUG - Images loaded')
         }
-        
+
         // Additional wait to ensure all images are fully rendered
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        await new Promise((resolve) => setTimeout(resolve, 2000))
         if (!isProduction) {
             console.log('✅ PUPPETEER DEBUG - Additional render wait completed')
         }
-        
+
         if (!isProduction) {
             console.log('🔍 PUPPETEER DEBUG - Generating PDF')
         }
@@ -271,17 +309,26 @@ async function createPdfFromHtml(html) {
             format: 'A4',
             printBackground: true,
             preferCSSPageSize: false,
-            margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' },
+            margin: {
+                top: '10mm',
+                right: '10mm',
+                bottom: '10mm',
+                left: '10mm',
+            },
         })
         if (!isProduction) {
-            console.log('✅ PUPPETEER DEBUG - PDF generated successfully, size:', pdfBuffer.length, 'bytes')
+            console.log(
+                '✅ PUPPETEER DEBUG - PDF generated successfully, size:',
+                pdfBuffer.length,
+                'bytes'
+            )
         }
-        
+
         await page.close()
         if (!isProduction) {
             console.log('✅ PUPPETEER DEBUG - Page closed')
         }
-        
+
         return pdfBuffer
     } finally {
         if (browser) {
@@ -291,7 +338,9 @@ async function createPdfFromHtml(html) {
             try {
                 await browser.close()
                 if (!isProduction) {
-                    console.log('✅ PUPPETEER DEBUG - Browser closed successfully')
+                    console.log(
+                        '✅ PUPPETEER DEBUG - Browser closed successfully'
+                    )
                 }
             } catch (closeError) {
                 console.error('❌ Error closing browser:', closeError.message)
@@ -302,21 +351,20 @@ async function createPdfFromHtml(html) {
 
 export const generateFlightItineraryPDF = async (bookingDetails) => {
     const __dirname = path.dirname(fileURLToPath(import.meta.url))
-    const templatePath = path.join(
-        __dirname,
-        'templates',
-        'flight.html'
-    )
+    const templatePath = path.join(__dirname, 'templates', 'flight.html')
 
     let html = await fs.readFile(templatePath, 'utf-8')
 
     // Set base URL for images - auto-detect from Render or environment
-    const baseUrl = process.env.RENDER_EXTERNAL_URL || 
-                    process.env.BACKEND_URL || 
-                    'http://localhost:3001'
+    const baseUrl =
+        process.env.RENDER_EXTERNAL_URL ||
+        process.env.BACKEND_URL ||
+        'http://localhost:3001'
 
     // 1. Generate Itineraries HTML (matching template structure)
-    const itinerariesHtml = (bookingDetails.amadeus_flight_offer?.itineraries || [])
+    const itinerariesHtml = (
+        bookingDetails.amadeus_flight_offer?.itineraries || []
+    )
         .map((itinerary, index) => {
             const segmentsHtml = (itinerary.segments || [])
                 .map((segment) => {
@@ -332,14 +380,18 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
                     return `
                     <div class="pdf-flight-details__data">
                         <div class="pdf-flight-details__airline">
-                        ${airline.logo ? `
+                        ${
+                            airline.logo
+                                ? `
                             <img
                                 class="pdf-flight-details__airline-logo"
                                 src="${airline.logo}"
                                 alt="${airline.name}"
                                 onerror="this.style.display='none';"
                             />
-                        ` : ``}
+                        `
+                                : ``
+                        }
                         
                             <div class="pdf-flight-details__airline-name">
                                 <p class="pdf-flight-details__airline-text">
@@ -422,10 +474,15 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
 
     // 2. Generate Passenger Details HTML (matching template structure)
     const eTickets = bookingDetails.e_ticket_numbers || [] // Define eTickets with fallback to empty array
-    const passengerDetailsHtml = (bookingDetails.passenger_details?.travelers || [])
+    const passengerDetailsHtml = (
+        bookingDetails.passenger_details?.travelers || []
+    )
         .map((passenger, index) => {
             const title = passenger.title || ''
-            const name = `${passenger.name?.firstName || ''} ${passenger.name?.lastName || ''}`.trim().toUpperCase()
+            const name =
+                `${passenger.name?.firstName || ''} ${passenger.name?.lastName || ''}`
+                    .trim()
+                    .toUpperCase()
             const type = passenger.type || 'Adult'
             const dateOfBirth = passenger.dateOfBirth || ''
             const psngrDocs = (passenger.documents || [])[0] || {}
@@ -433,10 +490,16 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
                 number: psngrDocs.number || 'N/A',
                 expiry: psngrDocs.expiryDate || 'N/A',
             }
-            const status = bookingDetails.status === 'TICKETED' ? 'CONFIRMED' : bookingDetails.status
-            
+            const status =
+                bookingDetails.status === 'TICKETED'
+                    ? 'CONFIRMED'
+                    : bookingDetails.status
+
             // Get e-ticket number for this passenger (if available)
-            const passengerETicket = Array.isArray(eTickets) && eTickets[index] ? eTickets[index] : 'N/A'
+            const passengerETicket =
+                Array.isArray(eTickets) && eTickets[index]
+                    ? eTickets[index]
+                    : 'N/A'
 
             return `
             <div class="pdf-passenger-details__data">
@@ -466,7 +529,8 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
     const baseFare = toNumber(offerPrice.base)
     const totalFare = toNumber(offerPrice.total || offerPrice.grandTotal)
     const refundableTaxes = toNumber(
-        bookingDetails.amadeus_flight_offer?.travelerPricings?.[0]?.price?.refundableTaxes
+        bookingDetails.amadeus_flight_offer?.travelerPricings?.[0]?.price
+            ?.refundableTaxes
     )
     const liTax = refundableTaxes || 0
     const feesAndTaxes = Math.max(0, totalFare - baseFare - liTax)
@@ -477,7 +541,9 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
         })
 
     // 4. Flight Inclusions
-    const flightNumbers = (bookingDetails.amadeus_flight_offer?.itineraries || [])
+    const flightNumbers = (
+        bookingDetails.amadeus_flight_offer?.itineraries || []
+    )
         .flatMap((it) => it.segments || [])
         .map((seg) => {
             const code = seg.operating?.carrierCode || seg.carrierCode
@@ -486,7 +552,9 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
         .join(', ')
 
     // Derive baggage from traveler pricing fareDetailsBySegment if available
-    const fareDetails = bookingDetails.amadeus_flight_offer?.travelerPricings?.[0]?.fareDetailsBySegment || []
+    const fareDetails =
+        bookingDetails.amadeus_flight_offer?.travelerPricings?.[0]
+            ?.fareDetailsBySegment || []
     const bagInfo = fareDetails.reduce(
         (acc, f) => {
             const includedBags = f.includedCheckedBags
@@ -496,7 +564,10 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
                     acc.checkedUnit = includedBags.weightUnit || acc.checkedUnit
                 }
                 if (typeof includedBags.quantity === 'number') {
-                    acc.checkedPieces = Math.max(acc.checkedPieces, includedBags.quantity)
+                    acc.checkedPieces = Math.max(
+                        acc.checkedPieces,
+                        includedBags.quantity
+                    )
                 }
             }
             const cabin = f.cabinBags || f.cabin
@@ -514,19 +585,26 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
     )
 
     const cabinBaggageText = `Adult: ${bagInfo.cabinPieces || 0} Pc Included`
-    const checkedBaggageText = bagInfo.checkedKg > 0
-        ? `Adult: ${bagInfo.checkedKg} ${bagInfo.checkedUnit}`
-        : `Adult: ${bagInfo.checkedPieces || 0} PC`
+    const checkedBaggageText =
+        bagInfo.checkedKg > 0
+            ? `Adult: ${bagInfo.checkedKg} ${bagInfo.checkedUnit}`
+            : `Adult: ${bagInfo.checkedPieces || 0} PC`
 
     // 5. Replace all placeholders with correct values
     html = html
         .replace(/{{baseUrl}}/g, baseUrl)
-        .replace(/{{bookingReference}}/g, bookingDetails.booking_reference || 'N/A')
-        .replace('{{bookingDate}}', new Date().toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-        }))
+        .replace(
+            /{{bookingReference}}/g,
+            bookingDetails.booking_reference || 'N/A'
+        )
+        .replace(
+            '{{bookingDate}}',
+            new Date().toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+            })
+        )
         .replace('{{itineraries}}', itinerariesHtml)
         .replace('{{passengerDetails}}', passengerDetailsHtml)
         .replace('{{currency}}', currencyCode)
@@ -549,8 +627,11 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
 export const generateTourSummaryPDF = async (bookingDetails) => {
     try {
         console.log('🔍 PDF DEBUG - Starting tour PDF generation')
-        console.log('📧 Email PDF Generation - Received bookingDetails:', JSON.stringify(bookingDetails, null, 2))
-        
+        console.log(
+            '📧 Email PDF Generation - Received bookingDetails:',
+            JSON.stringify(bookingDetails, null, 2)
+        )
+
         // Transform flattened bookingDetails back to the structure expected by generateTourBookingHTML
         const transformedBooking = {
             booking_reference: bookingDetails.bookingReference,
@@ -561,7 +642,8 @@ export const generateTourSummaryPDF = async (bookingDetails) => {
             passenger_count: bookingDetails.passengerCount,
             payment_type: bookingDetails.paymentType,
             total_amount: parseFloat(bookingDetails.amount) || 0,
-            reservation_amount: parseFloat(bookingDetails.reservationAmount) || 0,
+            reservation_amount:
+                parseFloat(bookingDetails.reservationAmount) || 0,
             status: bookingDetails.status || 'CONFIRMED',
             passenger_details: bookingDetails.passengers || [],
             flight_details: bookingDetails.flight_details || {},
@@ -571,7 +653,10 @@ export const generateTourSummaryPDF = async (bookingDetails) => {
                 id: bookingDetails.package_date_id || null,
                 start_date: bookingDetails.startDate,
                 end_date: bookingDetails.endDate,
-                total_slots: bookingDetails.totalSlots || bookingDetails.availableSlots || 0,
+                total_slots:
+                    bookingDetails.totalSlots ||
+                    bookingDetails.availableSlots ||
+                    0,
                 inclusions: bookingDetails.inclusions || [],
                 exclusions: bookingDetails.exclusions || [],
                 payment_terms: bookingDetails.paymentTerms || [],
@@ -584,41 +669,70 @@ export const generateTourSummaryPDF = async (bookingDetails) => {
                     itineraries: (() => {
                         // Handle itinerary data - it should be an array from package_itineraries table
                         if (Array.isArray(bookingDetails.itinerary)) {
-                            console.log('✅ Itinerary received as array with', bookingDetails.itinerary.length, 'items')
+                            console.log(
+                                '✅ Itinerary received as array with',
+                                bookingDetails.itinerary.length,
+                                'items'
+                            )
                             return bookingDetails.itinerary
-                        } else if (typeof bookingDetails.itinerary === 'string' && bookingDetails.itinerary.trim()) {
+                        } else if (
+                            typeof bookingDetails.itinerary === 'string' &&
+                            bookingDetails.itinerary.trim()
+                        ) {
                             // If it's a string, something went wrong in the data flow
-                            console.log('⚠️ Warning: Itinerary received as string instead of array!')
-                            console.log('⚠️ String content preview:', bookingDetails.itinerary.substring(0, 100) + '...')
+                            console.log(
+                                '⚠️ Warning: Itinerary received as string instead of array!'
+                            )
+                            console.log(
+                                '⚠️ String content preview:',
+                                bookingDetails.itinerary.substring(0, 100) +
+                                    '...'
+                            )
                             return []
                         } else {
-                            console.log('⚠️ Warning: No itinerary data received')
+                            console.log(
+                                '⚠️ Warning: No itinerary data received'
+                            )
                             return []
                         }
-                    })()
-                }
-            }
+                    })(),
+                },
+            },
         }
 
-        console.log('📧 Email PDF Generation - Transformed booking:', JSON.stringify(transformedBooking, null, 2))
-        console.log('📧 Email PDF Generation - Itineraries in transformed booking:', transformedBooking.package_dates?.tour_packages?.itineraries?.length || 0, 'items')
+        console.log(
+            '📧 Email PDF Generation - Transformed booking:',
+            JSON.stringify(transformedBooking, null, 2)
+        )
+        console.log(
+            '📧 Email PDF Generation - Itineraries in transformed booking:',
+            transformedBooking.package_dates?.tour_packages?.itineraries
+                ?.length || 0,
+            'items'
+        )
 
         // Generate HTML using shared function
         console.log('🔍 PDF DEBUG - Generating HTML from template')
         const html = await generateTourBookingHTML(transformedBooking)
-        
-        console.log('📧 Email PDF Generation - HTML generated successfully, length:', html.length)
-        
+
+        console.log(
+            '📧 Email PDF Generation - HTML generated successfully, length:',
+            html.length
+        )
+
         // Convert HTML to PDF using existing PDF generation logic
         console.log('🔍 PDF DEBUG - Converting HTML to PDF')
         return await createPdfFromHtml(html)
     } catch (err) {
         console.error('❌ PDF DEBUG - Error generating Tour PDF:', err)
-        console.error('❌ PDF DEBUG - Booking details received:', JSON.stringify(bookingDetails, null, 2))
+        console.error(
+            '❌ PDF DEBUG - Booking details received:',
+            JSON.stringify(bookingDetails, null, 2)
+        )
         console.error('❌ PDF DEBUG - Error details:', {
             message: err.message,
             stack: err.stack,
-            name: err.name
+            name: err.name,
         })
         throw new Error('Could not generate the tour summary PDF.')
     }
@@ -671,12 +785,13 @@ export const getTourBookingByReference = async (bookingReference) => {
 
 export const sendConfirmationEmail = async (bookingReference) => {
     const bookingDetails = await getBookingByBookingReference(bookingReference)
-    
+
     // Find the first adult traveler with contact info (in case first passenger is a child)
     const adultTraveler = bookingDetails.passenger_details?.travelers?.find(
-        traveler => traveler.type === 'ADULT' && traveler.contact?.emailAddress
+        (traveler) =>
+            traveler.type === 'ADULT' && traveler.contact?.emailAddress
     )
-    
+
     const customerEmail = adultTraveler?.contact?.emailAddress
 
     if (!customerEmail) {
@@ -687,7 +802,7 @@ export const sendConfirmationEmail = async (bookingReference) => {
 
     try {
         const sendSmtpEmail = new brevo.SendSmtpEmail()
-        
+
         sendSmtpEmail.subject = 'Your Flight Booking Confirmation'
         sendSmtpEmail.htmlContent = `
             <html>
@@ -710,23 +825,30 @@ export const sendConfirmationEmail = async (bookingReference) => {
                 </body>
             </html>
         `
-        
+
         sendSmtpEmail.sender = {
             name: 'Trabilis',
-            email: process.env.BREVO_FROM_EMAIL || 'noreply@trabilis.com'
+            email: process.env.BREVO_FROM_EMAIL || 'noreply@trabilis.com',
         }
-        
-        sendSmtpEmail.to = [{
-            email: customerEmail
-        }]
-        
-        sendSmtpEmail.attachment = [{
-            content: Buffer.from(pdfBuffer).toString('base64'),
-            name: `Flight-Itinerary-${bookingDetails.booking_reference}.pdf`
-        }]
+
+        sendSmtpEmail.to = [
+            {
+                email: customerEmail,
+            },
+        ]
+
+        sendSmtpEmail.attachment = [
+            {
+                content: Buffer.from(pdfBuffer).toString('base64'),
+                name: `Flight-Itinerary-${bookingDetails.booking_reference}.pdf`,
+            },
+        ]
 
         const data = await apiInstance.sendTransacEmail(sendSmtpEmail)
-        console.log('✅ Flight confirmation email sent via Brevo API:', data.response.statusMessage)
+        console.log(
+            '✅ Flight confirmation email sent via Brevo API:',
+            data.response.statusMessage
+        )
     } catch (err) {
         console.error('❌ Error sending flight confirmation email:', err)
         throw err
@@ -735,14 +857,21 @@ export const sendConfirmationEmail = async (bookingReference) => {
 
 export const sendTourConfirmationEmail = async (bookingDetails) => {
     try {
-        console.log('🔍 EMAIL DEBUG - Starting tour confirmation email for:', bookingDetails.bookingReference)
+        console.log(
+            '🔍 EMAIL DEBUG - Starting tour confirmation email for:',
+            bookingDetails.bookingReference
+        )
         console.log('🔍 EMAIL DEBUG - Email recipient:', bookingDetails.email)
         console.log('🔍 EMAIL DEBUG - Tour title:', bookingDetails.tourTitle)
-        
+
         console.log('🔍 EMAIL DEBUG - Generating PDF buffer')
         const pdfBuffer = await generateTourSummaryPDF(bookingDetails)
-        console.log('✅ EMAIL DEBUG - PDF generated successfully, size:', pdfBuffer.length, 'bytes')
-        
+        console.log(
+            '✅ EMAIL DEBUG - PDF generated successfully, size:',
+            pdfBuffer.length,
+            'bytes'
+        )
+
         const {
             email,
             firstName = 'Guest',
@@ -754,7 +883,7 @@ export const sendTourConfirmationEmail = async (bookingDetails) => {
 
         console.log('🔍 EMAIL DEBUG - Preparing Brevo email')
         const sendSmtpEmail = new brevo.SendSmtpEmail()
-        
+
         sendSmtpEmail.subject = `Tour Confirmation - ${tourTitle}`
         sendSmtpEmail.htmlContent = `
             <p>Hi ${firstName},</p>
@@ -764,31 +893,43 @@ export const sendTourConfirmationEmail = async (bookingDetails) => {
             <br/>
             <p>— The Trabilis Team</p>
         `
-        
+
         sendSmtpEmail.sender = {
             name: 'Trabilis',
-            email: process.env.BREVO_FROM_EMAIL || 'noreply@trabilis.com'
+            email: process.env.BREVO_FROM_EMAIL || 'noreply@trabilis.com',
         }
-        
-        sendSmtpEmail.to = [{
-            email: email
-        }]
-        
-        sendSmtpEmail.attachment = [{
-            content: Buffer.from(pdfBuffer).toString('base64'),
-            name: `Tour-Summary-${bookingReference}.pdf`
-        }]
+
+        sendSmtpEmail.to = [
+            {
+                email: email,
+            },
+        ]
+
+        sendSmtpEmail.attachment = [
+            {
+                content: Buffer.from(pdfBuffer).toString('base64'),
+                name: `Tour-Summary-${bookingReference}.pdf`,
+            },
+        ]
 
         console.log('🔍 EMAIL DEBUG - Sending email via Brevo API')
         const data = await apiInstance.sendTransacEmail(sendSmtpEmail)
-        console.log(`✅ EMAIL DEBUG - Tour confirmation email sent to ${email} (Ref: ${bookingReference})`)
-        console.log('🔍 EMAIL DEBUG - Brevo API response:', data.response.statusMessage)
+        console.log(
+            `✅ EMAIL DEBUG - Tour confirmation email sent to ${email} (Ref: ${bookingReference})`
+        )
+        console.log(
+            '🔍 EMAIL DEBUG - Brevo API response:',
+            data.response.statusMessage
+        )
     } catch (err) {
-        console.error('❌ EMAIL DEBUG - Error sending tour confirmation email:', err)
+        console.error(
+            '❌ EMAIL DEBUG - Error sending tour confirmation email:',
+            err
+        )
         console.error('❌ EMAIL DEBUG - Error details:', {
             message: err.message,
             stack: err.stack,
-            name: err.name
+            name: err.name,
         })
         throw err
     }
@@ -805,7 +946,7 @@ export const sendFailureEmail = async ({
 
     try {
         const sendSmtpEmail = new brevo.SendSmtpEmail()
-        
+
         sendSmtpEmail.subject = 'Booking Failure Notification'
         sendSmtpEmail.htmlContent = `
           <html>
@@ -829,15 +970,17 @@ export const sendFailureEmail = async ({
             </body>
           </html>
         `
-        
+
         sendSmtpEmail.sender = {
             name: 'Trabilis',
-            email: process.env.BREVO_FROM_EMAIL || 'noreply@trabilis.com'
+            email: process.env.BREVO_FROM_EMAIL || 'noreply@trabilis.com',
         }
-        
-        sendSmtpEmail.to = [{
-            email: email
-        }]
+
+        sendSmtpEmail.to = [
+            {
+                email: email,
+            },
+        ]
 
         const data = await apiInstance.sendTransacEmail(sendSmtpEmail)
         console.log('✅ Failure email sent via Brevo API:', data)
@@ -857,7 +1000,7 @@ export const sendTourFailureEmail = async ({
 
     try {
         const sendSmtpEmail = new brevo.SendSmtpEmail()
-        
+
         sendSmtpEmail.subject = 'Tour Booking Failed'
         sendSmtpEmail.htmlContent = `
           <html>
@@ -877,15 +1020,17 @@ export const sendTourFailureEmail = async ({
             </body>
           </html>
         `
-        
+
         sendSmtpEmail.sender = {
             name: 'Trabilis',
-            email: process.env.BREVO_FROM_EMAIL || 'noreply@trabilis.com'
+            email: process.env.BREVO_FROM_EMAIL || 'noreply@trabilis.com',
         }
-        
-        sendSmtpEmail.to = [{
-            email: email
-        }]
+
+        sendSmtpEmail.to = [
+            {
+                email: email,
+            },
+        ]
 
         const data = await apiInstance.sendTransacEmail(sendSmtpEmail)
         console.log('✅ Tour failure email sent via Brevo API:', data)
@@ -901,14 +1046,15 @@ export const sendVisaInquiryConfirmationEmail = async ({
     destination,
     full_name,
     email_address,
-    message
+    message,
 }) => {
     if (!email_address) throw new Error('Recipient email is required.')
 
     try {
         const sendSmtpEmail = new brevo.SendSmtpEmail()
-        
-        sendSmtpEmail.subject = 'Visa Inquiry Received - Lindela Immigration Visa Consultancy'
+
+        sendSmtpEmail.subject =
+            'Visa Inquiry Received - Lindela Immigration Visa Consultancy'
         sendSmtpEmail.htmlContent = `
           <html>
             <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f7fa; margin:0; padding:0;">
@@ -980,18 +1126,23 @@ export const sendVisaInquiryConfirmationEmail = async ({
             </body>
           </html>
         `
-        
+
         sendSmtpEmail.sender = {
             name: 'Trabilis',
-            email: process.env.BREVO_FROM_EMAIL || 'noreply@trabilis.com'
+            email: process.env.BREVO_FROM_EMAIL || 'noreply@trabilis.com',
         }
-        
-        sendSmtpEmail.to = [{
-            email: email_address
-        }]
+
+        sendSmtpEmail.to = [
+            {
+                email: email_address,
+            },
+        ]
 
         const data = await apiInstance.sendTransacEmail(sendSmtpEmail)
-        console.log('✅ Visa inquiry confirmation email sent via Brevo API:', data)
+        console.log(
+            '✅ Visa inquiry confirmation email sent via Brevo API:',
+            data
+        )
     } catch (err) {
         console.error('❌ Error sending visa inquiry confirmation email:', err)
         throw err
@@ -1004,13 +1155,13 @@ export const sendVisaProcessingStartedEmail = async ({
     full_name,
     email_address,
     visa_type,
-    destination
+    destination,
 }) => {
     if (!email_address) throw new Error('Recipient email is required.')
 
     try {
         const sendSmtpEmail = new brevo.SendSmtpEmail()
-        
+
         sendSmtpEmail.subject = 'Payment Received - Visa Processing Started'
         sendSmtpEmail.htmlContent = `
           <html>
@@ -1083,12 +1234,12 @@ export const sendVisaProcessingStartedEmail = async ({
             </body>
           </html>
         `
-        
+
         sendSmtpEmail.sender = {
             name: 'Trabilis',
-            email: process.env.BREVO_FROM_EMAIL || 'noreply@trabilis.com'
+            email: process.env.BREVO_FROM_EMAIL || 'noreply@trabilis.com',
         }
-        
+
         sendSmtpEmail.to = [{ email: email_address }]
 
         await apiInstance.sendTransacEmail(sendSmtpEmail)
@@ -1096,5 +1247,436 @@ export const sendVisaProcessingStartedEmail = async ({
     } catch (err) {
         console.error('❌ Error sending visa processing started email:', err)
         throw err
+    }
+}
+
+/**
+ * Send cancellation verification email
+ */
+export async function sendCancellationVerificationEmail({
+    email,
+    firstName,
+    lastName,
+    bookingReference,
+    token,
+    totalAmount,
+    currency,
+    cancellationReason,
+}) {
+    try {
+        console.log(
+            `[EMAIL] Sending cancellation verification email to ${email}`
+        )
+
+        // Read email template
+        const templatePath = path.join(
+            __dirname,
+            'templates',
+            'cancellation-verification.html'
+        )
+        console.log(`[EMAIL] 🔍 Template path: ${templatePath}`)
+        let htmlTemplate = await fs.readFile(templatePath, 'utf8')
+        console.log(
+            `[EMAIL] 🔍 Template loaded, length: ${htmlTemplate.length}`
+        )
+
+        // Create verification URL
+        const verificationUrl = `${process.env.FRONTEND_URL}/cancel-booking?token=${token}`
+        console.log(`[EMAIL] 🔍 Verification URL: ${verificationUrl}`)
+        console.log(`[EMAIL] 🔍 Frontend URL: ${process.env.FRONTEND_URL}`)
+
+        // Replace template variables
+        htmlTemplate = htmlTemplate
+            .replace(/{{firstName}}/g, firstName || 'Valued Customer')
+            .replace(/{{lastName}}/g, lastName || '')
+            .replace(/{{bookingReference}}/g, bookingReference)
+            .replace(/{{totalAmount}}/g, totalAmount?.toLocaleString() || '0')
+            .replace(/{{currency}}/g, currency || 'PHP')
+            .replace(
+                /{{cancellationReason}}/g,
+                cancellationReason || 'Not provided'
+            )
+            .replace(/{{verificationUrl}}/g, verificationUrl)
+
+        // Create email data using proper Brevo format
+        const sendSmtpEmail = new brevo.SendSmtpEmail()
+
+        sendSmtpEmail.subject = `Confirm Flight Cancellation - ${bookingReference}`
+        sendSmtpEmail.htmlContent = htmlTemplate
+        sendSmtpEmail.sender = {
+            name: 'Lindela Travel and Tours',
+            email:
+                process.env.BREVO_FROM_EMAIL ||
+                'lindelatravelandtours@gmail.com',
+        }
+        sendSmtpEmail.to = [
+            {
+                email: email,
+                name: `${firstName} ${lastName}`.trim(),
+            },
+        ]
+
+        // Send email
+        console.log(`[EMAIL] 🔍 Sending email via Brevo API...`)
+        console.log(`[EMAIL] 🔍 Email data:`, {
+            to: sendSmtpEmail.to,
+            subject: sendSmtpEmail.subject,
+            sender: sendSmtpEmail.sender,
+            hasHtmlContent: !!sendSmtpEmail.htmlContent,
+        })
+
+        const result = await apiInstance.sendTransacEmail(sendSmtpEmail)
+
+        console.log(`[EMAIL] 🔍 Brevo API response:`, {
+            messageId: result.messageId,
+            response: result.response,
+        })
+
+        console.log(
+            `[EMAIL] ✅ Cancellation verification email sent successfully to ${email}`
+        )
+        return { success: true, messageId: result.messageId }
+    } catch (error) {
+        console.error(
+            `[EMAIL] ❌ Failed to send cancellation verification email to ${email}:`,
+            error
+        )
+        throw new Error(
+            `Failed to send cancellation verification email: ${error.message}`
+        )
+    }
+}
+
+/**
+ * Send cancellation confirmation email
+ */
+export async function sendCancellationConfirmationEmail({
+    email,
+    firstName,
+    lastName,
+    bookingReference,
+    totalAmount,
+    currency,
+    cancelledAt,
+}) {
+    try {
+        console.log(
+            `[EMAIL] Sending cancellation confirmation email to ${email}`
+        )
+
+        // Create simple confirmation email
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8" />
+                <title>Booking Cancelled</title>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: #dc3545; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                    .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+                    .amount { font-size: 24px; font-weight: bold; color: #dc3545; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>✈️ Booking Cancelled</h1>
+                    <p>Lindela Travel and Tours</p>
+                </div>
+                <div class="content">
+                    <h2>Hello ${firstName} ${lastName},</h2>
+                    <p>Your flight booking has been successfully cancelled.</p>
+                    <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h3>Booking Details</h3>
+                        <p><strong>Booking Reference:</strong> ${bookingReference}</p>
+                        <p><strong>Amount Forfeited:</strong> <span class="amount">₱${totalAmount?.toLocaleString() || '0'}</span></p>
+                        <p><strong>Cancelled At:</strong> ${new Date(cancelledAt).toLocaleString()}</p>
+                    </div>
+                    <p>Thank you for choosing Lindela Travel and Tours. We hope to serve you again in the future.</p>
+                    <p>If you have any questions, please contact us at lindelatravelandtours@gmail.com or call 9296106660.</p>
+                </div>
+            </body>
+            </html>
+        `
+
+        // Create email data using proper Brevo format
+        const sendSmtpEmail = new brevo.SendSmtpEmail()
+
+        sendSmtpEmail.subject = `Booking Cancelled - ${bookingReference}`
+        sendSmtpEmail.htmlContent = htmlContent
+        sendSmtpEmail.sender = {
+            name: 'Lindela Travel and Tours',
+            email:
+                process.env.BREVO_FROM_EMAIL ||
+                'lindelatravelandtours@gmail.com',
+        }
+        sendSmtpEmail.to = [
+            {
+                email: email,
+                name: `${firstName} ${lastName}`.trim(),
+            },
+        ]
+
+        // Send email
+        const result = await apiInstance.sendTransacEmail(sendSmtpEmail)
+
+        console.log(
+            `[EMAIL] ✅ Cancellation confirmation email sent successfully to ${email}`
+        )
+        return { success: true, messageId: result.messageId }
+    } catch (error) {
+        console.error(
+            `[EMAIL] ❌ Failed to send cancellation confirmation email to ${email}:`,
+            error
+        )
+        throw new Error(
+            `Failed to send cancellation confirmation email: ${error.message}`
+        )
+    }
+}
+
+/**
+ * Send ticketing deadline alert email
+ */
+export async function sendTicketingDeadlineAlert({
+    email,
+    firstName,
+    lastName,
+    bookingReference,
+    hoursRemaining,
+    deadline,
+    totalAmount,
+    currency,
+}) {
+    try {
+        console.log(`[EMAIL] Sending ticketing deadline alert to ${email}`)
+
+        // Create deadline alert email
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8" />
+                <title>Ticketing Deadline Alert</title>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: linear-gradient(135deg, #ff6b35, #f7931e); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                    .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+                    .urgent-box { background: #fff3cd; border: 2px solid #ffeaa7; border-radius: 8px; padding: 20px; margin: 20px 0; }
+                    .booking-details { background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #ff6b35; }
+                    .cta-button { display: inline-block; background: #ff6b35; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; text-align: center; }
+                    .cta-button:hover { background: #e55a2b; }
+                    .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; color: #6c757d; font-size: 14px; }
+                    .amount { font-size: 24px; font-weight: bold; color: #ff6b35; }
+                    .deadline-notice { background: #e9ecef; padding: 15px; border-radius: 5px; margin: 15px 0; text-align: center; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>⏰ Ticketing Deadline Alert</h1>
+                    <p>Lindela Travel and Tours</p>
+                </div>
+                
+                <div class="content">
+                    <h2>Hello ${firstName} ${lastName},</h2>
+                    
+                    <div class="urgent-box">
+                        <h3 style="color: #856404; margin-top: 0;">⚠️ URGENT: Ticketing Deadline Approaching</h3>
+                        <p style="margin-bottom: 0;">
+                            Your flight booking needs to be ticketed within <strong>${hoursRemaining} hours</strong> 
+                            or it will be automatically cancelled.
+                        </p>
+                    </div>
+                    
+                    <div class="booking-details">
+                        <h3 style="margin-top: 0;">Booking Details</h3>
+                        <p><strong>Booking Reference:</strong> ${bookingReference}</p>
+                        <p><strong>Total Amount:</strong> <span class="amount">₱${totalAmount?.toLocaleString() || '0'}</span></p>
+                        <p><strong>Deadline:</strong> ${new Date(deadline).toLocaleString()}</p>
+                        <p><strong>Time Remaining:</strong> ${hoursRemaining} hours</p>
+                    </div>
+                    
+                    <div class="deadline-notice">
+                        <strong>🚨 ACTION REQUIRED</strong><br>
+                        Our ticketing team needs to process your booking before the deadline to avoid automatic cancellation.
+                    </div>
+                    
+                    <p><strong>What happens next?</strong></p>
+                    <ul>
+                        <li>Our ticketing team will process your booking immediately</li>
+                        <li>You will receive your e-ticket via email once processed</li>
+                        <li>If not processed in time, your booking will be automatically cancelled</li>
+                        <li>No refund will be issued for cancelled bookings (non-refundable policy)</li>
+                    </ul>
+                    
+                    <p><strong>Need immediate assistance?</strong><br>
+                    Contact our ticketing team at <a href="mailto:lindelatravelandtours@gmail.com">lindelatravelandtours@gmail.com</a> 
+                    or call us at 9296106660.</p>
+                </div>
+                
+                <div class="footer">
+                    <p><strong>Lindela Travel and Tours</strong></p>
+                    <p>Unit 2215 Cityland 10 Tower II, H. V. Dela Costa Street<br>
+                    Makati Metro Manila, Philippines</p>
+                    <p>Phone: 9296106660 | Email: lindelatravelandtours@gmail.com</p>
+                    <p style="font-size: 12px; margin-top: 20px;">
+                        This is an automated alert. Please do not reply to this email.
+                    </p>
+                </div>
+            </body>
+            </html>
+        `
+
+        // Create email data using proper Brevo format
+        const sendSmtpEmail = new brevo.SendSmtpEmail()
+
+        sendSmtpEmail.subject = `⏰ URGENT: Ticketing Deadline Alert - ${bookingReference}`
+        sendSmtpEmail.htmlContent = htmlContent
+        sendSmtpEmail.sender = {
+            name: 'Lindela Travel and Tours',
+            email:
+                process.env.BREVO_FROM_EMAIL ||
+                'lindelatravelandtours@gmail.com',
+        }
+        sendSmtpEmail.to = [
+            {
+                email: email,
+                name: `${firstName} ${lastName}`.trim(),
+            },
+        ]
+
+        // Send email
+        const result = await apiInstance.sendTransacEmail(sendSmtpEmail)
+
+        console.log(
+            `[EMAIL] ✅ Ticketing deadline alert sent successfully to ${email}`
+        )
+        return { success: true, messageId: result.messageId }
+    } catch (error) {
+        console.error(
+            `[EMAIL] ❌ Failed to send ticketing deadline alert to ${email}:`,
+            error
+        )
+        throw new Error(
+            `Failed to send ticketing deadline alert: ${error.message}`
+        )
+    }
+}
+
+/**
+ * Send ticketing expired alert email
+ */
+export async function sendTicketingExpiredAlert({
+    email,
+    firstName,
+    lastName,
+    bookingReference,
+    totalAmount,
+    currency,
+}) {
+    try {
+        console.log(`[EMAIL] Sending ticketing expired alert to ${email}`)
+
+        // Create expiration alert email
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8" />
+                <title>Booking Expired - Ticketing Deadline Missed</title>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: linear-gradient(135deg, #dc3545, #c82333); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                    .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+                    .expired-box { background: #f8d7da; border: 2px solid #f5c6cb; border-radius: 8px; padding: 20px; margin: 20px 0; }
+                    .booking-details { background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #dc3545; }
+                    .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; color: #6c757d; font-size: 14px; }
+                    .amount { font-size: 24px; font-weight: bold; color: #dc3545; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>❌ Booking Expired</h1>
+                    <p>Lindela Travel and Tours</p>
+                </div>
+                
+                <div class="content">
+                    <h2>Hello ${firstName} ${lastName},</h2>
+                    
+                    <div class="expired-box">
+                        <h3 style="color: #721c24; margin-top: 0;">⚠️ BOOKING EXPIRED</h3>
+                        <p style="margin-bottom: 0;">
+                            Your flight booking has been automatically cancelled due to missed ticketing deadline.
+                        </p>
+                    </div>
+                    
+                    <div class="booking-details">
+                        <h3 style="margin-top: 0;">Booking Details</h3>
+                        <p><strong>Booking Reference:</strong> ${bookingReference}</p>
+                        <p><strong>Amount Forfeited:</strong> <span class="amount">₱${totalAmount?.toLocaleString() || '0'}</span></p>
+                        <p><strong>Status:</strong> EXPIRED</p>
+                        <p><strong>Reason:</strong> Missed ticketing deadline</p>
+                    </div>
+                    
+                    <p><strong>What happened?</strong></p>
+                    <ul>
+                        <li>Your booking was not ticketed within the 6-day deadline</li>
+                        <li>The airline automatically cancelled the reservation</li>
+                        <li>No refund will be issued (per non-refundable policy)</li>
+                        <li>You will need to make a new booking if you still wish to travel</li>
+                    </ul>
+                    
+                    <p><strong>Need assistance?</strong><br>
+                    If you believe this is an error or need help with a new booking, 
+                    please contact us at <a href="mailto:lindelatravelandtours@gmail.com">lindelatravelandtours@gmail.com</a> 
+                    or call 9296106660.</p>
+                </div>
+                
+                <div class="footer">
+                    <p><strong>Lindela Travel and Tours</strong></p>
+                    <p>Unit 2215 Cityland 10 Tower II, H. V. Dela Costa Street<br>
+                    Makati Metro Manila, Philippines</p>
+                    <p>Phone: 9296106660 | Email: lindelatravelandtours@gmail.com</p>
+                    <p style="font-size: 12px; margin-top: 20px;">
+                        This is an automated notification. Please do not reply to this email.
+                    </p>
+                </div>
+            </body>
+            </html>
+        `
+
+        // Create email data using proper Brevo format
+        const sendSmtpEmail = new brevo.SendSmtpEmail()
+
+        sendSmtpEmail.subject = `❌ Booking Expired - ${bookingReference}`
+        sendSmtpEmail.htmlContent = htmlContent
+        sendSmtpEmail.sender = {
+            name: 'Lindela Travel and Tours',
+            email:
+                process.env.BREVO_FROM_EMAIL ||
+                'lindelatravelandtours@gmail.com',
+        }
+        sendSmtpEmail.to = [
+            {
+                email: email,
+                name: `${firstName} ${lastName}`.trim(),
+            },
+        ]
+
+        // Send email
+        const result = await apiInstance.sendTransacEmail(sendSmtpEmail)
+
+        console.log(
+            `[EMAIL] ✅ Ticketing expired alert sent successfully to ${email}`
+        )
+        return { success: true, messageId: result.messageId }
+    } catch (error) {
+        console.error(
+            `[EMAIL] ❌ Failed to send ticketing expired alert to ${email}:`,
+            error
+        )
+        throw new Error(
+            `Failed to send ticketing expired alert: ${error.message}`
+        )
     }
 }
