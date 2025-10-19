@@ -17,111 +17,121 @@ const __dirname = dirname(__filename)
 
 // Helper function to parse airport information from Amadeus segment data
 const parseAirportFromSegment = (airportData) => {
-    if (!airportData || !airportData.iataCode) {
-        return {
-            iata: 'TBA',
-            city: 'TBA',
-            airport: 'TBA',
-            terminal: 'TBA'
-        }
-    }
-    
-    // Use existing airportUtils to get full airport information
-    const airportInfo = getAirportFull(airportData.iataCode)
-    
+  if (!airportData || !airportData.iataCode) {
     return {
-        iata: airportInfo.iata,
-        city: airportInfo.city,
-        airport: airportInfo.name,
-        terminal: airportData.terminal || 'TBA'
+      iata: 'TBA',
+      city: 'TBA',
+      airport: 'TBA',
+      terminal: 'TBA',
     }
+  }
+
+  // Use existing airportUtils to get full airport information
+  const airportInfo = getAirportFull(airportData.iataCode)
+
+  return {
+    iata: airportInfo.iata,
+    city: airportInfo.city,
+    airport: airportInfo.name,
+    terminal: airportData.terminal || 'TBA',
+  }
 }
 
-
 export const createTour = async (req, res) => {
-    try {
-        const {
-            title,
-            description,
-            status,
-            main_image_url,
-            panellum_url,
-            destination_country,
-            visa_required,
-            fee_rules,
-            dates,
-            itineraries,      // ✅ NEW: Tour-level
-            exclusions,       // ✅ NEW: Tour-level
-            payment_terms,    // ✅ NEW: Tour-level
-            requirements,     // ✅ NEW: Tour-level
-            notes,            // ✅ NEW: Tour-level
-        } = req.body
+  try {
+    const {
+      title,
+      description,
+      status,
+      main_image_url,
+      panellum_url,
+      destination_country,
+      visa_required,
+      fee_rules,
+      dates,
+      itineraries, // ✅ NEW: Tour-level
+      exclusions, // ✅ NEW: Tour-level
+      payment_terms, // ✅ NEW: Tour-level
+      requirements, // ✅ NEW: Tour-level
+      notes, // ✅ NEW: Tour-level
+    } = req.body
 
-        // 1️⃣ Insert tour package
-        const { data: tour, error: tourError } = await supabase
-            .from('tour_packages')
-            .insert([{ 
-            title, 
-            description, 
-            status, 
-            main_image_url, 
-            panellum_url, 
-            destination_country, 
-            visa_required,
-            fee_rules: fee_rules || { perRemovedGroup: 5000, perRestDay: 3000, minFee: 5000, maxFee: 50000 },
-            inclusions: inclusions || [],
-            exclusions: exclusions || [],
-            payment_terms: payment_terms || [],
-            requirements: requirements || [],
-            notes: notes || [],
-            }])
-            .select()
-            .single()
+    // 1️⃣ Insert tour package
+    const { data: tour, error: tourError } = await supabase
+      .from('tour_packages')
+      .insert([
+        {
+          title,
+          description,
+          status,
+          main_image_url,
+          panellum_url,
+          destination_country,
+          visa_required,
+          fee_rules: fee_rules || {
+            perRemovedGroup: 5000,
+            perRestDay: 3000,
+            minFee: 5000,
+            maxFee: 50000,
+          },
+          inclusions: inclusions || [],
+          exclusions: exclusions || [],
+          payment_terms: payment_terms || [],
+          requirements: requirements || [],
+          notes: notes || [],
+        },
+      ])
+      .select()
+      .single()
 
-        if (tourError) return res.status(400).json({ error: tourError.message })
+    if (tourError) return res.status(400).json({ error: tourError.message })
 
-        // 2️⃣ Insert package dates (NO itineraries here!)
-        for (const d of dates) {
-            const { inclusion_groups, ...dateData } = d
+    // 2️⃣ Insert package dates (NO itineraries here!)
+    for (const d of dates) {
+      const { inclusion_groups, ...dateData } = d
 
-            const { data: date, error: dateError } = await supabase
-                .from('package_dates')
-                .insert([{
-                    ...dateData,
-                    tour_package_id: tour.id,
-                }])
-                .select()
-                .single()
+      const { data: date, error: dateError } = await supabase
+        .from('package_dates')
+        .insert([
+          {
+            ...dateData,
+            tour_package_id: tour.id,
+          },
+        ])
+        .select()
+        .single()
 
-            if (dateError) return res.status(400).json({ error: dateError.message })
-        }
-
-        // 3️⃣ Insert itineraries at TOUR level (once, not per date!)
-        for (const i of itineraries) {
-            const { error: itineraryError } = await supabase
-                .from('package_itineraries')
-                .insert([{ 
-                    ...i, 
-                    tour_package_id: tour.id,  // ✅ Link to tour, not date
-                    package_date_id: null,      // ✅ Not date-specific
-                    image_url: i.image_url || null
-                }])
-
-            if (itineraryError) {
-                return res.status(400).json({ error: itineraryError.message })
-            }
-        }
-
-        res.status(201).json({ message: 'Tour created successfully', tour })
-    } catch (err) {
-        res.status(500).json({ error: err.message })
+      if (dateError) return res.status(400).json({ error: dateError.message })
     }
+
+    // 3️⃣ Insert itineraries at TOUR level (once, not per date!)
+    for (const i of itineraries) {
+      const { error: itineraryError } = await supabase
+        .from('package_itineraries')
+        .insert([
+          {
+            ...i,
+            tour_package_id: tour.id, // ✅ Link to tour, not date
+            package_date_id: null, // ✅ Not date-specific
+            image_url: i.image_url || null,
+          },
+        ])
+
+      if (itineraryError) {
+        return res.status(400).json({ error: itineraryError.message })
+      }
+    }
+
+    res.status(201).json({ message: 'Tour created successfully', tour })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 }
 
 // Get all tours
 export const getAllTours = async (req, res) => {
-    try {
-        const { data, error } = await supabase.from('tour_packages').select(`
+  try {
+    const { data, error } = await supabase.from('tour_packages').select(`
                 *,
                 itineraries:package_itineraries!tour_package_id (*, order:day_number),
                 dates:package_dates (
@@ -141,19 +151,20 @@ export const getAllTours = async (req, res) => {
                 )
             `)
 
-        if (error) return res.status(400).json({ error: error.message })
-        res.json(data)
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch tours' })
-    }
+    if (error) return res.status(400).json({ error: error.message })
+    res.json(data)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch tours' })
+  }
 }
 
 export const getTour = async (req, res) => {
-    const { id } = req.params
+  const { id } = req.params
 
-    const { data, error } = await supabase
-        .from('tour_packages')
-        .select(`
+  const { data, error } = await supabase
+    .from('tour_packages')
+    .select(
+      `
             *,
             itineraries:package_itineraries!tour_package_id (*),
             dates:package_dates (
@@ -163,320 +174,365 @@ export const getTour = async (req, res) => {
                     items:package_inclusion_group_items (id, content, position)
                 )
             )
-        `)
-        .eq('id', id)
-        .single()
+        `
+    )
+    .eq('id', id)
+    .single()
 
-    if (error) return res.status(500).json({ error: error.message })
-    if (!data) return res.status(404).json({ error: 'Tour not found' })
+  if (error) return res.status(500).json({ error: error.message })
+  if (!data) return res.status(404).json({ error: 'Tour not found' })
 
-    // Transform and apply defaults
-    const DEFAULT_FEE_RULES = {
-        perRemovedGroup: 5000,
-        perRestDay: 3000,
-        minFee: 5000,
-        maxFee: 50000,
-    }
+  // Transform and apply defaults
+  const DEFAULT_FEE_RULES = {
+    perRemovedGroup: 5000,
+    perRestDay: 3000,
+    minFee: 5000,
+    maxFee: 50000,
+  }
 
-    const tourFeeRules = data.fee_rules && typeof data.fee_rules === 'object'
-        ? { ...DEFAULT_FEE_RULES, ...data.fee_rules }
-        : { ...DEFAULT_FEE_RULES }
+  const tourFeeRules =
+    data.fee_rules && typeof data.fee_rules === 'object'
+      ? { ...DEFAULT_FEE_RULES, ...data.fee_rules }
+      : { ...DEFAULT_FEE_RULES }
 
-    const transformed = {
-        ...data,
-        fee_rules: tourFeeRules,
-        itineraries: (data.itineraries || []).sort((a, b) => a.day_number - b.day_number),
-        dates: (data.dates || []).map((d) => {
-            const fee_rules = d.fee_rules && typeof d.fee_rules === 'object'
-                ? { ...tourFeeRules, ...d.fee_rules }
-                : { ...tourFeeRules }
+  const transformed = {
+    ...data,
+    fee_rules: tourFeeRules,
+    itineraries: (data.itineraries || []).sort(
+      (a, b) => a.day_number - b.day_number
+    ),
+    dates: (data.dates || []).map((d) => {
+      const fee_rules =
+        d.fee_rules && typeof d.fee_rules === 'object'
+          ? { ...tourFeeRules, ...d.fee_rules }
+          : { ...tourFeeRules }
 
-            const inclusion_groups = (d.inclusion_groups || [])
-                .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-                .map((g) => ({
-                    id: g.id,
-                    title: g.title,
-                    removable: g.removable,
-                    fee_impact_per_group: g.fee_impact_per_group,
-                    items: (g.items || [])
-                        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-                        .map((it) => it.content),
-                }))
+      const inclusion_groups = (d.inclusion_groups || [])
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+        .map((g) => ({
+          id: g.id,
+          title: g.title,
+          removable: g.removable,
+          fee_impact_per_group: g.fee_impact_per_group,
+          items: (g.items || [])
+            .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+            .map((it) => it.content),
+        }))
 
-            return { ...d, fee_rules, inclusion_groups }
-        })
-    }
+      return { ...d, fee_rules, inclusion_groups }
+    }),
+  }
 
-    res.json(transformed)
+  res.json(transformed)
 }
 
 // ✏ Update tour package
 export const updateTour = async (req, res) => {
-    const { id } = req.params
-        const { 
-            title, description, status, main_image_url, panellum_url, 
-            destination_country, visa_required, fee_rules, customFeeRules,
-            inclusions, exclusions, payment_terms, requirements, notes, 
-            dates, itineraries 
-        } = req.body
+  const { id } = req.params
+  const {
+    title,
+    description,
+    status,
+    main_image_url,
+    panellum_url,
+    destination_country,
+    visa_required,
+    fee_rules,
+    customFeeRules,
+    inclusions,
+    exclusions,
+    payment_terms,
+    requirements,
+    notes,
+    dates,
+    itineraries,
+  } = req.body
 
-    try {
-        // 1️⃣ Update tour package
-        const { error: tourError } = await supabase
-            .from('tour_packages')
-            .update({
-                title, description, status, main_image_url, panellum_url,
-                destination_country, visa_required,
-                fee_rules: fee_rules || { perRemovedGroup: 5000, perRestDay: 3000, minFee: 5000, maxFee: 50000 },
-                inclusions: inclusions || [],
-                exclusions: exclusions || [],
-                payment_terms: payment_terms || [],
-                requirements: requirements || [],
-                notes: notes || [],
-            })
-            .eq('id', id)
+  try {
+    // 1️⃣ Update tour package
+    const { error: tourError } = await supabase
+      .from('tour_packages')
+      .update({
+        title,
+        description,
+        status,
+        main_image_url,
+        panellum_url,
+        destination_country,
+        visa_required,
+        fee_rules: fee_rules || {
+          perRemovedGroup: 5000,
+          perRestDay: 3000,
+          minFee: 5000,
+          maxFee: 50000,
+        },
+        inclusions: inclusions || [],
+        exclusions: exclusions || [],
+        payment_terms: payment_terms || [],
+        requirements: requirements || [],
+        notes: notes || [],
+      })
+      .eq('id', id)
 
-        if (tourError) return res.status(400).json({ error: tourError.message })
+    if (tourError) return res.status(400).json({ error: tourError.message })
 
-        // 2️⃣ Handle dates (delete removed, update existing, insert new)
-        const { data: currentDates } = await supabase
-            .from('package_dates')
-            .select('id')
-            .eq('tour_package_id', id)
+    // 2️⃣ Handle dates (delete removed, update existing, insert new)
+    const { data: currentDates } = await supabase
+      .from('package_dates')
+      .select('id')
+      .eq('tour_package_id', id)
 
-        const currentDateIds = currentDates.map(d => d.id)
-        const incomingDateIds = dates.map(d => d.id).filter(Boolean)
-        const datesToDelete = currentDateIds.filter(id => !incomingDateIds.includes(id))
+    const currentDateIds = currentDates.map((d) => d.id)
+    const incomingDateIds = dates.map((d) => d.id).filter(Boolean)
+    const datesToDelete = currentDateIds.filter(
+      (id) => !incomingDateIds.includes(id)
+    )
 
-        // Delete removed dates
-        for (const dateId of datesToDelete) {
-            // Delete inclusion groups and items first
-            const { data: groups } = await supabase
-                .from('package_inclusion_groups')
-                .select('id')
-                .eq('package_date_id', dateId)
+    // Delete removed dates
+    for (const dateId of datesToDelete) {
+      // Delete inclusion groups and items first
+      const { data: groups } = await supabase
+        .from('package_inclusion_groups')
+        .select('id')
+        .eq('package_date_id', dateId)
 
-            if (groups) {
-                for (const group of groups) {
-                    await supabase
-                        .from('package_inclusion_group_items')
-                        .delete()
-                        .eq('inclusion_group_id', group.id)
-                    
-                    await supabase
-                        .from('package_inclusion_groups')
-                        .delete()
-                        .eq('id', group.id)
-                }
-            }
+      if (groups) {
+        for (const group of groups) {
+          await supabase
+            .from('package_inclusion_group_items')
+            .delete()
+            .eq('inclusion_group_id', group.id)
 
-            await supabase.from('package_dates').delete().eq('id', dateId)
+          await supabase
+            .from('package_inclusion_groups')
+            .delete()
+            .eq('id', group.id)
         }
+      }
 
-        // Update or insert dates
-        const createdDateIds = []
-        for (const d of dates) {
-            const { id: dateId, inclusion_groups, ...dateData } = d
-
-            if (dateId) {
-                // Update existing date
-                await supabase
-                    .from('package_dates')
-                    .update(dateData)
-                    .eq('id', dateId)
-                createdDateIds.push(dateId)
-            } else {
-                // Insert new date
-                const { data: newDate } = await supabase
-                    .from('package_dates')
-                    .insert([{ ...dateData, tour_package_id: id }])
-                    .select()
-                    .single()
-                createdDateIds.push(newDate.id)
-            }
-        }
-
-        // 3️⃣ Apply date-specific fee rules (customFeeRules)
-        console.log('🔧 Custom fee rules received:', customFeeRules)
-        
-        // Get tour-level fee rules for resetting
-        const tourFeeRules = fee_rules || { perRemovedGroup: 5000, perRestDay: 3000, minFee: 5000, maxFee: 50000 }
-        
-        // First, reset ALL dates to tour-level fee rules
-        console.log('🔄 Resetting all dates to tour-level fee rules')
-        for (const date of dates) {
-            if (date.id) {
-                const { error: resetError } = await supabase
-                    .from('package_dates')
-                    .update({ fee_rules: tourFeeRules })
-                    .eq('id', date.id)
-                
-                if (resetError) {
-                    console.error(`❌ Error resetting fee rules for date ${date.id}:`, resetError)
-                } else {
-                    console.log(`✅ Reset fee rules for date ${date.id} to tour-level`)
-                }
-            }
-        }
-        
-        // Then, apply custom fee rules for specific dates
-        if (customFeeRules && Array.isArray(customFeeRules)) {
-            console.log(`🔧 Processing ${customFeeRules.length} custom fee rules`)
-            
-            for (const rule of customFeeRules) {
-                if (rule.dateIndex !== undefined && rule.dateIndex >= 0 && rule.dateIndex < dates.length) {
-                    const targetDate = dates[rule.dateIndex]
-                    if (targetDate && targetDate.id) {
-                        console.log(`💰 Applying custom fee rules to existing date ${rule.dateIndex + 1} (ID: ${targetDate.id})`)
-                        
-                        const customFeeData = {
-                            perRemovedGroup: rule.perRemovedGroup || 0,
-                            perRestDay: rule.perRestDay || 0,
-                            minFee: rule.minFee || 0,
-                            maxFee: rule.maxFee || 0
-                        }
-                        
-                        const { error: feeError } = await supabase
-                            .from('package_dates')
-                            .update({ fee_rules: customFeeData })
-                            .eq('id', targetDate.id)
-                        
-                        if (feeError) {
-                            console.error(`❌ Error updating fee rules for date ${targetDate.id}:`, feeError)
-                        } else {
-                            console.log(`✅ Updated fee rules for date ${targetDate.id}:`, customFeeData)
-                        }
-                    }
-                }
-            }
-        }
-
-        // 4️⃣ Handle tour-level itineraries
-        const { data: currentItineraries } = await supabase
-            .from('package_itineraries')
-            .select('id')
-            .eq('tour_package_id', id)
-
-        const currentItinIds = currentItineraries.map(it => it.id)
-        const incomingItinIds = itineraries.map(it => it.id).filter(Boolean)
-        const itinsToDelete = currentItinIds.filter(id => !incomingItinIds.includes(id))
-
-        // Delete removed itineraries
-        for (const itinId of itinsToDelete) {
-            await supabase.from('package_itineraries').delete().eq('id', itinId)
-        }
-
-        // Update or insert itineraries
-        for (const i of itineraries) {
-            if (i.id) {
-                // Update existing
-                await supabase
-                    .from('package_itineraries')
-                    .update({
-                        title: i.title,
-                        description: i.description,
-                        day_number: i.day_number,
-                        image_url: i.image_url || null,
-                    })
-                    .eq('id', i.id)
-            } else {
-                // Insert new
-                await supabase
-                    .from('package_itineraries')
-                    .insert([{ 
-                        ...i, 
-                        tour_package_id: id,
-                        package_date_id: null,
-                        image_url: i.image_url || null
-                    }])
-            }
-        }
-
-        res.json({ message: 'Tour updated successfully' })
-    } catch (err) {
-        res.status(500).json({ error: err.message })
+      await supabase.from('package_dates').delete().eq('id', dateId)
     }
-}
 
+    // Update or insert dates
+    const createdDateIds = []
+    for (const d of dates) {
+      const { id: dateId, inclusion_groups, ...dateData } = d
+
+      if (dateId) {
+        // Update existing date
+        await supabase.from('package_dates').update(dateData).eq('id', dateId)
+        createdDateIds.push(dateId)
+      } else {
+        // Insert new date
+        const { data: newDate } = await supabase
+          .from('package_dates')
+          .insert([{ ...dateData, tour_package_id: id }])
+          .select()
+          .single()
+        createdDateIds.push(newDate.id)
+      }
+    }
+
+    // 3️⃣ Apply date-specific fee rules (customFeeRules)
+    console.log('🔧 Custom fee rules received:', customFeeRules)
+
+    // Get tour-level fee rules for resetting
+    const tourFeeRules = fee_rules || {
+      perRemovedGroup: 5000,
+      perRestDay: 3000,
+      minFee: 5000,
+      maxFee: 50000,
+    }
+
+    // First, reset ALL dates to tour-level fee rules
+    console.log('🔄 Resetting all dates to tour-level fee rules')
+    for (const date of dates) {
+      if (date.id) {
+        const { error: resetError } = await supabase
+          .from('package_dates')
+          .update({ fee_rules: tourFeeRules })
+          .eq('id', date.id)
+
+        if (resetError) {
+          console.error(
+            `❌ Error resetting fee rules for date ${date.id}:`,
+            resetError
+          )
+        } else {
+          console.log(`✅ Reset fee rules for date ${date.id} to tour-level`)
+        }
+      }
+    }
+
+    // Then, apply custom fee rules for specific dates
+    if (customFeeRules && Array.isArray(customFeeRules)) {
+      console.log(`🔧 Processing ${customFeeRules.length} custom fee rules`)
+
+      for (const rule of customFeeRules) {
+        if (
+          rule.dateIndex !== undefined &&
+          rule.dateIndex >= 0 &&
+          rule.dateIndex < dates.length
+        ) {
+          const targetDate = dates[rule.dateIndex]
+          if (targetDate && targetDate.id) {
+            console.log(
+              `💰 Applying custom fee rules to existing date ${rule.dateIndex + 1} (ID: ${targetDate.id})`
+            )
+
+            const customFeeData = {
+              perRemovedGroup: rule.perRemovedGroup || 0,
+              perRestDay: rule.perRestDay || 0,
+              minFee: rule.minFee || 0,
+              maxFee: rule.maxFee || 0,
+            }
+
+            const { error: feeError } = await supabase
+              .from('package_dates')
+              .update({ fee_rules: customFeeData })
+              .eq('id', targetDate.id)
+
+            if (feeError) {
+              console.error(
+                `❌ Error updating fee rules for date ${targetDate.id}:`,
+                feeError
+              )
+            } else {
+              console.log(
+                `✅ Updated fee rules for date ${targetDate.id}:`,
+                customFeeData
+              )
+            }
+          }
+        }
+      }
+    }
+
+    // 4️⃣ Handle tour-level itineraries
+    const { data: currentItineraries } = await supabase
+      .from('package_itineraries')
+      .select('id')
+      .eq('tour_package_id', id)
+
+    const currentItinIds = currentItineraries.map((it) => it.id)
+    const incomingItinIds = itineraries.map((it) => it.id).filter(Boolean)
+    const itinsToDelete = currentItinIds.filter(
+      (id) => !incomingItinIds.includes(id)
+    )
+
+    // Delete removed itineraries
+    for (const itinId of itinsToDelete) {
+      await supabase.from('package_itineraries').delete().eq('id', itinId)
+    }
+
+    // Update or insert itineraries
+    for (const i of itineraries) {
+      if (i.id) {
+        // Update existing
+        await supabase
+          .from('package_itineraries')
+          .update({
+            title: i.title,
+            description: i.description,
+            day_number: i.day_number,
+            image_url: i.image_url || null,
+          })
+          .eq('id', i.id)
+      } else {
+        // Insert new
+        await supabase.from('package_itineraries').insert([
+          {
+            ...i,
+            tour_package_id: id,
+            package_date_id: null,
+            image_url: i.image_url || null,
+          },
+        ])
+      }
+    }
+
+    res.json({ message: 'Tour updated successfully' })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
 
 // ❌ Delete tour package and related data
 export const deleteTour = async (req, res) => {
-    const { id } = req.params
+  const { id } = req.params
 
-    try {
-        // Delete related itineraries first (tour-level)
-        await supabase
-            .from('package_itineraries')
-            .delete()
-            .eq('tour_package_id', id)
+  try {
+    // Delete related itineraries first (tour-level)
+    await supabase
+      .from('package_itineraries')
+      .delete()
+      .eq('tour_package_id', id)
 
-        // Delete package dates
-        const { data: dates } = await supabase
-            .from('package_dates')
-            .select('id')
-            .eq('tour_package_id', id)
+    // Delete package dates
+    const { data: dates } = await supabase
+      .from('package_dates')
+      .select('id')
+      .eq('tour_package_id', id)
 
-        if (dates?.length) {
-            const dateIds = dates.map((d) => d.id)
-            await supabase.from('package_dates').delete().in('id', dateIds)
-        }
-
-        // Delete tour package itself
-        const { error: deleteError } = await supabase
-            .from('tour_packages')
-            .delete()
-            .eq('id', id)
-
-        if (deleteError)
-            return res.status(400).json({ error: deleteError.message })
-        res.json({ message: 'Tour deleted successfully' })
-    } catch (err) {
-        res.status(500).json({ error: err.message })
+    if (dates?.length) {
+      const dateIds = dates.map((d) => d.id)
+      await supabase.from('package_dates').delete().in('id', dateIds)
     }
-}
 
+    // Delete tour package itself
+    const { error: deleteError } = await supabase
+      .from('tour_packages')
+      .delete()
+      .eq('id', id)
+
+    if (deleteError) return res.status(400).json({ error: deleteError.message })
+    res.json({ message: 'Tour deleted successfully' })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
 
 // Shared function to generate tour booking HTML
 export const generateTourBookingHTML = async (booking) => {
-    // Parse JSON fields if they are strings
-    const parseJsonField = (field) => {
-        if (!field) return null
-        if (typeof field === 'string') {
-            try {
-                return JSON.parse(field)
-            } catch (e) {
-                console.error('Error parsing JSON field:', e)
-                return null
-            }
-        }
-        return field
+  // Parse JSON fields if they are strings
+  const parseJsonField = (field) => {
+    if (!field) return null
+    if (typeof field === 'string') {
+      try {
+        return JSON.parse(field)
+      } catch (e) {
+        console.error('Error parsing JSON field:', e)
+        return null
+      }
     }
+    return field
+  }
 
-    // Prepare booking details for template
-    const packageDate = booking.package_dates
-    const tourPackage = packageDate?.tour_packages
-    const passengerDetails = parseJsonField(booking.passenger_details)
+  // Prepare booking details for template
+  const packageDate = booking.package_dates
+  const tourPackage = packageDate?.tour_packages
+  const passengerDetails = parseJsonField(booking.passenger_details)
 
-    // Read the HTML template
-    const templatePath = path.join(
-        __dirname,
-        '../../services/templates/tour.html'
-    )
-    let html = fs.readFileSync(templatePath, 'utf8')
+  // Read the HTML template
+  const templatePath = path.join(
+    __dirname,
+    '../../services/templates/tour.html'
+  )
+  let html = fs.readFileSync(templatePath, 'utf8')
 
-    // Replace BASE_URL placeholder with actual backend URL
-    const baseUrl =
-        process.env.BACKEND_URL ||
-        (process.env.NODE_ENV === 'production'
-            ? 'https://trabilis.onrender.com'
-            : 'http://localhost:3001')
+  // Replace BASE_URL placeholder with actual backend URL
+  const baseUrl =
+    process.env.BACKEND_URL ||
+    (process.env.NODE_ENV === 'production'
+      ? 'https://trabilis.onrender.com'
+      : 'http://localhost:3001')
 
-    const bookingDate = booking.updated_at
-        ? dayjs(booking.updated_at).format('MMM D, YYYY')
-        : dayjs(booking.created_at).format('MMM D, YYYY')
+  const bookingDate = booking.updated_at
+    ? dayjs(booking.updated_at).format('MMM D, YYYY')
+    : dayjs(booking.created_at).format('MMM D, YYYY')
 
-    // Generate tour details section
-    const tourDetails = `
+  // Generate tour details section
+  const tourDetails = `
         <div class="pdf-tour-details__section">
             <div class="pdf-table-header">
                 <div class="pdf-table-header__title">
@@ -512,9 +568,14 @@ export const generateTourBookingHTML = async (booking) => {
                     </div>
                 </div>
                 <p class="pdf-tour-details__duration">
-                    <b>${packageDate?.start_date && packageDate?.end_date ? 
-                        Math.ceil((new Date(packageDate.end_date) - new Date(packageDate.start_date)) / (1000 * 60 * 60 * 24)) + 1 : 
-                        'N/A'
+                    <b>${
+                      packageDate?.start_date && packageDate?.end_date
+                        ? Math.ceil(
+                            (new Date(packageDate.end_date) -
+                              new Date(packageDate.start_date)) /
+                              (1000 * 60 * 60 * 24)
+                          ) + 1
+                        : 'N/A'
                     } Days</b>
                 </p>
                 <div class="pdf-tour-details__arrival">
@@ -524,9 +585,10 @@ export const generateTourBookingHTML = async (booking) => {
                 </div>
                 <div class="pdf-tour-details__leg">
                     <p class="pdf-tour-details__duration">
-                        ${packageDate?.start_date && packageDate?.end_date ? 
-                            `${new Date(packageDate.start_date).toLocaleDateString()} - ${new Date(packageDate.end_date).toLocaleDateString()}` : 
-                            'N/A'
+                        ${
+                          packageDate?.start_date && packageDate?.end_date
+                            ? `${new Date(packageDate.start_date).toLocaleDateString()} - ${new Date(packageDate.end_date).toLocaleDateString()}`
+                            : 'N/A'
                         }
                     </p>
                 </div>
@@ -534,8 +596,8 @@ export const generateTourBookingHTML = async (booking) => {
         </div>
     `
 
-    // Generate passenger details following flight controller pattern
-    const passengers = `
+  // Generate passenger details following flight controller pattern
+  const passengers = `
         <div class="pdf-passenger-details">
             <div class="pdf-table-header pdf-table-header--passenger">
                 <div>
@@ -552,31 +614,39 @@ export const generateTourBookingHTML = async (booking) => {
                 <div>Passport No.</div>
             </div>
             ${(passengerDetails || [])
-                .map((passenger, index) => {
-                    const title = passenger.title || ''
-                    const name = `${passenger.name?.firstName || ''} ${
-                        passenger.name?.lastName || ''
-                    }`
-                        .trim()
-                        .toUpperCase()
-                    const type = passenger.type || 'Adult'
-                    // Get PNR from flight booking data
-                    const flightPnr = booking.flight_booking_reference ? 
-                        (booking.flight_booking_reference.split('-').pop() || 'TBA') : 'TBA'
-                    const dateOfBirth = passenger.dateOfBirth || 'N/A'
-                    // Use lead passenger contact as fallback if individual passenger contact is missing
-                    const email = passenger.contact?.emailAddress || booking.lead_email || 'Not provided'
-                    const phone = passenger.contact?.phones?.[0]?.number || booking.lead_phone || 'Not provided'
-                    const psngrDocs = (passenger.documents || [])[0] || {}
-                    const passport = psngrDocs.number || 'N/A'
-                    const status = booking.status === 'CONFIRMED' ? 'CONFIRMED' : booking.status
+              .map((passenger, index) => {
+                const title = passenger.title || ''
+                const name = `${passenger.name?.firstName || ''} ${
+                  passenger.name?.lastName || ''
+                }`
+                  .trim()
+                  .toUpperCase()
+                const type = passenger.type || 'Adult'
+                // Get PNR from flight booking data
+                const flightPnr = booking.flight_booking_reference
+                  ? booking.flight_booking_reference.split('-').pop() || 'TBA'
+                  : 'TBA'
+                const dateOfBirth = passenger.dateOfBirth || 'N/A'
+                // Use lead passenger contact as fallback if individual passenger contact is missing
+                const email =
+                  passenger.contact?.emailAddress ||
+                  booking.lead_email ||
+                  'Not provided'
+                const phone =
+                  passenger.contact?.phones?.[0]?.number ||
+                  booking.lead_phone ||
+                  'Not provided'
+                const psngrDocs = (passenger.documents || [])[0] || {}
+                const passport = psngrDocs.number || 'N/A'
+                const status =
+                  booking.status === 'CONFIRMED' ? 'CONFIRMED' : booking.status
 
-                    return `
+                return `
                         <div class="pdf-passenger-details__data">
                             <div><span>${index + 1}</span></div>
                             <div class="pdf-passenger-details__data-name">
                                 <p><b>${`${
-                                    title ? title.toUpperCase() + '. ' : ''
+                                  title ? title.toUpperCase() + '. ' : ''
                                 }${name}`}</b></p>
                                 <p>${type} (${dateOfBirth})</p>
                             </div>
@@ -591,13 +661,13 @@ export const generateTourBookingHTML = async (booking) => {
                             <div>${passport}</div>
                         </div>
                     `
-                })
-                .join('')}
+              })
+              .join('')}
         </div>
     `
 
-    // Generate visa details section
-    const visaDetails = `
+  // Generate visa details section
+  const visaDetails = `
         <div class="pdf-visa-details">
             <div class="pdf-table-header pdf-table-header--visa">
                 <div>
@@ -622,26 +692,26 @@ export const generateTourBookingHTML = async (booking) => {
                 <div>Notes</div>
             </div>
             ${(passengerDetails || [])
-                .map((passenger, index) => {
-                    const title = passenger.title || ''
-                    const name = `${passenger.name?.firstName || ''} ${
-                        passenger.name?.lastName || ''
-                    }`
-                        .trim()
-                        .toUpperCase()
-                    
-                    // Extract visa information from passenger details
-                    const visaStatus = passenger.visa_status || 'Not Required'
-                    const visaType = passenger.visa_type || 'N/A'
-                    const visaExpiry = passenger.visa_expiry || 'N/A'
-                    const visaNotes = passenger.visa_notes || 'N/A'
+              .map((passenger, index) => {
+                const title = passenger.title || ''
+                const name = `${passenger.name?.firstName || ''} ${
+                  passenger.name?.lastName || ''
+                }`
+                  .trim()
+                  .toUpperCase()
 
-                    return `
+                // Extract visa information from passenger details
+                const visaStatus = passenger.visa_status || 'Not Required'
+                const visaType = passenger.visa_type || 'N/A'
+                const visaExpiry = passenger.visa_expiry || 'N/A'
+                const visaNotes = passenger.visa_notes || 'N/A'
+
+                return `
                         <div class="pdf-visa-details__data pdf-visa-details__data--visa">
                             <div><span>${index + 1}</span></div>
                             <div class="pdf-visa-details__data-name pdf-visa-details__data-name--visa">
                                 <p><b>${`${
-                                    title ? title.toUpperCase() + '. ' : ''
+                                  title ? title.toUpperCase() + '. ' : ''
                                 }${name}`}</b></p>
                             </div>
                             <div class="pdf-visa-details__data-status">${visaStatus}</div>
@@ -650,307 +720,361 @@ export const generateTourBookingHTML = async (booking) => {
                             <div>${visaNotes}</div>
                         </div>
                     `
-                })
-                .join('')}
+              })
+              .join('')}
         </div>
     `
 
-    // Compute Payment Details
-    const currencyCode = 'PHP'
-    const toNumber = (value) => Number(value ?? 0)
-    
-    // Get customization data
-    const customization = booking.tour_booking_customizations?.[0]
-    const customizationFee = customization ? toNumber(customization.customization_fee) : 0
-    const baseAmount = toNumber(booking.total_amount) - customizationFee
-    const pricePerPerson = baseAmount / toNumber(booking.passenger_count)
-    const totalAmount = toNumber(booking.total_amount)
-    const reservationAmount = toNumber(booking.reservation_amount)
-    const formatAmount = (n) =>
-        toNumber(n).toLocaleString('en-PH', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        })
+  // Compute Payment Details
+  const currencyCode = 'PHP'
+  const toNumber = (value) => Number(value ?? 0)
 
-    // Package duration calculation
-    const packageDuration = packageDate?.start_date && packageDate?.end_date ? 
-        Math.ceil((new Date(packageDate.end_date) - new Date(packageDate.start_date)) / (1000 * 60 * 60 * 24)) + 1 : 
-        0
+  // Get customization data
+  const customization = booking.tour_booking_customizations?.[0]
+  const customizationFee = customization
+    ? toNumber(customization.customization_fee)
+    : 0
+  const baseAmount = toNumber(booking.total_amount) - customizationFee
+  const pricePerPerson = baseAmount / toNumber(booking.passenger_count)
+  const totalAmount = toNumber(booking.total_amount)
+  const reservationAmount = toNumber(booking.reservation_amount)
+  const formatAmount = (n) =>
+    toNumber(n).toLocaleString('en-PH', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
 
-    // Fetch flight details using flight_booking_reference
-    let flightDetails = {}
-    let outboundSegs = []
-    let inboundSegs = []
-    
-    if (booking.flight_booking_reference) {
-        try {
-            const { data: flightBooking, error: flightError } = await supabase
-                .from('flight_bookings')
-                .select('*')
-                .eq('booking_reference', booking.flight_booking_reference)
-                .single()
+  // Package duration calculation
+  const packageDuration =
+    packageDate?.start_date && packageDate?.end_date
+      ? Math.ceil(
+          (new Date(packageDate.end_date) - new Date(packageDate.start_date)) /
+            (1000 * 60 * 60 * 24)
+        ) + 1
+      : 0
 
-            if (!flightError && flightBooking) {
-                console.log('Flight booking found:', flightBooking.booking_reference)
-                
-                // Parse flight details from the flight booking
-                const amadeusOffer = parseJsonField(flightBooking.amadeus_flight_offer)
-                console.log('Parsed flight offer structure:', amadeusOffer)
-                
-                // Handle both possible structures: direct itineraries or flightOffers array
-                let itineraries = []
-                if (amadeusOffer?.flightOffers?.[0]?.itineraries) {
-                    // Structure: { flightOffers: [{ itineraries: [...] }] }
-                    itineraries = amadeusOffer.flightOffers[0].itineraries
-                    console.log('Using flightOffers structure, found itineraries:', itineraries.length)
-                } else if (amadeusOffer?.itineraries) {
-                    // Structure: { itineraries: [...] }
-                    itineraries = amadeusOffer.itineraries
-                    console.log('Using direct itineraries structure, found itineraries:', itineraries.length)
-                }
-                
-                if (itineraries && itineraries.length > 0) {
-                    // Filter valid itineraries - only check for segments
-                    const validItineraries = itineraries.filter(it => it.segments?.length > 0)
-                    console.log('Valid itineraries:', validItineraries.length)
-                    console.log('Itinerary details:', validItineraries.map(it => ({
-                        hasSegments: it.segments?.length > 0,
-                        segmentCount: it.segments?.length || 0,
-                        duration: it.duration,
-                        firstSegmentDuration: it.segments?.[0]?.duration
-                    })))
-                    
-                    if (validItineraries.length > 0) {
-                        // First itinerary is outbound
-                        outboundSegs = validItineraries[0].segments || []
-                        console.log('Outbound segments:', outboundSegs.length)
-                        console.log('Outbound segment details:', outboundSegs.map(seg => ({
-                            id: seg.id,
-                            number: seg.number,
-                            carrierCode: seg.carrierCode,
-                            departure: seg.departure?.iataCode,
-                            arrival: seg.arrival?.iataCode,
-                            duration: seg.duration
-                        })))
-                        
-                        // Second itinerary is return (if exists)
-                        if (validItineraries.length > 1) {
-                            inboundSegs = validItineraries[1].segments || []
-                            console.log('Inbound segments:', inboundSegs.length)
-                        }
-                        
-                        flightDetails = {
-                            outbound: outboundSegs,
-                            return: inboundSegs
-                        }
-                        console.log('Flight details set:', flightDetails)
-                    }
-                } else {
-                    console.log('No itineraries found in flight offer')
-                }
-            } else {
-                console.log('Flight booking not found or error:', flightError)
+  // Fetch flight details using flight_booking_reference
+  let flightDetails = {}
+  let outboundSegs = []
+  let inboundSegs = []
+
+  if (booking.flight_booking_reference) {
+    try {
+      const { data: flightBooking, error: flightError } = await supabase
+        .from('flight_bookings')
+        .select('*')
+        .eq('booking_reference', booking.flight_booking_reference)
+        .single()
+
+      if (!flightError && flightBooking) {
+        console.log('Flight booking found:', flightBooking.booking_reference)
+
+        // Parse flight details from the flight booking
+        const amadeusOffer = parseJsonField(flightBooking.amadeus_flight_offer)
+        console.log('Parsed flight offer structure:', amadeusOffer)
+
+        // Handle both possible structures: direct itineraries or flightOffers array
+        let itineraries = []
+        if (amadeusOffer?.flightOffers?.[0]?.itineraries) {
+          // Structure: { flightOffers: [{ itineraries: [...] }] }
+          itineraries = amadeusOffer.flightOffers[0].itineraries
+          console.log(
+            'Using flightOffers structure, found itineraries:',
+            itineraries.length
+          )
+        } else if (amadeusOffer?.itineraries) {
+          // Structure: { itineraries: [...] }
+          itineraries = amadeusOffer.itineraries
+          console.log(
+            'Using direct itineraries structure, found itineraries:',
+            itineraries.length
+          )
+        }
+
+        if (itineraries && itineraries.length > 0) {
+          // Filter valid itineraries - only check for segments
+          const validItineraries = itineraries.filter(
+            (it) => it.segments?.length > 0
+          )
+          console.log('Valid itineraries:', validItineraries.length)
+          console.log(
+            'Itinerary details:',
+            validItineraries.map((it) => ({
+              hasSegments: it.segments?.length > 0,
+              segmentCount: it.segments?.length || 0,
+              duration: it.duration,
+              firstSegmentDuration: it.segments?.[0]?.duration,
+            }))
+          )
+
+          if (validItineraries.length > 0) {
+            // First itinerary is outbound
+            outboundSegs = validItineraries[0].segments || []
+            console.log('Outbound segments:', outboundSegs.length)
+            console.log(
+              'Outbound segment details:',
+              outboundSegs.map((seg) => ({
+                id: seg.id,
+                number: seg.number,
+                carrierCode: seg.carrierCode,
+                departure: seg.departure?.iataCode,
+                arrival: seg.arrival?.iataCode,
+                duration: seg.duration,
+              }))
+            )
+
+            // Second itinerary is return (if exists)
+            if (validItineraries.length > 1) {
+              inboundSegs = validItineraries[1].segments || []
+              console.log('Inbound segments:', inboundSegs.length)
             }
-        } catch (error) {
-            console.error('Error fetching flight details:', error)
+
+            flightDetails = {
+              outbound: outboundSegs,
+              return: inboundSegs,
+            }
+            console.log('Flight details set:', flightDetails)
+          }
+        } else {
+          console.log('No itineraries found in flight offer')
         }
+      } else {
+        console.log('Flight booking not found or error:', flightError)
+      }
+    } catch (error) {
+      console.error('Error fetching flight details:', error)
     }
+  }
 
-    // Generate flight itineraries similar to flight controller
-    const flightItineraries = []
-    
-    // Add outbound flights
-    if (outboundSegs.length > 0) {
-        flightItineraries.push({
-            type: 'outbound',
-            segments: outboundSegs.map(seg => {
-                // Get airline info from carrier code
-                const carrierCode = seg.carrierCode || seg.operating?.carrierCode
-                const airlineInfo = carrierCode ? getAirlineInfo(carrierCode) : { name: 'TBA', id: 'TBA', logo: null }
-                
-                const departureInfo = parseAirportFromSegment(seg.departure)
-                const arrivalInfo = parseAirportFromSegment(seg.arrival)
-                // Parse times from Amadeus segment structure
-                const departureTime = seg.departure?.at ? new Date(seg.departure.at) : null
-                const arrivalTime = seg.arrival?.at ? new Date(seg.arrival.at) : null
-                
-                // Calculate duration from segment data
-                let duration = 'TBA'
-                if (departureTime && arrivalTime) {
-                    const diffMs = arrivalTime - departureTime
-                    const hours = Math.floor(diffMs / (1000 * 60 * 60))
-                    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
-                    duration = `${hours}h ${minutes}m`
-                } else if (seg.duration) {
-                    // Use Amadeus duration if available (e.g., "PT1H25M")
-                    duration = seg.duration.replace('PT', '').replace('H', 'h ').replace('M', 'm')
-                }
-                
-                return {
-                    airline: {
-                        name: airlineInfo.name,
-                        code: airlineInfo.id || seg.airline || 'TBA',
-                        logo: airlineInfo.logo || ''
-                    },
-                    number: `${carrierCode || ''}${seg.number || ''}`,
-                    departure: {
-                        iata: departureInfo.iata,
-                        city: departureInfo.city,
-                        airport: departureInfo.airport,
-                        terminal: departureInfo.terminal,
-                        time: departureTime ? departureTime.toLocaleString('en-US', { 
-                            weekday: 'short',
-                            month: 'short', 
-                            day: 'numeric',
-                            hour: '2-digit', 
-                            minute: '2-digit',
-                            hour12: true 
-                        }) : 'TBA',
-                        at: departureTime ? departureTime.toISOString() : null
-                    },
-                    arrival: {
-                        iata: arrivalInfo.iata,
-                        city: arrivalInfo.city,
-                        airport: arrivalInfo.airport,
-                        terminal: arrivalInfo.terminal,
-                        time: arrivalTime ? arrivalTime.toLocaleString('en-US', { 
-                            weekday: 'short',
-                            month: 'short', 
-                            day: 'numeric',
-                            hour: '2-digit', 
-                            minute: '2-digit',
-                            hour12: true 
-                        }) : 'TBA',
-                        at: arrivalTime ? arrivalTime.toISOString() : null
-                    },
-                    aircraft: {
-                        code: seg.aircraft?.code || 'TBA',
-                        name: seg.aircraft?.code ? getAircraftName(seg.aircraft.code) : 'TBA'
-                    },
-                    duration: duration,
-                    stops: seg.numberOfStops || 0
-                }
-            })
-        })
-    }
+  // Generate flight itineraries similar to flight controller
+  const flightItineraries = []
 
-    // Add return flights
-    if (inboundSegs.length > 0) {
-        flightItineraries.push({
-            type: 'return',
-            segments: inboundSegs.map(seg => {
-                // Get airline info from carrier code
-                const carrierCode = seg.carrierCode || seg.operating?.carrierCode
-                const airlineInfo = carrierCode ? getAirlineInfo(carrierCode) : { name: 'TBA', id: 'TBA', logo: null }
-                
-                const departureInfo = parseAirportFromSegment(seg.departure)
-                const arrivalInfo = parseAirportFromSegment(seg.arrival)
-                // Parse times from Amadeus segment structure
-                const departureTime = seg.departure?.at ? new Date(seg.departure.at) : null
-                const arrivalTime = seg.arrival?.at ? new Date(seg.arrival.at) : null
-                
-                // Calculate duration from segment data
-                let duration = 'TBA'
-                if (departureTime && arrivalTime) {
-                    const diffMs = arrivalTime - departureTime
-                    const hours = Math.floor(diffMs / (1000 * 60 * 60))
-                    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
-                    duration = `${hours}h ${minutes}m`
-                } else if (seg.duration) {
-                    // Use Amadeus duration if available (e.g., "PT1H25M")
-                    duration = seg.duration.replace('PT', '').replace('H', 'h ').replace('M', 'm')
-                }
-                
-                return {
-                    airline: {
-                        name: airlineInfo.name,
-                        code: airlineInfo.id || seg.airline || 'TBA',
-                        logo: airlineInfo.logo || ''
-                    },
-                    number: `${carrierCode || ''}${seg.number || ''}`,
-                    departure: {
-                        iata: departureInfo.iata,
-                        city: departureInfo.city,
-                        airport: departureInfo.airport,
-                        terminal: departureInfo.terminal,
-                        time: departureTime ? departureTime.toLocaleString('en-US', { 
-                            weekday: 'short',
-                            month: 'short', 
-                            day: 'numeric',
-                            hour: '2-digit', 
-                            minute: '2-digit',
-                            hour12: true 
-                        }) : 'TBA',
-                        at: departureTime ? departureTime.toISOString() : null
-                    },
-                    arrival: {
-                        iata: arrivalInfo.iata,
-                        city: arrivalInfo.city,
-                        airport: arrivalInfo.airport,
-                        terminal: arrivalInfo.terminal,
-                        time: arrivalTime ? arrivalTime.toLocaleString('en-US', { 
-                            weekday: 'short',
-                            month: 'short', 
-                            day: 'numeric',
-                            hour: '2-digit', 
-                            minute: '2-digit',
-                            hour12: true 
-                        }) : 'TBA',
-                        at: arrivalTime ? arrivalTime.toISOString() : null
-                    },
-                    aircraft: {
-                        code: seg.aircraft?.code || 'TBA',
-                        name: seg.aircraft?.code ? getAircraftName(seg.aircraft.code) : 'TBA'
-                    },
-                    duration: duration,
-                    stops: seg.numberOfStops || 0
-                }
-            })
-        })
-    }
+  // Add outbound flights
+  if (outboundSegs.length > 0) {
+    flightItineraries.push({
+      type: 'outbound',
+      segments: outboundSegs.map((seg) => {
+        // Get airline info from carrier code
+        const carrierCode = seg.carrierCode || seg.operating?.carrierCode
+        const airlineInfo = carrierCode
+          ? getAirlineInfo(carrierCode)
+          : { name: 'TBA', id: 'TBA', logo: null }
 
-    // Generate flight details HTML - show TBA when no data, with proper Onward/Return structure
-    let flightDetailsHTML = ''
-    
-    if (flightItineraries.length > 0) {
-        // Generate Onward flights
-        const onwardFlights = flightItineraries.find(itinerary => itinerary.type === 'outbound')
-        if (onwardFlights) {
-            flightDetailsHTML += /* HTML */ `
-            <div class="pdf-tour-details__section pdf-tour-details__section--flight">
-                <div class="pdf-table-header pdf-table-header--flight">
-                    <div class="pdf-table-header__title">
-                        <p><b>Flight Details</b></p>
-                    </div>
-                </div>
+        const departureInfo = parseAirportFromSegment(seg.departure)
+        const arrivalInfo = parseAirportFromSegment(seg.arrival)
+        // Parse times from Amadeus segment structure
+        const departureTime = seg.departure?.at
+          ? new Date(seg.departure.at)
+          : null
+        const arrivalTime = seg.arrival?.at ? new Date(seg.arrival.at) : null
+
+        // Calculate duration from segment data
+        let duration = 'TBA'
+        if (departureTime && arrivalTime) {
+          const diffMs = arrivalTime - departureTime
+          const hours = Math.floor(diffMs / (1000 * 60 * 60))
+          const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+          duration = `${hours}h ${minutes}m`
+        } else if (seg.duration) {
+          // Use Amadeus duration if available (e.g., "PT1H25M")
+          duration = seg.duration
+            .replace('PT', '')
+            .replace('H', 'h ')
+            .replace('M', 'm')
+        }
+
+        return {
+          airline: {
+            name: airlineInfo.name,
+            code: airlineInfo.id || seg.airline || 'TBA',
+            logo: airlineInfo.logo || '',
+          },
+          number: `${carrierCode || ''}${seg.number || ''}`,
+          departure: {
+            iata: departureInfo.iata,
+            city: departureInfo.city,
+            airport: departureInfo.airport,
+            terminal: departureInfo.terminal,
+            time: departureTime
+              ? departureTime.toLocaleString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true,
+                })
+              : 'TBA',
+            at: departureTime ? departureTime.toISOString() : null,
+          },
+          arrival: {
+            iata: arrivalInfo.iata,
+            city: arrivalInfo.city,
+            airport: arrivalInfo.airport,
+            terminal: arrivalInfo.terminal,
+            time: arrivalTime
+              ? arrivalTime.toLocaleString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true,
+                })
+              : 'TBA',
+            at: arrivalTime ? arrivalTime.toISOString() : null,
+          },
+          aircraft: {
+            code: seg.aircraft?.code || 'TBA',
+            name: seg.aircraft?.code
+              ? getAircraftName(seg.aircraft.code)
+              : 'TBA',
+          },
+          duration: duration,
+          stops: seg.numberOfStops || 0,
+        }
+      }),
+    })
+  }
+
+  // Add return flights
+  if (inboundSegs.length > 0) {
+    flightItineraries.push({
+      type: 'return',
+      segments: inboundSegs.map((seg) => {
+        // Get airline info from carrier code
+        const carrierCode = seg.carrierCode || seg.operating?.carrierCode
+        const airlineInfo = carrierCode
+          ? getAirlineInfo(carrierCode)
+          : { name: 'TBA', id: 'TBA', logo: null }
+
+        const departureInfo = parseAirportFromSegment(seg.departure)
+        const arrivalInfo = parseAirportFromSegment(seg.arrival)
+        // Parse times from Amadeus segment structure
+        const departureTime = seg.departure?.at
+          ? new Date(seg.departure.at)
+          : null
+        const arrivalTime = seg.arrival?.at ? new Date(seg.arrival.at) : null
+
+        // Calculate duration from segment data
+        let duration = 'TBA'
+        if (departureTime && arrivalTime) {
+          const diffMs = arrivalTime - departureTime
+          const hours = Math.floor(diffMs / (1000 * 60 * 60))
+          const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+          duration = `${hours}h ${minutes}m`
+        } else if (seg.duration) {
+          // Use Amadeus duration if available (e.g., "PT1H25M")
+          duration = seg.duration
+            .replace('PT', '')
+            .replace('H', 'h ')
+            .replace('M', 'm')
+        }
+
+        return {
+          airline: {
+            name: airlineInfo.name,
+            code: airlineInfo.id || seg.airline || 'TBA',
+            logo: airlineInfo.logo || '',
+          },
+          number: `${carrierCode || ''}${seg.number || ''}`,
+          departure: {
+            iata: departureInfo.iata,
+            city: departureInfo.city,
+            airport: departureInfo.airport,
+            terminal: departureInfo.terminal,
+            time: departureTime
+              ? departureTime.toLocaleString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true,
+                })
+              : 'TBA',
+            at: departureTime ? departureTime.toISOString() : null,
+          },
+          arrival: {
+            iata: arrivalInfo.iata,
+            city: arrivalInfo.city,
+            airport: arrivalInfo.airport,
+            terminal: arrivalInfo.terminal,
+            time: arrivalTime
+              ? arrivalTime.toLocaleString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true,
+                })
+              : 'TBA',
+            at: arrivalTime ? arrivalTime.toISOString() : null,
+          },
+          aircraft: {
+            code: seg.aircraft?.code || 'TBA',
+            name: seg.aircraft?.code
+              ? getAircraftName(seg.aircraft.code)
+              : 'TBA',
+          },
+          duration: duration,
+          stops: seg.numberOfStops || 0,
+        }
+      }),
+    })
+  }
+
+  // Generate flight details HTML - show TBA when no data, with proper Onward/Return structure
+  let flightDetailsHTML = ''
+
+  if (flightItineraries.length > 0) {
+    // Generate Onward flights
+    const onwardFlights = flightItineraries.find(
+      (itinerary) => itinerary.type === 'outbound'
+    )
+    if (onwardFlights) {
+      flightDetailsHTML += /* HTML */ `
+        <div
+          class="pdf-tour-details__section pdf-tour-details__section--flight"
+        >
+          <div class="pdf-table-header pdf-table-header--flight">
+            <div class="pdf-table-header__title">
+              <p><b>Flight Details</b></p>
             </div>
-                <div class="pdf-flight-details__section">
-                    <div class="pdf-table-header">
-                        <div class="pdf-table-header__title">
-                            <i class="fa-solid fa-plane"></i>
-                            <p>
-                                <b>Onward</b>
-                                <span>${onwardFlights.segments.length}</span>
-                                Flight(s)
-                            </p>
-                        </div>
-                        <div><span>Non-Refundable</span></div>
-                    </div>
-                    <div class="pdf-flight-details__subheader">
-                        <div class="pdf-flight-details__flight__index">
-                            <b>Flight <span>1</span></b>
-                        </div>
-                        <div class="pdf-flight-details__subheader-title">
-                            <i class="fa-solid fa-plane-departure pdf-flight-details__icon"></i>
-                            <p>Departing</p>
-                        </div>
-                        <div class="pdf-flight-details__subheader-title">
-                            <i class="fa-solid fa-plane-arrival pdf-flight-details__icon"></i>
-                            <p>Arriving</p>
-                        </div>
-                    </div>
-                    <div class="pdf-flight-details__data">
-                        ${onwardFlights.segments.map((segment, segIndex) => `
+          </div>
+        </div>
+        <div class="pdf-flight-details__section">
+          <div class="pdf-table-header">
+            <div class="pdf-table-header__title">
+              <i class="fa-solid fa-plane"></i>
+              <p>
+                <b>Onward</b>
+                <span>${onwardFlights.segments.length}</span>
+                Flight(s)
+              </p>
+            </div>
+            <div><span>Non-Refundable</span></div>
+          </div>
+          <div class="pdf-flight-details__subheader">
+            <div class="pdf-flight-details__flight__index">
+              <b>Flight <span>1</span></b>
+            </div>
+            <div class="pdf-flight-details__subheader-title">
+              <i
+                class="fa-solid fa-plane-departure pdf-flight-details__icon"
+              ></i>
+              <p>Departing</p>
+            </div>
+            <div class="pdf-flight-details__subheader-title">
+              <i class="fa-solid fa-plane-arrival pdf-flight-details__icon"></i>
+              <p>Arriving</p>
+            </div>
+          </div>
+          <div class="pdf-flight-details__data">
+            ${onwardFlights.segments
+              .map(
+                (segment, segIndex) => `
                             <div class="pdf-flight-details__airline">
                                 <div class="pdf-flight-details__airline-logo">
                                     ${segment.airline.logo ? `<img src="${segment.airline.logo}" alt="${segment.airline.name}" style="height: 2rem; width: auto;" />` : ''}
@@ -981,43 +1105,51 @@ export const generateTourBookingHTML = async (booking) => {
                                 <p class="pdf-flight-details__stops">${getStopsLabel(segment.stops)}</p>
                                 <p class="pdf-flight-details__durations">${segment.duration}</p>
                             </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `
-        }
+                        `
+              )
+              .join('')}
+          </div>
+        </div>
+      `
+    }
 
-        // Generate Return flights
-        const returnFlights = flightItineraries.find(itinerary => itinerary.type === 'return')
-        if (returnFlights) {
-            flightDetailsHTML += /* HTML */ `
-                                <div class="pdf-flight-details__section">
-                    <div class="pdf-table-header">
-                        <div class="pdf-table-header__title">
-                            <i class="fa-solid fa-plane"></i>
-                            <p>
-                                <b>Return</b>
-                                <span>${returnFlights.segments.length}</span>
-                                Flight(s)
-                            </p>
-                        </div>
-                        <div><span>Non-Refundable</span></div>
-                    </div>
-                    <div class="pdf-flight-details__subheader">
-                        <div class="pdf-flight-details__flight__index">
-                            <b>Flight <span>2</span></b>
-                        </div>
-                        <div class="pdf-flight-details__subheader-title">
-                            <i class="fa-solid fa-plane-departure pdf-flight-details__icon"></i>
-                            <p>Departing</p>
-                        </div>
-                        <div class="pdf-flight-details__subheader-title">
-                            <i class="fa-solid fa-plane-arrival pdf-flight-details__icon"></i>
-                            <p>Arriving</p>
-                        </div>
-                    </div>
-                    <div class="pdf-flight-details__data">
-                        ${returnFlights.segments.map((segment, segIndex) => `
+    // Generate Return flights
+    const returnFlights = flightItineraries.find(
+      (itinerary) => itinerary.type === 'return'
+    )
+    if (returnFlights) {
+      flightDetailsHTML += /* HTML */ `
+        <div class="pdf-flight-details__section">
+          <div class="pdf-table-header">
+            <div class="pdf-table-header__title">
+              <i class="fa-solid fa-plane"></i>
+              <p>
+                <b>Return</b>
+                <span>${returnFlights.segments.length}</span>
+                Flight(s)
+              </p>
+            </div>
+            <div><span>Non-Refundable</span></div>
+          </div>
+          <div class="pdf-flight-details__subheader">
+            <div class="pdf-flight-details__flight__index">
+              <b>Flight <span>2</span></b>
+            </div>
+            <div class="pdf-flight-details__subheader-title">
+              <i
+                class="fa-solid fa-plane-departure pdf-flight-details__icon"
+              ></i>
+              <p>Departing</p>
+            </div>
+            <div class="pdf-flight-details__subheader-title">
+              <i class="fa-solid fa-plane-arrival pdf-flight-details__icon"></i>
+              <p>Arriving</p>
+            </div>
+          </div>
+          <div class="pdf-flight-details__data">
+            ${returnFlights.segments
+              .map(
+                (segment, segIndex) => `
                             <div class="pdf-flight-details__airline">
                                 <div class="pdf-flight-details__airline-logo">
                                     ${segment.airline.logo ? `<img src="${segment.airline.logo}" alt="${segment.airline.name}" style="height: 2rem; width: auto;" />` : ''}
@@ -1048,14 +1180,16 @@ export const generateTourBookingHTML = async (booking) => {
                                 <p class="pdf-flight-details__stops">${getStopsLabel(segment.stops)}</p>
                                 <p class="pdf-flight-details__durations">${segment.duration}</p>
                             </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `
-        }
-    } else {
-        // Show TBA when no flight data - with proper Onward/Return structure
-        flightDetailsHTML = `
+                        `
+              )
+              .join('')}
+          </div>
+        </div>
+      `
+    }
+  } else {
+    // Show TBA when no flight data - with proper Onward/Return structure
+    flightDetailsHTML = `
             <div class="pdf-tour-details__section pdf-tour-details__section--flight">
                 <div class="pdf-table-header pdf-table-header--flight">
                     <div class="pdf-table-header__title">
@@ -1170,17 +1304,16 @@ export const generateTourBookingHTML = async (booking) => {
                 </div>
             </div>
         `
-    }
+  }
 
-    // Generate itinerary details from tour-level itineraries - consolidated under single header, sorted by day_number
-    const sortedItineraries = (tourPackage?.itineraries || [])
-        .sort((a, b) => {
-            const dayA = parseInt(a.day_number) || 0
-            const dayB = parseInt(b.day_number) || 0
-            return dayA - dayB
-        })
+  // Generate itinerary details from tour-level itineraries - consolidated under single header, sorted by day_number
+  const sortedItineraries = (tourPackage?.itineraries || []).sort((a, b) => {
+    const dayA = parseInt(a.day_number) || 0
+    const dayB = parseInt(b.day_number) || 0
+    return dayA - dayB
+  })
 
-    const itineraryDetails = `
+  const itineraryDetails = `
         <div class="pdf-tour-details__section">
             <div class="pdf-table-header">
                 <div class="pdf-table-header__title">
@@ -1190,7 +1323,8 @@ export const generateTourBookingHTML = async (booking) => {
             </div>
             <div class="pdf-tour-details__data pdf-tour-details__data--itinerary">
                 ${sortedItineraries
-                    .map((itinerary, index) => `
+                  .map(
+                    (itinerary, index) => `
                         <div class="pdf-tour-details__package">
                             <div class="pdf-tour-details__package-icon">
                                 <i class="fa-solid fa-calendar"></i>
@@ -1199,75 +1333,86 @@ export const generateTourBookingHTML = async (booking) => {
                                 <p class="pdf-tour-details__package-text">
                                     <b>Day ${itinerary.day_number || index + 1}: ${itinerary.title || 'Tour Day'}</b>
                                 </p>
-                            ${itinerary.image_url ? `
+                            ${
+                              itinerary.image_url
+                                ? `
                                 <div style="margin: 8px 0;">
                                     <img src="${itinerary.image_url}" 
                                          alt="Day ${itinerary.day_number || index + 1} - ${itinerary.title || 'Tour Day'}" 
                                          style="width: 100%; max-width: 400px; height: auto; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);" 
                                          onerror="this.style.display='none';" />
                                 </div>
-                            ` : ''}
+                            `
+                                : ''
+                            }
                             <p class="pdf-tour-details__package-text">
                                 ${itinerary.description || 'No description available'}
                             </p>
                         </div>
                     </div>
-                `).join('')}
+                `
+                  )
+                  .join('')}
             </div>
         </div>
     `
 
-    // Generate inclusions list items
-    const inclusionsList = Array.isArray(packageDate?.inclusions)
-        ? packageDate.inclusions.map(item => `<li>${item}</li>`).join('')
-        : '<li>As per package</li>'
+  // Generate inclusions list items
+  const inclusionsList = Array.isArray(packageDate?.inclusions)
+    ? packageDate.inclusions.map((item) => `<li>${item}</li>`).join('')
+    : '<li>As per package</li>'
 
-    // Generate exclusions list items
-    const exclusionsList = Array.isArray(packageDate?.exclusions)
-        ? packageDate.exclusions.map(item => `<li>${item}</li>`).join('')
-        : '<li>Personal expenses</li>'
+  // Generate exclusions list items
+  const exclusionsList = Array.isArray(packageDate?.exclusions)
+    ? packageDate.exclusions.map((item) => `<li>${item}</li>`).join('')
+    : '<li>Personal expenses</li>'
 
-    // Generate notes content with proper formatting
-    const notesContent = Array.isArray(packageDate?.notes) && packageDate.notes.length > 0
-        ? `<div style="margin-bottom: 15px;">
+  // Generate notes content with proper formatting
+  const notesContent =
+    Array.isArray(packageDate?.notes) && packageDate.notes.length > 0
+      ? `<div style="margin-bottom: 15px;">
             <h5 style="margin: 0 0 8px 0; font-size: 12px; font-weight: 600; color: #2c3e50; text-transform: uppercase; letter-spacing: 0.5px;">Additional Notes:</h5>
             <ul style="margin: 0; padding-left: 20px;">
-                ${packageDate.notes.map(note => `<li style="margin-bottom: 5px; line-height: 1.4; font-size: 11px; color: #495057;">${note}</li>`).join('')}
+                ${packageDate.notes.map((note) => `<li style="margin-bottom: 5px; line-height: 1.4; font-size: 11px; color: #495057;">${note}</li>`).join('')}
             </ul>
            </div>`
-        : `<div style="margin-bottom: 15px;">
+      : `<div style="margin-bottom: 15px;">
             <h5 style="margin: 0 0 8px 0; font-size: 12px; font-weight: 600; color: #2c3e50; text-transform: uppercase; letter-spacing: 0.5px;">Additional Notes:</h5>
             <p style="margin: 0; font-size: 11px; color: #495057; font-style: italic;">No additional notes</p>
            </div>`
 
-    // Generate payment terms content with proper formatting
-    const paymentTermsContent = Array.isArray(packageDate?.payment_terms) && packageDate.payment_terms.length > 0
-        ? `<div style="margin-bottom: 15px;">
+  // Generate payment terms content with proper formatting
+  const paymentTermsContent =
+    Array.isArray(packageDate?.payment_terms) &&
+    packageDate.payment_terms.length > 0
+      ? `<div style="margin-bottom: 15px;">
             <h5 style="margin: 0 0 8px 0; font-size: 12px; font-weight: 600; color: #2c3e50; text-transform: uppercase; letter-spacing: 0.5px;">Payment Terms:</h5>
             <ul style="margin: 0; padding-left: 20px;">
-                ${packageDate.payment_terms.map(term => `<li style="margin-bottom: 5px; line-height: 1.4; font-size: 11px; color: #495057;">${term}</li>`).join('')}
+                ${packageDate.payment_terms.map((term) => `<li style="margin-bottom: 5px; line-height: 1.4; font-size: 11px; color: #495057;">${term}</li>`).join('')}
             </ul>
            </div>`
-        : `<div style="margin-bottom: 15px;">
+      : `<div style="margin-bottom: 15px;">
             <h5 style="margin: 0 0 8px 0; font-size: 12px; font-weight: 600; color: #2c3e50; text-transform: uppercase; letter-spacing: 0.5px;">Payment Terms:</h5>
             <p style="margin: 0; font-size: 11px; color: #495057; font-style: italic;">Standard payment terms apply</p>
            </div>`
 
-    // Generate requirements content with proper formatting
-    const requirementsContent = Array.isArray(packageDate?.requirements) && packageDate.requirements.length > 0
-        ? `<div style="margin-bottom: 15px;">
+  // Generate requirements content with proper formatting
+  const requirementsContent =
+    Array.isArray(packageDate?.requirements) &&
+    packageDate.requirements.length > 0
+      ? `<div style="margin-bottom: 15px;">
             <h5 style="margin: 0 0 8px 0; font-size: 12px; font-weight: 600; color: #2c3e50; text-transform: uppercase; letter-spacing: 0.5px;">Requirements:</h5>
             <ul style="margin: 0; padding-left: 20px;">
-                ${packageDate.requirements.map(req => `<li style="margin-bottom: 5px; line-height: 1.4; font-size: 11px; color: #495057;">${req}</li>`).join('')}
+                ${packageDate.requirements.map((req) => `<li style="margin-bottom: 5px; line-height: 1.4; font-size: 11px; color: #495057;">${req}</li>`).join('')}
             </ul>
            </div>`
-        : `<div style="margin-bottom: 15px;">
+      : `<div style="margin-bottom: 15px;">
             <h5 style="margin: 0 0 8px 0; font-size: 12px; font-weight: 600; color: #2c3e50; text-transform: uppercase; letter-spacing: 0.5px;">Requirements:</h5>
             <p style="margin: 0; font-size: 11px; color: #495057; font-style: italic;">Valid passport required</p>
            </div>`
 
-    // Generate payment details
-    const paymentDetails = `
+  // Generate payment details
+  const paymentDetails = `
         <div class="pdf-payment-details">
             <div class="pdf-table-header pdf-table-header--payment">
                 <div class="pdf-table-header__title">
@@ -1293,12 +1438,16 @@ export const generateTourBookingHTML = async (booking) => {
                         <div class="pdf-payment-details__label">Base Total</div>
                         <div class="pdf-payment-details__value">${formatAmount(baseAmount)}</div>
                     </div>
-                    ${customizationFee > 0 ? `
+                    ${
+                      customizationFee > 0
+                        ? `
                     <div class="pdf-payment-details__row">
                         <div class="pdf-payment-details__label">Customization Fee</div>
                         <div class="pdf-payment-details__value">${formatAmount(customizationFee)}</div>
                     </div>
-                    ` : ''}
+                    `
+                        : ''
+                    }
                     <div class="pdf-payment-details__row">
                         <div class="pdf-payment-details__label">Payment Type</div>
                         <div class="pdf-payment-details__value">${booking.payment_type || 'N/A'}</div>
@@ -1316,8 +1465,8 @@ export const generateTourBookingHTML = async (booking) => {
         </div>
     `
 
-    // Generate inclusions details
-    const inclusionsDetails = `
+  // Generate inclusions details
+  const inclusionsDetails = `
         <div class="pdf-inclusions">
             <div class="pdf-table-header pdf-table-header--inclusions">
                 <div class="pdf-table-header__title">
@@ -1342,26 +1491,32 @@ export const generateTourBookingHTML = async (booking) => {
         </div>
     `
 
-    // Generate customization details if applicable
-    let customizationDetails = ''
-    if (customization && customizationFee > 0) {
-        const removedGroupIds = customization.removed_inclusion_group_ids ? 
-            JSON.parse(customization.removed_inclusion_group_ids) : []
-        const restDayIds = customization.rest_day_ids ? 
-            JSON.parse(customization.rest_day_ids) : []
-        
-        let customizationItems = []
-        
-        if (removedGroupIds.length > 0) {
-            customizationItems.push(`<li><strong>Removed Inclusion Groups:</strong> ${removedGroupIds.join(', ')}</li>`)
-        }
-        
-        if (restDayIds.length > 0) {
-            customizationItems.push(`<li><strong>Rest Days:</strong> Day ${restDayIds.join(', ')}</li>`)
-        }
-        
-        if (customizationItems.length > 0) {
-            customizationDetails = `
+  // Generate customization details if applicable
+  let customizationDetails = ''
+  if (customization && customizationFee > 0) {
+    const removedGroupIds = customization.removed_inclusion_group_ids
+      ? JSON.parse(customization.removed_inclusion_group_ids)
+      : []
+    const restDayIds = customization.rest_day_ids
+      ? JSON.parse(customization.rest_day_ids)
+      : []
+
+    let customizationItems = []
+
+    if (removedGroupIds.length > 0) {
+      customizationItems.push(
+        `<li><strong>Removed Inclusion Groups:</strong> ${removedGroupIds.join(', ')}</li>`
+      )
+    }
+
+    if (restDayIds.length > 0) {
+      customizationItems.push(
+        `<li><strong>Rest Days:</strong> Day ${restDayIds.join(', ')}</li>`
+      )
+    }
+
+    if (customizationItems.length > 0) {
+      customizationDetails = `
                 <div class="pdf-customization">
                     <div class="pdf-table-header pdf-table-header--customization">
                         <div class="pdf-table-header__title">
@@ -1380,142 +1535,140 @@ export const generateTourBookingHTML = async (booking) => {
                     </div>
                 </div>
             `
-        }
     }
+  }
 
-    // Inject values into template
-    html = html.replace(/{{baseUrl}}/g, baseUrl)
-    html = html.replace(
-        /\{\{bookingReference\}\}/g,
-        booking.booking_reference || 'N/A'
-    )
-    html = html.replace('{{bookingDate}}', bookingDate)
-    html = html.replace('{{tourDetails}}', tourDetails)
-    html = html.replace('{{flightDetails}}', flightDetailsHTML)
-    html = html.replace('{{itineraryDetails}}', itineraryDetails)
-    html = html.replace('{{passengerDetails}}', passengers)
-    html = html.replace('{{visaDetails}}', visaDetails)
-    html = html.replace('{{paymentDetails}}', paymentDetails)
-    html = html.replace('{{inclusionsDetails}}', inclusionsDetails)
-    html = html.replace('{{customizationDetails}}', customizationDetails)
-    html = html.replace('{{currency}}', currencyCode)
-    html = html.replace('{{pricePerPerson}}', formatAmount(pricePerPerson))
-    html = html.replace('{{passengerCount}}', booking.passenger_count || 0)
-    html = html.replace('{{paymentType}}', booking.payment_type || 'N/A')
-    html = html.replace('{{totalAmount}}', formatAmount(totalAmount))
-    html = html.replace('{{reservationAmount}}', formatAmount(reservationAmount))
-    html = html.replace('{{packageDuration}}', packageDuration)
-    html = html.replace('{{packageTitle}}', tourPackage?.title || 'N/A')
-    
-    // Replace new dynamic content
-    html = html.replace('{{inclusionsList}}', inclusionsList)
-    html = html.replace('{{exclusionsList}}', exclusionsList)
-    html = html.replace('{{notes}}', notesContent)
-    html = html.replace('{{paymentTerms}}', paymentTermsContent)
-    html = html.replace('{{requirements}}', requirementsContent)
-    
-    return html
+  // Inject values into template
+  html = html.replace(/{{baseUrl}}/g, baseUrl)
+  html = html.replace(
+    /\{\{bookingReference\}\}/g,
+    booking.booking_reference || 'N/A'
+  )
+  html = html.replace('{{bookingDate}}', bookingDate)
+  html = html.replace('{{tourDetails}}', tourDetails)
+  html = html.replace('{{flightDetails}}', flightDetailsHTML)
+  html = html.replace('{{itineraryDetails}}', itineraryDetails)
+  html = html.replace('{{passengerDetails}}', passengers)
+  html = html.replace('{{visaDetails}}', visaDetails)
+  html = html.replace('{{paymentDetails}}', paymentDetails)
+  html = html.replace('{{inclusionsDetails}}', inclusionsDetails)
+  html = html.replace('{{customizationDetails}}', customizationDetails)
+  html = html.replace('{{currency}}', currencyCode)
+  html = html.replace('{{pricePerPerson}}', formatAmount(pricePerPerson))
+  html = html.replace('{{passengerCount}}', booking.passenger_count || 0)
+  html = html.replace('{{paymentType}}', booking.payment_type || 'N/A')
+  html = html.replace('{{totalAmount}}', formatAmount(totalAmount))
+  html = html.replace('{{reservationAmount}}', formatAmount(reservationAmount))
+  html = html.replace('{{packageDuration}}', packageDuration)
+  html = html.replace('{{packageTitle}}', tourPackage?.title || 'N/A')
+
+  // Replace new dynamic content
+  html = html.replace('{{inclusionsList}}', inclusionsList)
+  html = html.replace('{{exclusionsList}}', exclusionsList)
+  html = html.replace('{{notes}}', notesContent)
+  html = html.replace('{{paymentTerms}}', paymentTermsContent)
+  html = html.replace('{{requirements}}', requirementsContent)
+
+  return html
 }
 
 // View Tour Booking HTML (for testing without PDF generation)
 // Auto-enable visa based on country
 export const updateTourVisaSettings = async (req, res) => {
-    try {
-        const { id } = req.params
-        const { destination_country } = req.body
+  try {
+    const { id } = req.params
+    const { destination_country } = req.body
 
-        if (!destination_country) {
-            return res.status(400).json({
-                success: false,
-                message: 'destination_country is required'
-            })
-        }
-
-        // Check if country requires visa
-        const { data: visaRequirement, error: visaError } = await supabaseAdmin
-            .from('visa_requirements')
-            .select('country')
-            .eq('country', destination_country)
-            .single()
-
-        const visa_required = !visaError && !!visaRequirement
-
-        // Update tour package
-        const { data: updated, error: updateError } = await supabaseAdmin
-            .from('tour_packages')
-            .update({
-                destination_country,
-                visa_required,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', id)
-            .select('id')
-
-        if (updateError) {
-            throw updateError
-        }
-
-        if (!updated || updated.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Tour package not found'
-            })
-        }
-
-        res.status(200).json({
-            success: true,
-            message: 'Tour visa settings updated successfully',
-            data: {
-                destination_country,
-                visa_required
-            }
-        })
-
-    } catch (error) {
-        console.error('Error updating tour visa settings:', error)
-        res.status(500).json({
-            success: false,
-            message: 'Failed to update tour visa settings'
-        })
+    if (!destination_country) {
+      return res.status(400).json({
+        success: false,
+        message: 'destination_country is required',
+      })
     }
+
+    // Check if country requires visa
+    const { data: visaRequirement, error: visaError } = await supabaseAdmin
+      .from('visa_requirements')
+      .select('country')
+      .eq('country', destination_country)
+      .single()
+
+    const visa_required = !visaError && !!visaRequirement
+
+    // Update tour package
+    const { data: updated, error: updateError } = await supabaseAdmin
+      .from('tour_packages')
+      .update({
+        destination_country,
+        visa_required,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select('id')
+
+    if (updateError) {
+      throw updateError
+    }
+
+    if (!updated || updated.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tour package not found',
+      })
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Tour visa settings updated successfully',
+      data: {
+        destination_country,
+        visa_required,
+      },
+    })
+  } catch (error) {
+    console.error('Error updating tour visa settings:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update tour visa settings',
+    })
+  }
 }
 
 export const getCountriesWithVisaRequirements = async (req, res) => {
-    try {
-        const { data: countries, error } = await supabaseAdmin
-            .from('visa_requirements')
-            .select('country')
-            .order('country', { ascending: true })
+  try {
+    const { data: countries, error } = await supabaseAdmin
+      .from('visa_requirements')
+      .select('country')
+      .order('country', { ascending: true })
 
-        if (error) {
-            throw error
-        }
-
-        const countryList = countries.map(c => c.country)
-
-        res.status(200).json({
-            success: true,
-            data: countryList
-        })
-
-    } catch (error) {
-        console.error('Error fetching countries with visa requirements:', error)
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch countries with visa requirements'
-        })
+    if (error) {
+      throw error
     }
+
+    const countryList = countries.map((c) => c.country)
+
+    res.status(200).json({
+      success: true,
+      data: countryList,
+    })
+  } catch (error) {
+    console.error('Error fetching countries with visa requirements:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch countries with visa requirements',
+    })
+  }
 }
 
 export const viewTourBookingHTML = async (req, res) => {
-    try {
-        const { id } = req.params
+  try {
+    const { id } = req.params
 
-        // Get booking details from database with related package information
-        const { data: booking, error: bookingError } = await supabase
-            .from('tour_bookings')
-            .select(
-                `
+    // Get booking details from database with related package information
+    const { data: booking, error: bookingError } = await supabase
+      .from('tour_bookings')
+      .select(
+        `
                 *,
                 package_dates (
                     id,
@@ -1541,44 +1694,44 @@ export const viewTourBookingHTML = async (req, res) => {
                     )
                 )
             `
-            )
-            .eq('id', id)
-            .single()
+      )
+      .eq('id', id)
+      .single()
 
-        if (bookingError) {
-            return res.status(404).json({ error: 'Booking not found' })
-        }
-
-        if (!booking) {
-            return res.status(404).json({ error: 'Booking not found' })
-        }
-
-        // Generate HTML using shared function
-        const html = await generateTourBookingHTML(booking)
-        
-        res.setHeader('Content-Type', 'text/html')
-        res.send(html)
-    } catch (error) {
-        console.error('Error generating tour HTML:', error)
-        res.status(500).json({
-            error: 'Failed to generate HTML',
-            message: error.message,
-        })
+    if (bookingError) {
+      return res.status(404).json({ error: 'Booking not found' })
     }
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' })
+    }
+
+    // Generate HTML using shared function
+    const html = await generateTourBookingHTML(booking)
+
+    res.setHeader('Content-Type', 'text/html')
+    res.send(html)
+  } catch (error) {
+    console.error('Error generating tour HTML:', error)
+    res.status(500).json({
+      error: 'Failed to generate HTML',
+      message: error.message,
+    })
+  }
 }
 
 // Generate Tour PDF for Admin (without PDFShift - uses browser print functionality)
 
 // Generate Tour PDF for Admin (without PDFShift - uses browser print functionality)
 export const generateTourPDFAdmin = async (req, res) => {
-    try {
-        const { id } = req.params
+  try {
+    const { id } = req.params
 
-        // Get booking details from database with related package information
-        const { data: booking, error: bookingError } = await supabase
-            .from('tour_bookings')
-            .select(
-                `
+    // Get booking details from database with related package information
+    const { data: booking, error: bookingError } = await supabase
+      .from('tour_bookings')
+      .select(
+        `
                 *,
                 package_dates (
                     id,
@@ -1611,23 +1764,23 @@ export const generateTourPDFAdmin = async (req, res) => {
                     client_snapshot
                 )
             `
-            )
-            .eq('id', id)
-            .single()
+      )
+      .eq('id', id)
+      .single()
 
-        if (bookingError) {
-            return res.status(404).json({ error: 'Booking not found' })
-        }
+    if (bookingError) {
+      return res.status(404).json({ error: 'Booking not found' })
+    }
 
-        if (!booking) {
-            return res.status(404).json({ error: 'Booking not found' })
-        }
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' })
+    }
 
-        // Generate HTML using shared function
-        const html = await generateTourBookingHTML(booking)
+    // Generate HTML using shared function
+    const html = await generateTourBookingHTML(booking)
 
-        // Add comprehensive print optimization and admin styling
-        const adminStyles = `
+    // Add comprehensive print optimization and admin styling
+    const adminStyles = `
             <style>
                 /* Base styles for better print rendering */
                 * {
@@ -1920,462 +2073,499 @@ export const generateTourPDFAdmin = async (req, res) => {
             </style>
         `
 
-        // Insert admin styles
-        const finalHtml = html.replace('</head>', adminStyles + '</head>')
+    // Insert admin styles
+    const finalHtml = html.replace('</head>', adminStyles + '</head>')
 
-        // Set response headers for HTML (admin will use browser print to PDF)
-        res.setHeader('Content-Type', 'text/html')
-        res.setHeader(
-            'Content-Disposition',
-            `inline; filename="Tour-Booking-${booking.booking_reference}.html"`
-        )
-        res.send(finalHtml)
-    } catch (error) {
-        console.error('Error generating tour PDF for admin:', error)
-        res.status(500).json({
-            error: 'Failed to generate PDF for admin',
-            message: error.message,
-        })
-    }
+    // Set response headers for HTML (admin will use browser print to PDF)
+    res.setHeader('Content-Type', 'text/html')
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="Tour-Booking-${booking.booking_reference}.html"`
+    )
+    res.send(finalHtml)
+  } catch (error) {
+    console.error('Error generating tour PDF for admin:', error)
+    res.status(500).json({
+      error: 'Failed to generate PDF for admin',
+      message: error.message,
+    })
+  }
 }
 
 const pusher = new Pusher({
-    appId: '2048372',
-    key: '371c6201af1a663a4f58',
-    secret: 'b4a5985ecd6d27690c8b',
-    cluster: 'ap1',
-    useTLS: true,
+  appId: '2048372',
+  key: '371c6201af1a663a4f58',
+  secret: 'b4a5985ecd6d27690c8b',
+  cluster: 'ap1',
+  useTLS: true,
 })
 
 // Simple tour status update (for publish/unpublish)
 export const updateTourStatus = async (req, res) => {
-    try {
-        const { id } = req.params
-        const { status } = req.body
+  try {
+    const { id } = req.params
+    const { status } = req.body
 
-        if (!status || !['DRAFT', 'PUBLISHED'].includes(status)) {
-            return res.status(400).json({ error: 'Invalid status. Must be DRAFT or PUBLISHED' })
-        }
-
-        const { data, error } = await supabase
-            .from('tour_packages')
-            .update({ status })
-            .eq('id', id)
-            .select()
-            .single()
-
-        if (error) {
-            return res.status(400).json({ error: error.message })
-        }
-
-        if (!data) {
-            return res.status(404).json({ error: 'Tour not found' })
-        }
-
-        res.json({ 
-            success: true, 
-            message: `Tour ${status.toLowerCase()} successfully`,
-            tour: data 
-        })
-    } catch (err) {
-        console.error('Error updating tour status:', err)
-        res.status(500).json({ error: 'Failed to update tour status' })
+    if (!status || !['DRAFT', 'PUBLISHED'].includes(status)) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid status. Must be DRAFT or PUBLISHED' })
     }
+
+    const { data, error } = await supabase
+      .from('tour_packages')
+      .update({ status })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      return res.status(400).json({ error: error.message })
+    }
+
+    if (!data) {
+      return res.status(404).json({ error: 'Tour not found' })
+    }
+
+    res.json({
+      success: true,
+      message: `Tour ${status.toLowerCase()} successfully`,
+      tour: data,
+    })
+  } catch (err) {
+    console.error('Error updating tour status:', err)
+    res.status(500).json({ error: 'Failed to update tour status' })
+  }
 }
 
 // Edit Tour Booking (status/assignment updates)
 export const editTourBooking = async (req, res) => {
-    try {
-        const { id } = req.params
-        const { status, assigned_to, assignment_status, flight_booking_reference } =
-            req.body || {}
+  try {
+    const { id } = req.params
+    const { status, assigned_to, assignment_status, flight_booking_reference } =
+      req.body || {}
 
-        // Fetch existing booking for comparison and reference
-        const { data: existingBooking, error: fetchError } = await supabase
-            .from('tour_bookings')
-            .select('*')
-            .eq('id', id)
-            .single()
+    // Fetch existing booking for comparison and reference
+    const { data: existingBooking, error: fetchError } = await supabase
+      .from('tour_bookings')
+      .select('*')
+      .eq('id', id)
+      .single()
 
-        if (fetchError || !existingBooking) {
-            return res.status(404).json({ error: 'Booking not found' })
-        }
-
-        // Build update payload
-        const updateData = {}
-        if (typeof status !== 'undefined') updateData.status = status
-        if (typeof assignment_status !== 'undefined')
-            updateData.assignment_status = assignment_status
-
-        // Handle flight booking reference
-        if (typeof flight_booking_reference !== 'undefined') {
-            // If flight_booking_reference is provided, validate it exists
-            if (flight_booking_reference && flight_booking_reference.trim() !== '') {
-                const { data: flightBooking, error: flightError } = await supabase
-                    .from('flight_bookings')
-                    .select('id, booking_reference')
-                    .eq('booking_reference', flight_booking_reference.trim())
-                    .single()
-
-                if (flightError || !flightBooking) {
-                    return res.status(400).json({ 
-                        error: `Flight booking with reference '${flight_booking_reference}' not found` 
-                    })
-                }
-            }
-            updateData.flight_booking_reference = flight_booking_reference
-        }
-
-        if (typeof assigned_to === 'number' || assigned_to === null) {
-            updateData.assigned_to = assigned_to
-            updateData.assigned_at = assigned_to
-                ? new Date().toISOString()
-                : null
-        }
-
-        if (Object.keys(updateData).length === 0) {
-            return res.status(400).json({ error: 'No valid fields to update' })
-        }
-
-        const { data, error } = await supabase
-            .from('tour_bookings')
-            .update(updateData)
-            .eq('id', id)
-            .select()
-            .single()
-
-        if (error) {
-            return res.status(400).json({ error: error.message })
-        }
-
-        // Notifications
-        if (status && status !== existingBooking.status) {
-            await supabase.from('admin_notifications').insert({
-                type: 'booking_status_changed',
-                message: `Tour booking ${existingBooking.booking_reference} status changed from ${existingBooking.status} to ${status}`,
-                booking_reference: existingBooking.booking_reference,
-                booking_type: 'tour',
-                booking_id: null,
-                created_at: new Date().toISOString(),
-            })
-            await pusher.trigger(
-                'admin-notifications',
-                'booking-status-changed',
-                {
-                    bookingReference: existingBooking.booking_reference,
-                    bookingType: 'tour',
-                    bookingId: id,
-                    status,
-                }
-            )
-        }
-
-        if (
-            assigned_to !== undefined &&
-            assigned_to !== existingBooking.assigned_to
-        ) {
-            const isReassign = !!existingBooking.assigned_to && !!assigned_to
-            const notifType = isReassign
-                ? 'booking_reassigned'
-                : 'booking_assigned'
-            // Resolve assigner and assignee names for readable message
-            let assignerName = req.user?.email || 'System'
-            let assigneeName = assigned_to
-            try {
-                if (req.user?.email) {
-                    const { data: assigner } = await supabase
-                        .from('admins')
-                        .select('first_name, last_name, email')
-                        .eq('email', req.user.email)
-                        .single()
-                    if (assigner) {
-                        assignerName =
-                            `${assigner.first_name || ''} ${
-                                assigner.last_name || ''
-                            }`.trim() || assigner.email
-                    }
-                }
-                if (assigned_to) {
-                    const { data: assignee } = await supabase
-                        .from('admins')
-                        .select('first_name, last_name, email')
-                        .eq('id', assigned_to)
-                        .single()
-                    if (assignee) {
-                        assigneeName =
-                            `${assignee.first_name || ''} ${
-                                assignee.last_name || ''
-                            }`.trim() || assignee.email
-                    }
-                }
-            } catch (_) {}
-
-            const message = isReassign
-                ? `Tour booking ${existingBooking.booking_reference} reassigned by ${assignerName} to ${assigneeName}`
-                : `Tour booking ${existingBooking.booking_reference} assigned by ${assignerName} to ${assigneeName}`
-
-            await supabase.from('admin_notifications').insert({
-                type: notifType,
-                message,
-                booking_reference: existingBooking.booking_reference,
-                booking_type: 'tour',
-                booking_id: null,
-                assigned_to: assigned_to || null,
-                assigned_by: req.user?.id || null,
-                created_at: new Date().toISOString(),
-            })
-            await pusher.trigger('admin-notifications', notifType, {
-                bookingReference: existingBooking.booking_reference,
-                bookingType: 'tour',
-                bookingId: id,
-            })
-
-            // Sync assignment with related visa processings
-            if (assigned_to) {
-                try {
-                    // Get related visa processings and update their assignment
-                    const { data: visaProcessings, error: fetchError } = await supabase
-                        .from('visa_processings')
-                        .select('id')
-                        .eq('tour_booking_id', id)
-
-                    if (!fetchError && visaProcessings && visaProcessings.length > 0) {
-                        const visaProcessingIds = visaProcessings.map(vp => vp.id)
-                        
-                        const { error: updateError } = await supabase
-                            .from('visa_processings')
-                            .update({
-                                assigned_to: assigned_to,
-                                assigned_at: new Date().toISOString(),
-                                assigned_by: req.user?.id || null
-                            })
-                            .in('id', visaProcessingIds)
-
-                        if (updateError) {
-                            console.error('Error syncing visa processing assignments:', updateError)
-                        } else {
-                            console.log(`Synced ${visaProcessingIds.length} visa processings to new staff member`)
-                        }
-                    }
-                } catch (syncError) {
-                    console.error('Error syncing visa processing assignments:', syncError)
-                    // Don't fail the main update if sync fails
-                }
-            }
-        }
-
-        if (
-            assignment_status &&
-            assignment_status !== existingBooking.assignment_status
-        ) {
-            await supabase.from('admin_notifications').insert({
-                type: 'assignment_status_updated',
-                message: `Tour booking ${existingBooking.booking_reference} assignment status: ${assignment_status}`,
-                booking_reference: existingBooking.booking_reference,
-                booking_type: 'tour',
-                booking_id: null,
-                created_at: new Date().toISOString(),
-            })
-            await pusher.trigger(
-                'admin-notifications',
-                'assignment-status-updated',
-                {
-                    bookingReference: existingBooking.booking_reference,
-                    bookingType: 'tour',
-                    bookingId: id,
-                    status: assignment_status,
-                }
-            )
-
-            // Sync assignment status with related visa processings
-            try {
-                const syncResult = await syncTourBookingAssignmentStatus(id, assignment_status, req.user?.id)
-                if (syncResult.success) {
-                    console.log(`Synced visa processing assignments: ${syncResult.message}`)
-                } else {
-                    console.warn(`Failed to sync visa processing assignments: ${syncResult.error}`)
-                }
-            } catch (syncError) {
-                console.error('Error syncing visa processing assignments:', syncError)
-                // Don't fail the main update if sync fails
-            }
-        }
-
-        return res.json({ success: true, data })
-    } catch (err) {
-        console.error('Error editing tour booking:', err)
-        return res.status(500).json({ error: 'Failed to edit tour booking' })
+    if (fetchError || !existingBooking) {
+      return res.status(404).json({ error: 'Booking not found' })
     }
+
+    // Build update payload
+    const updateData = {}
+    if (typeof status !== 'undefined') updateData.status = status
+    if (typeof assignment_status !== 'undefined')
+      updateData.assignment_status = assignment_status
+
+    // Handle flight booking reference
+    if (typeof flight_booking_reference !== 'undefined') {
+      // If flight_booking_reference is provided, validate it exists
+      if (flight_booking_reference && flight_booking_reference.trim() !== '') {
+        const { data: flightBooking, error: flightError } = await supabase
+          .from('flight_bookings')
+          .select('id, booking_reference')
+          .eq('booking_reference', flight_booking_reference.trim())
+          .single()
+
+        if (flightError || !flightBooking) {
+          return res.status(400).json({
+            error: `Flight booking with reference '${flight_booking_reference}' not found`,
+          })
+        }
+      }
+      updateData.flight_booking_reference = flight_booking_reference
+    }
+
+    if (typeof assigned_to === 'number' || assigned_to === null) {
+      updateData.assigned_to = assigned_to
+      updateData.assigned_at = assigned_to ? new Date().toISOString() : null
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' })
+    }
+
+    const { data, error } = await supabase
+      .from('tour_bookings')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      return res.status(400).json({ error: error.message })
+    }
+
+    // Notifications
+    if (status && status !== existingBooking.status) {
+      await supabase.from('admin_notifications').insert({
+        type: 'booking_status_changed',
+        message: `Tour booking ${existingBooking.booking_reference} status changed from ${existingBooking.status} to ${status}`,
+        booking_reference: existingBooking.booking_reference,
+        booking_type: 'tour',
+        booking_id: id,
+        category: 'status',
+        priority: 'medium',
+        action_url: `/admin/tours/${id}`,
+        created_at: new Date().toISOString(),
+      })
+      await pusher.trigger('admin-notifications', 'booking-status-changed', {
+        bookingReference: existingBooking.booking_reference,
+        bookingType: 'tour',
+        bookingId: id,
+        status,
+      })
+    }
+
+    if (
+      assigned_to !== undefined &&
+      assigned_to !== existingBooking.assigned_to
+    ) {
+      const isReassign = !!existingBooking.assigned_to && !!assigned_to
+      const notifType = isReassign ? 'booking_reassigned' : 'booking_assigned'
+      // Resolve assigner and assignee names for readable message
+      let assignerName = req.user?.email || 'System'
+      let assigneeName = assigned_to
+      try {
+        if (req.user?.email) {
+          const { data: assigner } = await supabase
+            .from('admins')
+            .select('first_name, last_name, email')
+            .eq('email', req.user.email)
+            .single()
+          if (assigner) {
+            assignerName =
+              `${assigner.first_name || ''} ${
+                assigner.last_name || ''
+              }`.trim() || assigner.email
+          }
+        }
+        if (assigned_to) {
+          const { data: assignee } = await supabase
+            .from('admins')
+            .select('first_name, last_name, email')
+            .eq('id', assigned_to)
+            .single()
+          if (assignee) {
+            assigneeName =
+              `${assignee.first_name || ''} ${
+                assignee.last_name || ''
+              }`.trim() || assignee.email
+          }
+        }
+      } catch (_) {}
+
+      const message = isReassign
+        ? `Tour booking ${existingBooking.booking_reference} reassigned by ${assignerName} to ${assigneeName}`
+        : `Tour booking ${existingBooking.booking_reference} assigned by ${assignerName} to ${assigneeName}`
+
+      await supabase.from('admin_notifications').insert({
+        type: notifType,
+        message,
+        booking_reference: existingBooking.booking_reference,
+        booking_type: 'tour',
+        booking_id: id,
+        assigned_to: assigned_to || null,
+        assigned_by: req.user?.id || null,
+        category: 'assignment',
+        priority: 'medium',
+        action_url: `/admin/tours/${id}`,
+        related_user_id: assigned_to || null,
+        created_at: new Date().toISOString(),
+      })
+      await pusher.trigger('admin-notifications', notifType, {
+        bookingReference: existingBooking.booking_reference,
+        bookingType: 'tour',
+        bookingId: id,
+      })
+
+      // Sync assignment with related visa processings
+      if (assigned_to) {
+        try {
+          // Get related visa processings and update their assignment
+          const { data: visaProcessings, error: fetchError } = await supabase
+            .from('visa_processings')
+            .select('id')
+            .eq('tour_booking_id', id)
+
+          if (!fetchError && visaProcessings && visaProcessings.length > 0) {
+            const visaProcessingIds = visaProcessings.map((vp) => vp.id)
+
+            const { error: updateError } = await supabase
+              .from('visa_processings')
+              .update({
+                assigned_to: assigned_to,
+                assigned_at: new Date().toISOString(),
+                assigned_by: req.user?.id || null,
+              })
+              .in('id', visaProcessingIds)
+
+            if (updateError) {
+              console.error(
+                'Error syncing visa processing assignments:',
+                updateError
+              )
+            } else {
+              console.log(
+                `Synced ${visaProcessingIds.length} visa processings to new staff member`
+              )
+            }
+          }
+        } catch (syncError) {
+          console.error('Error syncing visa processing assignments:', syncError)
+          // Don't fail the main update if sync fails
+        }
+      }
+    }
+
+    if (
+      assignment_status &&
+      assignment_status !== existingBooking.assignment_status
+    ) {
+      await supabase.from('admin_notifications').insert({
+        type: 'assignment_status_updated',
+        message: `Tour booking ${existingBooking.booking_reference} assignment status: ${assignment_status}`,
+        booking_reference: existingBooking.booking_reference,
+        booking_type: 'tour',
+        booking_id: id,
+        category: 'status',
+        priority: 'low',
+        action_url: `/admin/tours/${id}`,
+        created_at: new Date().toISOString(),
+      })
+      await pusher.trigger('admin-notifications', 'assignment-status-updated', {
+        bookingReference: existingBooking.booking_reference,
+        bookingType: 'tour',
+        bookingId: id,
+        status: assignment_status,
+      })
+
+      // Sync assignment status with related visa processings
+      try {
+        const syncResult = await syncTourBookingAssignmentStatus(
+          id,
+          assignment_status,
+          req.user?.id
+        )
+        if (syncResult.success) {
+          console.log(
+            `Synced visa processing assignments: ${syncResult.message}`
+          )
+        } else {
+          console.warn(
+            `Failed to sync visa processing assignments: ${syncResult.error}`
+          )
+        }
+      } catch (syncError) {
+        console.error('Error syncing visa processing assignments:', syncError)
+        // Don't fail the main update if sync fails
+      }
+    }
+
+    return res.json({ success: true, data })
+  } catch (err) {
+    console.error('Error editing tour booking:', err)
+    return res.status(500).json({ error: 'Failed to edit tour booking' })
+  }
 }
 
 // Cancel Tour Booking
 export const cancelTourBooking = async (req, res) => {
-    try {
-        const { id } = req.params
-        const { reason } = req.body || {}
+  try {
+    const { id } = req.params
+    const { reason } = req.body || {}
 
-        const { data, error } = await supabase
-            .from('tour_bookings')
-            .update({
-                status: 'CANCELLED',
-                cancellation_reason: reason || null,
-                cancelled_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            })
-            .eq('id', id)
-            .select()
-            .single()
+    const { data, error } = await supabase
+      .from('tour_bookings')
+      .update({
+        status: 'CANCELLED',
+        cancellation_reason: reason || null,
+        cancelled_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single()
 
-        if (error) {
-            return res.status(400).json({ error: error.message })
-        }
-
-        return res.json({ success: true, data })
-    } catch (err) {
-        console.error('Error cancelling tour booking:', err)
-        return res.status(500).json({ error: 'Failed to cancel tour booking' })
+    if (error) {
+      return res.status(400).json({ error: error.message })
     }
+
+    return res.json({ success: true, data })
+  } catch (err) {
+    console.error('Error cancelling tour booking:', err)
+    return res.status(500).json({ error: 'Failed to cancel tour booking' })
+  }
 }
 
 // Update Passenger Visa Status
 export const updatePassengerVisaStatus = async (req, res) => {
-    try {
-        const { id, index } = req.params
-        const { visa_status, visa_type, existing_visa_status, visa_expiry_date } = req.body
+  try {
+    const { id, index } = req.params
+    const { visa_status, visa_type, existing_visa_status, visa_expiry_date } =
+      req.body
 
-        // Validate required fields
-        if (!id || index === undefined) {
-            return res.status(400).json({
-                success: false,
-                error: 'Booking ID and passenger index are required'
-            })
-        }
-
-        const passengerIndex = parseInt(index)
-        if (isNaN(passengerIndex) || passengerIndex < 0) {
-            return res.status(400).json({
-                success: false,
-                error: 'Invalid passenger index'
-            })
-        }
-
-        // Validate visa_status if provided
-        if (visa_status && !['not_applicable', 'already_has', 'needs_processing'].includes(visa_status)) {
-            return res.status(400).json({
-                success: false,
-                error: 'Invalid visa_status. Must be one of: not_applicable, already_has, needs_processing'
-            })
-        }
-
-        // Validate visa_type if provided
-        if (visa_type && !['Tourist Visa', 'Business Visa', 'Student Visa', 'Fiancee Visa', 'Spousal Visa'].includes(visa_type)) {
-            return res.status(400).json({
-                success: false,
-                error: 'Invalid visa_type'
-            })
-        }
-
-        // Validate existing_visa_status if provided
-        if (existing_visa_status && !['valid', 'expiring_soon', 'expired', 'not_specified'].includes(existing_visa_status)) {
-            return res.status(400).json({
-                success: false,
-                error: 'Invalid existing_visa_status'
-            })
-        }
-
-        // Fetch existing booking
-        const { data: existingBooking, error: fetchError } = await supabase
-            .from('tour_bookings')
-            .select('*')
-            .eq('id', id)
-            .single()
-
-        if (fetchError || !existingBooking) {
-            return res.status(404).json({
-                success: false,
-                error: 'Booking not found'
-            })
-        }
-
-        // Parse passenger_details
-        let passengers = []
-        try {
-            passengers = typeof existingBooking.passenger_details === 'string' 
-                ? JSON.parse(existingBooking.passenger_details) 
-                : existingBooking.passenger_details || []
-        } catch (parseError) {
-            return res.status(400).json({
-                success: false,
-                error: 'Invalid passenger_details format'
-            })
-        }
-
-        // Validate passenger index exists
-        if (passengerIndex >= passengers.length) {
-            return res.status(400).json({
-                success: false,
-                error: 'Passenger index out of range'
-            })
-        }
-
-        // Update passenger visa fields
-        const passenger = passengers[passengerIndex]
-        
-        // Update fields if provided
-        if (visa_status !== undefined) {
-            passenger.visa_status = visa_status
-            
-            // Clear dependent fields if visa_status changes away from 'already_has'
-            if (visa_status !== 'already_has') {
-                passenger.visa_type = ''
-                passenger.existing_visa_status = 'not_specified'
-                passenger.visa_expiry_date = ''
-            }
-        }
-        
-        if (visa_type !== undefined) {
-            passenger.visa_type = visa_type
-        }
-        
-        if (existing_visa_status !== undefined) {
-            passenger.existing_visa_status = existing_visa_status
-            
-            // Clear expiry date if status doesn't require it
-            if (existing_visa_status !== 'valid' && existing_visa_status !== 'expiring_soon') {
-                passenger.visa_expiry_date = ''
-            }
-        }
-        
-        if (visa_expiry_date !== undefined) {
-            passenger.visa_expiry_date = visa_expiry_date
-        }
-
-        // Update the booking with modified passenger_details
-        const { data: updatedBooking, error: updateError } = await supabase
-            .from('tour_bookings')
-            .update({
-                passenger_details: passengers,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', id)
-            .select()
-            .single()
-
-        if (updateError) {
-            throw updateError
-        }
-
-        res.status(200).json({
-            success: true,
-            message: 'Passenger visa status updated successfully',
-            data: updatedBooking
-        })
-
-    } catch (error) {
-        console.error('Error updating passenger visa status:', error)
-        res.status(500).json({
-            success: false,
-            error: error.message
-        })
+    // Validate required fields
+    if (!id || index === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: 'Booking ID and passenger index are required',
+      })
     }
+
+    const passengerIndex = parseInt(index)
+    if (isNaN(passengerIndex) || passengerIndex < 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid passenger index',
+      })
+    }
+
+    // Validate visa_status if provided
+    if (
+      visa_status &&
+      !['not_applicable', 'already_has', 'needs_processing'].includes(
+        visa_status
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        error:
+          'Invalid visa_status. Must be one of: not_applicable, already_has, needs_processing',
+      })
+    }
+
+    // Validate visa_type if provided
+    if (
+      visa_type &&
+      ![
+        'Tourist Visa',
+        'Business Visa',
+        'Student Visa',
+        'Fiancee Visa',
+        'Spousal Visa',
+      ].includes(visa_type)
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid visa_type',
+      })
+    }
+
+    // Validate existing_visa_status if provided
+    if (
+      existing_visa_status &&
+      !['valid', 'expiring_soon', 'expired', 'not_specified'].includes(
+        existing_visa_status
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid existing_visa_status',
+      })
+    }
+
+    // Fetch existing booking
+    const { data: existingBooking, error: fetchError } = await supabase
+      .from('tour_bookings')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !existingBooking) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found',
+      })
+    }
+
+    // Parse passenger_details
+    let passengers = []
+    try {
+      passengers =
+        typeof existingBooking.passenger_details === 'string'
+          ? JSON.parse(existingBooking.passenger_details)
+          : existingBooking.passenger_details || []
+    } catch (parseError) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid passenger_details format',
+      })
+    }
+
+    // Validate passenger index exists
+    if (passengerIndex >= passengers.length) {
+      return res.status(400).json({
+        success: false,
+        error: 'Passenger index out of range',
+      })
+    }
+
+    // Update passenger visa fields
+    const passenger = passengers[passengerIndex]
+
+    // Update fields if provided
+    if (visa_status !== undefined) {
+      passenger.visa_status = visa_status
+
+      // Clear dependent fields if visa_status changes away from 'already_has'
+      if (visa_status !== 'already_has') {
+        passenger.visa_type = ''
+        passenger.existing_visa_status = 'not_specified'
+        passenger.visa_expiry_date = ''
+      }
+    }
+
+    if (visa_type !== undefined) {
+      passenger.visa_type = visa_type
+    }
+
+    if (existing_visa_status !== undefined) {
+      passenger.existing_visa_status = existing_visa_status
+
+      // Clear expiry date if status doesn't require it
+      if (
+        existing_visa_status !== 'valid' &&
+        existing_visa_status !== 'expiring_soon'
+      ) {
+        passenger.visa_expiry_date = ''
+      }
+    }
+
+    if (visa_expiry_date !== undefined) {
+      passenger.visa_expiry_date = visa_expiry_date
+    }
+
+    // Update the booking with modified passenger_details
+    const { data: updatedBooking, error: updateError } = await supabase
+      .from('tour_bookings')
+      .update({
+        passenger_details: passengers,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (updateError) {
+      throw updateError
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Passenger visa status updated successfully',
+      data: updatedBooking,
+    })
+  } catch (error) {
+    console.error('Error updating passenger visa status:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    })
+  }
 }

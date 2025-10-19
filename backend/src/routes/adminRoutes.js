@@ -2,71 +2,74 @@ import express from 'express'
 import { adminAuthMiddleware } from '../middlewares/adminAuthMiddleware.js'
 import { pdfAuthMiddleware } from '../middlewares/pdfAuthMiddleware.js'
 import {
-    createTour,
-    deleteTour,
-    getAllTours,
-    getTour,
-    updateTour,
-    updateTourStatus,
-    updateTourVisaSettings,
-    getCountriesWithVisaRequirements,
-    updatePassengerVisaStatus,
+  createTour,
+  deleteTour,
+  getAllTours,
+  getTour,
+  updateTour,
+  updateTourStatus,
+  updateTourVisaSettings,
+  getCountriesWithVisaRequirements,
+  updatePassengerVisaStatus,
 } from '../controllers/admin/tourController.js'
 import { adminLogin } from '../controllers/admin/loginController.js'
 import {
-    createUser,
-    deleteUser,
-    getAdminNotifications,
-    getFlightBookings,
-    getFlightStats,
-    getRevenue,
-    getTourBookings,
-    getTourStats,
-    getUsers,
-    getUserStats,
-    updateUser,
-    backfillNotificationAssignees,
-    resolveBookingByReference,
+  createUser,
+  deleteUser,
+  getAdminNotifications,
+  getFlightBookings,
+  getFlightStats,
+  getRevenue,
+  getTourBookings,
+  getTourStats,
+  getUsers,
+  getUserStats,
+  updateUser,
+  backfillNotificationAssignees,
+  resolveBookingByReference,
+  markNotificationsAsRead,
+  markAllNotificationsAsRead,
+  getUnreadNotificationCount,
 } from '../controllers/admin/dashboardController.js'
 import {
-    generateFlightPDF,
-    generateFlightPDFAdmin,
-    viewFlightBookingHTML,
-    editFlightBooking,
-    cancelFlightBooking,
+  generateFlightPDF,
+  generateFlightPDFAdmin,
+  viewFlightBookingHTML,
+  editFlightBooking,
+  cancelFlightBooking,
 } from '../controllers/admin/flightController.js'
 import {
-    generateTourPDFAdmin,
-    viewTourBookingHTML,
-    editTourBooking,
-    cancelTourBooking,
+  generateTourPDFAdmin,
+  viewTourBookingHTML,
+  editTourBooking,
+  cancelTourBooking,
 } from '../controllers/admin/tourController.js'
 import {
-    getAccountingStaff,
-    getAllStaff,
-    assignTourBooking,
-    assignFlightBooking,
-    updateAssignmentStatus,
-    getAssignedBookings,
-    reassignBooking,
+  getAccountingStaff,
+  getAllStaff,
+  assignTourBooking,
+  assignFlightBooking,
+  updateAssignmentStatus,
+  getAssignedBookings,
+  reassignBooking,
 } from '../controllers/admin/appointmentController.js'
 import {
-    getVisaInquiries,
-    updateVisaInquiryStatus,
-    assignVisaInquiry,
-    updateVisaAssignmentStatus,
-    getAssignedVisaInquiries,
+  getVisaInquiries,
+  updateVisaInquiryStatus,
+  assignVisaInquiry,
+  updateVisaAssignmentStatus,
+  getAssignedVisaInquiries,
 } from '../controllers/visaInquiryController.js'
 import {
-    listInclusionGroups,
-    createInclusionGroup,
-    updateInclusionGroup,
-    deleteInclusionGroup,
-    listInclusionGroupItems,
-    createInclusionGroupItem,
-    updateInclusionGroupItem,
-    deleteInclusionGroupItem,
-    updateFeeRules,
+  listInclusionGroups,
+  createInclusionGroup,
+  updateInclusionGroup,
+  deleteInclusionGroup,
+  listInclusionGroupItems,
+  createInclusionGroupItem,
+  updateInclusionGroupItem,
+  deleteInclusionGroupItem,
+  updateFeeRules,
 } from '../controllers/admin/inclusionGroupController.js'
 
 const router = express.Router()
@@ -78,7 +81,7 @@ router.post('/login', adminLogin)
 router.use(adminAuthMiddleware)
 
 router.get('/me', (req, res) => {
-    res.json({ email: req.user.email, role: req.user.role })
+  res.json({ email: req.user.email, role: req.user.role })
 })
 
 // Tour
@@ -112,8 +115,18 @@ router.get('/dashboard/admin_notifications', getAdminNotifications)
 router.get('/dashboard/resolve', resolveBookingByReference)
 // One-time backfill endpoint
 router.post(
-    '/dashboard/admin_notifications/backfill',
-    backfillNotificationAssignees
+  '/dashboard/admin_notifications/backfill',
+  backfillNotificationAssignees
+)
+// New notification endpoints
+router.post('/dashboard/admin_notifications/mark-read', markNotificationsAsRead)
+router.post(
+  '/dashboard/admin_notifications/mark-all-read',
+  markAllNotificationsAsRead
+)
+router.get(
+  '/dashboard/admin_notifications/unread-count',
+  getUnreadNotificationCount
 )
 router.get('/dashboard/revenue', getRevenue)
 router.get('/dashboard/flight_stats', getFlightStats)
@@ -124,9 +137,9 @@ router.get('/flights/:id/pdf', pdfAuthMiddleware, generateFlightPDF)
 router.get('/flights/:id/pdfadmin', pdfAuthMiddleware, generateFlightPDFAdmin)
 router.get('/flights/:id/html', pdfAuthMiddleware, viewFlightBookingHTML)
 router.get('/flights/:id/print', pdfAuthMiddleware, (req, res) => {
-    // Add mode=print query parameter and delegate to viewFlightBookingHTML
-    req.query.mode = 'print'
-    viewFlightBookingHTML(req, res)
+  // Add mode=print query parameter and delegate to viewFlightBookingHTML
+  req.query.mode = 'print'
+  viewFlightBookingHTML(req, res)
 })
 
 // Flight booking management
@@ -137,9 +150,9 @@ router.put('/flights/:id/cancel', cancelFlightBooking)
 router.get('/tours/:id/pdfadmin', pdfAuthMiddleware, generateTourPDFAdmin)
 router.get('/tours/:id/html', pdfAuthMiddleware, viewTourBookingHTML)
 router.get('/tours/:id/print', pdfAuthMiddleware, (req, res) => {
-    // Add mode=print query parameter and delegate to viewTourBookingHTML
-    req.query.mode = 'print'
-    viewTourBookingHTML(req, res)
+  // Add mode=print query parameter and delegate to viewTourBookingHTML
+  req.query.mode = 'print'
+  viewTourBookingHTML(req, res)
 })
 
 // Tour booking management

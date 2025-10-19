@@ -118,3 +118,6 @@ trabilis.sql
 
 # Logs
 /backend/logs/
+
+#Cursor
+/.cursor

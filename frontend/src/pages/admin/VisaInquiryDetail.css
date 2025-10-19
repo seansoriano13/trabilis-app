@@ -1,0 +1,334 @@
+/* Visa Inquiry Detail Page Styles */
+.visa-inquiry-detail {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  background: #f8f9fa;
+  min-height: 100vh;
+}
+
+.visa-inquiry-detail__loading,
+.visa-inquiry-detail__error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+  color: #6b7280;
+}
+
+.visa-inquiry-detail__loading .loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e5e7eb;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.visa-inquiry-detail__error h2 {
+  margin: 16px 0 8px 0;
+  color: #374151;
+}
+
+.visa-inquiry-detail__error p {
+  margin-bottom: 24px;
+  color: #6b7280;
+}
+
+/* Header */
+.visa-inquiry-detail__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.visa-inquiry-detail__header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.visa-inquiry-detail__back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6b7280;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.visa-inquiry-detail__back-btn:hover {
+  color: #3b82f6;
+}
+
+.visa-inquiry-detail__title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.visa-inquiry-detail__title h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.visa-inquiry-detail__header-right {
+  display: flex;
+  gap: 12px;
+}
+
+/* Status Section */
+.visa-inquiry-detail__status-section {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.visa-inquiry-detail__status,
+.visa-inquiry-detail__assignment {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.visa-inquiry-detail__status label,
+.visa-inquiry-detail__assignment label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.visa-inquiry-detail__status-select {
+  min-width: 200px;
+}
+
+.visa-inquiry-detail__assigned-staff {
+  padding: 8px 12px;
+  background: #f3f4f6;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #374151;
+}
+
+/* Content */
+.visa-inquiry-detail__content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.visa-inquiry-detail__section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.visa-inquiry-detail__section h2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+/* Info Grid */
+.visa-inquiry-detail__info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.visa-inquiry-detail__info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.visa-inquiry-detail__info-item label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.visa-inquiry-detail__info-item span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  color: #374151;
+  padding: 8px 0;
+}
+
+/* Additional Info */
+.visa-inquiry-detail__additional-info {
+  background: #f9fafb;
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
+}
+
+.visa-inquiry-detail__additional-info p {
+  margin: 0;
+  line-height: 1.6;
+  color: #374151;
+}
+
+/* Timeline */
+.visa-inquiry-detail__timeline {
+  position: relative;
+  padding-left: 24px;
+}
+
+.visa-inquiry-detail__timeline::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #e5e7eb;
+}
+
+.visa-inquiry-detail__timeline-item {
+  position: relative;
+  margin-bottom: 24px;
+  display: flex;
+  gap: 16px;
+}
+
+.visa-inquiry-detail__timeline-icon {
+  position: absolute;
+  left: -20px;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  background: #3b82f6;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.visa-inquiry-detail__timeline-content h4 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.visa-inquiry-detail__timeline-content p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .visa-inquiry-detail {
+    padding: 16px;
+  }
+
+  .visa-inquiry-detail__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .visa-inquiry-detail__status-section {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .visa-inquiry-detail__info-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .visa-inquiry-detail__timeline {
+    padding-left: 16px;
+  }
+
+  .visa-inquiry-detail__timeline::before {
+    left: 8px;
+  }
+
+  .visa-inquiry-detail__timeline-icon {
+    left: -12px;
+    width: 20px;
+    height: 20px;
+  }
+}
