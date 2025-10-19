@@ -14,7 +14,7 @@ const useUnsavedChanges = (originalData, currentData, options = {}) => {
     const {
         enabled = true,
         comparisonFn = (a, b) => JSON.stringify(a) === JSON.stringify(b),
-        trackBeforeUnload = true
+        trackBeforeUnload = true,
     } = options
 
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
@@ -37,13 +37,18 @@ const useUnsavedChanges = (originalData, currentData, options = {}) => {
         if (!enabled || !trackBeforeUnload || !hasUnsavedChanges) return
 
         const handleBeforeUnload = (event) => {
-            event.preventDefault()
-            event.returnValue = 'You have unsaved changes. Are you sure you want to leave?'
-            return event.returnValue
+            // Only show the warning if we're not in the middle of a form submission
+            if (hasUnsavedChanges) {
+                event.preventDefault()
+                event.returnValue =
+                    'You have unsaved changes. Are you sure you want to leave?'
+                return event.returnValue
+            }
         }
 
         window.addEventListener('beforeunload', handleBeforeUnload)
-        return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+        return () =>
+            window.removeEventListener('beforeunload', handleBeforeUnload)
     }, [enabled, trackBeforeUnload, hasUnsavedChanges])
 
     // Reset unsaved changes state
@@ -89,7 +94,7 @@ const useUnsavedChanges = (originalData, currentData, options = {}) => {
         confirmNavigation,
         isNavigating,
         handleNavigationConfirm,
-        handleNavigationCancel
+        handleNavigationCancel,
     }
 }
 

@@ -20,6 +20,7 @@ import FlightBooking from './pages/client/FlightBooking'
 import Modal from 'react-modal'
 import PassengerDetails from './pages/client/PassengerDetails'
 import FlightBookingSuccess from './pages/client/FlightBookingSuccess'
+import FlightBookingCancel from './pages/client/FlightBookingCancel'
 import AdminLogin from './pages/admin/Login'
 import AdminProtectedLayout from './layouts/AdminLayout'
 import TourPackages from './pages/admin/TourPackages'
@@ -34,6 +35,7 @@ import AdminTours from './pages/admin/AdminTour'
 import AdminUsers from './pages/admin/AdminUsers'
 import AdminVisa from './pages/admin/AdminVisa'
 import TrackBooking from './pages/client/TrackBooking'
+import CancelBooking from './pages/CancelBooking'
 import VisaProcessingSuccess from './pages/client/VisaProcessingSuccess'
 import FlightBookingDetail from './pages/admin/FlightBookingDetail'
 import TourBookingDetail from './pages/admin/TourBookingDetail'
@@ -58,147 +60,151 @@ function App() {
     return (
         <AirportProvider>
             <AirlinesProvider>
-                    <Router>
+                <Router>
                     <Routes>
-                {/* CLient Routes */}
-                <Route
-                    path='/'
-                    element={<ClientLayout />}
-                >
-                    <Route
-                        index
-                        element={<Home />}
-                    />
-                    <Route
-                        path='track-booking'
-                        element={<TrackBooking />}
-                    />
-                    <Route
-                        path='visa-processing-success'
-                        element={<VisaProcessingSuccess />}
-                    />
-                    <Route
-                        path='destinations'
-                        element={<Destinations />}
-                    />
-                    <Route
-                        path='destinations/tour/:id'
-                        element={<Tour />}
-                    />
-                    <Route
-                        path='destinations/tour/:id/booking/'
-                        element={<TourBooking />}
-                    />
-                    <Route
-                        path='tour/booking/success'
-                        element={<TourBookingSuccess />}
-                    />
-                    <Route
-                        path='tour/booking/cancel'
-                        element={<TourBookingCancel />}
-                    />
-                    <Route
-                        path='immigration-visa-consultancy'
-                        element={<ImmigrationVisaConsultancy />}
-                    />
-                    <Route
-                        path='flights'
-                        element={<Flights />}
-                    />
-                    <Route
-                        path='flights/search-result'
-                        element={<FlightSearchResults />}
-                    />
-                    <Route
-                        path='flights/booking/:id'
-                        element={<FlightBooking />}
-                    />
-                    <Route
-                        path='flights/passenger-details/:id'
-                        element={<PassengerDetails />}
-                    />
-                    <Route
-                        path='flight-booking/success'
-                        element={<FlightBookingSuccess />}
-                    />
-                    <Route
-                        path='flight-booking/cancel'
-                        element={<FlightBookingSuccess />}
-                    />
-                    <Route
-                        path='about-us'
-                        element={<AboutUs />}
-                    />
-                    <Route
-                        path='contact-us'
-                        element={<ContactUs />}
-                    />
-                </Route>
-
-                {/* Admin Routes */}
-                <Route
-                    path='/admin/login'
-                    element={<AdminLogin />}
-                />
-
-                <Route
-                    path='/admin'
-                    element={<AdminProtectedRoute />}
-                >
-                    <Route element={<AdminProtectedLayout />}>
+                        {/* CLient Routes */}
                         <Route
-                            index
-                            element={
-                                <Navigate
-                                    to='/admin/dashboard'
-                                    replace
+                            path='/'
+                            element={<ClientLayout />}
+                        >
+                            <Route
+                                index
+                                element={<Home />}
+                            />
+                            <Route
+                                path='track-booking'
+                                element={<TrackBooking />}
+                            />
+                            <Route
+                                path='cancel-booking'
+                                element={<CancelBooking />}
+                            />
+                            <Route
+                                path='visa-processing-success'
+                                element={<VisaProcessingSuccess />}
+                            />
+                            <Route
+                                path='destinations'
+                                element={<Destinations />}
+                            />
+                            <Route
+                                path='destinations/tour/:id'
+                                element={<Tour />}
+                            />
+                            <Route
+                                path='destinations/tour/:id/booking/'
+                                element={<TourBooking />}
+                            />
+                            <Route
+                                path='tour/booking/success'
+                                element={<TourBookingSuccess />}
+                            />
+                            <Route
+                                path='tour/booking/cancel'
+                                element={<TourBookingCancel />}
+                            />
+                            <Route
+                                path='immigration-visa-consultancy'
+                                element={<ImmigrationVisaConsultancy />}
+                            />
+                            <Route
+                                path='flights'
+                                element={<Flights />}
+                            />
+                            <Route
+                                path='flights/search-result'
+                                element={<FlightSearchResults />}
+                            />
+                            <Route
+                                path='flights/booking/:id'
+                                element={<FlightBooking />}
+                            />
+                            <Route
+                                path='flights/passenger-details/:id'
+                                element={<PassengerDetails />}
+                            />
+                            <Route
+                                path='flight-booking/success'
+                                element={<FlightBookingSuccess />}
+                            />
+                            <Route
+                                path='flight-booking/cancel'
+                                element={<FlightBookingCancel />}
+                            />
+                            <Route
+                                path='about-us'
+                                element={<AboutUs />}
+                            />
+                            <Route
+                                path='contact-us'
+                                element={<ContactUs />}
+                            />
+                        </Route>
+
+                        {/* Admin Routes */}
+                        <Route
+                            path='/admin/login'
+                            element={<AdminLogin />}
+                        />
+
+                        <Route
+                            path='/admin'
+                            element={<AdminProtectedRoute />}
+                        >
+                            <Route element={<AdminProtectedLayout />}>
+                                <Route
+                                    index
+                                    element={
+                                        <Navigate
+                                            to='/admin/dashboard'
+                                            replace
+                                        />
+                                    }
                                 />
-                            }
-                        />
-                        <Route
-                            path='dashboard'
-                            element={<Dashboard />}
-                        />
-                        <Route
-                            path='tours'
-                            element={<TourPackages />}
-                        />
-                        <Route
-                            path='tours/create'
-                            element={<CreateTourPackage />}
-                        />
-                        <Route
-                            path='tours/:id'
-                            element={<EditTourPackage />}
-                        />
-                        <Route
-                            path='tour-sales'
-                            element={<AdminTours />}
-                        />
-                        <Route
-                            path='tour-sales/:id'
-                            element={<TourBookingDetail />}
-                        />
-                        <Route
-                            path='flights'
-                            element={<AdminFlights />}
-                        />
-                        <Route
-                            path='flights/:id'
-                            element={<FlightBookingDetail />}
-                        />
-                        <Route
-                            path='users'
-                            element={<AdminUsers />}
-                        />
-                        <Route
-                            path='visa-inquiries'
-                            element={<AdminVisa />}
-                        />
-                    </Route>
-                </Route>
+                                <Route
+                                    path='dashboard'
+                                    element={<Dashboard />}
+                                />
+                                <Route
+                                    path='tours'
+                                    element={<TourPackages />}
+                                />
+                                <Route
+                                    path='tours/create'
+                                    element={<CreateTourPackage />}
+                                />
+                                <Route
+                                    path='tours/:id'
+                                    element={<EditTourPackage />}
+                                />
+                                <Route
+                                    path='tour-sales'
+                                    element={<AdminTours />}
+                                />
+                                <Route
+                                    path='tour-sales/:id'
+                                    element={<TourBookingDetail />}
+                                />
+                                <Route
+                                    path='flights'
+                                    element={<AdminFlights />}
+                                />
+                                <Route
+                                    path='flights/:id'
+                                    element={<FlightBookingDetail />}
+                                />
+                                <Route
+                                    path='users'
+                                    element={<AdminUsers />}
+                                />
+                                <Route
+                                    path='visa-inquiries'
+                                    element={<AdminVisa />}
+                                />
+                            </Route>
+                        </Route>
                     </Routes>
-                    </Router>
+                </Router>
             </AirlinesProvider>
         </AirportProvider>
     )
