@@ -32,7 +32,9 @@
 }
 
 .radio-input label {
-    transition: background-color 0.15s ease, color 0.15s ease;
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease;
 }
 
 .radio-input label:has(input:checked) {
@@ -73,4 +75,29 @@
 .flight-card .status.arrived {
     color: #fff;
     background-color: #15803d; /* darker green */
+}
+
+.flight-card .status.booked {
+    color: #fff;
+    background-color: #0891b2; /* cyan-600 */
+}
+
+.flight-card .status.paid_pending_booking {
+    color: #fff;
+    background-color: #6b7280; /* gray-500 */
+}
+
+.flight-card .status.pending_payment {
+    color: #fff;
+    background-color: #d97706; /* amber-600 */
+}
+
+.flight-card .status.ticketed {
+    color: #fff;
+    background-color: #16a34a; /* green-600 */
+}
+
+.flight-card .status.cancelled {
+    color: #fff;
+    background-color: #dc2626; /* red-600 */
 }

@@ -66,7 +66,7 @@ function FlightBookingSuccess() {
             intervalId = setInterval(async () => {
                 // Stop polling if terminal state
                 const status = bookingDetails?.status
-                if (status === 'TICKETED' || status?.includes('FAILED')) {
+                if (status === 'PENDING_TICKETING' || status?.includes('FAILED')) {
                     clearInterval(intervalId)
                     return
                 }
@@ -110,7 +110,7 @@ function FlightBookingSuccess() {
             }
         }
 
-        if (bookingDetails?.status === 'TICKETED') {
+        if (bookingDetails?.status === 'PENDING_TICKETING') {
             return {
                 icon: 'bi-check2-circle text-6xl text-green-500',
                 title: 'Booking Confirmed!',
@@ -182,7 +182,7 @@ function FlightBookingSuccess() {
                                     Status
                                 </span>
                                 <span className={`px-3 py-1.5 rounded-full text-sm font-semibold ${
-                                    bookingDetails.status === 'TICKETED'
+                                    bookingDetails.status === 'PENDING_TICKETING'
                                         ? 'bg-green-100 text-green-800 border border-green-200'
                                         : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
                                 }`}>
