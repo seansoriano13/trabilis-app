@@ -1,10 +1,11 @@
 import express from 'express'
-import { 
-    getAirline, 
-    getAircraft, 
-    getAllAircraft, 
+import {
+    getAirline,
+    getAircraft,
+    getAllAircraft,
     getAircraftOptionsEndpoint,
-    getAllAirlines
+    getAllAirlines,
+    getAirport,
 } from '../controllers/metadataController.js'
 
 const router = express.Router()
@@ -17,5 +18,8 @@ router.get('/airlines/all', getAllAirlines)
 router.get('/aircraft', getAircraft)
 router.get('/aircraft/all', getAllAircraft)
 router.get('/aircraft/options', getAircraftOptionsEndpoint)
+
+// Airport endpoints
+router.get('/airport/:iata', getAirport)
 
 export default router

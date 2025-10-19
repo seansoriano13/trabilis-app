@@ -4,5 +4,6 @@ export const getAirportInfoByIata = (iata, airports) => {
     return {
         city: a?.city || iata,
         name: cleanName,
+        country: a?.country || 'Unknown',
     }
 }

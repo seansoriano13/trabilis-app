@@ -1,5 +1,5 @@
 import express from 'express'
-import { adminAuthMiddleware } from '../middlewares/adminAuthMIddleware.js'
+import { adminAuthMiddleware } from '../middlewares/adminAuthMiddleware.js'
 import { pdfAuthMiddleware } from '../middlewares/pdfAuthMiddleware.js'
 import {
     createTour,

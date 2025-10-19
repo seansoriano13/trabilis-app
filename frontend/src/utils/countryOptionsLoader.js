@@ -30,7 +30,7 @@ const VISA_REQUIRED_COUNTRIES = [
     'Spain',
     'Sweden',
     'Switzerland',
-    
+
     // Other countries requiring visas
     'Argentina',
     'Australia',
@@ -67,17 +67,17 @@ const VISA_REQUIRED_COUNTRIES = [
     'United Arab Emirates',
     'United Kingdom',
     'United States',
-    'Vietnam'
+    'Vietnam',
 ]
 
 // Transform country codes to react-select format
 const transformCountries = (countries) => {
-    return countries.map(country => ({
+    return countries.map((country) => ({
         value: country.name,
         label: country.name,
         code: country.code,
         dial_code: country.dial_code,
-        requiresVisa: VISA_REQUIRED_COUNTRIES.includes(country.name)
+        requiresVisa: VISA_REQUIRED_COUNTRIES.includes(country.name),
     }))
 }
 
@@ -90,7 +90,7 @@ export const loadAllCountries = () => {
 export const loadCountryOptions = (inputValue) => {
     return new Promise((resolve) => {
         setTimeout(() => {
-            const filteredCountries = countryCodes.filter(country =>
+            const filteredCountries = countryCodes.filter((country) =>
                 country.name.toLowerCase().includes(inputValue.toLowerCase())
             )
             resolve(transformCountries(filteredCountries))
@@ -105,7 +105,21 @@ export const checkVisaRequirement = (countryName) => {
 
 // Get country by name
 export const getCountryByName = (countryName) => {
-    return countryCodes.find(country => country.name === countryName)
+    return countryCodes.find((country) => country.name === countryName)
+}
+
+// Get country name by code
+export const getCountryNameByCode = (countryCode) => {
+    const country = countryCodes.find((country) => country.code === countryCode)
+    return country ? country.name : countryCode
+}
+
+// Get country name by code (case insensitive)
+export const getCountryNameByCodeIgnoreCase = (countryCode) => {
+    const country = countryCodes.find(
+        (country) => country.code.toLowerCase() === countryCode.toLowerCase()
+    )
+    return country ? country.name : countryCode
 }
 
 // Export visa required countries
@@ -113,8 +127,8 @@ export { VISA_REQUIRED_COUNTRIES }
 
 // Get visa required country options for react-select
 export const getVisaRequiredCountryOptions = () => {
-    return VISA_REQUIRED_COUNTRIES.map(countryName => ({
+    return VISA_REQUIRED_COUNTRIES.map((countryName) => ({
         value: countryName,
-        label: countryName
+        label: countryName,
     })).sort((a, b) => a.label.localeCompare(b.label))
 }
