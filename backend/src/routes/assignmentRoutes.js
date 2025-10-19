@@ -1,12 +1,12 @@
 // assignmentRoutes.js
 import express from 'express'
-import { adminAuthMiddleware } from '../middlewares/adminAuthMIddleware.js'
+import { adminAuthMiddleware } from '../middlewares/adminAuthMiddleware.js'
 import {
     assignBooking,
     updateAssignmentStatus,
     getStaffAssignments,
     getAssignmentStatistics,
-    reassignBooking
+    reassignBooking,
 } from '../controllers/admin/assignmentController.js'
 
 const router = express.Router()

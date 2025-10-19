@@ -10,6 +10,8 @@ import {
     testFailureEmail,
     testTourFailureEmail,
     testVisaInquiryEmail,
+    testCancellationVerificationEmail,
+    testBrevoApi,
     debugFlightEmail,
     debugBookingStatus,
     debugWebhookUpdate,
@@ -31,6 +33,11 @@ router.post('/email/tour-confirmation', testTourConfirmationEmail)
 router.post('/email/flight-failure', testFailureEmail)
 router.post('/email/tour-failure', testTourFailureEmail)
 router.post('/email/visa-inquiry', testVisaInquiryEmail)
+router.post(
+    '/email/cancellation-verification',
+    testCancellationVerificationEmail
+)
+router.post('/email/brevo-test', testBrevoApi)
 
 // Debug routes
 router.get('/debug/flight-email', debugFlightEmail)
@@ -38,6 +45,5 @@ router.get('/debug/booking-status', debugBookingStatus)
 router.get('/debug/webhook-update', debugWebhookUpdate)
 router.get('/debug/amadeus-api', debugAmadeusAPI)
 router.get('/debug/finalization', debugFinalization)
-
 
 export default router

@@ -7,7 +7,9 @@ import {
     sendFailureEmail,
     sendTourFailureEmail,
     sendVisaInquiryConfirmationEmail,
+    sendCancellationVerificationEmail,
 } from '../services/brevoEmailService.js'
+import brevo from '@getbrevo/brevo'
 import { mockFlightOffers } from '../mock/flightResultMockData.js'
 import Pusher from 'pusher'
 import { query } from '../config/db.js'
@@ -182,23 +184,33 @@ export const generateRealPDF = async (req, res) => {
         if (!bookingReference) {
             return res.status(400).json({
                 error: 'Missing bookingReference query parameter',
-                message: 'Please provide a booking reference as a query parameter: ?bookingReference=YOUR_REFERENCE'
+                message:
+                    'Please provide a booking reference as a query parameter: ?bookingReference=YOUR_REFERENCE',
             })
         }
 
-        console.log(`🔍 Fetching booking data for reference: ${bookingReference}`)
+        console.log(
+            `🔍 Fetching booking data for reference: ${bookingReference}`
+        )
 
         // Get real booking data from database
-        const bookingDetails = await getBookingByBookingReference(bookingReference)
-        
-        console.log(`✅ Booking data retrieved successfully for: ${bookingReference}`)
+        const bookingDetails =
+            await getBookingByBookingReference(bookingReference)
+
+        console.log(
+            `✅ Booking data retrieved successfully for: ${bookingReference}`
+        )
         console.log(`📊 Booking status: ${bookingDetails.status}`)
-        console.log(`👥 Number of passengers: ${bookingDetails.passenger_details?.travelers?.length || 0}`)
+        console.log(
+            `👥 Number of passengers: ${bookingDetails.passenger_details?.travelers?.length || 0}`
+        )
 
         // Generate PDF using real data
         const pdfBuffer = await generateFlightItineraryPDF(bookingDetails)
 
-        console.log(`📄 PDF generated successfully. Size: ${pdfBuffer.length} bytes`)
+        console.log(
+            `📄 PDF generated successfully. Size: ${pdfBuffer.length} bytes`
+        )
 
         // Set response headers for PDF download
         res.setHeader('Content-Type', 'application/pdf')
@@ -215,7 +227,7 @@ export const generateRealPDF = async (req, res) => {
         res.status(500).json({
             error: 'Failed to generate PDF',
             details: error.message,
-            message: 'Make sure the booking reference exists in the database'
+            message: 'Make sure the booking reference exists in the database',
         })
     }
 }
@@ -223,7 +235,7 @@ export const generateRealPDF = async (req, res) => {
 export const listBookingReferences = async (req, res) => {
     try {
         const { limit = 10 } = req.query
-        
+
         // Get recent flight booking references
         const result = await query(
             `SELECT booking_reference, status, updated_at, passenger_details
@@ -233,18 +245,18 @@ export const listBookingReferences = async (req, res) => {
             [parseInt(limit)]
         )
 
-         const bookings = result.rows.map(row => {
-             const passengerDetails = row.passenger_details
-             const firstTraveler = passengerDetails?.travelers?.[0]
-             const firstName = firstTraveler?.name?.firstName || 'N/A'
-             const lastName = firstTraveler?.name?.lastName || 'N/A'
-             return {
-                 booking_reference: row.booking_reference,
-                 status: row.status,
-                 updated_at: row.updated_at,
-                 passenger_name: `${firstName} ${lastName}`.trim()
-             }
-         })
+        const bookings = result.rows.map((row) => {
+            const passengerDetails = row.passenger_details
+            const firstTraveler = passengerDetails?.travelers?.[0]
+            const firstName = firstTraveler?.name?.firstName || 'N/A'
+            const lastName = firstTraveler?.name?.lastName || 'N/A'
+            return {
+                booking_reference: row.booking_reference,
+                status: row.status,
+                updated_at: row.updated_at,
+                passenger_name: `${firstName} ${lastName}`.trim(),
+            }
+        })
 
         res.json({
             success: true,
@@ -252,14 +264,14 @@ export const listBookingReferences = async (req, res) => {
             data: bookings,
             instructions: {
                 test_pdf: `GET /api/test/real-pdf?bookingReference=YOUR_REFERENCE`,
-                example: `GET /api/test/real-pdf?bookingReference=${bookings[0]?.booking_reference || 'TRB-FLT-XXXXXXXX'}`
-            }
+                example: `GET /api/test/real-pdf?bookingReference=${bookings[0]?.booking_reference || 'TRB-FLT-XXXXXXXX'}`,
+            },
         })
     } catch (error) {
         console.error('❌ Error fetching booking references:', error)
         res.status(500).json({
             error: 'Failed to fetch booking references',
-            details: error.message
+            details: error.message,
         })
     }
 }
@@ -273,21 +285,24 @@ export const testFlightConfirmationEmail = async (req, res) => {
         if (!bookingReference) {
             return res.status(400).json({
                 error: 'Missing bookingReference in request body',
-                message: 'Please provide a booking reference to test with'
+                message: 'Please provide a booking reference to test with',
             })
         }
 
-        console.log(`📧 Testing flight confirmation email for booking: ${bookingReference}`)
+        console.log(
+            `📧 Testing flight confirmation email for booking: ${bookingReference}`
+        )
 
         // Get real booking data
-        const bookingDetails = await getBookingByBookingReference(bookingReference)
-        
+        const bookingDetails =
+            await getBookingByBookingReference(bookingReference)
+
         // If testEmail is provided, temporarily override the customer email
         if (testEmail) {
             if (bookingDetails.passenger_details?.travelers?.[0]) {
                 bookingDetails.passenger_details.travelers[0].contact = {
                     ...bookingDetails.passenger_details.travelers[0].contact,
-                    emailAddress: testEmail
+                    emailAddress: testEmail,
                 }
             }
         }
@@ -299,9 +314,12 @@ export const testFlightConfirmationEmail = async (req, res) => {
             message: '✅ Flight confirmation email sent successfully!',
             details: {
                 bookingReference,
-                recipientEmail: testEmail || bookingDetails.passenger_details?.travelers?.[0]?.contact?.emailAddress,
-                emailType: 'Flight Confirmation'
-            }
+                recipientEmail:
+                    testEmail ||
+                    bookingDetails.passenger_details?.travelers?.[0]?.contact
+                        ?.emailAddress,
+                emailType: 'Flight Confirmation',
+            },
         })
     } catch (err) {
         console.error('❌ Flight confirmation email test failed:', err)
@@ -319,7 +337,7 @@ export const testTourConfirmationEmail = async (req, res) => {
         if (!testEmail) {
             return res.status(400).json({
                 error: 'Missing testEmail in request body',
-                message: 'Please provide a test email address'
+                message: 'Please provide a test email address',
             })
         }
 
@@ -340,22 +358,24 @@ export const testTourConfirmationEmail = async (req, res) => {
                     name: { firstName: 'John', lastName: 'Doe' },
                     type: 'Adult',
                     contact: { emailAddress: testEmail },
-                    dateOfBirth: '1990-01-15'
+                    dateOfBirth: '1990-01-15',
                 },
                 {
                     name: { firstName: 'Jane', lastName: 'Doe' },
                     type: 'Adult',
                     contact: { emailAddress: testEmail },
-                    dateOfBirth: '1992-05-20'
-                }
+                    dateOfBirth: '1992-05-20',
+                },
             ],
             amount: '₱25,000.00',
             status: 'CONFIRMED',
-            inclusions: 'Hotel accommodation, meals, transportation, guided tours',
+            inclusions:
+                'Hotel accommodation, meals, transportation, guided tours',
             exclusions: 'Personal expenses, optional activities',
-            itinerary: 'Day 1: Arrival and city tour\nDay 2: Historical sites visit\nDay 3: Cultural experience\nDay 4: Free day\nDay 5: Departure',
+            itinerary:
+                'Day 1: Arrival and city tour\nDay 2: Historical sites visit\nDay 3: Cultural experience\nDay 4: Free day\nDay 5: Departure',
             requirements: 'Valid passport, travel insurance',
-            paymentTerms: 'Full payment required 30 days before departure'
+            paymentTerms: 'Full payment required 30 days before departure',
         }
 
         await sendTourConfirmationEmail(mockTourBooking)
@@ -366,8 +386,8 @@ export const testTourConfirmationEmail = async (req, res) => {
             details: {
                 recipientEmail: testEmail,
                 tourTitle: tourTitle,
-                emailType: 'Tour Confirmation'
-            }
+                emailType: 'Tour Confirmation',
+            },
         })
     } catch (err) {
         console.error('❌ Tour confirmation email test failed:', err)
@@ -385,7 +405,7 @@ export const testFailureEmail = async (req, res) => {
         if (!testEmail) {
             return res.status(400).json({
                 error: 'Missing testEmail in request body',
-                message: 'Please provide a test email address'
+                message: 'Please provide a test email address',
             })
         }
 
@@ -401,8 +421,8 @@ export const testFailureEmail = async (req, res) => {
                 destination: 'LAX',
                 departureDate: '2024-02-15',
                 returnDate: '2024-02-22',
-                passengers: 2
-            }
+                passengers: 2,
+            },
         }
 
         await sendFailureEmail(failureData)
@@ -413,8 +433,8 @@ export const testFailureEmail = async (req, res) => {
             details: {
                 recipientEmail: testEmail,
                 bookingReference: bookingReference,
-                emailType: 'Flight Failure'
-            }
+                emailType: 'Flight Failure',
+            },
         })
     } catch (err) {
         console.error('❌ Flight failure email test failed:', err)
@@ -432,7 +452,7 @@ export const testTourFailureEmail = async (req, res) => {
         if (!testEmail) {
             return res.status(400).json({
                 error: 'Missing testEmail in request body',
-                message: 'Please provide a test email address'
+                message: 'Please provide a test email address',
             })
         }
 
@@ -442,7 +462,7 @@ export const testTourFailureEmail = async (req, res) => {
             email: testEmail,
             firstName: 'John',
             lastName: 'Doe',
-            bookingReference: bookingReference
+            bookingReference: bookingReference,
         }
 
         await sendTourFailureEmail(failureData)
@@ -453,8 +473,8 @@ export const testTourFailureEmail = async (req, res) => {
             details: {
                 recipientEmail: testEmail,
                 bookingReference: bookingReference,
-                emailType: 'Tour Failure'
-            }
+                emailType: 'Tour Failure',
+            },
         })
     } catch (err) {
         console.error('❌ Tour failure email test failed:', err)
@@ -467,16 +487,22 @@ export const testTourFailureEmail = async (req, res) => {
 
 export const testVisaInquiryEmail = async (req, res) => {
     try {
-        const { testEmail, visaType = 'Tourist Visa', destination = 'United States' } = req.body
+        const {
+            testEmail,
+            visaType = 'Tourist Visa',
+            destination = 'United States',
+        } = req.body
 
         if (!testEmail) {
             return res.status(400).json({
                 error: 'Missing testEmail in request body',
-                message: 'Please provide a test email address'
+                message: 'Please provide a test email address',
             })
         }
 
-        console.log(`📧 Testing visa inquiry confirmation email to: ${testEmail}`)
+        console.log(
+            `📧 Testing visa inquiry confirmation email to: ${testEmail}`
+        )
 
         const inquiryData = {
             inquiryReference: 'VISA-INQ-TEST123',
@@ -484,7 +510,8 @@ export const testVisaInquiryEmail = async (req, res) => {
             destination: destination,
             full_name: 'John Doe',
             email_address: testEmail,
-            message: 'I am interested in applying for a tourist visa to visit the United States. Could you please provide me with information about the requirements and process?'
+            message:
+                'I am interested in applying for a tourist visa to visit the United States. Could you please provide me with information about the requirements and process?',
         }
 
         await sendVisaInquiryConfirmationEmail(inquiryData)
@@ -497,8 +524,8 @@ export const testVisaInquiryEmail = async (req, res) => {
                 inquiryReference: inquiryData.inquiryReference,
                 visaType: visaType,
                 destination: destination,
-                emailType: 'Visa Inquiry Confirmation'
-            }
+                emailType: 'Visa Inquiry Confirmation',
+            },
         })
     } catch (err) {
         console.error('❌ Visa inquiry email test failed:', err)
@@ -516,11 +543,13 @@ export const debugFlightEmail = async (req, res) => {
         if (!bookingReference) {
             return res.status(400).json({
                 error: 'Missing bookingReference query parameter',
-                message: 'Please provide a booking reference to debug'
+                message: 'Please provide a booking reference to debug',
             })
         }
 
-        console.log(`🔍 Debugging flight email for booking: ${bookingReference}`)
+        console.log(
+            `🔍 Debugging flight email for booking: ${bookingReference}`
+        )
 
         // Step 1: Check if booking exists
         const { data: booking, error: bookingError } = await supabase
@@ -532,7 +561,9 @@ export const debugFlightEmail = async (req, res) => {
         if (bookingError || !booking) {
             return res.status(404).json({
                 error: 'Booking not found',
-                details: bookingError?.message || 'No booking found with that reference'
+                details:
+                    bookingError?.message ||
+                    'No booking found with that reference',
             })
         }
 
@@ -540,12 +571,13 @@ export const debugFlightEmail = async (req, res) => {
 
         // Step 2: Check passenger details
         const passengerDetails = booking.passenger_details
-        const customerEmail = passengerDetails?.travelers?.[0]?.contact?.emailAddress
+        const customerEmail =
+            passengerDetails?.travelers?.[0]?.contact?.emailAddress
 
         if (!customerEmail) {
             return res.status(400).json({
                 error: 'No customer email found',
-                details: 'Passenger details missing or invalid email address'
+                details: 'Passenger details missing or invalid email address',
             })
         }
 
@@ -554,14 +586,16 @@ export const debugFlightEmail = async (req, res) => {
         // Step 3: Check which email service is being used
         console.log(`🔍 Email service check:`)
         console.log(`- BREVO_API_KEY exists: ${!!process.env.BREVO_API_KEY}`)
-        console.log(`- GMAIL_SMTP_FROM exists: ${!!process.env.GMAIL_SMTP_FROM}`)
+        console.log(
+            `- GMAIL_SMTP_FROM exists: ${!!process.env.GMAIL_SMTP_FROM}`
+        )
         console.log(`- BREVO_FROM_EMAIL: ${process.env.BREVO_FROM_EMAIL}`)
 
         // Step 4: Try to send email
         try {
             await sendConfirmationEmail(bookingReference)
             console.log(`✅ Email sent successfully to ${customerEmail}`)
-            
+
             res.status(200).json({
                 success: true,
                 message: '✅ Flight confirmation email sent successfully!',
@@ -573,9 +607,11 @@ export const debugFlightEmail = async (req, res) => {
                     emailService: {
                         brevoApiKey: !!process.env.BREVO_API_KEY,
                         gmailSmtp: !!process.env.GMAIL_SMTP_FROM,
-                        fromEmail: process.env.BREVO_FROM_EMAIL || process.env.GMAIL_SMTP_FROM
-                    }
-                }
+                        fromEmail:
+                            process.env.BREVO_FROM_EMAIL ||
+                            process.env.GMAIL_SMTP_FROM,
+                    },
+                },
             })
         } catch (emailError) {
             console.error('❌ Email sending failed:', emailError)
@@ -588,11 +624,12 @@ export const debugFlightEmail = async (req, res) => {
                 emailService: {
                     brevoApiKey: !!process.env.BREVO_API_KEY,
                     gmailSmtp: !!process.env.GMAIL_SMTP_FROM,
-                    fromEmail: process.env.BREVO_FROM_EMAIL || process.env.GMAIL_SMTP_FROM
-                }
+                    fromEmail:
+                        process.env.BREVO_FROM_EMAIL ||
+                        process.env.GMAIL_SMTP_FROM,
+                },
             })
         }
-
     } catch (err) {
         console.error('❌ Debug failed:', err)
         res.status(500).json({
@@ -609,7 +646,7 @@ export const debugBookingStatus = async (req, res) => {
         if (!bookingReference) {
             return res.status(400).json({
                 error: 'Missing bookingReference query parameter',
-                message: 'Please provide a booking reference to debug'
+                message: 'Please provide a booking reference to debug',
             })
         }
 
@@ -624,21 +661,25 @@ export const debugBookingStatus = async (req, res) => {
         if (bookingError) {
             return res.status(500).json({
                 error: 'Database error',
-                details: bookingError.message
+                details: bookingError.message,
             })
         }
 
         if (!bookings || bookings.length === 0) {
             return res.status(404).json({
                 error: 'Booking not found',
-                message: `No booking found with reference: ${bookingReference}`
+                message: `No booking found with reference: ${bookingReference}`,
             })
         }
 
         // Check if any booking is in PENDING_PAYMENT status
-        const pendingBookings = bookings.filter(b => b.status === 'PENDING_PAYMENT')
-        const paidBookings = bookings.filter(b => b.status === 'PAID_PENDING_TICKETING')
-        const ticketedBookings = bookings.filter(b => b.status === 'TICKETED')
+        const pendingBookings = bookings.filter(
+            (b) => b.status === 'PENDING_PAYMENT'
+        )
+        const paidBookings = bookings.filter(
+            (b) => b.status === 'PAID_PENDING_TICKETING'
+        )
+        const ticketedBookings = bookings.filter((b) => b.status === 'TICKETED')
 
         res.status(200).json({
             success: true,
@@ -650,20 +691,24 @@ export const debugBookingStatus = async (req, res) => {
                     PENDING_PAYMENT: pendingBookings.length,
                     PAID_PENDING_TICKETING: paidBookings.length,
                     TICKETED: ticketedBookings.length,
-                    other: bookings.length - pendingBookings.length - paidBookings.length - ticketedBookings.length
+                    other:
+                        bookings.length -
+                        pendingBookings.length -
+                        paidBookings.length -
+                        ticketedBookings.length,
                 },
-                allStatuses: bookings.map(b => ({
+                allStatuses: bookings.map((b) => ({
                     id: b.id,
                     status: b.status,
                     created_at: b.created_at,
-                    updated_at: b.updated_at
+                    updated_at: b.updated_at,
                 })),
-                webhookIssue: pendingBookings.length === 0 ? 
-                    'No bookings in PENDING_PAYMENT status - webhook update will fail' : 
-                    'Bookings found in PENDING_PAYMENT status - webhook should work'
-            }
+                webhookIssue:
+                    pendingBookings.length === 0
+                        ? 'No bookings in PENDING_PAYMENT status - webhook update will fail'
+                        : 'Bookings found in PENDING_PAYMENT status - webhook should work',
+            },
         })
-
     } catch (err) {
         console.error('❌ Debug failed:', err)
         res.status(500).json({
@@ -680,7 +725,7 @@ export const debugWebhookUpdate = async (req, res) => {
         if (!bookingReference) {
             return res.status(400).json({
                 error: 'Missing bookingReference query parameter',
-                message: 'Please provide a booking reference to debug'
+                message: 'Please provide a booking reference to debug',
             })
         }
 
@@ -697,19 +742,23 @@ export const debugWebhookUpdate = async (req, res) => {
         if (beforeError || !beforeData) {
             return res.status(400).json({
                 error: 'Booking not found or not in PENDING_PAYMENT status',
-                details: beforeError?.message || 'No booking found with PENDING_PAYMENT status',
-                currentStatus: beforeData?.status || 'unknown'
+                details:
+                    beforeError?.message ||
+                    'No booking found with PENDING_PAYMENT status',
+                currentStatus: beforeData?.status || 'unknown',
             })
         }
 
-        console.log(`📊 Before update - Status: ${beforeData.status}, ID: ${beforeData.id}`)
+        console.log(
+            `📊 Before update - Status: ${beforeData.status}, ID: ${beforeData.id}`
+        )
 
         // Step 2: Try the exact same update as webhook
         const { data: updateData, error: updateError } = await supabase
             .from('flight_bookings')
-            .update({ 
+            .update({
                 status: 'PAID_PENDING_TICKETING',
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
             })
             .eq('booking_reference', bookingReference)
             .eq('status', 'PENDING_PAYMENT')
@@ -719,11 +768,13 @@ export const debugWebhookUpdate = async (req, res) => {
             return res.status(500).json({
                 error: 'Update failed',
                 details: updateError.message,
-                beforeStatus: beforeData.status
+                beforeStatus: beforeData.status,
             })
         }
 
-        console.log(`📊 Update result - Rows affected: ${updateData?.length || 0}`)
+        console.log(
+            `📊 Update result - Rows affected: ${updateData?.length || 0}`
+        )
 
         // Step 3: Check final status
         const { data: afterData, error: afterError } = await supabase
@@ -740,22 +791,21 @@ export const debugWebhookUpdate = async (req, res) => {
                 beforeUpdate: {
                     id: beforeData.id,
                     status: beforeData.status,
-                    updated_at: beforeData.updated_at
+                    updated_at: beforeData.updated_at,
                 },
                 updateResult: {
                     rowsAffected: updateData?.length || 0,
-                    updatedRows: updateData || []
+                    updatedRows: updateData || [],
                 },
                 afterUpdate: {
                     id: afterData?.id,
                     status: afterData?.status,
-                    updated_at: afterData?.updated_at
+                    updated_at: afterData?.updated_at,
                 },
                 success: updateData && updateData.length > 0,
-                error: afterError?.message
-            }
+                error: afterError?.message,
+            },
         })
-
     } catch (err) {
         console.error('❌ Webhook update test failed:', err)
         res.status(500).json({
@@ -772,7 +822,7 @@ export const debugAmadeusAPI = async (req, res) => {
         if (!bookingReference) {
             return res.status(400).json({
                 error: 'Missing bookingReference query parameter',
-                message: 'Please provide a booking reference to debug'
+                message: 'Please provide a booking reference to debug',
             })
         }
 
@@ -781,18 +831,24 @@ export const debugAmadeusAPI = async (req, res) => {
         // Step 1: Get booking details
         const { data: booking, error: bookingError } = await supabase
             .from('flight_bookings')
-            .select('amadeus_order_id, status, passenger_details, search_criteria')
+            .select(
+                'amadeus_order_id, status, passenger_details, search_criteria'
+            )
             .eq('booking_reference', bookingReference)
             .single()
 
         if (bookingError || !booking) {
             return res.status(404).json({
                 error: 'Booking not found',
-                details: bookingError?.message || 'No booking found with that reference'
+                details:
+                    bookingError?.message ||
+                    'No booking found with that reference',
             })
         }
 
-        console.log(`📊 Booking found - Status: ${booking.status}, Amadeus Order ID: ${booking.amadeus_order_id}`)
+        console.log(
+            `📊 Booking found - Status: ${booking.status}, Amadeus Order ID: ${booking.amadeus_order_id}`
+        )
 
         if (!booking.amadeus_order_id) {
             return res.status(400).json({
@@ -800,27 +856,31 @@ export const debugAmadeusAPI = async (req, res) => {
                 details: 'This booking does not have an Amadeus order ID',
                 booking: {
                     status: booking.status,
-                    amadeus_order_id: booking.amadeus_order_id
-                }
+                    amadeus_order_id: booking.amadeus_order_id,
+                },
             })
         }
 
         // Step 2: Test Amadeus API call
         try {
-            console.log(`🔍 Calling Amadeus API for order: ${booking.amadeus_order_id}`)
-            
+            console.log(
+                `🔍 Calling Amadeus API for order: ${booking.amadeus_order_id}`
+            )
+
             const response = await amadeus.booking
                 .flightOrder(booking.amadeus_order_id)
                 .get()
-            
+
             const order = response.data
             console.log(`✅ Amadeus API call successful`)
 
             // Extract e-ticket numbers and PNR
-            const eTicketNumbers = order.associatedRecords?.map((record) => record.reference) || []
-            const pnr = order.associatedRecords?.find(
-                (record) => record.originSystemCode === 'GDS'
-            )?.reference || null
+            const eTicketNumbers =
+                order.associatedRecords?.map((record) => record.reference) || []
+            const pnr =
+                order.associatedRecords?.find(
+                    (record) => record.originSystemCode === 'GDS'
+                )?.reference || null
 
             res.status(200).json({
                 success: true,
@@ -834,14 +894,13 @@ export const debugAmadeusAPI = async (req, res) => {
                         type: order.type,
                         id: order.id,
                         associatedRecords: order.associatedRecords?.length || 0,
-                        flightOffers: order.flightOffers?.length || 0
-                    }
-                }
+                        flightOffers: order.flightOffers?.length || 0,
+                    },
+                },
             })
-
         } catch (amadeusError) {
             console.error(`❌ Amadeus API call failed:`, amadeusError)
-            
+
             res.status(500).json({
                 error: 'Amadeus API call failed',
                 details: {
@@ -850,11 +909,10 @@ export const debugAmadeusAPI = async (req, res) => {
                     status: amadeusError.response?.status,
                     code: amadeusError.code,
                     bookingReference,
-                    amadeusOrderId: booking.amadeus_order_id
-                }
+                    amadeusOrderId: booking.amadeus_order_id,
+                },
             })
         }
-
     } catch (err) {
         console.error('❌ Amadeus API debug failed:', err)
         res.status(500).json({
@@ -871,56 +929,69 @@ export const debugFinalization = async (req, res) => {
         if (!bookingReference) {
             return res.status(400).json({
                 error: 'Missing bookingReference query parameter',
-                message: 'Please provide a booking reference to debug'
+                message: 'Please provide a booking reference to debug',
             })
         }
 
-        console.log(`🔍 Testing complete finalization process for: ${bookingReference}`)
+        console.log(
+            `🔍 Testing complete finalization process for: ${bookingReference}`
+        )
 
         // Step 1: Get booking details
         const { data: booking, error: bookingError } = await supabase
             .from('flight_bookings')
-            .select('amadeus_order_id, status, passenger_details, search_criteria')
+            .select(
+                'amadeus_order_id, status, passenger_details, search_criteria'
+            )
             .eq('booking_reference', bookingReference)
             .single()
 
         if (bookingError || !booking) {
             return res.status(404).json({
                 error: 'Booking not found',
-                details: bookingError?.message || 'No booking found with that reference'
+                details:
+                    bookingError?.message ||
+                    'No booking found with that reference',
             })
         }
 
-        console.log(`📊 Booking found - Status: ${booking.status}, Amadeus Order ID: ${booking.amadeus_order_id}`)
+        console.log(
+            `📊 Booking found - Status: ${booking.status}, Amadeus Order ID: ${booking.amadeus_order_id}`
+        )
 
         if (!booking.amadeus_order_id) {
             return res.status(400).json({
                 error: 'No Amadeus order ID found',
-                details: 'This booking does not have an Amadeus order ID'
+                details: 'This booking does not have an Amadeus order ID',
             })
         }
 
         // Step 2: Test Amadeus API call
         let order, eTicketNumbers, pnr
         try {
-            console.log(`🔍 Calling Amadeus API for order: ${booking.amadeus_order_id}`)
-            
+            console.log(
+                `🔍 Calling Amadeus API for order: ${booking.amadeus_order_id}`
+            )
+
             const response = await amadeus.booking
                 .flightOrder(booking.amadeus_order_id)
                 .get()
-            
+
             order = response.data
             console.log(`✅ Amadeus API call successful`)
 
             // Extract e-ticket numbers and PNR
-            eTicketNumbers = order.associatedRecords?.map((record) => record.reference) || []
-            pnr = order.associatedRecords?.find(
-                (record) => record.originSystemCode === 'GDS'
-            )?.reference || null
+            eTicketNumbers =
+                order.associatedRecords?.map((record) => record.reference) || []
+            pnr =
+                order.associatedRecords?.find(
+                    (record) => record.originSystemCode === 'GDS'
+                )?.reference || null
 
-            console.log(`📄 E-ticket numbers: ${JSON.stringify(eTicketNumbers)}`)
+            console.log(
+                `📄 E-ticket numbers: ${JSON.stringify(eTicketNumbers)}`
+            )
             console.log(`🎫 PNR: ${pnr}`)
-
         } catch (amadeusError) {
             console.error(`❌ Amadeus API call failed:`, amadeusError)
             return res.status(500).json({
@@ -929,21 +1000,21 @@ export const debugFinalization = async (req, res) => {
                     message: amadeusError.message,
                     response: amadeusError.response?.data,
                     status: amadeusError.response?.status,
-                    code: amadeusError.code
-                }
+                    code: amadeusError.code,
+                },
             })
         }
 
         // Step 3: Test database update
         try {
             console.log(`🔍 Updating booking status to TICKETED`)
-            
+
             const { data: updateData, error: updateError } = await supabase
                 .from('flight_bookings')
                 .update({
                     status: 'TICKETED',
                     e_ticket_numbers: eTicketNumbers,
-                    pnr: pnr
+                    pnr: pnr,
                 })
                 .eq('booking_reference', bookingReference)
                 .select('id, status, e_ticket_numbers, pnr, updated_at')
@@ -956,8 +1027,8 @@ export const debugFinalization = async (req, res) => {
                         message: updateError.message,
                         code: updateError.code,
                         hint: updateError.hint,
-                        details: updateError.details
-                    }
+                        details: updateError.details,
+                    },
                 })
             }
 
@@ -980,13 +1051,12 @@ export const debugFinalization = async (req, res) => {
                         pnr,
                         databaseUpdate: {
                             rowsAffected: updateData?.length || 0,
-                            updatedRows: updateData || []
+                            updatedRows: updateData || [],
                         },
                         emailSent: true,
-                        finalStatus: 'TICKETED'
-                    }
+                        finalStatus: 'TICKETED',
+                    },
                 })
-
             } catch (emailError) {
                 console.error(`❌ Email sending failed:`, emailError)
                 res.status(500).json({
@@ -998,12 +1068,11 @@ export const debugFinalization = async (req, res) => {
                         pnr,
                         databaseUpdate: {
                             rowsAffected: updateData?.length || 0,
-                            updatedRows: updateData || []
-                        }
-                    }
+                            updatedRows: updateData || [],
+                        },
+                    },
                 })
             }
-
         } catch (dbError) {
             console.error(`❌ Database update failed:`, dbError)
             res.status(500).json({
@@ -1011,11 +1080,10 @@ export const debugFinalization = async (req, res) => {
                 details: {
                     message: dbError.message,
                     eTicketNumbers,
-                    pnr
-                }
+                    pnr,
+                },
             })
         }
-
     } catch (err) {
         console.error('❌ Finalization debug failed:', err)
         res.status(500).json({
@@ -1025,3 +1093,122 @@ export const debugFinalization = async (req, res) => {
     }
 }
 
+// Test cancellation verification email
+export const testCancellationVerificationEmail = async (req, res) => {
+    try {
+        const { testEmail, bookingReference } = req.body
+
+        if (!testEmail) {
+            return res.status(400).json({
+                error: 'Missing testEmail in request body',
+                message: 'Please provide a test email address',
+            })
+        }
+
+        console.log(
+            `📧 Testing cancellation verification email to: ${testEmail}`
+        )
+
+        // Test data
+        const testData = {
+            email: testEmail,
+            firstName: 'John',
+            lastName: 'Doe',
+            bookingReference: bookingReference || 'TRB-FLT-test123',
+            token: 'test-token-12345',
+            totalAmount: 25000,
+            currency: 'PHP',
+            cancellationReason: 'Test cancellation reason',
+        }
+
+        console.log(`📧 Test data:`, testData)
+        console.log(`📧 Environment check:`, {
+            BREVO_API_KEY: !!process.env.BREVO_API_KEY,
+            BREVO_FROM_EMAIL: process.env.BREVO_FROM_EMAIL,
+            FRONTEND_URL: process.env.FRONTEND_URL,
+        })
+
+        await sendCancellationVerificationEmail(testData)
+
+        res.status(200).json({
+            success: true,
+            message: '✅ Cancellation verification email sent successfully!',
+            details: {
+                recipientEmail: testEmail,
+                emailType: 'Cancellation Verification',
+                testData: testData,
+            },
+        })
+    } catch (err) {
+        console.error('❌ Cancellation verification email test failed:', err)
+        res.status(500).json({
+            error: 'Cancellation verification email test failed',
+            details: err.message,
+        })
+    }
+}
+
+// Test Brevo API directly
+export const testBrevoApi = async (req, res) => {
+    try {
+        const { testEmail } = req.body
+
+        if (!testEmail) {
+            return res.status(400).json({
+                error: 'Missing testEmail in request body',
+                message: 'Please provide a test email address',
+            })
+        }
+
+        console.log(`📧 Testing Brevo API directly with email: ${testEmail}`)
+
+        // Initialize Brevo API client
+        const apiInstance = new brevo.TransactionalEmailsApi()
+        apiInstance.setApiKey(
+            brevo.TransactionalEmailsApiApiKeys.apiKey,
+            process.env.BREVO_API_KEY
+        )
+
+        // Create a simple test email
+        const sendSmtpEmail = new brevo.SendSmtpEmail()
+        sendSmtpEmail.subject = 'Test Email from Trabilis'
+        sendSmtpEmail.htmlContent = `
+            <h2>Test Email</h2>
+            <p>This is a test email to verify Brevo API is working.</p>
+            <p>Time: ${new Date().toISOString()}</p>
+        `
+        sendSmtpEmail.sender = {
+            name: 'Trabilis Test',
+            email:
+                process.env.BREVO_FROM_EMAIL || 'lindelatravelctws@gmail.com',
+        }
+        sendSmtpEmail.to = [
+            {
+                email: testEmail,
+                name: 'Test User',
+            },
+        ]
+
+        console.log(`📧 Sending test email...`)
+        const result = await apiInstance.sendTransacEmail(sendSmtpEmail)
+
+        console.log(`📧 Brevo API response:`, result)
+
+        res.status(200).json({
+            success: true,
+            message: '✅ Brevo API test successful!',
+            details: {
+                recipientEmail: testEmail,
+                messageId: result.messageId,
+                response: result.response,
+            },
+        })
+    } catch (err) {
+        console.error('❌ Brevo API test failed:', err)
+        res.status(500).json({
+            error: 'Brevo API test failed',
+            details: err.message,
+            stack: err.stack,
+        })
+    }
+}

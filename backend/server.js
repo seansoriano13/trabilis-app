@@ -16,6 +16,13 @@ import visaRoutes from './src/routes/visaRoutes.js'
 import visaProcessingRoutes from './src/routes/visaProcessingRoutes.js'
 import metadataRoutes from './src/routes/metadataRoutes.js'
 import imageUploadRoutes from './src/routes/imageUploadRoutes.js'
+import emailVerificationCancellationRoutes from './src/routes/emailVerificationCancellationRoutes.js'
+import adminCancellationRoutes from './src/routes/adminCancellationRoutes.js'
+import {
+    errorHandler,
+    notFoundHandler,
+} from './src/middlewares/errorHandler.js'
+import { performanceLogger } from './src/services/loggingService.js'
 
 import { viewTourBookingHTML } from './src/controllers/admin/tourController.js'
 
@@ -110,20 +117,56 @@ app.use(
     })
 )
 
+// Stripe webhook routes - Using refactored createAmadeusOrder flow
 app.use('/api/v1/webhooks', webhookRoutes)
+
+// Add logging middleware
+app.use(performanceLogger)
 
 app.use(express.json())
 
-// Add to server.js - doesn't touch existing code
-app.get('/health', (req, res) => {
-    res.json({
-        status: 'ok',
-        memory: process.memoryUsage(),
-        uptime: process.uptime(),
-    })
+// Health check endpoint - enhanced for capstone project
+app.get('/health', async (req, res) => {
+    try {
+        // Import supabase client for database check
+        const { supabase } = await import('./src/config/supabaseClient.js')
+
+        // Test database connectivity
+        const { data, error } = await supabase
+            .from('flight_bookings')
+            .select('count')
+            .limit(1)
+
+        const dbStatus = error ? 'disconnected' : 'connected'
+
+        res.json({
+            status: 'ok',
+            timestamp: new Date().toISOString(),
+            environment: process.env.NODE_ENV || 'development',
+            database: dbStatus,
+            memory: {
+                used:
+                    Math.round(process.memoryUsage().heapUsed / 1024 / 1024) +
+                    ' MB',
+                total:
+                    Math.round(process.memoryUsage().heapTotal / 1024 / 1024) +
+                    ' MB',
+            },
+            uptime: Math.round(process.uptime()) + ' seconds',
+            version: '1.0.0',
+        })
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            timestamp: new Date().toISOString(),
+            error: 'Health check failed',
+            message: error.message,
+        })
+    }
 })
 
 app.use('/api/v1/flights', flightRoutes)
+// Flight booking routes - Using refactored payment-first flow
 app.use('/api/v1/bookings', bookingRoutes)
 app.use('/api/v1/destinations', tourRoutes)
 
@@ -144,6 +187,12 @@ app.use('/api/v1/metadata', metadataRoutes)
 // Image Upload
 app.use('/api/v1/images', imageUploadRoutes)
 
+// Email Verification Cancellation
+app.use('/api/v1/cancel-booking', emailVerificationCancellationRoutes)
+
+// Admin Cancellation
+app.use('/api/v1/admin/cancellation', adminCancellationRoutes)
+
 // Admin
 app.use('/api/v1/admin', adminRoutes)
 app.use('/api/v1/admin/assignments', assignmentRoutes)
@@ -162,5 +211,10 @@ app.listen(port, () => {
     console.log(`   ${BACKEND_URL}`)
     console.log(`\n📊 CORS configured for:`)
     allowedOrigins.forEach((origin) => console.log(`   - ${origin}`))
+
     console.log(`\n🚀 Ready to accept requests!\n`)
 })
+
+// Error handling middleware (must be last)
+app.use(notFoundHandler)
+app.use(errorHandler)

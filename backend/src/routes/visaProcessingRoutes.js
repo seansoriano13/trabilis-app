@@ -1,5 +1,5 @@
 import express from 'express'
-import { adminAuthMiddleware } from '../middlewares/adminAuthMIddleware.js'
+import { adminAuthMiddleware } from '../middlewares/adminAuthMiddleware.js'
 import {
     createVisaProcessing,
     getVisaProcessings,
@@ -13,7 +13,7 @@ import {
     getVisaRequirements,
     getVisaRequirementsByCountry,
     createVisaProcessingsForBooking,
-    getVisaProcessingsByBooking
+    getVisaProcessingsByBooking,
 } from '../controllers/visaProcessingController.js'
 
 const router = express.Router()
@@ -39,7 +39,10 @@ router.put('/processings/:id/assignment-status', updateVisaAssignmentStatus)
 router.get('/processings/assigned', getAssignedVisaProcessings)
 
 // Integration with tour bookings
-router.post('/bookings/:bookingId/visa-processings', createVisaProcessingsForBooking)
+router.post(
+    '/bookings/:bookingId/visa-processings',
+    createVisaProcessingsForBooking
+)
 router.get('/bookings/:bookingId/visa-processings', getVisaProcessingsByBooking)
 
 export default router
