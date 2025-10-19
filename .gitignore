@@ -93,6 +93,10 @@ trabilis.sql
 *.temp
 .cache/
 
+# Specstory
+.specstory/
+.cursorindexingignore
+
 # Puppeteer and PDF generation
 /backend/test-pdfs/
 /backend/puppeteer-user-data/
@@ -105,4 +109,12 @@ trabilis.sql
 /deployment-configs/
 /secrets/
 
+# Archived old system
+/backend/src/_archived_old_system
 /PRODUCTION-PLAN.md
+/IMPLEMENTATION-PLAN.md
+/IMPLEMENTATION_PLANNER.md
+/EXPORTED_CHAT_CONVERSATION.json
+
+# Logs
+/backend/logs/
