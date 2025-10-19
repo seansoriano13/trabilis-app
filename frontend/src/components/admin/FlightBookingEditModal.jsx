@@ -52,7 +52,7 @@ const FlightBookingEditModal = ({
             label: 'Pending Payment',
             color: '#fd7e14',
         },
-        { value: 'TICKETED', label: 'Confirmed', color: '#28a745' },
+        { value: 'PENDING_TICKETING', label: 'Confirmed', color: '#28a745' },
         { value: 'CANCELLED', label: 'Cancelled', color: '#dc3545' },
     ]
 

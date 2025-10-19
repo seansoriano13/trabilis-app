@@ -62,7 +62,7 @@ export const generateFlightPDF = async (req, res) => {
         const pdfBuffer = await generateFlightItineraryPDF(bookingDetails)
 
         if (!pdfBuffer || !Buffer.isBuffer(pdfBuffer)) {
-            return res.status(500).json({ 
+            return res.status(500).json({
                 error: 'Failed to generate PDF - invalid buffer returned',
                 message: 'PDF generation failed',
             })
@@ -80,7 +80,7 @@ export const generateFlightPDF = async (req, res) => {
         res.send(pdfBuffer)
     } catch (error) {
         console.error('Error generating flight PDF:', error)
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Failed to generate PDF',
             message: error.message,
         })
@@ -210,8 +210,8 @@ export const viewFlightBookingHTML = async (req, res) => {
                                                 >
                                                     ${aircraft}
                                                 </p>
-                            </div>
-                            </div>
+                                            </div>
+                                        </div>
 
                                         <div
                                             class="pdf-flight-details__departure"
@@ -249,7 +249,7 @@ export const viewFlightBookingHTML = async (req, res) => {
                                                     ></b
                                                 >
                                             </p>
-                            </div>
+                                        </div>
 
                                         <div
                                             class="pdf-flight-details__arrival"
@@ -287,7 +287,7 @@ export const viewFlightBookingHTML = async (req, res) => {
                                                     ></b
                                                 >
                                             </p>
-                        </div>
+                                        </div>
 
                                         <div class="pdf-flight-details__leg">
                                             <p
@@ -311,7 +311,7 @@ export const viewFlightBookingHTML = async (req, res) => {
 
         const pnr = bookingDetails.pnr
         const status =
-            bookingDetails.status === 'TICKETED'
+            bookingDetails.status === 'PENDING_TICKETING'
                 ? 'CONFIRMED'
                 : bookingDetails.status
         const passengerDetails = (
@@ -455,13 +455,12 @@ export const viewFlightBookingHTML = async (req, res) => {
         res.send(html)
     } catch (error) {
         console.error('Error generating flight HTML:', error)
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Failed to generate HTML',
             message: error.message,
         })
     }
 }
-
 
 // Generate Flight PDF for Admin (without PDFShift - uses browser print functionality)
 export const generateFlightPDFAdmin = async (req, res) => {
@@ -600,8 +599,8 @@ export const generateFlightPDFAdmin = async (req, res) => {
                                                 <b><span>${
                                                     arrival.iata
                                                 }</span><span>${
-                                        arrival.city
-                                    }</span></b>
+                                                    arrival.city
+                                                }</span></b>
                                             </p>
                                             <p class="pdf-flight-details__airport-code"><span>${
                                                 arrival.airport
@@ -628,7 +627,7 @@ export const generateFlightPDFAdmin = async (req, res) => {
 
         const pnr = bookingDetails.pnr
         const status =
-            bookingDetails.status === 'TICKETED'
+            bookingDetails.status === 'PENDING_TICKETING'
                 ? 'CONFIRMED'
                 : bookingDetails.status
         const passengerDetails = (
@@ -1125,7 +1124,7 @@ export const generateFlightPDFAdmin = async (req, res) => {
         res.send(html)
     } catch (error) {
         console.error('Error generating flight PDF for admin:', error)
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Failed to generate PDF for admin',
             message: error.message,
         })
@@ -1136,16 +1135,11 @@ export const generateFlightPDFAdmin = async (req, res) => {
 export const editFlightBooking = async (req, res) => {
     try {
         const { id } = req.params
-        const { 
-            status, 
-            pnr, 
-            assigned_to,
-            assignment_status,
-        } = req.body
+        const { status, pnr, assigned_to, assignment_status } = req.body
 
         // Validate required fields
         if (!id) {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 success: false,
                 error: 'Booking ID is required',
             })
@@ -1159,7 +1153,7 @@ export const editFlightBooking = async (req, res) => {
             .single()
 
         if (fetchError || !existingBooking) {
-            return res.status(404).json({ 
+            return res.status(404).json({
                 success: false,
                 error: 'Booking not found',
             })
@@ -1203,7 +1197,6 @@ export const editFlightBooking = async (req, res) => {
         if (updateError) {
             throw updateError
         }
-
 
         // Create admin notification for assignment changes
         if (
@@ -1252,7 +1245,6 @@ export const editFlightBooking = async (req, res) => {
                 ? `Flight booking ${existingBooking.booking_reference} reassigned by ${assignerName} to ${assigneeName}`
                 : `Flight booking ${existingBooking.booking_reference} assigned by ${assignerName} to ${assigneeName}`
 
-
             // Trigger realtime event via Pusher
             await pusher.trigger('admin-notifications', notifType, {
                 bookingReference: existingBooking.booking_reference,
@@ -1266,15 +1258,14 @@ export const editFlightBooking = async (req, res) => {
             assignment_status &&
             assignment_status !== existingBooking.assignment_status
         ) {
-
             await pusher.trigger(
                 'admin-notifications',
                 'assignment-status-updated',
                 {
-                bookingReference: existingBooking.booking_reference,
-                bookingType: 'flight',
-                bookingId: id,
-                status: assignment_status,
+                    bookingReference: existingBooking.booking_reference,
+                    bookingType: 'flight',
+                    bookingId: id,
+                    status: assignment_status,
                 }
             )
         }
@@ -1286,7 +1277,7 @@ export const editFlightBooking = async (req, res) => {
         })
     } catch (error) {
         console.error('Error editing flight booking:', error)
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
             error: 'Failed to update booking',
             message: error.message,
@@ -1300,10 +1291,11 @@ export const cancelFlightBooking = async (req, res) => {
         const { id } = req.params
         const { reason, refund_amount } = req.body
 
-        if (!id) {
-            return res.status(400).json({ 
+        // Validate ID
+        if (!id || isNaN(parseInt(id))) {
+            return res.status(400).json({
                 success: false,
-                error: 'Booking ID is required',
+                error: 'Valid booking ID is required',
             })
         }
 
@@ -1314,8 +1306,16 @@ export const cancelFlightBooking = async (req, res) => {
             .eq('id', id)
             .single()
 
-        if (fetchError || !existingBooking) {
-            return res.status(404).json({ 
+        if (fetchError) {
+            console.error('Database error:', fetchError)
+            return res.status(500).json({
+                success: false,
+                error: 'Database error occurred',
+            })
+        }
+
+        if (!existingBooking) {
+            return res.status(404).json({
                 success: false,
                 error: 'Booking not found',
             })
@@ -1323,14 +1323,14 @@ export const cancelFlightBooking = async (req, res) => {
 
         // Check if booking can be cancelled
         if (existingBooking.status === 'CANCELLED') {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 success: false,
                 error: 'Booking is already cancelled',
             })
         }
 
-        if (existingBooking.status === 'TICKETED') {
-            return res.status(400).json({ 
+        if (existingBooking.status === 'PENDING_TICKETING') {
+            return res.status(400).json({
                 success: false,
                 error: 'Cannot cancel ticketed booking. Please contact support for assistance.',
             })
@@ -1362,7 +1362,6 @@ export const cancelFlightBooking = async (req, res) => {
             throw updateError
         }
 
-
         // TODO: Process refund if payment was made
         // This would integrate with Stripe or other payment processor
         if (existingBooking.stripe_checkout_id && refund_amount) {
@@ -1379,7 +1378,7 @@ export const cancelFlightBooking = async (req, res) => {
         })
     } catch (error) {
         console.error('Error cancelling flight booking:', error)
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
             error: 'Failed to cancel booking',
             message: error.message,

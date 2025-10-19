@@ -1880,7 +1880,7 @@ const TourBookingDetail = () => {
                                         <div
                                             className={`flight-card__status ${getStatusColor(flightData.status)}`}
                                         >
-                                            {flightData.status === 'TICKETED'
+                                            {flightData.status === 'PENDING_TICKETING'
                                                 ? 'Confirmed'
                                                 : flightData.status ===
                                                     'CONFIRMED'

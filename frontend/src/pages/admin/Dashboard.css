@@ -17,21 +17,25 @@
     background: rgba(247, 209, 0, 0.9);
     border-radius: 8px;
     padding: 8px 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .updating-spinner {
     width: 16px;
     height: 16px;
-    border: 2px solid rgba(0,0,0,0.1);
+    border: 2px solid rgba(0, 0, 0, 0.1);
     border-top: 2px solid #000;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* Header Styles */
@@ -42,7 +46,7 @@
     background: white;
     padding: 25px 30px;
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     margin-bottom: 25px;
 }
 
@@ -356,7 +360,7 @@
     background: white;
     border-radius: 12px;
     padding: 25px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     border: 1px solid #e9ecef;
     transition: all 0.3s ease;
     position: relative;
@@ -365,7 +369,7 @@
 
 .dashboard__summary-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .dashboard__summary-card::before {
@@ -464,7 +468,7 @@
 .dashboard__section {
     background: white;
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     border: 1px solid #e9ecef;
     overflow: hidden;
     margin-bottom: 25px;
@@ -611,6 +615,11 @@
     color: #721c24;
 }
 
+.dashboard__status--booked {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
 .dashboard__destination-info,
 .dashboard__date-info,
 .dashboard__passenger-count,
@@ -636,7 +645,6 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-
 }
 
 .dashboard__amount-value {
@@ -721,62 +729,6 @@
     color: #6c757d;
 }
 
-/* Compression Stats Section */
-.dashboard__compression-stats {
-    padding: 20px;
-}
-
-.dashboard__compression-info {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 20px;
-}
-
-.dashboard__compression-item {
-    text-align: center;
-    padding: 20px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 12px;
-    border: 1px solid #e9ecef;
-    transition: all 0.3s ease;
-}
-
-.dashboard__compression-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-}
-
-.dashboard__compression-label {
-    font-size: 12px;
-    color: #6c757d;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 8px;
-}
-
-.dashboard__compression-value {
-    font-size: 24px;
-    font-weight: 700;
-    color: #333;
-}
-
-.dashboard__compression-value--status {
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.dashboard__compression-error {
-    text-align: center;
-    padding: 40px 20px;
-    color: #6c757d;
-}
-
-.dashboard__compression-error p {
-    margin: 0;
-    font-size: 14px;
-}
-
 /* Pagination */
 .dashboard__pagination-container {
     padding: 20px 25px;
@@ -844,8 +796,12 @@
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .dashboard__error {
@@ -857,7 +813,7 @@
     text-align: center;
     background: white;
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     margin: 20px;
 }
 
@@ -899,8 +855,12 @@
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 .dashboard__modal-content {
@@ -910,7 +870,7 @@
     max-width: 500px;
     width: 90%;
     text-align: center;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .dashboard__modal-content h3 {
@@ -958,47 +918,47 @@
     .dashboard {
         padding: 15px;
     }
-    
+
     .dashboard__header {
         flex-direction: column;
         gap: 20px;
         align-items: flex-start;
     }
-    
+
     .dashboard__header-content {
         flex-direction: column;
         align-items: flex-start;
         gap: 15px;
     }
-    
+
     .dashboard__summary {
         grid-template-columns: 1fr;
     }
-    
+
     .dashboard__section-header {
         flex-direction: column;
         gap: 15px;
         align-items: flex-start;
     }
-    
+
     .dashboard__table-container {
         font-size: 14px;
     }
-    
+
     .dashboard__table-cell {
         padding: 12px 15px;
     }
-    
+
     .dashboard__actions {
         flex-direction: column;
         gap: 4px;
     }
-    
+
     .dashboard__weather {
         flex-direction: column;
         text-align: center;
     }
-    
+
     .dashboard__weather-details {
         justify-content: center;
     }
@@ -1008,11 +968,11 @@
     .dashboard__header-text h1 {
         font-size: 24px;
     }
-    
+
     .dashboard__summary-card {
         padding: 20px;
     }
-    
+
     .dashboard__table-cell {
         padding: 10px 12px;
     }
@@ -1021,7 +981,7 @@
         padding: 8px 12px;
         font-size: 14px;
     }
-    
+
     .dashboard__chart-container {
         height: 150px;
         padding: 15px;

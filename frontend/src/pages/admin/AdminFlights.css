@@ -16,7 +16,7 @@
     background: white;
     padding: 25px 30px;
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     margin-bottom: 25px;
 }
 
@@ -101,7 +101,7 @@
     background: white;
     border-radius: 12px;
     padding: 25px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     border: 1px solid #e9ecef;
     transition: all 0.3s ease;
     position: relative;
@@ -110,7 +110,7 @@
 
 .flights__summary-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .flights__summary-card::before {
@@ -201,7 +201,7 @@
 .flights__filter {
     background: white;
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     margin-bottom: 25px;
     overflow: hidden;
 }
@@ -305,7 +305,7 @@
 .flights__section {
     background: white;
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     border: 1px solid #e9ecef;
     overflow: hidden;
 }
@@ -418,7 +418,7 @@
 }
 
 .flights__booking-link {
-    color:black;
+    color: black;
     text-decoration: underline;
     font-weight: 600;
     transition: color 0.3s ease;
@@ -451,6 +451,26 @@
 .flights__status--cancelled {
     background: #f8d7da;
     color: #721c24;
+}
+
+.flights__status--booked {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.flights__status--paid_pending_booking {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+.flights__status--pending_payment {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.flights__status--ticketed {
+    background: #d4edda;
+    color: #155724;
 }
 
 .flights__destination-info {
@@ -625,8 +645,12 @@
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .flights__error {
@@ -638,7 +662,7 @@
     text-align: center;
     background: white;
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     margin: 20px;
 }
 
@@ -741,13 +765,12 @@
     text-align: center;
 }
 
-    .flights__assignment-unassigned {
-        font-size: 11px;
-        color: #9ca3af;
-        font-style: italic;
-        text-align: center;
-    }
-
+.flights__assignment-unassigned {
+    font-size: 11px;
+    color: #9ca3af;
+    font-style: italic;
+    text-align: center;
+}
 
 /* Assignment Action Button */
 .flights__action-btn--assign {
@@ -792,43 +815,43 @@
     .flights {
         padding: 15px;
     }
-    
+
     .flights__header {
         flex-direction: column;
         gap: 20px;
         align-items: flex-start;
     }
-    
+
     .flights__header-content {
         flex-direction: column;
         align-items: flex-start;
         gap: 15px;
     }
-    
+
     .flights__summary {
         grid-template-columns: 1fr;
     }
-    
+
     .flights__section-header {
         flex-direction: column;
         gap: 15px;
         align-items: flex-start;
     }
-    
+
     .flights__table-container {
         font-size: 14px;
     }
-    
+
     .flights__table-cell {
         padding: 12px 15px;
     }
-    
+
     .flights__actions {
         flex-direction: column;
         gap: 4px;
         flex-wrap: wrap;
     }
-    
+
     .flights__action-btn {
         min-width: 32px;
         height: 32px;
@@ -839,29 +862,29 @@
     .flights__header-text h1 {
         font-size: 24px;
     }
-    
+
     .flights__summary-card {
         padding: 20px;
     }
-    
+
     .flights__filter-grid {
         padding: 20px;
     }
-    
+
     .flights__filter-row {
         grid-template-columns: 1fr;
         gap: 12px;
     }
-    
+
     .flights__table-cell {
         padding: 10px 12px;
     }
-    
+
     .flights__table-cell--reference {
         max-width: 150px;
         width: 150px;
     }
-    
+
     .flights__pagination a {
         padding: 8px 12px;
         font-size: 14px;

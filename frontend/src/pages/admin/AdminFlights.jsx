@@ -469,7 +469,7 @@ const AdminFlights = () => {
                                     className='flights__filter-select'
                                 >
                                     <option value='All'>All Statuses</option>
-                                    <option value='TICKETED'>Confirmed</option>
+                                    <option value='PENDING_TICKETING'>Confirmed</option>
                                     <option value='PENDING'>Pending</option>
                                     <option value='CANCELLED'>Cancelled</option>
                                 </select>
@@ -702,8 +702,8 @@ const AdminFlights = () => {
                                         {booking.updated_at ? new Date(booking.updated_at).toLocaleDateString() : '-'}
                                     </td>
                                     <td className='flights__table-cell'>
-                                        <span className={`flights__status flights__status--${booking.status === 'TICKETED' ? 'confirmed' : booking.status.toLowerCase()}`}>
-                                            {booking.status === 'TICKETED' ? 'Confirmed' : booking.status}
+                                        <span className={`flights__status flights__status--${booking.status === 'PENDING_TICKETING' ? 'confirmed' : booking.status.toLowerCase()}`}>
+                                            {booking.status === 'PENDING_TICKETING' ? 'Confirmed' : booking.status}
                                         </span>
                                     </td>
                                     <td className='flights__table-cell flights__table-cell--destination'>

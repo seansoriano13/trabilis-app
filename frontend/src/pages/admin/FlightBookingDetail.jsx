@@ -39,6 +39,8 @@ const FlightBookingDetail = () => {
     const [previewLoading, setPreviewLoading] = useState(false)
     const [showEditModal, setShowEditModal] = useState(false)
     const [assignedAdminName, setAssignedAdminName] = useState('')
+    const [cancellationLoading, setCancellationLoading] = useState(false)
+    const [cancellationReason, setCancellationReason] = useState('')
 
 
     const jwt = localStorage.getItem('adminToken')
@@ -129,7 +131,7 @@ const FlightBookingDetail = () => {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'TICKETED':
+            case 'PENDING_TICKETING':
                 return 'status-confirmed'
             case 'PENDING':
             case 'PENDING_PAYMENT':
@@ -143,7 +145,7 @@ const FlightBookingDetail = () => {
 
     const getStatusIcon = (status) => {
         switch (status) {
-            case 'TICKETED':
+            case 'PENDING_TICKETING':
                 return <BsCheckCircle className='status-icon' />
             case 'PENDING':
             case 'PENDING_PAYMENT':
@@ -187,6 +189,62 @@ const FlightBookingDetail = () => {
 
     const handleCloseEditModal = () => {
         setShowEditModal(false)
+    }
+
+    // Admin cancellation with double confirmation
+    const handleAdminCancellation = async () => {
+        // First confirmation
+        const firstConfirm = window.confirm(
+            `⚠️ WARNING: You are about to cancel booking ${booking.booking_reference}.\n\n` +
+            `This action will:\n` +
+            `• Cancel the flight reservation with the airline\n` +
+            `• Mark the booking as CANCELLED\n` +
+            `• Send confirmation email to the customer\n` +
+            `• NO REFUND will be issued (non-refundable policy)\n\n` +
+            `Are you sure you want to proceed?`
+        )
+        
+        if (!firstConfirm) return
+
+        // Second confirmation
+        const secondConfirm = window.confirm(
+            `🚨 FINAL CONFIRMATION 🚨\n\n` +
+            `You are about to PERMANENTLY CANCEL booking ${booking.booking_reference}.\n\n` +
+            `This action CANNOT be undone!\n` +
+            `The customer will NOT receive a refund.\n\n` +
+            `Click OK to proceed with cancellation, or Cancel to abort.`
+        )
+        
+        if (!secondConfirm) return
+
+        // Get cancellation reason
+        const reason = prompt(
+            'Please provide a reason for cancellation (optional):\n\n' +
+            'Examples: Customer request, Payment issue, Flight change, etc.'
+        )
+
+        setCancellationLoading(true)
+        try {
+            const response = await adminClient.post('/cancellation/cancel', {
+                booking_reference: booking.booking_reference,
+                cancellation_reason: reason || 'Cancelled by admin'
+            })
+
+            if (response.data.success) {
+                showSuccess('Booking cancelled successfully')
+                // Refresh booking data
+                await fetchBooking()
+            }
+        } catch (error) {
+            console.error('Cancellation error:', error)
+            showError(error.response?.data?.error || 'Failed to cancel booking')
+        } finally {
+            setCancellationLoading(false)
+        }
+    }
+
+    const canCancelBooking = () => {
+        return ['PENDING_PAYMENT', 'PAID_PENDING_BOOKING', 'BOOKED', 'PENDING_TICKETING'].includes(booking?.status)
     }
 
     const handleEditSubmit = async (submitData) => {
@@ -435,19 +493,19 @@ const FlightBookingDetail = () => {
                             ? 'Cannot edit cancelled booking'
                             : 'Edit booking details'}
                     </button>
-                    {/* <button 
+                    <button 
                         className="btn btn-danger" 
-                        onClick={handleCancel}
-                        disabled={booking.status === 'CANCELLED' || booking.status === 'TICKETED'}
+                        onClick={handleAdminCancellation}
+                        disabled={!canCancelBooking() || cancellationLoading}
                         title={
-                            booking.status === 'CANCELLED' ? 'Booking already cancelled' :
-                            booking.status === 'TICKETED' ? 'Cannot cancel ticketed booking' :
+                            !canCancelBooking() ? 'Booking cannot be cancelled' :
                             'Cancel this booking'
                         }
                     >
                         <BsXCircle /> 
-                        {booking.status === 'CANCELLED' ? 'Cancelled' : 'Cancel'}
-                    </button> */}
+                        {cancellationLoading ? 'Cancelling...' : 
+                         booking.status === 'CANCELLED' ? 'Cancelled' : 'Cancel'}
+                    </button>
                 </div>
             </div>
 
@@ -462,7 +520,7 @@ const FlightBookingDetail = () => {
                     <div>
                         <h3>
                             Booking Status:{' '}
-                            {booking.status === 'TICKETED'
+                            {booking.status === 'PENDING_TICKETING'
                                 ? 'Confirmed'
                                 : booking.status}
                         </h3>

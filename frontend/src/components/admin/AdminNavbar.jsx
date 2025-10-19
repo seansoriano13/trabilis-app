@@ -1,9 +1,6 @@
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { 
-    RxHamburgerMenu,
-    RxCross2
-} from 'react-icons/rx'
-import { 
+import { RxHamburgerMenu, RxCross2 } from 'react-icons/rx'
+import {
     FiHome,
     FiPackage,
     FiTrendingUp,
@@ -16,7 +13,8 @@ import {
     FiSettings,
     FiChevronDown,
     FiMenu,
-    FiX
+    FiX,
+    FiActivity,
 } from 'react-icons/fi'
 import adminLogo from '../../assets/admin/admin-logo.png'
 import { useState, useEffect } from 'react'
@@ -45,11 +43,7 @@ function AdminNavbar() {
     const jwt = localStorage.getItem('adminToken')
     const adminEmail = localStorage.getItem('admin_email')
 
-
     const PROD = true
-
-
-
 
     useEffect(() => {
         const handleScroll = () => {
@@ -93,10 +87,12 @@ function AdminNavbar() {
     useEffect(() => {
         const fetchNotifications = async () => {
             if (!jwt) return
-            
+
             setNotificationsLoading(true)
             try {
-                const response = await adminClient.get('/dashboard/admin_notifications?limit=100')
+                const response = await adminClient.get(
+                    '/dashboard/admin_notifications?limit=100'
+                )
                 if (response.data.data) {
                     setNotifications(response.data.data)
                 }
@@ -114,20 +110,22 @@ function AdminNavbar() {
     useEffect(() => {
         if (!jwt) return
 
-        const pusher = new Pusher("371c6201af1a663a4f58", {
-            cluster: "ap1",
-            encrypted: true
+        const pusher = new Pusher('371c6201af1a663a4f58', {
+            cluster: 'ap1',
+            encrypted: true,
         })
 
         const channel = pusher.subscribe('admin-notifications')
-        
+
         // Listen for new notifications
         channel.bind('new-booking', (data) => {
             console.log('New booking notification:', data)
             // Refresh notifications
             const fetchNotifications = async () => {
                 try {
-                    const response = await adminClient.get('/dashboard/admin_notifications?limit=100')
+                    const response = await adminClient.get(
+                        '/dashboard/admin_notifications?limit=100'
+                    )
                     if (response.data.data) {
                         setNotifications(response.data.data)
                     }
@@ -143,7 +141,9 @@ function AdminNavbar() {
             // Refresh notifications
             const fetchNotifications = async () => {
                 try {
-                    const response = await adminClient.get('/dashboard/admin_notifications?limit=100')
+                    const response = await adminClient.get(
+                        '/dashboard/admin_notifications?limit=100'
+                    )
                     if (response.data.data) {
                         setNotifications(response.data.data)
                     }
@@ -184,7 +184,6 @@ function AdminNavbar() {
         window.location.href = '/admin/login'
     }
 
-
     if (loading) {
         return null
     }
@@ -204,7 +203,11 @@ function AdminNavbar() {
                             onClick={toggleMenu}
                             aria-label='Toggle navigation menu'
                         >
-                            {isMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+                            {isMenuOpen ? (
+                                <FiX size={24} />
+                            ) : (
+                                <FiMenu size={24} />
+                            )}
                         </button>
                         <NavLink
                             to='/admin'
@@ -238,7 +241,8 @@ function AdminNavbar() {
                                     className={({ isActive }) =>
                                         clsx(
                                             'admin-nav__nav-link',
-                                            isActive && 'admin-nav__nav-link--active'
+                                            isActive &&
+                                                'admin-nav__nav-link--active'
                                         )
                                     }
                                     onClick={() => setMenuOpen(false)}
@@ -247,14 +251,16 @@ function AdminNavbar() {
                                     <span>Dashboard</span>
                                 </NavLink>
                             </li>
-                            {(userRole === 'admin' || userRole === 'travel_consultant') && (
+                            {(userRole === 'admin' ||
+                                userRole === 'travel_consultant') && (
                                 <li className='admin-nav__nav-item'>
                                     <NavLink
                                         to='tours'
                                         className={({ isActive }) =>
                                             clsx(
                                                 'admin-nav__nav-link',
-                                                isActive && 'admin-nav__nav-link--active'
+                                                isActive &&
+                                                    'admin-nav__nav-link--active'
                                             )
                                         }
                                         onClick={() => setMenuOpen(false)}
@@ -264,14 +270,15 @@ function AdminNavbar() {
                                     </NavLink>
                                 </li>
                             )}
-                           {userRole !== 'travel_consultant' && (
+                            {userRole !== 'travel_consultant' && (
                                 <li className='admin-nav__nav-item'>
                                     <NavLink
                                         to='tour-sales'
                                         className={({ isActive }) =>
                                             clsx(
                                                 'admin-nav__nav-link',
-                                                isActive && 'admin-nav__nav-link--active'
+                                                isActive &&
+                                                    'admin-nav__nav-link--active'
                                             )
                                         }
                                         onClick={() => setMenuOpen(false)}
@@ -288,7 +295,8 @@ function AdminNavbar() {
                                         className={({ isActive }) =>
                                             clsx(
                                                 'admin-nav__nav-link',
-                                                isActive && 'admin-nav__nav-link--active'
+                                                isActive &&
+                                                    'admin-nav__nav-link--active'
                                             )
                                         }
                                         onClick={() => setMenuOpen(false)}
@@ -304,7 +312,8 @@ function AdminNavbar() {
                                     className={({ isActive }) =>
                                         clsx(
                                             'admin-nav__nav-link',
-                                            isActive && 'admin-nav__nav-link--active'
+                                            isActive &&
+                                                'admin-nav__nav-link--active'
                                         )
                                     }
                                     onClick={() => setMenuOpen(false)}
@@ -320,7 +329,8 @@ function AdminNavbar() {
                                         className={({ isActive }) =>
                                             clsx(
                                                 'admin-nav__nav-link',
-                                                isActive && 'admin-nav__nav-link--active'
+                                                isActive &&
+                                                    'admin-nav__nav-link--active'
                                             )
                                         }
                                         onClick={() => setMenuOpen(false)}
@@ -344,12 +354,14 @@ function AdminNavbar() {
                                 <RiNotification4Line size={20} />
                                 {notifications.length > 0 && (
                                     <span className='admin-nav__notification-badge'>
-                                        {notifications.length > 99 ? '99+' : notifications.length}
+                                        {notifications.length > 99
+                                            ? '99+'
+                                            : notifications.length}
                                     </span>
                                 )}
                             </button>
                         </div>
-                        
+
                         <div className='admin-nav__profile-container'>
                             <button
                                 className='admin-nav__profile-btn'
@@ -364,14 +376,19 @@ function AdminNavbar() {
                                         {adminEmail?.split('@')[0] || 'Admin'}
                                     </span>
                                     <span className='admin-nav__profile-role'>
-                                        {userRole === 'admin' ? 'Administrator' : userRole === 'accounting' ? 'Accounting' : 'Travel Consultant'}
+                                        {userRole === 'admin'
+                                            ? 'Administrator'
+                                            : userRole === 'accounting'
+                                              ? 'Accounting'
+                                              : 'Travel Consultant'}
                                     </span>
                                 </div>
-                                <FiChevronDown 
-                                    size={16} 
+                                <FiChevronDown
+                                    size={16}
                                     className={clsx(
                                         'admin-nav__profile-chevron',
-                                        isProfileOpen && 'admin-nav__profile-chevron--open'
+                                        isProfileOpen &&
+                                            'admin-nav__profile-chevron--open'
                                     )}
                                 />
                             </button>
@@ -380,17 +397,18 @@ function AdminNavbar() {
                 </div>
             </nav>
 
-
-
             {/* Notifications Dropdown */}
             <div
                 className={clsx(
                     'admin-nav__notifications-dropdown',
-                    isNotificationsOpen && 'admin-nav__notifications-dropdown--open'
+                    isNotificationsOpen &&
+                        'admin-nav__notifications-dropdown--open'
                 )}
             >
                 <div className='admin-nav__notifications-header'>
-                    <h3 className='admin-nav__notifications-title'>Notifications</h3>
+                    <h3 className='admin-nav__notifications-title'>
+                        Notifications
+                    </h3>
                     <button
                         className='admin-nav__notifications-close'
                         onClick={() => setIsNotificationsOpen(false)}
@@ -412,34 +430,46 @@ function AdminNavbar() {
                         </div>
                     ) : (
                         <div className='admin-nav__notifications-list'>
-                            {notifications.slice(0, 10).map((notification, index) => (
-                                <div key={notification.id || index} className='admin-nav__notification-item'>
-                                    <Link
-                                        to={`/admin/${notification.booking_type === 'flight' ? 'flights' : 'tours'}`}
-                                        className='admin-nav__notification-link'
-                                        onClick={() => setIsNotificationsOpen(false)}
+                            {notifications
+                                .slice(0, 10)
+                                .map((notification, index) => (
+                                    <div
+                                        key={notification.id || index}
+                                        className='admin-nav__notification-item'
                                     >
-                                        <div className='admin-nav__notification-icon'>
-                                            {notification.booking_type === 'flight' ? (
-                                                <FiNavigation size={16} />
-                                            ) : (
-                                                <FiPackage size={16} />
-                                            )}
-                                        </div>
-                                        <div className='admin-nav__notification-content'>
-                                            <div className='admin-nav__notification-title'>
-                                                {notification.title || 'New Booking'}
+                                        <Link
+                                            to={`/admin/${notification.booking_type === 'flight' ? 'flights' : 'tours'}`}
+                                            className='admin-nav__notification-link'
+                                            onClick={() =>
+                                                setIsNotificationsOpen(false)
+                                            }
+                                        >
+                                            <div className='admin-nav__notification-icon'>
+                                                {notification.booking_type ===
+                                                'flight' ? (
+                                                    <FiNavigation size={16} />
+                                                ) : (
+                                                    <FiPackage size={16} />
+                                                )}
                                             </div>
-                                            <div className='admin-nav__notification-desc'>
-                                                {notification.message || `New ${notification.booking_type} booking`}
+                                            <div className='admin-nav__notification-content'>
+                                                <div className='admin-nav__notification-title'>
+                                                    {notification.title ||
+                                                        'New Booking'}
+                                                </div>
+                                                <div className='admin-nav__notification-desc'>
+                                                    {notification.message ||
+                                                        `New ${notification.booking_type} booking`}
+                                                </div>
+                                                <div className='admin-nav__notification-time'>
+                                                    {new Date(
+                                                        notification.created_at
+                                                    ).toLocaleString()}
+                                                </div>
                                             </div>
-                                            <div className='admin-nav__notification-time'>
-                                                {new Date(notification.created_at).toLocaleString()}
-                                            </div>
-                                        </div>
-                                    </Link>
-                                </div>
-                            ))}
+                                        </Link>
+                                    </div>
+                                ))}
                         </div>
                     )}
                 </div>
@@ -462,7 +492,11 @@ function AdminNavbar() {
                         </h3>
                         <p className='admin-nav__profile-email'>{adminEmail}</p>
                         <span className='admin-nav__profile-role-badge'>
-                            {userRole === 'admin' ? 'Administrator' : userRole === 'accounting' ? 'Accounting User' : 'Travel Consultant'}
+                            {userRole === 'admin'
+                                ? 'Administrator'
+                                : userRole === 'accounting'
+                                  ? 'Accounting User'
+                                  : 'Travel Consultant'}
                         </span>
                     </div>
                 </div>
@@ -476,7 +510,7 @@ function AdminNavbar() {
                         <span>Profile</span>
                     </button>
                     <hr className='admin-nav__profile-divider' />
-                    <button 
+                    <button
                         className='admin-nav__profile-menu-item admin-nav__profile-menu-item--logout'
                         onClick={handleLogout}
                     >
