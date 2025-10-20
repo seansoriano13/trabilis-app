@@ -1,168 +1,168 @@
 <!doctype html>
 <html>
-    <head>
-        <meta charset="utf-8" />
-        <title>Confirm Flight Booking Cancellation</title>
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                color: #333;
-                max-width: 600px;
-                margin: 0 auto;
-                padding: 20px;
-            }
-            .header {
-                background: linear-gradient(135deg, #dc3545, #c82333);
-                color: white;
-                padding: 30px;
-                text-align: center;
-                border-radius: 10px 10px 0 0;
-            }
-            .content {
-                background: #f8f9fa;
-                padding: 30px;
-                border-radius: 0 0 10px 10px;
-            }
-            .warning-box {
-                background: #fff3cd;
-                border: 2px solid #ffeaa7;
-                border-radius: 8px;
-                padding: 20px;
-                margin: 20px 0;
-            }
-            .booking-details {
-                background: white;
-                border-radius: 8px;
-                padding: 20px;
-                margin: 20px 0;
-                border-left: 4px solid #dc3545;
-            }
-            .cta-button {
-                display: inline-block;
-                background: #dc3545;
-                color: white;
-                padding: 15px 30px;
-                text-decoration: none;
-                border-radius: 8px;
-                font-weight: bold;
-                margin: 20px 0;
-                text-align: center;
-            }
-            .cta-button:hover {
-                background: #c82333;
-            }
-            .footer {
-                text-align: center;
-                margin-top: 30px;
-                padding-top: 20px;
-                border-top: 1px solid #dee2e6;
-                color: #6c757d;
-                font-size: 14px;
-            }
-            .amount {
-                font-size: 24px;
-                font-weight: bold;
-                color: #dc3545;
-            }
-            .expiry-notice {
-                background: #e9ecef;
-                padding: 15px;
-                border-radius: 5px;
-                margin: 15px 0;
-                text-align: center;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <h1>✈️ Confirm Flight Cancellation</h1>
-            <p>Lindela Travel and Tours</p>
-        </div>
+  <head>
+    <meta charset="utf-8" />
+    <title>Confirm Flight Booking Cancellation</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .header {
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        color: white;
+        padding: 30px;
+        text-align: center;
+        border-radius: 10px 10px 0 0;
+      }
+      .content {
+        background: #f8f9fa;
+        padding: 30px;
+        border-radius: 0 0 10px 10px;
+      }
+      .warning-box {
+        background: #fff3cd;
+        border: 2px solid #ffeaa7;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+      }
+      .booking-details {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+        border-left: 4px solid #dc3545;
+      }
+      .cta-button {
+        display: inline-block;
+        background: #dc3545;
+        color: white;
+        padding: 15px 30px;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: bold;
+        margin: 20px 0;
+        text-align: center;
+      }
+      .cta-button:hover {
+        background: #c82333;
+      }
+      .footer {
+        text-align: center;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #dee2e6;
+        color: #6c757d;
+        font-size: 14px;
+      }
+      .amount {
+        font-size: 24px;
+        font-weight: bold;
+        color: #dc3545;
+      }
+      .expiry-notice {
+        background: #e9ecef;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 15px 0;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>✈️ Confirm Flight Cancellation</h1>
+      <p>Lindela Travel and Tours</p>
+    </div>
 
-        <div class="content">
-            <h2>Hello {{firstName}} {{lastName}},</h2>
+    <div class="content">
+      <h2>Hello {{firstName}} {{lastName}},</h2>
 
-            <p>
-                You have requested to cancel your flight booking. Please confirm
-                this action by clicking the button below.
-            </p>
+      <p>
+        You have requested to cancel your flight booking. Please confirm this
+        action by clicking the button below.
+      </p>
 
-            <div class="warning-box">
-                <h3 style="color: #856404; margin-top: 0">
-                    ⚠️ IMPORTANT: NON-REFUNDABLE POLICY
-                </h3>
-                <p style="margin-bottom: 0">
-                    <strong>This booking is NON-REFUNDABLE.</strong> Cancelling
-                    will forfeit <span class="amount">₱{{totalAmount}}</span> as
-                    per our non-refundable policy.
-                </p>
-            </div>
+      <div class="warning-box">
+        <h3 style="color: #856404; margin-top: 0">
+          ⚠️ IMPORTANT: NON-REFUNDABLE POLICY
+        </h3>
+        <p style="margin-bottom: 0">
+          <strong>This booking is NON-REFUNDABLE.</strong> Cancelling will
+          forfeit <span class="amount">₱{{totalAmount}}</span> as per our
+          non-refundable policy.
+        </p>
+      </div>
 
-            <div class="booking-details">
-                <h3 style="margin-top: 0">Booking Details</h3>
-                <p><strong>Booking Reference:</strong> {{bookingReference}}</p>
-                <p>
-                    <strong>Total Amount:</strong>
-                    <span class="amount">₱{{totalAmount}} {{currency}}</span>
-                </p>
-                <p>
-                    <strong>Reason for Cancellation:</strong>
-                    {{cancellationReason}}
-                </p>
-            </div>
+      <div class="booking-details">
+        <h3 style="margin-top: 0">Booking Details</h3>
+        <p><strong>Booking Reference:</strong> {{bookingReference}}</p>
+        <p>
+          <strong>Total Amount:</strong>
+          <span class="amount">₱{{totalAmount}} {{currency}}</span>
+        </p>
+        <p>
+          <strong>Reason for Cancellation:</strong>
+          {{cancellationReason}}
+        </p>
+      </div>
 
-            <div style="text-align: center">
-                <a
-                    href="{{verificationUrl}}"
-                    class="cta-button"
-                >
-                    🚫 CONFIRM CANCELLATION
-                </a>
-            </div>
+      <div style="text-align: center">
+        <a
+          href="{{verificationUrl}}"
+          class="cta-button"
+        >
+          🚫 CONFIRM CANCELLATION
+        </a>
+      </div>
 
-            <div class="expiry-notice">
-                <strong>⏰ This link expires in 1 hour</strong><br />
-                If you don't confirm within this time, the cancellation request
-                will be automatically cancelled.
-            </div>
+      <div class="expiry-notice">
+        <strong>⏰ This link expires in 1 hour</strong><br />
+        If you don't confirm within this time, the cancellation request will be
+        automatically cancelled.
+      </div>
 
-            <p><strong>What happens next?</strong></p>
-            <ul>
-                <li>
-                    Your flight reservation will be cancelled with the airline
-                </li>
-                <li>You will receive a confirmation email</li>
-                <li>No refund will be issued (per non-refundable policy)</li>
-                <li>Your booking status will be updated to "Cancelled"</li>
-            </ul>
+      <p><strong>What happens next?</strong></p>
+      <ul>
+        <li>Your flight reservation will be cancelled with the airline</li>
+        <li>You will receive a confirmation email</li>
+        <li>No refund will be issued (per non-refundable policy)</li>
+        <li>Your booking status will be updated to "Cancelled"</li>
+      </ul>
 
-            <p>
-                <strong>Changed your mind?</strong><br />
-                Simply ignore this email and your booking will remain active.
-            </p>
+      <p>
+        <strong>Changed your mind?</strong><br />
+        Simply ignore this email and your booking will remain active.
+      </p>
 
-            <p>
-                If you have any questions, please contact our support team at
-                <a href="mailto:lindelatravelandtours@gmail.com"
-                    >lindelatravelandtours@gmail.com</a
-                >
-                or call us at 9296106660.
-            </p>
-        </div>
+      <p>
+        If you have any questions, please contact our support team at
+        <a href="mailto:${process.env.SUPPORT_EMAIL || 'support@trabilis.com'}"
+          >${process.env.SUPPORT_EMAIL || 'support@trabilis.com'}</a
+        >
+        or call us at ${process.env.SUPPORT_PHONE || '9296106660'}.
+      </p>
+    </div>
 
-        <div class="footer">
-            <p><strong>Lindela Travel and Tours</strong></p>
-            <p>
-                Unit 2215 Cityland 10 Tower II, H. V. Dela Costa Street<br />
-                Makati Metro Manila, Philippines
-            </p>
-            <p>Phone: 9296106660 | Email: lindelatravelandtours@gmail.com</p>
-            <p style="font-size: 12px; margin-top: 20px">
-                This email was sent because you requested to cancel your flight
-                booking. If you did not make this request, please contact us
-                immediately.
-            </p>
-        </div>
-    </body>
+    <div class="footer">
+      <p><strong>Lindela Travel and Tours</strong></p>
+      <p>
+        Unit 2215 Cityland 10 Tower II, H. V. Dela Costa Street<br />
+        Makati Metro Manila, Philippines
+      </p>
+      <p>
+        Phone: ${process.env.SUPPORT_PHONE || '9296106660'} | Email:
+        ${process.env.SUPPORT_EMAIL || 'support@trabilis.com'}
+      </p>
+      <p style="font-size: 12px; margin-top: 20px">
+        This email was sent because you requested to cancel your flight booking.
+        If you did not make this request, please contact us immediately.
+      </p>
+    </div>
+  </body>
 </html>

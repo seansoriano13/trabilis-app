@@ -156,10 +156,10 @@ export const handleStripeWebhook = async (req, res) => {
       // Send real-time notification (non-blocking)
       try {
         const pusher = new Pusher({
-          appId: '2048372',
-          key: '371c6201af1a663a4f58',
-          secret: 'b4a5985ecd6d27690c8b',
-          cluster: 'ap1',
+          appId: process.env.PUSHER_APP_ID,
+          key: process.env.PUSHER_APP_KEY,
+          secret: process.env.PUSHER_APP_SECRET,
+          cluster: process.env.PUSHER_APP_CLUSTER,
           useTLS: true,
         })
 
@@ -267,10 +267,10 @@ export const handleStripeWebhook = async (req, res) => {
       // Immediately notify admin that payment succeeded (before Amadeus order creation)
       try {
         const pusher = new Pusher({
-          appId: '2048372',
-          key: '371c6201af1a663a4f58',
-          secret: 'b4a5985ecd6d27690c8b',
-          cluster: 'ap1',
+          appId: process.env.PUSHER_APP_ID,
+          key: process.env.PUSHER_APP_KEY,
+          secret: process.env.PUSHER_APP_SECRET,
+          cluster: process.env.PUSHER_APP_CLUSTER,
           useTLS: true,
         })
 
@@ -336,10 +336,10 @@ export const handleStripeWebhook = async (req, res) => {
           // Notify admin of the failure via Pusher
           try {
             const pusher = new Pusher({
-              appId: '2048372',
-              key: '371c6201af1a663a4f58',
-              secret: 'b4a5985ecd6d27690c8b',
-              cluster: 'ap1',
+              appId: process.env.PUSHER_APP_ID,
+              key: process.env.PUSHER_APP_KEY,
+              secret: process.env.PUSHER_APP_SECRET,
+              cluster: process.env.PUSHER_APP_CLUSTER,
               useTLS: true,
             })
 

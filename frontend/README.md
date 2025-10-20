@@ -65,6 +65,7 @@ frontend/
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - Node.js 18+
 - npm or yarn
 
@@ -84,6 +85,7 @@ cp .env.example .env
 ```
 
 Required environment variables:
+
 ```env
 VITE_BACKEND_URL=http://localhost:3001
 VITE_SUPABASE_URL=your-supabase-url
@@ -111,12 +113,14 @@ The app will be available at `http://localhost:5173`.
 ### Client-Facing Features
 
 #### Home Page
+
 - Hero section with call-to-action
 - Featured destinations
 - Service highlights
 - Testimonials
 
 #### Flights
+
 - Flight search with filters
 - Real-time availability
 - Multi-city and round-trip options
@@ -124,6 +128,7 @@ The app will be available at `http://localhost:5173`.
 - Stripe payment integration
 
 #### Tours
+
 - Browse tour packages
 - View detailed itineraries
 - Check availability
@@ -131,6 +136,7 @@ The app will be available at `http://localhost:5173`.
 - Customizable packages
 
 #### Visa Consultation
+
 - Submit visa inquiries
 - Multiple visa types
 - Document upload
@@ -139,24 +145,28 @@ The app will be available at `http://localhost:5173`.
 ### Admin Panel
 
 #### Dashboard
+
 - Booking statistics
 - Revenue charts
 - Recent bookings
 - Quick actions
 
 #### Bookings Management
+
 - View all flight/tour bookings
 - Update booking status
 - Send confirmation emails
 - Generate invoices/PDFs
 
 #### Tours Management
+
 - Create/edit tour packages
 - Manage dates and availability
 - Upload images
 - Set pricing and inclusions
 
 #### Visa Management
+
 - View visa inquiries
 - Track processing status
 - Assign to consultants
@@ -165,6 +175,7 @@ The app will be available at `http://localhost:5173`.
 ## 🎨 Styling
 
 The app uses Tailwind CSS with custom configurations:
+
 - Custom color palette
 - Responsive breakpoints
 - Custom utility classes
@@ -173,6 +184,7 @@ The app uses Tailwind CSS with custom configurations:
 ## 🔐 Authentication
 
 Admin routes are protected with JWT authentication:
+
 - Login via admin panel
 - Token stored in localStorage
 - Automatic redirect on session expiry
@@ -181,6 +193,7 @@ Admin routes are protected with JWT authentication:
 ## 🌐 API Integration
 
 API calls are made through:
+
 - `adminClient.js` - Admin API calls with auth
 - `supabaseClient.js` - Direct database queries
 - Axios interceptors for auth and error handling
@@ -192,6 +205,7 @@ npm run build
 ```
 
 This creates an optimized build in the `dist/` directory with:
+
 - Minified JavaScript
 - Optimized CSS
 - Code splitting
@@ -203,8 +217,16 @@ This creates an optimized build in the `dist/` directory with:
 
 1. Push code to GitHub
 2. Import project in Vercel
-3. Set environment variables
+3. Set environment variables in Vercel dashboard:
+   ```env
+   VITE_BACKEND_URL=https://your-render-backend-url.onrender.com
+   VITE_SUPABASE_URL=your-supabase-url
+   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+   VITE_OPEN_WEATHER_API_KEY=your-weather-api-key
+   ```
 4. Deploy
+
+**Important**: The `VITE_BACKEND_URL` must point to your deployed Render backend URL, not localhost.
 
 Configuration is in `vercel.json`.
 
@@ -223,6 +245,7 @@ npm run lint  # Run ESLint
 ## 🎯 Key Components
 
 ### Client Components
+
 - `FlightSearch` - Flight search form
 - `FlightResults` - Display search results
 - `TourCard` - Tour package card
@@ -230,6 +253,7 @@ npm run lint  # Run ESLint
 - `VisaForm` - Visa inquiry form
 
 ### Admin Components
+
 - `BookingTable` - Bookings data table
 - `TourEditor` - Tour package editor
 - `DashboardStats` - Statistics widgets
@@ -245,6 +269,7 @@ npm run lint  # Run ESLint
 ## 📱 Responsive Design
 
 The app is fully responsive with breakpoints:
+
 - Mobile: < 768px
 - Tablet: 768px - 1024px
 - Desktop: > 1024px
@@ -259,16 +284,19 @@ The app is fully responsive with breakpoints:
 ## 🐛 Common Issues
 
 ### Build Fails
+
 - Clear node_modules and reinstall
 - Check Node.js version (18+)
 - Verify all env variables are set
 
 ### API Calls Fail
+
 - Check `VITE_BACKEND_URL` is correct
 - Ensure backend is running
 - Check browser console for CORS errors
 
 ### Images Not Loading
+
 - Verify image paths
 - Check public folder structure
 - Ensure images are in `public/` directory

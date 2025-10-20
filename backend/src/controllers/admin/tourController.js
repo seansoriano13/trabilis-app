@@ -523,6 +523,7 @@ export const generateTourBookingHTML = async (booking) => {
   // Replace BASE_URL placeholder with actual backend URL
   const baseUrl =
     process.env.BACKEND_URL ||
+    process.env.RENDER_EXTERNAL_URL ||
     (process.env.NODE_ENV === 'production'
       ? 'https://trabilis.onrender.com'
       : 'http://localhost:3001')
@@ -2093,10 +2094,10 @@ export const generateTourPDFAdmin = async (req, res) => {
 }
 
 const pusher = new Pusher({
-  appId: '2048372',
-  key: '371c6201af1a663a4f58',
-  secret: 'b4a5985ecd6d27690c8b',
-  cluster: 'ap1',
+  appId: process.env.PUSHER_APP_ID,
+  key: process.env.PUSHER_APP_KEY,
+  secret: process.env.PUSHER_APP_SECRET,
+  cluster: process.env.PUSHER_APP_CLUSTER,
   useTLS: true,
 })
 

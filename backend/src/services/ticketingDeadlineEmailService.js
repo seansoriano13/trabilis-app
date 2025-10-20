@@ -8,26 +8,29 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // Initialize Brevo API client
 const apiInstance = new brevo.TransactionalEmailsApi()
-apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY)
+apiInstance.setApiKey(
+  brevo.TransactionalEmailsApiApiKeys.apiKey,
+  process.env.BREVO_API_KEY
+)
 
 /**
  * Send ticketing deadline alert email
  */
 export async function sendTicketingDeadlineAlert({
-    email,
-    firstName,
-    lastName,
-    bookingReference,
-    hoursRemaining,
-    deadline,
-    totalAmount,
-    currency
+  email,
+  firstName,
+  lastName,
+  bookingReference,
+  hoursRemaining,
+  deadline,
+  totalAmount,
+  currency,
 }) {
-    try {
-        console.log(`[EMAIL] Sending ticketing deadline alert to ${email}`)
-        
-        // Create deadline alert email
-        const htmlContent = `
+  try {
+    console.log(`[EMAIL] Sending ticketing deadline alert to ${email}`)
+
+    // Create deadline alert email
+    const htmlContent = `
             <!DOCTYPE html>
             <html>
             <head>
@@ -85,15 +88,15 @@ export async function sendTicketingDeadlineAlert({
                     </ul>
                     
                     <p><strong>Need immediate assistance?</strong><br>
-                    Contact our ticketing team at <a href="mailto:lindelatravelandtours@gmail.com">lindelatravelandtours@gmail.com</a> 
-                    or call us at 9296106660.</p>
+                    Contact our ticketing team at <a href="mailto:${process.env.SUPPORT_EMAIL || 'support@trabilis.com'}">${process.env.SUPPORT_EMAIL || 'support@trabilis.com'}</a> 
+                    or call us at ${process.env.SUPPORT_PHONE || '9296106660'}.</p>
                 </div>
                 
                 <div class="footer">
                     <p><strong>Lindela Travel and Tours</strong></p>
                     <p>Unit 2215 Cityland 10 Tower II, H. V. Dela Costa Street<br>
                     Makati Metro Manila, Philippines</p>
-                    <p>Phone: 9296106660 | Email: lindelatravelandtours@gmail.com</p>
+                    <p>Phone: ${process.env.SUPPORT_PHONE || '9296106660'} | Email: ${process.env.SUPPORT_EMAIL || 'support@trabilis.com'}</p>
                     <p style="font-size: 12px; margin-top: 20px;">
                         This is an automated alert. Please do not reply to this email.
                     </p>
@@ -101,46 +104,50 @@ export async function sendTicketingDeadlineAlert({
             </body>
             </html>
         `
-        
-        // Create email data
-        const emailData = {
-            to: [{ email, name: `${firstName} ${lastName}`.trim() }],
-            subject: `⏰ URGENT: Ticketing Deadline Alert - ${bookingReference}`,
-            htmlContent: htmlContent,
-            sender: {
-                name: 'Lindela Travel and Tours',
-                email: 'lindelatravelandtours@gmail.com'
-            }
-        }
-        
-        // Send email
-        const result = await apiInstance.sendTransacEmail(emailData)
-        
-        console.log(`[EMAIL] ✅ Ticketing deadline alert sent successfully to ${email}`)
-        return { success: true, messageId: result.messageId }
-        
-    } catch (error) {
-        console.error(`[EMAIL] ❌ Failed to send ticketing deadline alert to ${email}:`, error)
-        throw new Error(`Failed to send ticketing deadline alert: ${error.message}`)
+
+    // Create email data
+    const emailData = {
+      to: [{ email, name: `${firstName} ${lastName}`.trim() }],
+      subject: `⏰ URGENT: Ticketing Deadline Alert - ${bookingReference}`,
+      htmlContent: htmlContent,
+      sender: {
+        name: 'Lindela Travel and Tours',
+        email: process.env.SUPPORT_EMAIL || 'support@trabilis.com',
+      },
     }
+
+    // Send email
+    const result = await apiInstance.sendTransacEmail(emailData)
+
+    console.log(
+      `[EMAIL] ✅ Ticketing deadline alert sent successfully to ${email}`
+    )
+    return { success: true, messageId: result.messageId }
+  } catch (error) {
+    console.error(
+      `[EMAIL] ❌ Failed to send ticketing deadline alert to ${email}:`,
+      error
+    )
+    throw new Error(`Failed to send ticketing deadline alert: ${error.message}`)
+  }
 }
 
 /**
  * Send ticketing expired alert email
  */
 export async function sendTicketingExpiredAlert({
-    email,
-    firstName,
-    lastName,
-    bookingReference,
-    totalAmount,
-    currency
+  email,
+  firstName,
+  lastName,
+  bookingReference,
+  totalAmount,
+  currency,
 }) {
-    try {
-        console.log(`[EMAIL] Sending ticketing expired alert to ${email}`)
-        
-        // Create expiration alert email
-        const htmlContent = `
+  try {
+    console.log(`[EMAIL] Sending ticketing expired alert to ${email}`)
+
+    // Create expiration alert email
+    const htmlContent = `
             <!DOCTYPE html>
             <html>
             <head>
@@ -190,15 +197,15 @@ export async function sendTicketingExpiredAlert({
                     
                     <p><strong>Need assistance?</strong><br>
                     If you believe this is an error or need help with a new booking, 
-                    please contact us at <a href="mailto:lindelatravelandtours@gmail.com">lindelatravelandtours@gmail.com</a> 
-                    or call 9296106660.</p>
+                    please contact us at <a href="mailto:${process.env.SUPPORT_EMAIL || 'support@trabilis.com'}">${process.env.SUPPORT_EMAIL || 'support@trabilis.com'}</a> 
+                    or call ${process.env.SUPPORT_PHONE || '9296106660'}.</p>
                 </div>
                 
                 <div class="footer">
                     <p><strong>Lindela Travel and Tours</strong></p>
                     <p>Unit 2215 Cityland 10 Tower II, H. V. Dela Costa Street<br>
                     Makati Metro Manila, Philippines</p>
-                    <p>Phone: 9296106660 | Email: lindelatravelandtours@gmail.com</p>
+                    <p>Phone: ${process.env.SUPPORT_PHONE || '9296106660'} | Email: ${process.env.SUPPORT_EMAIL || 'support@trabilis.com'}</p>
                     <p style="font-size: 12px; margin-top: 20px;">
                         This is an automated notification. Please do not reply to this email.
                     </p>
@@ -206,26 +213,30 @@ export async function sendTicketingExpiredAlert({
             </body>
             </html>
         `
-        
-        // Create email data
-        const emailData = {
-            to: [{ email, name: `${firstName} ${lastName}`.trim() }],
-            subject: `❌ Booking Expired - ${bookingReference}`,
-            htmlContent: htmlContent,
-            sender: {
-                name: 'Lindela Travel and Tours',
-                email: 'lindelatravelandtours@gmail.com'
-            }
-        }
-        
-        // Send email
-        const result = await apiInstance.sendTransacEmail(emailData)
-        
-        console.log(`[EMAIL] ✅ Ticketing expired alert sent successfully to ${email}`)
-        return { success: true, messageId: result.messageId }
-        
-    } catch (error) {
-        console.error(`[EMAIL] ❌ Failed to send ticketing expired alert to ${email}:`, error)
-        throw new Error(`Failed to send ticketing expired alert: ${error.message}`)
+
+    // Create email data
+    const emailData = {
+      to: [{ email, name: `${firstName} ${lastName}`.trim() }],
+      subject: `❌ Booking Expired - ${bookingReference}`,
+      htmlContent: htmlContent,
+      sender: {
+        name: 'Lindela Travel and Tours',
+        email: process.env.SUPPORT_EMAIL || 'support@trabilis.com',
+      },
     }
+
+    // Send email
+    const result = await apiInstance.sendTransacEmail(emailData)
+
+    console.log(
+      `[EMAIL] ✅ Ticketing expired alert sent successfully to ${email}`
+    )
+    return { success: true, messageId: result.messageId }
+  } catch (error) {
+    console.error(
+      `[EMAIL] ❌ Failed to send ticketing expired alert to ${email}:`,
+      error
+    )
+    throw new Error(`Failed to send ticketing expired alert: ${error.message}`)
+  }
 }
