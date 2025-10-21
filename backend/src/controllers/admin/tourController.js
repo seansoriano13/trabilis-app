@@ -49,11 +49,11 @@ export const createTour = async (req, res) => {
       visa_required,
       fee_rules,
       dates,
-      itineraries, // ✅ NEW: Tour-level
-      exclusions, // ✅ NEW: Tour-level
-      payment_terms, // ✅ NEW: Tour-level
-      requirements, // ✅ NEW: Tour-level
-      notes, // ✅ NEW: Tour-level
+      itineraries,
+      exclusions, 
+      payment_terms,  
+      requirements,  
+      notes,
     } = req.body
 
     // 1️⃣ Insert tour package
@@ -74,7 +74,7 @@ export const createTour = async (req, res) => {
             minFee: 5000,
             maxFee: 50000,
           },
-          inclusions: inclusions || [],
+          inclusions:  [],
           exclusions: exclusions || [],
           payment_terms: payment_terms || [],
           requirements: requirements || [],
