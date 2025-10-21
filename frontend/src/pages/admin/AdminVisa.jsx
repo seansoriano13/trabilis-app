@@ -40,6 +40,7 @@ import './AdminVisa.css'
 import adminClient from '../../api/adminClient'
 import AssignmentModal from '../../components/admin/AssignmentModal'
 import StandaloneVisaProcessingModal from '../../components/admin/StandaloneVisaProcessingModal'
+import { getCurrentAdmin } from '../../utils/jwtUtils'
 
 const AdminVisa = () => {
   const { showInfo, showSuccess, showError } = useSnackbar()
@@ -104,6 +105,7 @@ const AdminVisa = () => {
     assigned_to: '',
     source_type: 'ALL',
     search: '',
+    show_my_bookings: false,
   })
   const [processingSearchInput] = useState('')
 
@@ -157,12 +159,21 @@ const AdminVisa = () => {
         } else {
           setProcessingSearchLoading(true)
         }
+        // Handle My Bookings filter
+        let assignedToFilter = processingFilters.assigned_to
+        if (processingFilters.show_my_bookings) {
+          const currentUser = getCurrentAdmin()
+          if (currentUser && currentUser.id) {
+            assignedToFilter = currentUser.id
+          }
+        }
+
         const params = new URLSearchParams({
           page: processingPage + 1,
           limit: pageSize,
           status: processingFilters.status,
           country: processingFilters.country,
-          assigned_to: processingFilters.assigned_to,
+          assigned_to: assignedToFilter,
           source_type: processingFilters.source_type,
           ...(processingFilters.search && {
             search: processingFilters.search,
@@ -934,6 +945,24 @@ const AdminVisa = () => {
                   <option value='TOUR_BOOKING'>Tour-based</option>
                   <option value='VISA_INQUIRY'>Standalone</option>
                 </select>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '10px' }}>
+                  <input
+                    type='checkbox'
+                    id='show_my_bookings_visa'
+                    checked={processingFilters.show_my_bookings}
+                    onChange={(e) =>
+                      setProcessingFilters((prev) => ({
+                        ...prev,
+                        show_my_bookings: e.target.checked,
+                      }))
+                    }
+                    style={{ width: 'auto', cursor: 'pointer' }}
+                  />
+                  <label htmlFor='show_my_bookings_visa' style={{ margin: 0, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+                    <FiUser style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                    My Processings
+                  </label>
+                </div>
               </div>
             </div>
 

@@ -28,6 +28,7 @@ import { supabase } from '../../api/supabaseClient'
 import adminClient from '../../api/adminClient'
 import AssignmentModal from '../../components/admin/AssignmentModal'
 import FlightBookingEditModal from '../../components/admin/FlightBookingEditModal'
+import { getCurrentAdmin } from '../../utils/jwtUtils'
 
 const AdminFlights = () => {
   const { showSuccess, showError } = useSnackbar()
@@ -50,6 +51,7 @@ const AdminFlights = () => {
     lead_email: '',
     assignment_status: 'All',
     date_range: 'All',
+    show_my_bookings: false,
   })
   const [searchInput, setSearchInput] = useState('')
   const [referenceInput, setReferenceInput] = useState('')
@@ -173,6 +175,14 @@ const AdminFlights = () => {
         }
         if (filters.assignment_status && filters.assignment_status !== 'All') {
           query = query.eq('assignment_status', filters.assignment_status)
+        }
+
+        // My Bookings filter
+        if (filters.show_my_bookings) {
+          const currentUser = getCurrentAdmin()
+          if (currentUser && currentUser.id) {
+            query = query.eq('assigned_to', currentUser.id)
+          }
         }
 
         // Date range filtering
@@ -319,6 +329,7 @@ const AdminFlights = () => {
       lead_email: '',
       assignment_status: 'All',
       date_range: 'All',
+      show_my_bookings: false,
     })
     setSearchInput('')
     setReferenceInput('')
@@ -540,6 +551,24 @@ const AdminFlights = () => {
                   <option value='quarter'>This Quarter</option>
                   <option value='year'>This Year</option>
                 </select>
+              </div>
+              <div className='flights__filter-group' style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type='checkbox'
+                  id='show_my_bookings'
+                  checked={filters.show_my_bookings}
+                  onChange={(e) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      show_my_bookings: e.target.checked,
+                    }))
+                  }
+                  style={{ width: 'auto', cursor: 'pointer' }}
+                />
+                <label htmlFor='show_my_bookings' style={{ margin: 0, cursor: 'pointer', userSelect: 'none' }}>
+                  <FiUser style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                  My Bookings Only
+                </label>
               </div>
             </div>
           </div>
