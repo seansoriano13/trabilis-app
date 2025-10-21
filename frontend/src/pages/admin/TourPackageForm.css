@@ -1,0 +1,753 @@
+/* Tour Package Form - Clean Admin Design */
+
+.tour-form {
+  min-height: 100vh;
+  background: #f8f9fa;
+  padding: 20px;
+}
+
+/* Header */
+.tour-form__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 20px 30px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 25px;
+  border: 1px solid #e9ecef;
+}
+
+.tour-form__header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.tour-form__back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.tour-form__back-btn:hover {
+  background: #545b62;
+  transform: translateY(-1px);
+}
+
+.tour-form__title {
+  margin: 0;
+  color: #333;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.tour-form__unsaved-badge {
+  padding: 4px 12px;
+  background: #fff3cd;
+  color: #856404;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.tour-form__save-btn {
+  padding: 12px 24px;
+  background: #f7d100;
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.tour-form__save-btn:hover:not(:disabled) {
+  background: #e6c200;
+  transform: translateY(-1px);
+}
+
+.tour-form__save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Main Content */
+.tour-form__content {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 25px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Sidebar Navigation */
+.tour-form__sidebar {
+  position: sticky;
+  top: 80px;
+  height: fit-content;
+}
+
+.tour-form__sidebar-inner {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+}
+
+.tour-form__sidebar-title {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tour-form__sidebar-nav {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tour-form__sidebar-nav li {
+  margin-bottom: 4px;
+}
+
+.tour-form__sidebar-link {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #6c757d;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tour-form__sidebar-link:hover {
+  background: #f8f9fa;
+  color: #495057;
+}
+
+.tour-form__sidebar-link--active {
+  background: #f7d100;
+  color: #000;
+  font-weight: 600;
+}
+
+/* Form Sections */
+.tour-form__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  padding-bottom: 5rem;
+}
+
+.tour-form__section {
+  background: white;
+  border-radius: 12px;
+  padding: 25px 30px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+  scroll-margin-top: 100px;
+}
+
+.tour-form__section-title {
+  margin: 0 0 20px 0;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f7d100;
+  color: #333;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* Form Fields */
+.tour-form__fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.tour-form__fields--grid {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.tour-form__field-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.tour-form__field-group--full {
+  grid-column: 1 / -1;
+}
+
+.tour-form__label {
+  display: block;
+  margin-bottom: 8px;
+  color: #333;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tour-form__required {
+  color: #dc3545;
+}
+
+.tour-form__input,
+.tour-form__select,
+.tour-form__textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.tour-form__input:focus,
+.tour-form__select:focus,
+.tour-form__textarea:focus {
+  outline: none;
+  border-color: #f7d100;
+  box-shadow: 0 0 0 2px rgba(247, 209, 0, 0.2);
+}
+
+.tour-form__input--readonly {
+  background: #e9ecef;
+  cursor: not-allowed;
+  color: #6c757d;
+}
+
+.tour-form__textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+.tour-form__file-input {
+  padding: 8px;
+}
+
+.tour-form__help-text {
+  display: block;
+  margin-top: 5px;
+  color: #6c757d;
+  font-size: 12px;
+}
+
+.tour-form__image-preview {
+  margin-top: 12px;
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid #e9ecef;
+}
+
+.tour-form__visa-notice {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  border-radius: 6px;
+  color: #155724;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Buttons */
+.tour-form__btn {
+  padding: 10px 16px;
+  background: #f7d100;
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tour-form__btn:hover {
+  background: #e6c200;
+  transform: translateY(-1px);
+}
+
+.tour-form__btn--secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.tour-form__btn--secondary:hover {
+  background: #5a6268;
+}
+
+.tour-form__btn--danger {
+  background: #dc3545;
+  color: white;
+}
+
+.tour-form__btn--danger:hover {
+  background: #c82333;
+}
+
+.tour-form__btn--small {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.tour-form__btn-icon {
+  padding: 6px 10px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tour-form__btn-icon:hover {
+  background: #5a6268;
+}
+
+.tour-form__btn-icon--danger {
+  background: #dc3545;
+}
+
+.tour-form__btn-icon--danger:hover {
+  background: #c82333;
+}
+
+.tour-form__actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 15px;
+}
+
+/* Date Cards */
+.tour-form__dates-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.tour-form__date-card {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tour-form__date-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background: white;
+  border-bottom: 1px solid #e9ecef;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.tour-form__date-card-header:hover {
+  background: #f8f9fa;
+}
+
+.tour-form__date-card-title {
+  margin: 0;
+  color: #333;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.tour-form__date-card-body {
+  padding: 20px;
+}
+
+/* Fee Rules */
+.tour-form__fee-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.tour-form__fee-rule-card {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tour-form__fee-rule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background: white;
+  border-bottom: 1px solid #e9ecef;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.tour-form__fee-rule-header:hover {
+  background: #f8f9fa;
+}
+
+.tour-form__fee-rule-title {
+  margin: 0;
+  color: #333;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.tour-form__fee-rule-body {
+  padding: 20px;
+}
+
+/* Inclusions */
+.tour-form__inclusions {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.tour-form__inclusion-date-group {
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.tour-form__inclusion-date-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.tour-form__inclusion-date-title {
+  margin: 0;
+  color: #333;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.tour-form__badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.tour-form__badge--default {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.tour-form__badge--custom {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.tour-form__inclusion-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.tour-form__inclusion-group-card {
+  padding: 20px;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+}
+
+.tour-form__inclusion-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.tour-form__inclusion-item:last-child {
+  margin-bottom: 0;
+}
+
+.tour-form__inclusion-item-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.tour-form__inclusion-group-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #e9ecef;
+}
+
+/* Itinerary */
+.tour-form__itinerary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.tour-form__itinerary-card {
+  padding: 20px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+}
+
+.tour-form__itinerary-header {
+  margin-bottom: 15px;
+}
+
+.tour-form__itinerary-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  background: #f7d100;
+  color: #000;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Itinerary Helper */
+.tour-form__itinerary-helper {
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #4b4b4b 0%, #000000 100%);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
+}
+
+.tour-form__itinerary-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tour-form__itinerary-info .tour-form__itinerary-badge {
+  background: white;
+  color: black;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 8px 16px;
+}
+
+.tour-form__itinerary-dates {
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.tour-form__itinerary-count {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  font-weight: 400;
+  font-style: italic;
+}
+
+/* Itinerary Actions */
+.tour-form__itinerary-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 15px;
+}
+
+.tour-form__btn--primary {
+  background: linear-gradient(135deg, #4b4b4b 0%, #000000 100%);
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.tour-form__btn--primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+/* Simple List */
+.tour-form__simple-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tour-form__simple-list-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Sticky Save Bar */
+.tour-form__save-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid #e9ecef;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+  z-index: 100;
+}
+
+.tour-form__save-bar-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 15px 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Loading States */
+.tour-form__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+}
+
+.tour-form__loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e9ecef;
+  border-top: 4px solid #f7d100;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.tour-form__loading-text {
+  color: #6c757d;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.tour-form__error {
+  padding: 20px;
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 8px;
+  color: #721c24;
+  font-size: 16px;
+  text-align: center;
+  max-width: 600px;
+  margin: 40px auto;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .tour-form__content {
+    grid-template-columns: 1fr;
+  }
+
+  .tour-form__sidebar {
+    position: static;
+  }
+
+  .tour-form__sidebar-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .tour-form__sidebar-link {
+    padding: 8px 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .tour-form {
+    padding: 15px;
+  }
+
+  .tour-form__header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+    padding: 15px 20px;
+  }
+
+  .tour-form__header-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .tour-form__title {
+    font-size: 20px;
+  }
+
+  .tour-form__section {
+    padding: 20px;
+  }
+
+  .tour-form__fields {
+    grid-template-columns: 1fr;
+  }
+
+  .tour-form__actions {
+    flex-direction: column;
+  }
+
+  .tour-form__save-bar-inner {
+    padding: 12px 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .tour-form__back-btn span {
+    display: none;
+  }
+
+  .tour-form__sidebar-title {
+    font-size: 12px;
+  }
+
+  .tour-form__section-title {
+    font-size: 16px;
+  }
+
+  .tour-form__btn {
+    width: 100%;
+  }
+}
