@@ -25,8 +25,7 @@ import AdminLogin from './pages/admin/Login'
 import AdminProtectedLayout from './layouts/AdminLayout'
 import TourPackages from './pages/admin/TourPackages'
 import AdminFlights from './pages/admin/AdminFlights'
-import CreateTourPackage from './pages/admin/CreateTourPackage'
-import EditTourPackage from './pages/admin/EditTourPackage'
+import TourPackageForm from './pages/admin/TourPackageForm'
 import Tour from './pages/client/Tour'
 import TourBookingSuccess from './pages/client/TourBookingSuccess'
 import TourBookingCancel from './pages/client/TourBookingCancel'
@@ -172,11 +171,11 @@ function App() {
                 />
                 <Route
                   path='tours/create'
-                  element={<CreateTourPackage />}
+                  element={<TourPackageForm mode='create' />}
                 />
                 <Route
                   path='tours/:id'
-                  element={<EditTourPackage />}
+                  element={<TourPackageForm mode='edit' />}
                 />
                 <Route
                   path='tour-sales'
