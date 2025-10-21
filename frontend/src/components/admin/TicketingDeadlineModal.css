@@ -1,0 +1,434 @@
+/* Ticketing Deadline Modal */
+.ticketing-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.ticketing-modal-content {
+  background: white;
+  border-radius: 16px;
+  width: 95%;
+  max-width: 1200px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: ticketing-modal-slide-in 0.3s ease-out;
+}
+
+@keyframes ticketing-modal-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header */
+.ticketing-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 24px 32px;
+  border-bottom: 2px solid #e9ecef;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 16px 16px 0 0;
+}
+
+.ticketing-modal-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ticketing-modal-header p {
+  margin: 8px 0 0 0;
+  opacity: 0.9;
+  font-size: 14px;
+}
+
+.ticketing-modal-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  font-size: 24px;
+  transition: all 0.2s ease;
+}
+
+.ticketing-modal-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+/* Stats Bar */
+.ticketing-stats-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  padding: 24px 32px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.ticketing-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.ticketing-stat svg {
+  font-size: 24px;
+}
+
+.ticketing-stat-count {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ticketing-stat-label {
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.ticketing-stat--critical {
+  border-color: #dc3545;
+  color: #dc3545;
+}
+
+.ticketing-stat--urgent {
+  border-color: #fd7e14;
+  color: #fd7e14;
+}
+
+.ticketing-stat--warning {
+  border-color: #ffc107;
+  color: #f39c12;
+}
+
+.ticketing-stat--safe {
+  border-color: #28a745;
+  color: #28a745;
+}
+
+/* Filters */
+.ticketing-filters {
+  display: flex;
+  gap: 16px;
+  padding: 20px 32px;
+  background: white;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.ticketing-filter-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ticketing-filter-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #495057;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ticketing-filter-group select {
+  padding: 10px 14px;
+  border: 1.5px solid #dee2e6;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ticketing-filter-group select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Modal Body */
+.ticketing-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 32px;
+}
+
+.ticketing-loading,
+.ticketing-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #6c757d;
+}
+
+.ticketing-loading .loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e9ecef;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ticketing-empty svg {
+  margin-bottom: 16px;
+  color: #28a745;
+}
+
+.ticketing-empty p {
+  font-size: 16px;
+  margin: 0;
+}
+
+/* Bookings List */
+.ticketing-bookings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ticketing-booking-card {
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.2s ease;
+}
+
+.ticketing-booking-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.ticketing-booking-card--critical {
+  border-left: 4px solid #dc3545;
+  background: #fff5f5;
+}
+
+.ticketing-booking-card--urgent {
+  border-left: 4px solid #fd7e14;
+  background: #fff8f0;
+}
+
+.ticketing-booking-card--warning {
+  border-left: 4px solid #ffc107;
+  background: #fffbf0;
+}
+
+.ticketing-booking-card--safe {
+  border-left: 4px solid #28a745;
+  background: #f8fff9;
+}
+
+.ticketing-booking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.ticketing-booking-reference {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ticketing-booking-reference strong {
+  font-size: 16px;
+  color: #212529;
+}
+
+.ticketing-urgency-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ticketing-urgency-badge--critical {
+  background: #dc3545;
+  color: white;
+}
+
+.ticketing-urgency-badge--urgent {
+  background: #fd7e14;
+  color: white;
+}
+
+.ticketing-urgency-badge--warning {
+  background: #ffc107;
+  color: #000;
+}
+
+.ticketing-urgency-badge--safe {
+  background: #28a745;
+  color: white;
+}
+
+.ticketing-booking-deadline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #495057;
+  font-size: 14px;
+}
+
+.ticketing-hours-remaining {
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.ticketing-booking-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ticketing-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ticketing-detail-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ticketing-detail-value {
+  font-size: 14px;
+  color: #212529;
+  font-weight: 500;
+}
+
+.ticketing-booking-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 12px;
+  border-top: 1px solid #e9ecef;
+}
+
+.ticketing-action-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ticketing-action-btn--view {
+  background: #667eea;
+  color: white;
+}
+
+.ticketing-action-btn--view:hover {
+  background: #5568d3;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.2);
+}
+
+/* Footer */
+.ticketing-modal-footer {
+  padding: 20px 32px;
+  border-top: 1px solid #e9ecef;
+  background: #f8f9fa;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 0 0 16px 16px;
+}
+
+.ticketing-footer-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  color: #6c757d;
+}
+
+.ticketing-footer-note svg {
+  color: #ffc107;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .ticketing-stats-bar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ticketing-filters {
+    flex-direction: column;
+  }
+
+  .ticketing-booking-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .ticketing-booking-details {
+    grid-template-columns: 1fr;
+  }
+}
