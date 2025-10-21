@@ -37,6 +37,7 @@ import {
   viewFlightBookingHTML,
   editFlightBooking,
   cancelFlightBooking,
+  sendFlightUpdate,
 } from '../controllers/admin/flightController.js'
 import {
   generateTourPDFAdmin,
@@ -145,6 +146,7 @@ router.get('/flights/:id/print', pdfAuthMiddleware, (req, res) => {
 // Flight booking management
 router.put('/flights/:id/edit', editFlightBooking)
 router.put('/flights/:id/cancel', cancelFlightBooking)
+router.post('/flights/send-update', sendFlightUpdate)
 
 // Tour PDF (using special PDF auth middleware)
 router.get('/tours/:id/pdfadmin', pdfAuthMiddleware, generateTourPDFAdmin)

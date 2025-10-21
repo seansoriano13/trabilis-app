@@ -835,6 +835,151 @@ export const sendConfirmationEmail = async (bookingReference) => {
   }
 }
 
+/**
+ * Send updated flight details email
+ */
+export const sendFlightUpdateEmail = async (bookingReference) => {
+  const bookingDetails = await getBookingByBookingReference(bookingReference)
+
+  // Find the first adult traveler with contact info (in case first passenger is a child)
+  const adultTraveler = bookingDetails.passenger_details?.travelers?.find(
+    (traveler) => traveler.type === 'ADULT' && traveler.contact?.emailAddress
+  )
+
+  const customerEmail = adultTraveler?.contact?.emailAddress
+  const customerName =
+    `${adultTraveler?.name?.firstName || ''} ${adultTraveler?.name?.lastName || ''}`.trim()
+
+  if (!customerEmail) {
+    throw new Error('Customer email not found in booking details.')
+  }
+
+  const pdfBuffer = await generateFlightItineraryPDF(bookingDetails)
+
+  try {
+    const sendSmtpEmail = new brevo.SendSmtpEmail()
+
+    sendSmtpEmail.subject = `Flight Update - ${bookingReference}`
+    sendSmtpEmail.htmlContent = `
+            <html>
+                <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f7fa; margin:0; padding:0;">
+                    <div style="max-width: 600px; margin: 30px auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px;">
+                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; margin: -30px -30px 30px -30px; text-align: center;">
+                            <h1 style="margin: 0 0 10px 0; font-size: 28px;">
+                                ✈️ Flight Update
+                            </h1>
+                            <p style="margin: 0; font-size: 14px; opacity: 0.9;">
+                                Booking Reference: <strong>${bookingReference}</strong>
+                            </p>
+                        </div>
+
+                        <div style="padding: 0 10px;">
+                            <p style="font-size: 16px; color: #333; margin-bottom: 20px;">
+                                Hello ${customerName || 'Valued Customer'},
+                            </p>
+
+                            <div style="background: #fff8f0; border-left: 4px solid #fd7e14; padding: 15px 20px; border-radius: 4px; margin: 25px 0;">
+                                <p style="margin: 0; color: #856404; font-weight: 600;">
+                                    📢 Important Update
+                                </p>
+                                <p style="margin: 10px 0 0 0; color: #333; line-height: 1.6;">
+                                    Your flight booking has been updated. Please review the attached itinerary for the latest flight details.
+                                </p>
+                            </div>
+
+                            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                                <h2 style="margin: 0 0 15px 0; font-size: 18px; color: #333; border-bottom: 2px solid #667eea; padding-bottom: 10px;">
+                                    What's Changed?
+                                </h2>
+                                <p style="margin: 0; color: #6c757d; line-height: 1.6;">
+                                    Your booking details have been updated. Common updates include:
+                                </p>
+                                <ul style="color: #6c757d; line-height: 1.8; margin: 10px 0;">
+                                    <li>Flight times or dates</li>
+                                    <li>PNR (Passenger Name Record)</li>
+                                    <li>E-ticket numbers</li>
+                                    <li>Status updates</li>
+                                </ul>
+                            </div>
+
+                            <div style="background: #e8f4fd; border: 1px solid #bee5eb; border-radius: 8px; padding: 20px; margin: 25px 0;">
+                                <p style="margin: 0 0 10px 0; font-weight: 600; color: #004085;">
+                                    📎 Your Updated Itinerary
+                                </p>
+                                <p style="margin: 0; color: #004085; font-size: 14px;">
+                                    The latest version of your flight itinerary is attached to this email as a PDF.
+                                    Please save it for your records and present it at the airport check-in.
+                                </p>
+                            </div>
+
+                            <div style="text-align: center; margin: 35px 0 25px 0;">
+                                <a href="${process.env.FRONTEND_URL}/track-booking?ref=${bookingReference}" 
+                                   style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);">
+                                    Track Your Booking
+                                </a>
+                            </div>
+
+                            <div style="border-top: 2px solid #e9ecef; padding-top: 20px; margin-top: 30px;">
+                                <p style="font-size: 14px; color: #6c757d; margin: 0 0 10px 0;">
+                                    <strong>Need Help?</strong>
+                                </p>
+                                <p style="font-size: 14px; color: #6c757d; margin: 0; line-height: 1.6;">
+                                    If you have any questions about this update, please contact our support team at 
+                                    <a href="mailto:${process.env.SUPPORT_EMAIL || 'support@trabilis.com'}" style="color: #667eea; text-decoration: none; font-weight: 600;">
+                                        ${process.env.SUPPORT_EMAIL || 'support@trabilis.com'}
+                                    </a>
+                                    or call us at <strong>${process.env.SUPPORT_PHONE || '9296106660'}</strong>.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; padding-top: 30px; border-top: 1px solid #e9ecef; margin-top: 30px;">
+                            <p style="margin: 0 0 10px 0; font-size: 16px; font-weight: 600; color: #333;">
+                                <span style="font-weight: 700; color: #667eea;">Trabilis</span>
+                            </p>
+                            <p style="margin: 0; font-size: 13px; color: #888;">
+                                Your Travel Companion
+                            </p>
+                        </div>
+                    </div>
+                </body>
+            </html>
+        `
+
+    sendSmtpEmail.sender = {
+      name: 'Trabilis',
+      email:
+        process.env.BREVO_FROM_EMAIL ||
+        process.env.SUPPORT_EMAIL ||
+        'noreply@trabilis.com',
+    }
+
+    sendSmtpEmail.to = [
+      {
+        email: customerEmail,
+        name: customerName,
+      },
+    ]
+
+    sendSmtpEmail.attachment = [
+      {
+        content: Buffer.from(pdfBuffer).toString('base64'),
+        name: `Flight-Itinerary-${bookingDetails.booking_reference}-Updated.pdf`,
+      },
+    ]
+
+    const data = await apiInstance.sendTransacEmail(sendSmtpEmail)
+    console.log(
+      '✅ Flight update email sent via Brevo API:',
+      data.response.statusMessage
+    )
+    return { success: true }
+  } catch (err) {
+    console.error('❌ Error sending flight update email:', err)
+    throw err
+  }
+}
+
 export const sendTourConfirmationEmail = async (bookingDetails) => {
   try {
     console.log(

@@ -1,5 +1,8 @@
 import { query } from '../../config/db.js'
-import { generateFlightItineraryPDF } from '../../services/brevoEmailService.js'
+import {
+  generateFlightItineraryPDF,
+  sendFlightUpdateEmail,
+} from '../../services/brevoEmailService.js'
 import { supabase } from '../../config/supabaseClient.js'
 import Pusher from 'pusher'
 import fs from 'fs'
@@ -1215,6 +1218,49 @@ export const editFlightBooking = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to update booking',
+      message: error.message,
+    })
+  }
+}
+
+// Send flight update email to customer
+export const sendFlightUpdate = async (req, res) => {
+  try {
+    const { booking_reference } = req.body
+
+    if (!booking_reference) {
+      return res.status(400).json({
+        success: false,
+        error: 'Booking reference is required',
+      })
+    }
+
+    // Verify booking exists
+    const { data: booking, error: fetchError } = await supabase
+      .from('flight_bookings')
+      .select('*')
+      .eq('booking_reference', booking_reference)
+      .single()
+
+    if (fetchError || !booking) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found',
+      })
+    }
+
+    // Send update email
+    await sendFlightUpdateEmail(booking_reference)
+
+    res.json({
+      success: true,
+      message: 'Flight update email sent successfully',
+    })
+  } catch (error) {
+    console.error('Error sending flight update email:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send update email',
       message: error.message,
     })
   }
