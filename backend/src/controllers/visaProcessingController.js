@@ -77,25 +77,50 @@ export const createVisaProcessing = async (req, res) => {
       throw error
     }
 
-    // Auto-assign visa processing to travel consultant staff
+    // Check if tour booking has an assigned staff member
+    // If yes, use that assignment; otherwise, auto-assign
     try {
-      const assignmentResult = await autoAssignBooking(
-        'visa-processing',
-        visaProcessing.id
-      )
-      if (assignmentResult.success) {
+      const { data: tourBooking } = await supabaseAdmin
+        .from('tour_bookings')
+        .select('assigned_to, assigned_at, assigned_by, assignment_status')
+        .eq('id', tour_booking_id)
+        .single()
+
+      if (tourBooking && tourBooking.assigned_to) {
+        // Inherit assignment from tour booking
+        await supabaseAdmin
+          .from('visa_processings')
+          .update({
+            assigned_to: tourBooking.assigned_to,
+            assigned_at: tourBooking.assigned_at,
+            assigned_by: tourBooking.assigned_by,
+            assignment_status: tourBooking.assignment_status || 'pending',
+          })
+          .eq('id', visaProcessing.id)
+
         console.log(
-          `Visa processing ${visaProcessing.id} auto-assigned to ${assignmentResult.assignedStaff.name}`
+          `Visa processing ${visaProcessing.id} inherited assignment from tour booking ${tour_booking_id}`
         )
       } else {
-        console.warn(
-          `Failed to auto-assign visa processing ${visaProcessing.id}:`,
-          assignmentResult.error
+        // No assignment in tour booking, auto-assign to travel consultant
+        const assignmentResult = await autoAssignBooking(
+          'visa-processing',
+          visaProcessing.id
         )
+        if (assignmentResult.success) {
+          console.log(
+            `Visa processing ${visaProcessing.id} auto-assigned to ${assignmentResult.assignedStaff.name}`
+          )
+        } else {
+          console.warn(
+            `Failed to auto-assign visa processing ${visaProcessing.id}:`,
+            assignmentResult.error
+          )
+        }
       }
     } catch (assignmentError) {
-      console.error('Auto-assignment error:', assignmentError)
-      // Don't fail the visa processing creation if auto-assignment fails
+      console.error('Assignment error:', assignmentError)
+      // Don't fail the visa processing creation if assignment fails
     }
 
     res.status(201).json({
@@ -704,6 +729,13 @@ export const createVisaProcessingsForBooking = async (req, res) => {
       })
     }
 
+    // Get tour booking assignment info to inherit
+    const { data: tourBookingAssignment } = await supabaseAdmin
+      .from('tour_bookings')
+      .select('assigned_to, assigned_at, assigned_by, assignment_status')
+      .eq('id', bookingId)
+      .single()
+
     // Create visa processings for passengers who need it
     const visaProcessingsToCreate = visa_statuses
       .filter((vs) => vs.status === 'needs_processing')
@@ -716,6 +748,13 @@ export const createVisaProcessingsForBooking = async (req, res) => {
         visa_type: vs.visa_type || 'tourist',
         status: 'PENDING',
         requirements_status: {},
+        processing_reference: `TRB-VISA-${uuidv4().slice(0, 8).toUpperCase()}`,
+        // Inherit assignment from tour booking if available
+        assigned_to: tourBookingAssignment?.assigned_to || null,
+        assigned_at: tourBookingAssignment?.assigned_at || null,
+        assigned_by: tourBookingAssignment?.assigned_by || null,
+        assignment_status:
+          tourBookingAssignment?.assignment_status || 'pending',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }))
