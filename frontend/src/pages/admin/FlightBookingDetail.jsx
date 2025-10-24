@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useSnackbar } from '../../context/SnackbarContext'
 import {
@@ -19,13 +19,12 @@ import {
   BsDownload,
   BsEye,
   BsX,
+  BsClipboard,
 } from 'react-icons/bs'
 import Select from 'react-select'
 import { supabase } from '../../api/supabaseClient'
 import adminClient from '../../api/adminClient'
-import FlightBookingEditModal from '../../components/admin/FlightBookingEditModal'
 import './FlightBookingDetail.css'
-// import axios from 'axios'
 
 const FlightBookingDetail = () => {
   const { id } = useParams()
@@ -37,10 +36,18 @@ const FlightBookingDetail = () => {
   const [activeTab, setActiveTab] = useState('overview')
   const [printLoading, setPrintLoading] = useState(false)
   const [previewLoading, setPreviewLoading] = useState(false)
-  const [showEditModal, setShowEditModal] = useState(false)
   const [assignedAdminName, setAssignedAdminName] = useState('')
   const [cancellationLoading, setCancellationLoading] = useState(false)
   const [cancellationReason, setCancellationReason] = useState('')
+
+  // Inline editing state
+  const [ticketNumbers, setTicketNumbers] = useState({})
+  const [editableBookingData, setEditableBookingData] = useState({})
+  const [initialBookingData, setInitialBookingData] = useState({})
+  const [initialTicketData, setInitialTicketData] = useState({})
+  const [adminOptions, setAdminOptions] = useState([])
+  const [loadingAdmins, setLoadingAdmins] = useState(false)
+  const [sendingEmail, setSendingEmail] = useState(false)
 
   const jwt = localStorage.getItem('adminToken')
 
@@ -50,6 +57,27 @@ const FlightBookingDetail = () => {
       supabase.auth.setSession({ access_token: jwt })
     }
   }, [jwt])
+
+  // Fetch admin options
+  const fetchAdminOptions = useCallback(async () => {
+    setLoadingAdmins(true)
+    try {
+      const response = await adminClient.get('/appointments/all-staff')
+      if (response.data.success) {
+        const options = response.data.data.map((admin) => ({
+          value: admin.id,
+          label: `${admin.first_name} ${admin.last_name} (${admin.email})`,
+          email: admin.email,
+          name: `${admin.first_name} ${admin.last_name}`,
+        }))
+        setAdminOptions(options)
+      }
+    } catch (error) {
+      console.error('Error fetching admin options:', error)
+    } finally {
+      setLoadingAdmins(false)
+    }
+  }, [])
 
   // Fetch assigned admin name
   const fetchAssignedAdminName = async (adminId) => {
@@ -65,6 +93,277 @@ const FlightBookingDetail = () => {
     } catch (error) {
       console.error('Error fetching assigned admin name:', error)
     }
+  }
+
+  // Initialize ticket numbers and editable data from booking
+  useEffect(() => {
+    if (booking) {
+      // Initialize ticket numbers
+      const tickets = Array.isArray(booking.e_ticket_numbers)
+        ? booking.e_ticket_numbers
+        : []
+
+      const ticketMap = {}
+      tickets.forEach((ticketNum, index) => {
+        ticketMap[index] = ticketNum || ''
+      })
+      setTicketNumbers(ticketMap)
+      setInitialTicketData(ticketMap)
+
+      // Initialize editable booking data
+      const bookingData = {
+        pnr: booking.pnr || '',
+        assigned_to: booking.assigned_to || '',
+        assignment_status: booking.assignment_status || 'pending',
+      }
+      setEditableBookingData(bookingData)
+      setInitialBookingData(bookingData)
+
+      // Fetch admin options
+      fetchAdminOptions()
+    }
+  }, [booking, fetchAdminOptions])
+
+  // Check if booking data has unsaved changes
+  const hasBookingChanges =
+    JSON.stringify(editableBookingData) !== JSON.stringify(initialBookingData)
+
+  // Check if ticket data has unsaved changes
+  const hasTicketChanges =
+    JSON.stringify(ticketNumbers) !== JSON.stringify(initialTicketData)
+
+  // Handle ticket number change
+  const handleTicketNumberChange = (passengerIndex, value) => {
+    setTicketNumbers((prev) => ({
+      ...prev,
+      [passengerIndex]: value,
+    }))
+  }
+
+  // Handle booking field change
+  const handleBookingFieldChange = (field, value) => {
+    setEditableBookingData((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
+  }
+
+  // Save ticket numbers
+  const handleSaveTickets = async () => {
+    try {
+      const travelers = passengerDetails?.travelers || []
+      const ticketArray = travelers
+        .map((_, index) => ticketNumbers[index]?.trim() || null)
+        .filter(Boolean)
+
+      const response = await adminClient.put(`/flights/${booking.id}/edit`, {
+        e_ticket_numbers: ticketArray,
+      })
+
+      if (response.data.success) {
+        setBooking((prev) => ({
+          ...prev,
+          e_ticket_numbers: ticketArray,
+          updated_at: new Date().toISOString(),
+        }))
+        // Update initial state
+        const newTicketMap = {}
+        ticketArray.forEach((ticketNum, index) => {
+          newTicketMap[index] = ticketNum || ''
+        })
+        setInitialTicketData(newTicketMap)
+        showSuccess('Ticket numbers saved successfully!')
+      }
+    } catch (error) {
+      console.error('Error saving tickets:', error)
+      showError('Failed to save ticket numbers')
+    }
+  }
+
+  // Reset ticket changes
+  const handleResetTickets = () => {
+    setTicketNumbers(initialTicketData)
+  }
+
+  // Save booking-level changes
+  const handleSaveBookingChanges = async () => {
+    try {
+      const response = await adminClient.put(
+        `/flights/${booking.id}/edit`,
+        editableBookingData
+      )
+
+      if (response.data.success) {
+        setBooking((prev) => ({
+          ...prev,
+          ...editableBookingData,
+          updated_at: new Date().toISOString(),
+        }))
+        setInitialBookingData(editableBookingData)
+
+        // Update assigned admin name if changed
+        if (
+          editableBookingData.assigned_to &&
+          editableBookingData.assigned_to !== booking.assigned_to
+        ) {
+          fetchAssignedAdminName(editableBookingData.assigned_to)
+        } else if (!editableBookingData.assigned_to) {
+          setAssignedAdminName('')
+        }
+
+        showSuccess('Booking details updated successfully!')
+      }
+    } catch (error) {
+      console.error('Error saving booking:', error)
+      showError('Failed to update booking details')
+    }
+  }
+
+  // Cancel booking changes
+  const handleCancelBookingChanges = () => {
+    setEditableBookingData(initialBookingData)
+  }
+
+  // Send flight update email
+  const handleSendFlightUpdate = async () => {
+    if (!booking?.booking_reference) {
+      showError('Booking reference not found')
+      return
+    }
+
+    setSendingEmail(true)
+    try {
+      await adminClient.post('/flights/send-update', {
+        booking_reference: booking.booking_reference,
+      })
+      showSuccess('Flight update email sent successfully!')
+    } catch (error) {
+      console.error('Error sending flight update email:', error)
+      showError('Failed to send email. Please try again.')
+    } finally {
+      setSendingEmail(false)
+    }
+  }
+
+  // Handle status change (auto-save)
+  const handleStatusChange = async (newStatus) => {
+    try {
+      const response = await adminClient.put(`/flights/${booking.id}/edit`, {
+        status: newStatus,
+      })
+
+      if (response.data.success) {
+        setBooking((prev) => ({
+          ...prev,
+          status: newStatus,
+          updated_at: new Date().toISOString(),
+        }))
+        showSuccess('Status updated successfully!')
+      }
+    } catch (error) {
+      console.error('Error updating status:', error)
+      showError('Failed to update status')
+    }
+  }
+
+  // Handle assignment change (auto-save)
+  const handleAssignmentChange = async (field, value) => {
+    try {
+      const updateData = { [field]: value }
+
+      const response = await adminClient.put(
+        `/flights/${booking.id}/edit`,
+        updateData
+      )
+
+      if (response.data.success) {
+        setBooking((prev) => ({
+          ...prev,
+          [field]: value,
+          updated_at: new Date().toISOString(),
+        }))
+
+        // Update assigned admin name if changed
+        if (field === 'assigned_to' && value) {
+          fetchAssignedAdminName(value)
+        } else if (field === 'assigned_to' && !value) {
+          setAssignedAdminName('')
+        }
+
+        showSuccess('Assignment updated successfully!')
+      }
+    } catch (error) {
+      console.error('Error updating assignment:', error)
+      showError('Failed to update assignment')
+    }
+  }
+
+  // Copy PNR to clipboard
+  const handleCopyPNR = async () => {
+    if (!booking?.pnr) {
+      showError('No PNR to copy')
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(booking.pnr)
+      showSuccess('PNR copied to clipboard!')
+    } catch (error) {
+      console.error('Error copying PNR:', error)
+      showError('Failed to copy PNR')
+    }
+  }
+
+  // Status options
+  const statusOptions = [
+    { value: 'PENDING', label: 'Pending' },
+    { value: 'PENDING_PAYMENT', label: 'Pending Payment' },
+    { value: 'PAID_PENDING_BOOKING', label: 'Paid Pending Booking' },
+    { value: 'BOOKED', label: 'Booked' },
+    { value: 'CANCELLED', label: 'Cancelled' },
+  ]
+
+  // Assignment status options
+  const assignmentStatusOptions = [
+    { value: 'pending', label: 'Pending' },
+    { value: 'in_progress', label: 'In Progress' },
+    { value: 'completed', label: 'Completed' },
+  ]
+
+  // Compact select styles for inline editing
+  const compactSelectStyles = {
+    control: (base) => ({
+      ...base,
+      minHeight: '38px',
+      fontSize: '14px',
+      border: '1px solid #ced4da',
+      borderRadius: '6px',
+      boxShadow: 'none',
+      '&:hover': {
+        border: '1px solid #9ca3af',
+      },
+    }),
+    valueContainer: (base) => ({
+      ...base,
+      padding: '0 12px',
+    }),
+    input: (base) => ({
+      ...base,
+      margin: '0',
+      padding: '0',
+    }),
+    indicatorSeparator: () => ({
+      display: 'none',
+    }),
+    dropdownIndicator: (base) => ({
+      ...base,
+      padding: '8px',
+    }),
+    menu: (base) => ({
+      ...base,
+      fontSize: '14px',
+      zIndex: 1001,
+    }),
   }
 
   // Fetch booking data
@@ -127,6 +426,7 @@ const FlightBookingDetail = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
+      case 'BOOKED':
       case 'PENDING_TICKETING':
         return 'status-confirmed'
       case 'PENDING':
@@ -176,14 +476,6 @@ const FlightBookingDetail = () => {
     } finally {
       setPreviewLoading(false)
     }
-  }
-
-  const handleEdit = () => {
-    setShowEditModal(true)
-  }
-
-  const handleCloseEditModal = () => {
-    setShowEditModal(false)
   }
 
   // Admin cancellation with double confirmation
@@ -245,46 +537,6 @@ const FlightBookingDetail = () => {
       'BOOKED',
       'PENDING_TICKETING',
     ].includes(booking?.status)
-  }
-
-  const handleEditSubmit = async (submitData) => {
-    try {
-      const response = await adminClient.put(
-        `/flights/${booking.id}/edit`,
-        submitData
-      )
-      if (response.data.success) {
-        setBooking((prev) => ({
-          ...prev,
-          ...submitData,
-          e_ticket_numbers:
-            submitData.e_ticket_numbers || prev.e_ticket_numbers,
-          updated_at: new Date().toISOString(),
-        }))
-        // Update assigned admin name if assignment changed
-        if (
-          submitData.assigned_to &&
-          submitData.assigned_to !== booking.assigned_to
-        ) {
-          fetchAssignedAdminName(submitData.assigned_to)
-        } else if (!submitData.assigned_to) {
-          setAssignedAdminName('')
-        }
-        showSuccess('Booking updated successfully!')
-        return true
-      } else {
-        showError('Failed to update booking')
-        return false
-      }
-    } catch (error) {
-      console.error('Error updating booking:', error)
-      if (error.response?.data?.error) {
-        showError(`Error: ${error.response.data.error}`)
-      } else {
-        showError('Error updating booking. Please try again.')
-      }
-      throw error
-    }
   }
 
   // const cancelBooking = async (reason) => {
@@ -482,89 +734,232 @@ const FlightBookingDetail = () => {
         </div>
 
         <div className='booking-detail__actions'>
-          <button
-            className='btn btn-warning'
-            onClick={handleEdit}
-            disabled={booking.status === 'CANCELLED'}
-            title={
-              booking.status === 'CANCELLED'
-                ? 'Cannot edit cancelled booking'
-                : 'Edit booking details'
-            }
-          >
-            <BsPencil />{' '}
-            {booking.status === 'CANCELLED'
-              ? 'Cannot edit cancelled booking'
-              : 'Edit booking details'}
-          </button>
-          <button
-            className='btn btn-danger'
-            onClick={handleAdminCancellation}
-            disabled={!canCancelBooking() || cancellationLoading}
-            title={
-              !canCancelBooking()
-                ? 'Booking cannot be cancelled'
-                : 'Cancel this booking'
-            }
-          >
-            <BsXCircle />
-            {cancellationLoading
-              ? 'Cancelling...'
-              : booking.status === 'CANCELLED'
-                ? 'Cancelled'
-                : 'Cancel'}
-          </button>
+          {/* Actions moved to banner */}
         </div>
       </div>
 
       {/* Status Banner */}
       <div
-        className={`booking-detail__status ${getStatusColor(booking.status)}`}
+        className={`booking-detail__status status-banner-grid ${getStatusColor(
+          booking.status
+        )}`}
       >
-        <div className='status-content'>
-          {getStatusIcon(booking.status)}
-          <div>
-            <h3>
-              Booking Status:{' '}
-              {booking.status === 'PENDING_TICKETING'
-                ? 'Confirmed'
-                : booking.status}
-            </h3>
-            <p>Reference: {booking.booking_reference}</p>
-            {booking.status === 'CANCELLED' && booking.cancelled_at && (
-              <p>Cancelled on: {formatDate(booking.cancelled_at)}</p>
-            )}
-            {booking.cancellation_reason && (
-              <p>Reason: {booking.cancellation_reason}</p>
-            )}
+        {/* Left Column */}
+        <div className='status-column status-column-left'>
+          <div className='status-item'>
+            <span className='status-label'>Booking Status:</span>
+            <Select
+              value={statusOptions.find((opt) => opt.value === booking.status)}
+              onChange={(selected) => handleStatusChange(selected.value)}
+              options={statusOptions}
+              className='inline-dropdown-select'
+              classNamePrefix='inline-dropdown'
+              isSearchable={false}
+              isDisabled={booking.status === 'CANCELLED'}
+              styles={{
+                control: (base) => ({
+                  ...base,
+                  border: 'none',
+                  background: 'transparent',
+                  boxShadow: 'none',
+                  cursor: 'pointer',
+                  minHeight: 'auto',
+                }),
+                valueContainer: (base) => ({
+                  ...base,
+                  padding: '0',
+                }),
+                singleValue: (base) => ({
+                  ...base,
+                  color: 'inherit',
+                  fontWeight: '600',
+                  fontSize: '18px',
+                }),
+                indicatorSeparator: () => ({
+                  display: 'none',
+                }),
+                dropdownIndicator: (base) => ({
+                  ...base,
+                  padding: '0 4px',
+                  color: 'inherit',
+                }),
+              }}
+            />
           </div>
+          <div className='status-item'>
+            <span className='status-label'>Reference:</span>
+            <span className='status-value'>{booking.booking_reference}</span>
+          </div>
+          <div className='status-item'>
+            <span className='status-label'>PNR:</span>
+            <span
+              className='status-value pnr-copy'
+              onClick={handleCopyPNR}
+              title='Click to copy PNR'
+            >
+              {booking.pnr || 'Not assigned'}
+              {booking.pnr && <BsClipboard className='copy-icon' />}
+            </span>
+          </div>
+          {booking.status === 'CANCELLED' && booking.cancelled_at && (
+            <div className='status-item'>
+              <span className='status-label'>Cancelled on:</span>
+              <span className='status-value'>
+                {formatDate(booking.cancelled_at)}
+              </span>
+            </div>
+          )}
+          {booking.cancellation_reason && (
+            <div className='status-item'>
+              <span className='status-label'>Reason:</span>
+              <span className='status-value'>
+                {booking.cancellation_reason}
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Assignment Status */}
-        {booking.assignment_status && (
-          <div className='assignment-status'>
-            <div className='assignment-status__content'>
-              <div className='assignment-status__icon'>
-                {booking.assignment_status === 'completed' && <BsCheckCircle />}
-                {booking.assignment_status === 'in_progress' && <BsClock />}
-                {booking.assignment_status === 'pending' && <BsClock />}
-              </div>
-              <div className='assignment-status__details'>
-                <h4>
-                  Assignment Status:{' '}
-                  {booking.assignment_status.charAt(0).toUpperCase() +
-                    booking.assignment_status.slice(1).replace('_', ' ')}
-                </h4>
-                {booking.assigned_to && (
-                  <p>Assigned to: {assignedAdminName || 'Loading...'}</p>
-                )}
-                {booking.assigned_at && (
-                  <p>Assigned on: {formatDate(booking.assigned_at)}</p>
-                )}
-              </div>
-            </div>
+        {/* Right Column */}
+        <div className='status-column status-column-right'>
+          <div className='status-item'>
+            <span className='status-label'>Assignment Status:</span>
+            <Select
+              value={assignmentStatusOptions.find(
+                (opt) => opt.value === (booking.assignment_status || 'pending')
+              )}
+              onChange={(selected) =>
+                handleAssignmentChange('assignment_status', selected.value)
+              }
+              options={assignmentStatusOptions}
+              className='inline-dropdown-select'
+              classNamePrefix='inline-dropdown'
+              isSearchable={false}
+              isDisabled={booking.status === 'CANCELLED'}
+              styles={{
+                control: (base) => ({
+                  ...base,
+                  border: 'none',
+                  background: 'transparent',
+                  boxShadow: 'none',
+                  cursor: 'pointer',
+                  minHeight: 'auto',
+                }),
+                valueContainer: (base) => ({
+                  ...base,
+                  padding: '0',
+                }),
+                singleValue: (base) => ({
+                  ...base,
+                  color: 'inherit',
+                  fontWeight: '600',
+                }),
+                indicatorSeparator: () => ({
+                  display: 'none',
+                }),
+                dropdownIndicator: (base) => ({
+                  ...base,
+                  padding: '0 4px',
+                  color: 'inherit',
+                }),
+              }}
+            />
           </div>
-        )}
+          <div className='status-item'>
+            <span className='status-label'>Assigned to:</span>
+            <Select
+              value={
+                adminOptions.find((opt) => opt.value === booking.assigned_to) ||
+                null
+              }
+              onChange={(selected) =>
+                handleAssignmentChange('assigned_to', selected?.value || null)
+              }
+              options={adminOptions}
+              placeholder='Select staff'
+              className='inline-dropdown-select'
+              classNamePrefix='inline-dropdown'
+              isSearchable={true}
+              isClearable={true}
+              isDisabled={booking.status === 'CANCELLED' || loadingAdmins}
+              isLoading={loadingAdmins}
+              styles={{
+                control: (base) => ({
+                  ...base,
+                  border: 'none',
+                  background: 'transparent',
+                  boxShadow: 'none',
+                  cursor: 'pointer',
+                  minHeight: 'auto',
+                }),
+                valueContainer: (base) => ({
+                  ...base,
+                  padding: '0',
+                }),
+                singleValue: (base) => ({
+                  ...base,
+                  color: 'inherit',
+                  fontWeight: '600',
+                }),
+                placeholder: (base) => ({
+                  ...base,
+                  color: 'inherit',
+                  opacity: 0.7,
+                }),
+                indicatorSeparator: () => ({
+                  display: 'none',
+                }),
+                dropdownIndicator: (base) => ({
+                  ...base,
+                  padding: '0 4px',
+                  color: 'inherit',
+                }),
+              }}
+            />
+          </div>
+          {booking.assigned_at && (
+            <div className='status-item'>
+              <span className='status-label'>Assigned on:</span>
+              <span className='status-value'>
+                {formatDate(booking.assigned_at)}
+              </span>
+            </div>
+          )}
+          <div className='status-item status-item-actions'>
+            <button
+              className='btn btn-info btn-sm'
+              onClick={handleSendFlightUpdate}
+              disabled={sendingEmail || !booking?.booking_reference}
+            >
+              {sendingEmail ? (
+                <>
+                  <div className='loading-spinner-small'></div>
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <BsEnvelope /> Send Update Email
+                </>
+              )}
+            </button>
+            <button
+              className='btn btn-danger btn-sm'
+              onClick={handleAdminCancellation}
+              disabled={!canCancelBooking() || cancellationLoading}
+              title={
+                !canCancelBooking()
+                  ? 'Booking cannot be cancelled'
+                  : 'Cancel this booking'
+              }
+            >
+              <BsXCircle />
+              {cancellationLoading
+                ? 'Cancelling...'
+                : booking.status === 'CANCELLED'
+                ? 'Cancelled'
+                : 'Cancel Booking'}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -717,173 +1112,153 @@ const FlightBookingDetail = () => {
           <div className='tab-content'>
             <div className='passenger-header'>
               <h3>
-                <BsPerson /> Passenger Details
+                <BsPerson /> Passenger Details & Ticketing
               </h3>
-              <p>Complete passenger information and travel documents</p>
+              <p>Manage passenger information and e-ticket assignments</p>
             </div>
 
-            <div className='passenger-details passenger-details-flight'>
-              {passengerDetails?.travelers?.map((traveler, index) => (
-                <div
-                  key={index}
-                  className='passenger-card'
-                >
-                  <div className='passenger-card-header'>
-                    <div className='passenger-avatar-large'>
-                      {traveler.name?.firstName?.charAt(0)}
-                      {traveler.name?.lastName?.charAt(0)}
-                    </div>
-                    <div className='passenger-title'>
-                      <h4>Passenger {index + 1}</h4>
-                      <p>
-                        {traveler.name?.firstName} {traveler.name?.lastName}
-                      </p>
-                    </div>
-                  </div>
+            <div className='passenger-details passenger-details--flight-detail bg-white'>
+              {/* Passengers Table */}
+              <div className='passenger-table-section'>
+                <div className='section-header'>
+                  <BsPerson className='section-icon' />
+                  <h5>
+                    All Passengers ({passengerDetails?.travelers?.length || 0})
+                  </h5>
+                </div>
 
-                  <div className='passenger-sections'>
-                    <div className='info-section'>
-                      <div className='section-header'>
-                        <BsPerson className='section-icon' />
-                        <h5>Personal Information</h5>
-                      </div>
-                      <div className='info-grid'>
-                        <div className='info-item'>
-                          <span className='label'>Full Name:</span>
-                          <span className='value'>
-                            {traveler.name?.firstName} {traveler.name?.lastName}
-                          </span>
-                        </div>
-                        <div className='info-item'>
-                          <span className='label'>Title:</span>
-                          <span className='value'>{traveler.title}</span>
-                        </div>
-                        <div className='info-item'>
-                          <span className='label'>Type:</span>
-                          <span className='value'>{traveler.type}</span>
-                        </div>
-                        <div className='info-item'>
-                          <span className='label'>Gender:</span>
-                          <span className='value'>{traveler.gender}</span>
-                        </div>
-                        <div className='info-item'>
-                          <span className='label'>Date of Birth:</span>
-                          <span className='value'>
+                <div className='passenger-table-container'>
+                  <table className='passenger-table'>
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Gender</th>
+                        <th>Date of Birth</th>
+                        <th>Document No.</th>
+                        <th>Nationality</th>
+                        <th>E-Ticket Number</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {passengerDetails?.travelers?.map((traveler, index) => (
+                        <tr key={index}>
+                          <td>{index + 1}</td>
+                          <td>
+                            <div className='passenger-name'>
+                              <strong>
+                                {traveler.name?.firstName}{' '}
+                                {traveler.name?.lastName}
+                              </strong>
+                              {index === 0 && (
+                                <span className='lead-badge'>Lead</span>
+                              )}
+                            </div>
+                          </td>
+                          <td>
+                            <span
+                              className={`passenger-type ${traveler.type?.toLowerCase()}`}
+                            >
+                              {traveler.type}
+                            </span>
+                          </td>
+                          <td>{traveler.gender || '-'}</td>
+                          <td>
                             {traveler.dateOfBirth
                               ? new Date(
                                   traveler.dateOfBirth
                                 ).toLocaleDateString()
                               : '-'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className='info-section'>
-                      <div className='section-header'>
-                        <BsEnvelope className='section-icon' />
-                        <h5>Contact Information</h5>
-                      </div>
-                      <div className='info-grid'>
-                        <div className='info-item'>
-                          <span className='label'>Email:</span>
-                          <span className='value'>
-                            <BsEnvelope /> {traveler.contact?.emailAddress}
-                          </span>
-                        </div>
-                        <div className='info-item'>
-                          <span className='label'>Phone:</span>
-                          <span className='value'>
-                            <BsTelephone /> +
-                            {traveler.contact?.phones?.[0]?.countryCallingCode}{' '}
-                            {traveler.contact?.phones?.[0]?.number}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className='info-section'>
-                      <div className='section-header'>
-                        <BsCreditCard className='section-icon' />
-                        <h5>Document Information</h5>
-                      </div>
-                      {traveler.documents?.map((doc, docIndex) => (
-                        <div
-                          key={docIndex}
-                          className='document-card'
-                        >
-                          <div className='document-header'>
-                            <span className='document-type'>
-                              {doc.documentType}
-                            </span>
-                            <span className='document-number'>
-                              {doc.number}
-                            </span>
-                          </div>
-                          <div className='info-grid'>
-                            <div className='info-item'>
-                              <span className='label'>Nationality:</span>
-                              <span className='value'>{doc.nationality}</span>
-                            </div>
-                            <div className='info-item'>
-                              <span className='label'>Expiry Date:</span>
-                              <span className='value'>
-                                {doc.expiryDate
-                                  ? new Date(
-                                      doc.expiryDate
-                                    ).toLocaleDateString()
-                                  : '-'}
-                              </span>
-                            </div>
-                            <div className='info-item'>
-                              <span className='label'>Issuance Country:</span>
-                              <span className='value'>
-                                {doc.issuanceCountry}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
+                          </td>
+                          <td>
+                            {traveler.documents?.[0]?.number || (
+                              <span className='no-data'>-</span>
+                            )}
+                          </td>
+                          <td>
+                            {traveler.documents?.[0]?.nationality || (
+                              <span className='no-data'>-</span>
+                            )}
+                          </td>
+                          <td>
+                            <input
+                              type='text'
+                              value={ticketNumbers[index] || ''}
+                              onChange={(e) =>
+                                handleTicketNumberChange(index, e.target.value)
+                              }
+                              placeholder={`Ticket for ${traveler.name?.firstName}`}
+                              className='ticket-input'
+                              maxLength={13}
+                              disabled={booking.status === 'CANCELLED'}
+                            />
+                          </td>
+                        </tr>
                       ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Save Tickets Button */}
+                {hasTicketChanges && (
+                  <div className='table-footer-actions'>
+                    <div className='tickets-summary'>
+                      {
+                        Object.values(ticketNumbers).filter((t) => t?.trim())
+                          .length
+                      }{' '}
+                      of {passengerDetails?.travelers?.length} tickets entered
+                    </div>
+                    <div className='action-buttons'>
+                      <button
+                        className='btn btn-success'
+                        onClick={handleSaveTickets}
+                        disabled={booking.status === 'CANCELLED'}
+                      >
+                        <BsCheckCircle /> Save Ticket Numbers
+                      </button>
+                      <button
+                        className='btn btn-secondary'
+                        onClick={handleResetTickets}
+                      >
+                        <BsX /> Reset
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Contact Information Card */}
+              <div className='contact-summary-card'>
+                <div className='card-header'>
+                  <BsEnvelope className='card-icon' />
+                  <h5>Primary Contact</h5>
+                </div>
+                <div className='card-content'>
+                  <div className='info-grid'>
+                    <div className='info-item'>
+                      <span className='label'>Email:</span>
+                      <span className='value'>
+                        <BsEnvelope />{' '}
+                        {passengerDetails?.contacts?.[0]?.emailAddress || '-'}
+                      </span>
+                    </div>
+                    <div className='info-item'>
+                      <span className='label'>Phone:</span>
+                      <span className='value'>
+                        <BsTelephone /> +
+                        {
+                          passengerDetails?.contacts?.[0]?.phones?.[0]
+                            ?.countryCallingCode
+                        }{' '}
+                        {passengerDetails?.contacts?.[0]?.phones?.[0]?.number ||
+                          '-'}
+                      </span>
                     </div>
                   </div>
                 </div>
-              ))}
-
-              {/* Contact Information */}
-              {/* {passengerDetails?.contacts && (
-                                <div className="contact-card">
-                                    <div className="contact-header">
-                                        <BsTelephone className="contact-icon" />
-                                        <h4>Booking Contact</h4>
-                                    </div>
-                                    <div className="contact-content">
-                                        <div className="info-grid">
-                                            <div className="info-item">
-                                                <span className="label">Company:</span>
-                                                <span className="value">{passengerDetails.contacts[0]?.companyName}</span>
-                                            </div>
-                                            <div className="info-item">
-                                                <span className="label">Contact Person:</span>
-                                                <span className="value">
-                                                    {passengerDetails.contacts[0]?.addresseeName?.firstName} {passengerDetails.contacts[0]?.addresseeName?.lastName}
-                                                </span>
-                                            </div>
-                                            <div className="info-item">
-                                                <span className="label">Email:</span>
-                                                <span className="value">
-                                                    <BsEnvelope /> {passengerDetails.contacts[0]?.emailAddress}
-                                                </span>
-                                            </div>
-                                            <div className="info-item">
-                                                <span className="label">Address:</span>
-                                                <span className="value">
-                                                    <BsGeoAlt /> {passengerDetails.contacts[0]?.address?.lines?.[0]}, {passengerDetails.contacts[0]?.address?.cityName}, {passengerDetails.contacts[0]?.address?.countryCode}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )} */}
+              </div>
             </div>
           </div>
         )}
@@ -1304,15 +1679,6 @@ const FlightBookingDetail = () => {
           </div>
         )}
       </div>
-
-      {/* Edit Modal */}
-      <FlightBookingEditModal
-        isOpen={showEditModal}
-        booking={booking}
-        onClose={handleCloseEditModal}
-        onSubmit={handleEditSubmit}
-        context='detail'
-      />
     </div>
   )
 }

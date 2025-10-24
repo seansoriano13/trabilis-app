@@ -4,6 +4,17 @@ import { useSnackbar } from '../context/SnackbarContext'
 const Snackbar = () => {
   const { snackbar, hideSnackbar } = useSnackbar()
 
+  // Auto-close timer
+  useEffect(() => {
+    if (snackbar.isOpen && snackbar.duration > 0) {
+      const timer = setTimeout(() => {
+        hideSnackbar()
+      }, snackbar.duration)
+
+      return () => clearTimeout(timer)
+    }
+  }, [snackbar.isOpen, snackbar.duration, hideSnackbar])
+
   // Add keyboard listener for ESC key
   useEffect(() => {
     const handleEscape = (e) => {
@@ -100,10 +111,10 @@ const Snackbar = () => {
             snackbar.type === 'success'
               ? 'bg-green-500'
               : snackbar.type === 'error'
-                ? 'bg-red-500'
-                : snackbar.type === 'warning'
-                  ? 'bg-yellow-500'
-                  : 'bg-blue-500'
+              ? 'bg-red-500'
+              : snackbar.type === 'warning'
+              ? 'bg-yellow-500'
+              : 'bg-blue-500'
           }`}
           style={{
             animation: `shrink ${snackbar.duration || 5000}ms linear forwards`,
