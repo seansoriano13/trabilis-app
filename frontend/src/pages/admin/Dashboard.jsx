@@ -559,8 +559,8 @@ const Dashboard = () => {
             ticketingStats.critical > 0
               ? 'dashboard__summary-card--alert'
               : ticketingStats.urgent > 0
-                ? 'dashboard__summary-card--warning'
-                : ''
+              ? 'dashboard__summary-card--warning'
+              : ''
           }`}
           onClick={() => setTicketingModalOpen(true)}
           style={{ cursor: 'pointer' }}
@@ -579,8 +579,8 @@ const Dashboard = () => {
               {ticketingStats.critical > 0
                 ? `${ticketingStats.critical} critical`
                 : ticketingStats.urgent > 0
-                  ? `${ticketingStats.urgent} urgent`
-                  : 'All on track'}
+                ? `${ticketingStats.urgent} urgent`
+                : 'All on track'}
             </span>
           </div>
         </div>
@@ -713,7 +713,11 @@ const Dashboard = () => {
                   </td>
                   <td className='dashboard__table-cell'>
                     <span
-                      className={`dashboard__status dashboard__status--${booking.status === 'PENDING_TICKETING' ? 'confirmed' : booking.status.toLowerCase()}`}
+                      className={`dashboard__status dashboard__status--${
+                        booking.status === 'PENDING_TICKETING'
+                          ? 'confirmed'
+                          : booking.status.toLowerCase()
+                      }`}
                     >
                       {booking.status === 'PENDING_TICKETING'
                         ? 'Confirmed'
@@ -885,7 +889,11 @@ const Dashboard = () => {
                   </td>
                   <td className='dashboard__table-cell'>
                     <span
-                      className={`dashboard__status dashboard__status--${booking.status === 'PENDING_TICKETING' ? 'confirmed' : booking.status.toLowerCase()}`}
+                      className={`dashboard__status dashboard__status--${
+                        booking.status === 'PENDING_TICKETING'
+                          ? 'confirmed'
+                          : booking.status.toLowerCase()
+                      }`}
                     >
                       {booking.status === 'PENDING_TICKETING'
                         ? 'Confirmed'
@@ -1065,6 +1073,15 @@ const Dashboard = () => {
             <div className='dashboard__section-title'>
               <FiActivity size={24} />
               <h2>Revenue Trend</h2>
+            </div>
+            <div className='dashboard__section-actions'>
+              <Link
+                to='/admin/sales-report'
+                className='dashboard__action-btn dashboard__action-btn--view-all'
+              >
+                <FiEye size={16} />
+                View All
+              </Link>
             </div>
           </div>
           <div className='dashboard__chart-container'>

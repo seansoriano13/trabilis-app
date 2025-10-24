@@ -15,6 +15,8 @@ import {
   FiMenu,
   FiX,
   FiActivity,
+  FiBarChart2,
+  FiStar,
 } from 'react-icons/fi'
 import adminLogo from '../../assets/admin/admin-logo.png'
 import { useState, useEffect } from 'react'
@@ -430,6 +432,40 @@ function AdminNavbar() {
               {userRole === 'admin' && (
                 <li className='admin-nav__nav-item'>
                   <NavLink
+                    to='sales-report'
+                    className={({ isActive }) =>
+                      clsx(
+                        'admin-nav__nav-link',
+                        isActive && 'admin-nav__nav-link--active'
+                      )
+                    }
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <FiBarChart2 size={18} />
+                    <span>Sales Report</span>
+                  </NavLink>
+                </li>
+              )}
+              {(userRole === 'admin' || userRole === 'accounting') && (
+                <li className='admin-nav__nav-item'>
+                  <NavLink
+                    to='ratings'
+                    className={({ isActive }) =>
+                      clsx(
+                        'admin-nav__nav-link',
+                        isActive && 'admin-nav__nav-link--active'
+                      )
+                    }
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <FiStar size={18} />
+                    <span>Ratings</span>
+                  </NavLink>
+                </li>
+              )}
+              {userRole === 'admin' && (
+                <li className='admin-nav__nav-item'>
+                  <NavLink
                     to='users'
                     className={({ isActive }) =>
                       clsx(
@@ -481,8 +517,8 @@ function AdminNavbar() {
                     {userRole === 'admin'
                       ? 'Administrator'
                       : userRole === 'accounting'
-                        ? 'Accounting'
-                        : 'Travel Consultant'}
+                      ? 'Accounting'
+                      : 'Travel Consultant'}
                   </span>
                 </div>
                 <FiChevronDown
@@ -588,20 +624,24 @@ function AdminNavbar() {
               {userRole === 'admin'
                 ? 'Administrator'
                 : userRole === 'accounting'
-                  ? 'Accounting User'
-                  : 'Travel Consultant'}
+                ? 'Accounting User'
+                : 'Travel Consultant'}
             </span>
           </div>
         </div>
         <div className='admin-nav__profile-menu'>
-          <button className='admin-nav__profile-menu-item'>
-            <FiSettings size={18} />
-            <span>Settings</span>
-          </button>
-          <button className='admin-nav__profile-menu-item'>
-            <FiUser size={18} />
-            <span>Profile</span>
-          </button>
+          {userRole === 'admin' && (
+            <button
+              className='admin-nav__profile-menu-item'
+              onClick={() => {
+                navigate('/admin/settings')
+                setProfileOpen(false)
+              }}
+            >
+              <FiSettings size={18} />
+              <span>Settings</span>
+            </button>
+          )}
           <hr className='admin-nav__profile-divider' />
           <button
             className='admin-nav__profile-menu-item admin-nav__profile-menu-item--logout'

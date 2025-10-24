@@ -39,6 +39,11 @@ import VisaProcessingSuccess from './pages/client/VisaProcessingSuccess'
 import FlightBookingDetail from './pages/admin/FlightBookingDetail'
 import TourBookingDetail from './pages/admin/TourBookingDetail'
 import VisaInquiryDetail from './pages/admin/VisaInquiryDetail'
+import SalesReport from './pages/admin/SalesReport'
+import Ratings from './pages/admin/Ratings'
+import Settings from './pages/admin/Settings'
+import VisaRequirements from './pages/admin/VisaRequirements'
+import SubmitRating from './pages/client/SubmitRating'
 import { AirportProvider } from './context/AirportContext'
 import { AirlinesProvider } from './context/AirlinesContext'
 
@@ -139,6 +144,10 @@ function App() {
                 path='contact-us'
                 element={<ContactUs />}
               />
+              <Route
+                path='submit-rating/:token'
+                element={<SubmitRating />}
+              />
             </Route>
 
             {/* Admin Routes */}
@@ -204,6 +213,22 @@ function App() {
                 <Route
                   path='visa-inquiries/:id'
                   element={<VisaInquiryDetail />}
+                />
+                <Route
+                  path='sales-report'
+                  element={<SalesReport />}
+                />
+                <Route
+                  path='ratings'
+                  element={<Ratings />}
+                />
+                <Route
+                  path='settings'
+                  element={<Settings />}
+                />
+                <Route
+                  path='visa-requirements'
+                  element={<VisaRequirements />}
                 />
               </Route>
             </Route>
