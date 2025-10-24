@@ -40,7 +40,6 @@ import ReactPaginate from 'react-paginate'
 import axios from 'axios'
 import './Dashboard.css'
 import { supabase } from '../../api/supabaseClient.js'
-import TicketingDeadlineModal from '../../components/admin/TicketingDeadlineModal'
 
 ChartJS.register(
   CategoryScale,
@@ -79,59 +78,8 @@ const Dashboard = () => {
   })
   const [weather, setWeather] = useState(null)
   const isInitialLoad = useRef(true)
-  const [ticketingModalOpen, setTicketingModalOpen] = useState(false)
-  const [ticketingStats, setTicketingStats] = useState({
-    total: 0,
-    critical: 0,
-    urgent: 0,
-  })
 
   const pageSize = 5
-
-  useEffect(() => {
-    fetchTicketingStats()
-  }, [])
-
-  const fetchTicketingStats = async () => {
-    try {
-      const now = new Date()
-      const { data, error } = await supabase
-        .from('flight_bookings')
-        .select('ticketing_deadline')
-        .eq('status', 'BOOKED')
-        .is('ticketed_at', null)
-        .not('ticketing_deadline', 'is', null)
-
-      if (error) throw error
-
-      const stats = {
-        total: 0,
-        critical: 0,
-        urgent: 0,
-      }
-
-      if (data) {
-        data.forEach((booking) => {
-          const deadline = new Date(booking.ticketing_deadline)
-          const hoursRemaining = Math.max(
-            0,
-            Math.round((deadline - now) / (1000 * 60 * 60))
-          )
-
-          if (hoursRemaining <= 168) {
-            // Within 7 days
-            stats.total++
-            if (hoursRemaining <= 24) stats.critical++
-            else if (hoursRemaining <= 48) stats.urgent++
-          }
-        })
-      }
-
-      setTicketingStats(stats)
-    } catch (error) {
-      console.error('Error fetching ticketing stats:', error)
-    }
-  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -554,46 +502,7 @@ const Dashboard = () => {
             <span className='dashboard__summary-label'>New bookings</span>
           </div>
         </div>
-        <div
-          className={`dashboard__summary-card dashboard__summary-card--ticketing ${
-            ticketingStats.critical > 0
-              ? 'dashboard__summary-card--alert'
-              : ticketingStats.urgent > 0
-              ? 'dashboard__summary-card--warning'
-              : ''
-          }`}
-          onClick={() => setTicketingModalOpen(true)}
-          style={{ cursor: 'pointer' }}
-        >
-          <div className='dashboard__summary-icon'>
-            {ticketingStats.critical > 0 || ticketingStats.urgent > 0 ? (
-              <FiAlertTriangle size={24} />
-            ) : (
-              <FiClock size={24} />
-            )}
-          </div>
-          <div className='dashboard__summary-content'>
-            <h3>Ticketing Deadlines</h3>
-            <p>{ticketingStats.total}</p>
-            <span className='dashboard__summary-label'>
-              {ticketingStats.critical > 0
-                ? `${ticketingStats.critical} critical`
-                : ticketingStats.urgent > 0
-                ? `${ticketingStats.urgent} urgent`
-                : 'All on track'}
-            </span>
-          </div>
-        </div>
       </div>
-
-      {/* Ticketing Deadline Modal */}
-      <TicketingDeadlineModal
-        isOpen={ticketingModalOpen}
-        onClose={() => {
-          setTicketingModalOpen(false)
-          fetchTicketingStats() // Refresh stats when modal closes
-        }}
-      />
 
       <div className='dashboard__section'>
         <div className='dashboard__section-header'>

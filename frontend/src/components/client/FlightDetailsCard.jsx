@@ -14,182 +14,180 @@ import FlightDetailsModal from '../client/FlightDetailsModal.jsx'
 import { useNavigate } from 'react-router-dom'
 
 export default function FlightDetailsCard({
-    flightData,
-    direction,
-    airports,
-    fareDetails,
+  flightData,
+  direction,
+  airports,
+  fareDetails,
 }) {
-    const [isAmenityListShown, setIsAmenityListShown] = useState(false)
-    const [isOpen, setIsOpen] = useState(false)
+  const [isAmenityListShown, setIsAmenityListShown] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
+  const [isNavigating, setIsNavigating] = useState(false)
 
-    const timeoutRef = useRef(null)
+  const timeoutRef = useRef(null)
 
-    const handleClick = useCallback(() => {
-        if (timeoutRef.current) return // ignore if still in debounce window
+  const handleClick = useCallback(() => {
+    if (timeoutRef.current) return // ignore if still in debounce window
 
-        setIsAmenityListShown((prev) => !prev)
+    setIsAmenityListShown((prev) => !prev)
 
-        timeoutRef.current = setTimeout(() => {
-            timeoutRef.current = null
-        }, 300) // 300ms debounce
-    }, [])
+    timeoutRef.current = setTimeout(() => {
+      timeoutRef.current = null
+    }, 300) // 300ms debounce
+  }, [])
 
-    useEffect(() => {
-        return () => clearTimeout(timeoutRef.current)
-    }, [])
+  useEffect(() => {
+    return () => clearTimeout(timeoutRef.current)
+  }, [])
 
-    const segments = flightData.segments
-    const departureIata = flightData.departureIata
-    const arrivalIata = flightData.arrivalIata
-    const departureTime = flightData.departureTime
-    const arrivalTime = flightData.arrivalTime
-    const duration = flightData.durationStr
+  const segments = flightData.segments
+  const departureIata = flightData.departureIata
+  const arrivalIata = flightData.arrivalIata
+  const departureTime = flightData.departureTime
+  const arrivalTime = flightData.arrivalTime
+  const duration = flightData.durationStr
 
-    const origin = getAirportInfoByIata(departureIata, airports)
-    const destination = getAirportInfoByIata(arrivalIata, airports)
-    const terminal = {
-        departure: segments[0]?.departure?.terminal,
-        arrival: segments[0]?.arrival?.terminal,
+  const origin = getAirportInfoByIata(departureIata, airports)
+  const destination = getAirportInfoByIata(arrivalIata, airports)
+  const terminal = {
+    departure: segments[0]?.departure?.terminal,
+    arrival: segments[0]?.arrival?.terminal,
+  }
+
+  const departureDate = formatToLongDate(segments[0]?.departure?.at)
+
+  const { airlineCode, flightNumber, airlineName, airlineLogo } =
+    createFlightDetails(flightData)
+  const aircraftCode = segments[0].aircraft.code
+
+  const amenities = fareDetails?.amenities || []
+  const brandedFareLabel = fareDetails?.brandedFareLabel || ''
+
+  const navigate = useNavigate()
+  const handleChangeFlight = () => {
+    if (window.confirm('Are you sure you want to change the flight?')) {
+      setIsNavigating(true)
+      // Small delay to show loading state before navigation
+      setTimeout(() => {
+        navigate('/flights')
+      }, 100)
     }
+  }
 
-    const departureDate = formatToLongDate(segments[0]?.departure?.at)
+  return (
+    <div className={'flight-details'}>
+      <FlightDetailsModal
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        origin={origin}
+        destination={destination}
+        departureDate={departureDate}
+        departureTime={departureTime}
+        arrivalTime={arrivalTime}
+        duration={duration}
+        airlineCode={airlineCode}
+        flightNumber={flightNumber}
+        airlineName={airlineName}
+        aircraftCode={aircraftCode}
+        departureIata={departureIata}
+      />
 
-    const { airlineCode, flightNumber, airlineName, airlineLogo } =
-        createFlightDetails(flightData)
-    const aircraftCode = segments[0].aircraft.code
+      <div
+        className={`flight-details__route flight-details__route--${direction}`}
+      >
+        <h2 className='flight-details__city'>
+          {origin?.city} to {destination?.city}
+        </h2>
+        <h2 className='flight-details__date'>{departureDate}</h2>
+      </div>
 
-    const amenities = fareDetails?.amenities || []
-    const brandedFareLabel = fareDetails?.brandedFareLabel || ''
-
-    const navigate = useNavigate()
-    const handleChangeFlight = () => {
-        if (window.confirm('Are you sure you want to change the flight?')) {
-            navigate('/flights')
-        }
-    }
-
-    return (
-        <div className={'flight-details'}>
-            <FlightDetailsModal
-                isOpen={isOpen}
-                onClose={() => setIsOpen(false)}
-                origin={origin}
-                destination={destination}
-                departureDate={departureDate}
-                departureTime={departureTime}
-                arrivalTime={arrivalTime}
-                duration={duration}
-                airlineCode={airlineCode}
-                flightNumber={flightNumber}
-                airlineName={airlineName}
-                aircraftCode={aircraftCode}
-                departureIata={departureIata}
-            />
-
-            <div
-                className={`flight-details__route flight-details__route--${direction}`}
-            >
-                <h2 className='flight-details__city'>
-                    {origin?.city} to {destination?.city}
-                </h2>
-                <h2 className='flight-details__date'>{departureDate}</h2>
+      <div className='flight-section'>
+        <div className='flight-details__route-block'>
+          <div className='flight-details__time'>
+            <div className='flight-details__time-block'>
+              <h3 className='flight-details__time-hour'>{departureTime}</h3>
+              <p className='flight-details__time-iata'>{departureIata}</p>
             </div>
-
-            <div className='flight-section'>
-                <div className='flight-details__route-block'>
-                    <div className='flight-details__time'>
-                        <div className='flight-details__time-block'>
-                            <h3 className='flight-details__time-hour'>
-                                {departureTime}
-                            </h3>
-                            <p className='flight-details__time-iata'>
-                                {departureIata}
-                            </p>
-                        </div>
-                        <hr className='flight-details__separator' />
-                        <IoAirplane className='flight-details__airplane' />
-                        <div className='flight-details__time-block'>
-                            <h3 className='flight-details__time-hour'>
-                                {arrivalTime}
-                            </h3>
-                            <p className='flight-details__time-iata flight-details__time-iata--right'>
-                                {arrivalIata}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className='flight-details__airports'>
-                        <div className='flight-details__airport-group'>
-                            <p className='flight-details__airport-name'>
-                                {origin?.name}
-                            </p>
-                            <p className='flight-details__airport-terminal'>
-                                Terminal {terminal.departure}
-                            </p>
-                        </div>
-                        <div className='flight-details__airport-group flight-details__airport-group--right'>
-                            <p className='flight-details__airport-name'>
-                                {destination?.name}
-                            </p>
-                            <p className='flight-details__airport-terminal'>
-                                Terminal {terminal.arrival}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className='flight-details__airline'>
-                    <div className='flight-details__info-group'>
-                        <CiStopwatch className='flight-details__icon' />
-                        <p className='flight-details__duration'>{duration}</p>
-                    </div>
-                    <div className='flight-details__info-group'>
-                        <GiAirplaneDeparture className='flight-details__icon' />
-                        <p className='flight-details__flight-number'>
-                            {airlineCode} {flightNumber} {airlineName}
-                        </p>
-                        <img
-                            className='flight-details__logo'
-                            src={airlineLogo}
-                            alt={airlineName}
-                        />
-                    </div>
-                </div>
-                <PrimaryButton
-                    onClick={() => setIsOpen(true)}
-                    buttonText={'See itinerary details'}
-                    isBold={true}
-                    className='flight-details__btn flight-details__btn--itinerary'
-                    icon={null}
-                    iconPosition={'left'}
-                />
+            <hr className='flight-details__separator' />
+            <IoAirplane className='flight-details__airplane' />
+            <div className='flight-details__time-block'>
+              <h3 className='flight-details__time-hour'>{arrivalTime}</h3>
+              <p className='flight-details__time-iata flight-details__time-iata--right'>
+                {arrivalIata}
+              </p>
             </div>
+          </div>
 
-            <div className='flight-details__amenities'>
-                <div
-                    onClick={() => handleClick()}
-                    className='flight-details__fare-label'
-                >
-                    <h2 className='flight-details__fare'>
-                        {capitalizeWords(brandedFareLabel) || 'Economy'}
-                    </h2>
-                    <IoIosArrowDown className='flight-details__arrow' />
-                </div>
-                {isAmenityListShown && (
-                    <>
-                        <AmenityList
-                            amenities={amenities}
-                            direction={direction}
-                        />
-                        <PrimaryButton
-                            buttonText={'Change Flight'}
-                            isBold={true}
-                            className='flight-details__btn'
-                            onClick={() => handleChangeFlight()}
-                        />
-                    </>
-                )}
+          <div className='flight-details__airports'>
+            <div className='flight-details__airport-group'>
+              <p className='flight-details__airport-name'>{origin?.name}</p>
+              <p className='flight-details__airport-terminal'>
+                Terminal {terminal.departure}
+              </p>
             </div>
+            <div className='flight-details__airport-group flight-details__airport-group--right'>
+              <p className='flight-details__airport-name'>
+                {destination?.name}
+              </p>
+              <p className='flight-details__airport-terminal'>
+                Terminal {terminal.arrival}
+              </p>
+            </div>
+          </div>
         </div>
-    )
+
+        <div className='flight-details__airline'>
+          <div className='flight-details__info-group'>
+            <CiStopwatch className='flight-details__icon' />
+            <p className='flight-details__duration'>{duration}</p>
+          </div>
+          <div className='flight-details__info-group'>
+            <GiAirplaneDeparture className='flight-details__icon' />
+            <p className='flight-details__flight-number'>
+              {airlineCode} {flightNumber} {airlineName}
+            </p>
+            <img
+              className='flight-details__logo'
+              src={airlineLogo}
+              alt={airlineName}
+            />
+          </div>
+        </div>
+        <PrimaryButton
+          onClick={() => setIsOpen(true)}
+          buttonText={'See itinerary details'}
+          isBold={true}
+          className='flight-details__btn flight-details__btn--itinerary'
+          icon={null}
+          iconPosition={'left'}
+        />
+      </div>
+
+      <div className='flight-details__amenities'>
+        <div
+          onClick={() => handleClick()}
+          className='flight-details__fare-label'
+        >
+          <h2 className='flight-details__fare'>
+            {capitalizeWords(brandedFareLabel) || 'Economy'}
+          </h2>
+          <IoIosArrowDown className='flight-details__arrow' />
+        </div>
+        {isAmenityListShown && (
+          <>
+            <AmenityList
+              amenities={amenities}
+              direction={direction}
+            />
+            <PrimaryButton
+              buttonText={isNavigating ? 'Loading...' : 'Change Flight'}
+              isBold={true}
+              className='flight-details__btn'
+              onClick={() => handleChangeFlight()}
+              disabled={isNavigating}
+            />
+          </>
+        )}
+      </div>
+    </div>
+  )
 }

@@ -1078,7 +1078,8 @@ export const generateFlightPDFAdmin = async (req, res) => {
 export const editFlightBooking = async (req, res) => {
   try {
     const { id } = req.params
-    const { status, pnr, assigned_to, assignment_status } = req.body
+    const { status, pnr, assigned_to, assignment_status, e_ticket_numbers } =
+      req.body
 
     // Validate required fields
     if (!id) {
@@ -1129,8 +1130,75 @@ export const editFlightBooking = async (req, res) => {
       }
       updateData.assignment_status = assignment_status
     }
+    if (e_ticket_numbers !== undefined) {
+      console.log('[TICKETING] Received e_ticket_numbers:', e_ticket_numbers)
+
+      // Validate e_ticket_numbers is an array (if provided)
+      if (e_ticket_numbers !== null && !Array.isArray(e_ticket_numbers)) {
+        return res.status(400).json({
+          success: false,
+          error: 'e_ticket_numbers must be an array',
+        })
+      }
+      updateData.e_ticket_numbers = e_ticket_numbers
+
+      // Set ticketed_at timestamp when tickets are added (but not when cleared)
+      if (e_ticket_numbers && e_ticket_numbers.length > 0) {
+        console.log(
+          '[TICKETING] Tickets present, checking if ticketed_at already set...'
+        )
+        console.log(
+          '[TICKETING] Existing ticketed_at:',
+          existingBooking.ticketed_at
+        )
+        console.log('[TICKETING] Current status:', existingBooking.status)
+
+        // Only set ticketed_at if it hasn't been set yet
+        if (!existingBooking.ticketed_at) {
+          updateData.ticketed_at = new Date().toISOString()
+          // Also update status to TICKETED
+          updateData.status = 'TICKETED'
+          console.log(
+            `[TICKETING] Setting ticketed_at for booking ${existingBooking.booking_reference} to ${updateData.ticketed_at}`
+          )
+          console.log(
+            `[TICKETING] Changing status from ${existingBooking.status} to TICKETED`
+          )
+        } else {
+          console.log(
+            `[TICKETING] ticketed_at already set for ${existingBooking.booking_reference}`
+          )
+          // Check if status needs to be updated (for existing bookings that were ticketed before this logic)
+          if (
+            existingBooking.status !== 'TICKETED' &&
+            existingBooking.status !== 'CANCELLED'
+          ) {
+            updateData.status = 'TICKETED'
+            console.log(
+              `[TICKETING] Fixing status - updating from ${existingBooking.status} to TICKETED`
+            )
+          }
+        }
+      } else if (e_ticket_numbers && e_ticket_numbers.length === 0) {
+        // Clear ticketed_at if all tickets are removed
+        updateData.ticketed_at = null
+        // Revert status back to BOOKED if it was TICKETED
+        if (existingBooking.status === 'TICKETED') {
+          updateData.status = 'BOOKED'
+          console.log(`[TICKETING] Reverting status from TICKETED to BOOKED`)
+        }
+        console.log(
+          `[TICKETING] Clearing ticketed_at for booking ${existingBooking.booking_reference}`
+        )
+      }
+    }
 
     // Update booking
+    console.log(
+      '[TICKETING] Update data being sent:',
+      JSON.stringify(updateData, null, 2)
+    )
+
     const { data: updatedBooking, error: updateError } = await supabase
       .from('flight_bookings')
       .update(updateData)
@@ -1139,8 +1207,14 @@ export const editFlightBooking = async (req, res) => {
       .single()
 
     if (updateError) {
+      console.error('[TICKETING] Update error:', updateError)
       throw updateError
     }
+
+    console.log(
+      '[TICKETING] Update successful, ticketed_at in result:',
+      updatedBooking?.ticketed_at
+    )
 
     // Create admin notification for assignment changes
     if (

@@ -21,6 +21,7 @@ import {
   FiFileText,
   FiDownload,
   FiActivity,
+  FiAlertTriangle,
 } from 'react-icons/fi'
 import ReactPaginate from 'react-paginate'
 import './AdminFlights.css'
@@ -28,6 +29,9 @@ import { supabase } from '../../api/supabaseClient'
 import adminClient from '../../api/adminClient'
 import AssignmentModal from '../../components/admin/AssignmentModal'
 import FlightBookingEditModal from '../../components/admin/FlightBookingEditModal'
+/* ========== TICKETING SYSTEM - TEMPORARILY DISABLED - START ========== */
+// import TicketingDeadlineModal from '../../components/admin/TicketingDeadlineModal'
+/* ========== TICKETING SYSTEM - TEMPORARILY DISABLED - END ========== */
 import { getCurrentAdmin } from '../../utils/jwtUtils'
 
 const AdminFlights = () => {
@@ -67,6 +71,16 @@ const AdminFlights = () => {
   // Edit modal states
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState(null)
+
+  /* ========== TICKETING SYSTEM - TEMPORARILY DISABLED - START ========== */
+  // // Ticketing deadline modal states
+  // const [ticketingModalOpen, setTicketingModalOpen] = useState(false)
+  // const [ticketingStats, setTicketingStats] = useState({
+  //   total: 0,
+  //   critical: 0,
+  //   urgent: 0,
+  // })
+  /* ========== TICKETING SYSTEM - TEMPORARILY DISABLED - END ========== */
 
   const pageSize = 20
   const jwt = localStorage.getItem('adminToken') // From your login flow
@@ -112,6 +126,54 @@ const AdminFlights = () => {
     return () => clearTimeout(timer)
   }, [leadEmailInput])
 
+  /* ========== TICKETING SYSTEM - TEMPORARILY DISABLED - START ========== */
+  // // Fetch ticketing stats
+  // useEffect(() => {
+  //   fetchTicketingStats()
+  // }, [])
+
+  // const fetchTicketingStats = async () => {
+  //   try {
+  //     const now = new Date()
+  //     const { data, error } = await supabase
+  //       .from('flight_bookings')
+  //       .select('ticketing_deadline')
+  //       .in('status', ['BOOKED'])
+  //       .is('ticketed_at', null)
+  //       .not('ticketing_deadline', 'is', null)
+
+  //     if (error) throw error
+
+  //     const stats = {
+  //       total: 0,
+  //       critical: 0,
+  //       urgent: 0,
+  //     }
+
+  //     if (data) {
+  //       data.forEach((booking) => {
+  //         const deadline = new Date(booking.ticketing_deadline)
+  //         const hoursRemaining = Math.max(
+  //           0,
+  //           Math.round((deadline - now) / (1000 * 60 * 60))
+  //         )
+
+  //         if (hoursRemaining <= 168) {
+  //           // Within 7 days
+  //           stats.total++
+  //           if (hoursRemaining <= 24) stats.critical++
+  //           else if (hoursRemaining <= 48) stats.urgent++
+  //         }
+  //       })
+  //     }
+
+  //     setTicketingStats(stats)
+  //   } catch (error) {
+  //     console.error('Error fetching ticketing stats:', error)
+  //   }
+  // }
+  /* ========== TICKETING SYSTEM - TEMPORARILY DISABLED - END ========== */
+
   // Fetch data
   useEffect(() => {
     const fetchData = async () => {
@@ -149,6 +211,11 @@ const AdminFlights = () => {
             ascending: true,
           })
         }
+
+        /* ========== TICKETING SYSTEM - TEMPORARILY DISABLED - START ========== */
+        // Exclude TICKETED and PAID_PENDING_TICKETING statuses
+        query = query.not('status', 'in', '("TICKETED","PAID_PENDING_TICKETING")')
+        /* ========== TICKETING SYSTEM - TEMPORARILY DISABLED - END ========== */
 
         if (filters.status && filters.status !== 'All') {
           query = query.eq('status', filters.status)
@@ -489,6 +556,38 @@ const AdminFlights = () => {
             <span className='flights__summary-label'>Most popular</span>
           </div>
         </div>
+        {/* ========== TICKETING SYSTEM - TEMPORARILY DISABLED - START ========== */}
+        {/* <div
+          className={`flights__summary-card flights__summary-card--ticketing ${
+            ticketingStats.critical > 0
+              ? 'flights__summary-card--alert'
+              : ticketingStats.urgent > 0
+              ? 'flights__summary-card--warning'
+              : ''
+          }`}
+          onClick={() => setTicketingModalOpen(true)}
+          style={{ cursor: 'pointer' }}
+        >
+          <div className='flights__summary-icon'>
+            {ticketingStats.critical > 0 || ticketingStats.urgent > 0 ? (
+              <FiAlertTriangle size={24} />
+            ) : (
+              <FiClock size={24} />
+            )}
+          </div>
+          <div className='flights__summary-content'>
+            <h3>Ticketing Deadlines</h3>
+            <p>{ticketingStats.total}</p>
+            <span className='flights__summary-label'>
+              {ticketingStats.critical > 0
+                ? `${ticketingStats.critical} critical`
+                : ticketingStats.urgent > 0
+                ? `${ticketingStats.urgent} urgent`
+                : 'All on track'}
+            </span>
+          </div>
+        </div> */}
+        {/* ========== TICKETING SYSTEM - TEMPORARILY DISABLED - END ========== */}
       </div>
 
       <div className='flights__filter'>
@@ -996,6 +1095,17 @@ const AdminFlights = () => {
         onSubmit={handleEditSubmit}
         context='admin'
       />
+
+      {/* ========== TICKETING SYSTEM - TEMPORARILY DISABLED - START ========== */}
+      {/* Ticketing Deadline Modal */}
+      {/* <TicketingDeadlineModal
+        isOpen={ticketingModalOpen}
+        onClose={() => {
+          setTicketingModalOpen(false)
+          fetchTicketingStats() // Refresh stats when modal closes
+        }}
+      /> */}
+      {/* ========== TICKETING SYSTEM - TEMPORARILY DISABLED - END ========== */}
     </div>
   )
 }

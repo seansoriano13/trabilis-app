@@ -88,6 +88,9 @@ const AdminVisa = () => {
     processing: null,
   })
 
+  // Highlight state for scrolling to a specific processing
+  const [highlightedProcessingId, setHighlightedProcessingId] = useState(null)
+
   // Visa Processing state (new functionality)
   const [visaProcessings, setVisaProcessings] = useState([])
   const [processingPage, setProcessingPage] = useState(0)
@@ -291,6 +294,25 @@ const AdminVisa = () => {
     return () => clearTimeout(timer)
   }, [processingSearchInput])
 
+  // Handle scrolling to and highlighting a specific processing
+  useEffect(() => {
+    if (highlightedProcessingId && activeTab === 'processing') {
+      // Wait for the DOM to update
+      setTimeout(() => {
+        const row = document.querySelector(
+          `tr[data-processing-id="${highlightedProcessingId}"]`
+        )
+        if (row) {
+          row.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          // Clear highlight after animation completes
+          setTimeout(() => {
+            setHighlightedProcessingId(null)
+          }, 3000) // 3 seconds
+        }
+      }, 100)
+    }
+  }, [highlightedProcessingId, activeTab, visaProcessings])
+
   const handleInquirySort = (key) => {
     setInquirySort((prev) => ({
       key,
@@ -373,7 +395,9 @@ const AdminVisa = () => {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/v1/visa/inquiries/${paymentModal.inquiry.id}/mark-ready-for-payment`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/v1/visa/inquiries/${
+          paymentModal.inquiry.id
+        }/mark-ready-for-payment`,
         {
           method: 'POST',
           headers: {
@@ -416,7 +440,9 @@ const AdminVisa = () => {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/v1/visa/inquiries/${inquiry.id}/revert-payment`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/v1/visa/inquiries/${
+          inquiry.id
+        }/revert-payment`,
         {
           method: 'POST',
           headers: {
@@ -825,7 +851,9 @@ const AdminVisa = () => {
                                 className='action-btn link-btn'
                                 onClick={() => {
                                   setActiveTab('processing')
-                                  // TODO: Filter/highlight the processing record
+                                  setHighlightedProcessingId(
+                                    inquiry.converted_to_processing_id
+                                  )
                                 }}
                                 title='View Processing'
                               >
@@ -945,7 +973,7 @@ const AdminVisa = () => {
                   <option value='TOUR_BOOKING'>Tour-based</option>
                   <option value='VISA_INQUIRY'>Standalone</option>
                 </select>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '10px' }}>
+                <div className='visa__filter-group visa__filter-group--checkbox'>
                   <input
                     type='checkbox'
                     id='show_my_bookings_visa'
@@ -956,10 +984,13 @@ const AdminVisa = () => {
                         show_my_bookings: e.target.checked,
                       }))
                     }
-                    style={{ width: 'auto', cursor: 'pointer' }}
+                    className='visa__filter-checkbox'
                   />
-                  <label htmlFor='show_my_bookings_visa' style={{ margin: 0, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
-                    <FiUser style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                  <label
+                    htmlFor='show_my_bookings_visa'
+                    className='visa__filter-checkbox-label'
+                  >
+                    <FiUser />
                     My Processings
                   </label>
                 </div>
@@ -997,7 +1028,15 @@ const AdminVisa = () => {
                 </thead>
                 <tbody>
                   {visaProcessings?.map((processing) => (
-                    <tr key={processing.id}>
+                    <tr
+                      key={processing.id}
+                      data-processing-id={processing.id}
+                      className={
+                        highlightedProcessingId === processing.id
+                          ? 'highlighted-row'
+                          : ''
+                      }
+                    >
                       <td className='reference-cell'>
                         <span className='reference-text'>
                           {processing.processing_reference}

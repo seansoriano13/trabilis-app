@@ -1224,67 +1224,77 @@ export const sendVisaInquiryConfirmationEmail = async ({
           <html>
             <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f7fa; margin:0; padding:0;">
               <div style="max-width: 600px; margin: 30px auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px;">
-                <div style="text-align: center; margin-bottom: 30px;">
-                  <h1 style="color: #f7d100; font-size: 2rem; margin: 0; font-weight: 900;">
-                     Lindela Immigration Visa Consultancy
+                <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #f7d100;">
+                  <h1 style="color: #f7d100; font-size: 28px; margin: 0 0 10px 0; font-weight: 700;">
+                    ✓ Visa Inquiry Received
                   </h1>
-                  <p style="color: #666; margin: 10px 0 0 0; font-size: 1.1rem;">
+                  <p style="margin: 0; font-size: 14px; color: #666;">
+                    Reference: <strong style="color: #333;">${inquiryReference}</strong>
+                  </p>
+                </div>
+
+                <div style="padding: 0 10px;">
+                  <p style="font-size: 16px; color: #333; margin-bottom: 20px;">
+                    Hello ${full_name},
+                  </p>
+
+                  <div style="background: #e8f4fd; border: 1px solid #bee5eb; padding: 15px 20px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0; color: #004085; font-weight: 600;">
+                      Thank you for your interest in our visa consultation services!
+                    </p>
+                    <p style="margin: 10px 0 0 0; color: #004085; line-height: 1.6;">
+                      We have successfully received your inquiry and our team of expert visa consultants will review your request shortly.
+                    </p>
+                  </div>
+
+                  <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h2 style="margin: 0 0 15px 0; font-size: 18px; color: #333; border-bottom: 2px solid #f7d100; padding-bottom: 10px;">
+                      Inquiry Details
+                    </h2>
+                    <p style="margin: 10px 0; color: #6c757d;"><strong style="color: #333;">Reference Number:</strong> ${inquiryReference}</p>
+                    <p style="margin: 10px 0; color: #6c757d;"><strong style="color: #333;">Visa Type:</strong> ${visa_type}</p>
+                    <p style="margin: 10px 0; color: #6c757d;"><strong style="color: #333;">Destination:</strong> ${destination}</p>
+                    <p style="margin: 10px 0; color: #6c757d;"><strong style="color: #333;">Your Message:</strong> ${message}</p>
+                  </div>
+
+                  <div style="background: #fff8f0; border: 1px solid #ffeeba; border-radius: 8px; padding: 20px; margin: 25px 0;">
+                    <p style="margin: 0 0 10px 0; font-weight: 600; color: #856404;">
+                      What happens next?
+                    </p>
+                    <ul style="color: #856404; line-height: 1.8; margin: 10px 0; padding-left: 20px;">
+                      <li>Our visa consultant will review your inquiry within 24 hours</li>
+                      <li>We will contact you via phone or email to discuss your requirements</li>
+                      <li><strong>If you decide to proceed:</strong> Visit our website → Click "Track Me" → Enter reference <strong>${inquiryReference}</strong> → Click "Pay Now" to start processing</li>
+                      <li>After payment, prepare required documents and bring them to our office at Unit 2215 Cityland 10 Tower II, H. V. Dela Costa Street Makati Metro Manila</li>
+                      <li>Our team will guide you through the entire visa application process</li>
+                    </ul>
+                  </div>
+
+                  <div style="background: #e8f4fd; border: 1px solid #bee5eb; border-radius: 8px; padding: 20px; margin: 25px 0;">
+                    <p style="margin: 0 0 10px 0; font-weight: 600; color: #004085;">
+                      Why Choose Us?
+                    </p>
+                    <p style="margin: 0; color: #004085; line-height: 1.6;">
+                      With our <strong>12 years of experience</strong> and <strong>high approval rate</strong>, we are confident that we can help you achieve your travel dreams. Our knowledgeable and professional team is committed to providing you with the best possible service.
+                    </p>
+                  </div>
+
+                  <div style="border-top: 2px solid #e9ecef; padding-top: 20px; margin-top: 30px;">
+                    <p style="font-size: 14px; color: #6c757d; margin: 0 0 10px 0;">
+                      <strong>Need immediate assistance?</strong>
+                    </p>
+                    <p style="font-size: 14px; color: #6c757d; margin: 0; line-height: 1.6;">
+                      Contact us at <a href="mailto:${process.env.SUPPORT_EMAIL || 'support@trabilis.com'}" style="color: #f7d100; text-decoration: none; font-weight: 600;">${process.env.SUPPORT_EMAIL || 'support@trabilis.com'}</a>
+                    </p>
+                  </div>
+                </div>
+
+                <div style="text-align: center; padding-top: 30px; border-top: 1px solid #e9ecef; margin-top: 30px;">
+                  <p style="margin: 0 0 10px 0; font-size: 16px; font-weight: 600; color: #333;">
+                    <span style="font-weight: 700; color: #f7d100;">Lindela Immigration Visa Consultancy</span>
+                  </p>
+                  <p style="margin: 0; font-size: 13px; color: #888;">
                     Your Trusted Partner in Dream Destinations
-                  </p>
-                </div>
-                
-                <h2 style="color: #333; text-align: center; margin-bottom: 20px;">
-                   Visa Inquiry Received Successfully!
-                </h2>
-                
-                <p style="font-size: 16px; color: #333; line-height: 1.6; margin-bottom: 20px;">
-                  Dear <strong>${full_name}</strong>,
-                </p>
-                
-                <p style="font-size: 16px; color: #333; line-height: 1.6; margin-bottom: 20px;">
-                  Thank you for your interest in our visa consultation services! We have successfully received your inquiry and our team of expert visa consultants will review your request shortly.
-                </p>
-                
-                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f7d100;">
-                  <h3 style="color: #333; margin-top: 0; font-size: 1.2rem;">Inquiry Details:</h3>
-                  <p style="margin: 5px 0; color: #555;"><strong>Reference Number:</strong> ${inquiryReference}</p>
-                  <p style="margin: 5px 0; color: #555;"><strong>Visa Type:</strong> ${visa_type}</p>
-                  <p style="margin: 5px 0; color: #555;"><strong>Destination:</strong> ${destination}</p>
-                  <p style="margin: 5px 0; color: #555;"><strong>Your Message:</strong> ${message}</p>
-                </div>
-                
-                <div style="background-color: #e8f4fd; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                  <h3 style="color: #0066cc; margin-top: 0; font-size: 1.1rem;">What happens next?</h3>
-                  <ul style="color: #333; line-height: 1.6; margin: 10px 0; padding-left: 20px;">
-                    <li>Our visa consultant will review your inquiry within 24 hours</li>
-                    <li>We will contact you via phone or email to discuss your requirements</li>
-                    <li><strong>If you decide to proceed:</strong> Visit our website → Click "Track Me" → Enter reference <strong>${inquiryReference}</strong> → Click "Pay Now" to start processing</li>
-                    <li>After payment, prepare required documents and bring them to our office at Unit 2215 Cityland 10 Tower II, H. V. Dela Costa Street Makati Metro Manila</li>
-                    <li>Our team will guide you through the entire visa application process</li>
-                  </ul>
-                </div>
-                
-                <p style="font-size: 16px; color: #333; line-height: 1.6; margin: 20px 0;">
-                  With our <strong>12 years of experience</strong> and <strong>high approval rate</strong>, we are confident that we can help you achieve your travel dreams. Our knowledgeable and professional team is committed to providing you with the best possible service.
-                </p>
-                
-                <div style="text-align: center; margin: 30px 0;">
-                  <p style="color: #666; font-size: 14px; margin: 0;">
-                    Need immediate assistance? Contact us at:
-                  </p>
-                  <p style="margin: 10px 0;">
-                    <a href="mailto:${process.env.SUPPORT_EMAIL || 'support@trabilis.com'}" style="color: #f7d100; text-decoration: none; font-weight: bold;">
-                      ${process.env.SUPPORT_EMAIL || 'support@trabilis.com'}
-                    </a>
-                  </p>
-                </div>
-                
-                <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
-                  <p style="color: #888; font-size: 12px; margin: 0;">
-                    This is an automated message. Please do not reply to this email.
-                  </p>
-                  <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
-                    © 2024 Lindela Immigration Visa Consultancy - Trabilis. All rights reserved.
                   </p>
                 </div>
               </div>
@@ -1332,67 +1342,89 @@ export const sendVisaProcessingStartedEmail = async ({
           <html>
             <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f7fa; margin:0; padding:0;">
               <div style="max-width: 600px; margin: 30px auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px;">
-                <div style="text-align: center; margin-bottom: 30px;">
-                  <h1 style="color: #f7d100; font-size: 2rem; margin: 0; font-weight: 900;">
-                     Lindela Immigration Visa Consultancy
+                <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #f7d100;">
+                  <h1 style="color: #f7d100; font-size: 28px; margin: 0 0 10px 0; font-weight: 700;">
+                    ✓ Payment Received
                   </h1>
-                  <p style="color: #666; margin: 10px 0 0 0; font-size: 1.1rem;">
+                  <p style="margin: 0; font-size: 14px; color: #666;">
+                    Processing Reference: <strong style="color: #333;">${processingReference}</strong>
+                  </p>
+                </div>
+
+                <div style="padding: 0 10px;">
+                  <p style="font-size: 16px; color: #333; margin-bottom: 20px;">
+                    Hello ${full_name},
+                  </p>
+
+                  <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 15px 20px; border-radius: 8px; margin: 25px 0;">
+                    <p style="margin: 0; color: #155724; font-weight: 600;">
+                      ✓ Your visa processing has officially begun!
+                    </p>
+                    <p style="margin: 10px 0 0 0; color: #155724; line-height: 1.6;">
+                      Thank you for your payment! We have successfully received your payment and your visa processing has been initiated.
+                    </p>
+                  </div>
+
+                  <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                    <h2 style="margin: 0 0 15px 0; font-size: 18px; color: #333; border-bottom: 2px solid #f7d100; padding-bottom: 10px;">
+                      Processing Details
+                    </h2>
+                    <p style="margin: 10px 0; color: #6c757d;"><strong style="color: #333;">Original Inquiry:</strong> ${inquiryReference}</p>
+                    <p style="margin: 10px 0; color: #6c757d;"><strong style="color: #333;">Visa Type:</strong> ${visa_type}</p>
+                    <p style="margin: 10px 0; color: #6c757d;"><strong style="color: #333;">Destination:</strong> ${destination}</p>
+                  </div>
+
+                  <div style="background: #fff8f0; border: 1px solid #ffeeba; border-radius: 8px; padding: 20px; margin: 25px 0;">
+                    <p style="margin: 0 0 10px 0; font-weight: 600; color: #856404;">
+                      📋 Next Steps - Document Preparation
+                    </p>
+                    <p style="margin: 0 0 15px 0; color: #856404;">
+                      Please prepare the following documents and bring them to our office:
+                    </p>
+                    <ul style="color: #856404; line-height: 1.8; margin: 10px 0; padding-left: 20px;">
+                      <li>Valid passport (at least 6 months validity)</li>
+                      <li>Passport-sized photos (2x2, white background)</li>
+                      <li>Completed visa application form</li>
+                      <li>Bank statements (last 3 months)</li>
+                      <li>Travel insurance</li>
+                      <li>Hotel booking confirmation</li>
+                      <li>Flight reservation</li>
+                      <li>Cover letter</li>
+                    </ul>
+                  </div>
+
+                  <div style="background: #e8f4fd; border: 1px solid #bee5eb; border-radius: 8px; padding: 20px; margin: 25px 0;">
+                    <p style="margin: 0 0 10px 0; font-weight: 600; color: #004085;">
+                      📍 Office Information
+                    </p>
+                    <p style="margin: 5px 0; color: #004085; line-height: 1.6;">
+                      <strong>Address:</strong> Unit 2215 Cityland 10 Tower II, H. V. Dela Costa Street<br>
+                      Makati Metro Manila
+                    </p>
+                    <p style="margin: 5px 0; color: #004085;">
+                      <strong>Contact:</strong> 9296106660
+                    </p>
+                    <p style="margin: 5px 0; color: #004085;">
+                      <strong>Email:</strong> <a href="mailto:${process.env.SUPPORT_EMAIL || 'support@trabilis.com'}" style="color: #f7d100; text-decoration: none;">${process.env.SUPPORT_EMAIL || 'support@trabilis.com'}</a>
+                    </p>
+                  </div>
+
+                  <div style="border-top: 2px solid #e9ecef; padding-top: 20px; margin-top: 30px;">
+                    <p style="font-size: 14px; color: #6c757d; margin: 0 0 10px 0;">
+                      <strong>What's Next?</strong>
+                    </p>
+                    <p style="font-size: 14px; color: #6c757d; margin: 0; line-height: 1.6;">
+                      Our visa processing team will contact you within 24 hours to schedule your document submission appointment.
+                    </p>
+                  </div>
+                </div>
+
+                <div style="text-align: center; padding-top: 30px; border-top: 1px solid #e9ecef; margin-top: 30px;">
+                  <p style="margin: 0 0 10px 0; font-size: 16px; font-weight: 600; color: #333;">
+                    <span style="font-weight: 700; color: #f7d100;">Lindela Immigration Visa Consultancy</span>
+                  </p>
+                  <p style="margin: 0; font-size: 13px; color: #888;">
                     Your Trusted Partner in Dream Destinations
-                  </p>
-                </div>
-                
-                <div style="background-color: #d4edda; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745;">
-                  <h2 style="color: #155724; margin-top: 0;">✓ Payment Received - Processing Started!</h2>
-                  <p style="color: #155724; margin: 0;">Your visa processing has officially begun.</p>
-                </div>
-                
-                <p style="font-size: 16px; color: #333; line-height: 1.6; margin-bottom: 20px;">
-                  Dear <strong>${full_name}</strong>,
-                </p>
-                
-                <p style="font-size: 16px; color: #333; line-height: 1.6; margin-bottom: 20px;">
-                  Thank you for your payment! We have successfully received your payment and your visa processing has been initiated.
-                </p>
-                
-                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f7d100;">
-                  <h3 style="color: #333; margin-top: 0; font-size: 1.2rem;">Processing Details:</h3>
-                  <p style="margin: 5px 0; color: #555;"><strong>Processing Reference:</strong> ${processingReference}</p>
-                  <p style="margin: 5px 0; color: #555;"><strong>Original Inquiry:</strong> ${inquiryReference}</p>
-                  <p style="margin: 5px 0; color: #555;"><strong>Visa Type:</strong> ${visa_type}</p>
-                  <p style="margin: 5px 0; color: #555;"><strong>Destination:</strong> ${destination}</p>
-                </div>
-                
-                <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
-                  <h3 style="color: #856404; margin-top: 0; font-size: 1.1rem;">📋 Next Steps - Document Preparation</h3>
-                  <p style="color: #856404; margin-bottom: 10px;">Please prepare the following documents and bring them to our office:</p>
-                  <ul style="color: #856404; line-height: 1.8; margin: 10px 0; padding-left: 20px;">
-                    <li>Valid passport (at least 6 months validity)</li>
-                    <li>Passport-sized photos (2x2, white background)</li>
-                    <li>Completed visa application form</li>
-                    <li>Bank statements (last 3 months)</li>
-                    <li>Travel insurance</li>
-                    <li>Hotel booking confirmation</li>
-                    <li>Flight reservation</li>
-                    <li>Cover letter</li>
-                  </ul>
-                  <p style="color: #856404; margin-top: 15px; font-weight: bold;">
-                    📍 Office Address: Unit 2215 Cityland 10 Tower II, H. V. Dela Costa Street
-                    Makati Metro Manila<br>
-                    📞 Contact: 9296106660<br>
-                    📧 Email: ${process.env.SUPPORT_EMAIL || 'support@trabilis.com'}
-                  </p>
-                </div>
-                
-                <p style="font-size: 16px; color: #333; line-height: 1.6; margin: 20px 0;">
-                  Our visa processing team will contact you within 24 hours to schedule your document submission appointment.
-                </p>
-                
-                <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
-                  <p style="color: #888; font-size: 12px; margin: 0;">
-                    This is an automated message. Please do not reply to this email.
-                  </p>
-                  <p style="color: #888; font-size: 12px; margin: 5px 0 0 0;">
-                    © 2024 Lindela Immigration Visa Consultancy - Trabilis. All rights reserved.
                   </p>
                 </div>
               </div>

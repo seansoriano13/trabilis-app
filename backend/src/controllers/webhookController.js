@@ -30,11 +30,18 @@ export const handleStripeWebhook = async (req, res) => {
   }
 
   const session = event.data.object
-  let { booking_reference, product_type, type } = session.metadata || {}
+  let { booking_reference, inquiry_reference, product_type, type } =
+    session.metadata || {}
   product_type = product_type || 'FLIGHT'
 
+  // Use inquiry_reference for visa payments, booking_reference for others
+  const reference =
+    type === 'visa_inquiry_payment' ? inquiry_reference : booking_reference
+
   console.log(
-    `🔍 WEBHOOK DEBUG - Processing ${product_type} booking: ${booking_reference}`
+    `🔍 WEBHOOK DEBUG - Processing ${
+      type || product_type
+    } payment: ${reference}`
   )
   console.log(`🔍 WEBHOOK DEBUG - Session metadata:`, session.metadata)
   console.log(
@@ -44,13 +51,65 @@ export const handleStripeWebhook = async (req, res) => {
   // Handle visa inquiry payment
   if (type === 'visa_inquiry_payment') {
     try {
+      // First, fetch the inquiry details
+      const { data: inquiryData, error: fetchError } = await supabase
+        .from('visa_inquiries')
+        .select('*')
+        .eq('inquiry_reference', inquiry_reference)
+        .eq('conversion_status', 'AWAITING_PAYMENT')
+        .single()
+
+      if (fetchError || !inquiryData) {
+        console.log(
+          `⚠️ Webhook received for visa inquiry ${inquiry_reference}, but inquiry not found or already processed.`
+        )
+        return res.sendStatus(200) // Still acknowledge the webhook
+      }
+
+      // Generate a processing reference (using same format as inquiry)
+      const processingReference = `TRB-VISA-PROC-${
+        inquiry_reference.split('TRB-VISA-')[1]
+      }`
+
+      // Create visa processing record
+      const { data: processingData, error: processingError } = await supabase
+        .from('visa_processings')
+        .insert({
+          source_type: 'VISA_INQUIRY',
+          passenger_name: inquiryData.full_name,
+          passenger_email: inquiryData.email_address,
+          country: inquiryData.destination,
+          visa_type: inquiryData.visa_type,
+          status: 'PENDING',
+          requirements_status: {},
+          notes: inquiryData.message || '',
+          processing_reference: processingReference,
+          passenger_index: 0, // Required field, set to 0 for visa inquiry processings
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single()
+
+      if (processingError) {
+        throw new Error(
+          `Failed to create processing record: ${processingError.message}`
+        )
+      }
+
+      console.log(
+        `✅ Created visa processing ${processingReference} with ID ${processingData.id}`
+      )
+
+      // Update inquiry with conversion info
       const { data, error } = await supabase
         .from('visa_inquiries')
         .update({
           conversion_status: 'CONVERTED',
           stripe_checkout_id: session.id,
+          converted_to_processing_id: processingData.id,
         })
-        .eq('inquiry_reference', booking_reference)
+        .eq('inquiry_reference', inquiry_reference)
         .eq('conversion_status', 'AWAITING_PAYMENT')
         .select('id, conversion_status')
 
@@ -60,45 +119,61 @@ export const handleStripeWebhook = async (req, res) => {
 
       if (data && data.length > 0) {
         console.log(
-          `✅ Database updated for visa inquiry ${booking_reference}. Status is now CONVERTED.`
+          `✅ Database updated for visa inquiry ${inquiry_reference}. Status is now CONVERTED. Linked to processing ID ${processingData.id}`
         )
+
+        // Auto-assign processing to visa staff
+        try {
+          const assignmentResult = await autoAssignBooking(
+            'visa',
+            processingData.id
+          )
+          if (assignmentResult.success) {
+            console.log(
+              `Visa processing ${processingData.id} auto-assigned to ${assignmentResult.assignedStaff.name}`
+            )
+          } else {
+            console.warn(
+              `Could not auto-assign visa processing ${processingData.id}:`,
+              assignmentResult.message
+            )
+          }
+        } catch (autoAssignError) {
+          console.error(
+            'Auto-assignment failed for visa processing:',
+            autoAssignError
+          )
+          // Don't fail the webhook - assignment is not critical
+        }
 
         // Send visa processing started email
         try {
-          const { data: inquiryData } = await supabase
-            .from('visa_inquiries')
-            .select('*')
-            .eq('inquiry_reference', booking_reference)
-            .single()
-
-          if (inquiryData) {
-            await sendVisaProcessingStartedEmail({
-              email: inquiryData.email_address,
-              firstName: inquiryData.full_name.split(' ')[0],
-              lastName: inquiryData.full_name.split(' ').slice(1).join(' '),
-              inquiryReference: inquiryData.inquiry_reference,
-              visaType: inquiryData.visa_type,
-              destination: inquiryData.destination,
-            })
-            console.log(
-              `✅ Visa processing started email sent for ${booking_reference}`
-            )
-          }
+          await sendVisaProcessingStartedEmail({
+            processingReference: processingReference,
+            inquiryReference: inquiryData.inquiry_reference,
+            full_name: inquiryData.full_name,
+            email_address: inquiryData.email_address,
+            visa_type: inquiryData.visa_type,
+            destination: inquiryData.destination,
+          })
+          console.log(
+            `✅ Visa processing started email sent for ${inquiry_reference}`
+          )
         } catch (emailError) {
           console.error(
-            `Failed to send visa processing started email for ${booking_reference}:`,
+            `Failed to send visa processing started email for ${inquiry_reference}:`,
             emailError
           )
           // Don't fail the webhook - email is not critical for payment processing
         }
       } else {
         console.log(
-          `⚠️ Webhook received for visa inquiry ${booking_reference}, but no update was made (already processed or not found).`
+          `⚠️ Webhook received for visa inquiry ${inquiry_reference}, but no update was made (already processed or not found).`
         )
       }
     } catch (err) {
       console.error(
-        `❌ Error while processing visa inquiry webhook for ${booking_reference}:`,
+        `❌ Error while processing visa inquiry webhook for ${inquiry_reference}:`,
         err
       )
       return res.sendStatus(500)

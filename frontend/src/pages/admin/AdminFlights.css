@@ -171,6 +171,63 @@
   background: linear-gradient(135deg, #dc3545, #c82333);
 }
 
+/* Ticketing Deadline Card */
+.flights__summary-card--ticketing {
+  transition: all 0.3s ease;
+}
+
+.flights__summary-card--ticketing:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.flights__summary-card--ticketing .flights__summary-icon {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+/* Alert states for ticketing card */
+.flights__summary-card--alert {
+  border: 2px solid #dc3545;
+  animation: pulse-alert 2s infinite;
+}
+
+.flights__summary-card--alert .flights__summary-icon {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  animation: shake 0.5s ease-in-out;
+}
+
+.flights__summary-card--warning {
+  border: 2px solid #ffc107;
+}
+
+.flights__summary-card--warning .flights__summary-icon {
+  background: linear-gradient(135deg, #ffc107, #f39c12);
+}
+
+@keyframes pulse-alert {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(220, 53, 69, 0);
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
 .flights__summary-content {
   flex: 1;
 }

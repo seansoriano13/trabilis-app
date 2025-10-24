@@ -339,7 +339,7 @@ const FlightBookingEditModal = ({ isOpen, booking, onClose, onSubmit }) => {
                   Sending...
                 </>
               ) : (
-                <>✉️ Send Update Email</>
+                <>Send Email Receipt</>
               )}
             </button>
             <button

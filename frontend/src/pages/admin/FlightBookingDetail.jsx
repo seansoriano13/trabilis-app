@@ -48,6 +48,7 @@ const FlightBookingDetail = () => {
   const [adminOptions, setAdminOptions] = useState([])
   const [loadingAdmins, setLoadingAdmins] = useState(false)
   const [sendingEmail, setSendingEmail] = useState(false)
+  const [savingTickets, setSavingTickets] = useState(false)
 
   const jwt = localStorage.getItem('adminToken')
 
@@ -150,6 +151,7 @@ const FlightBookingDetail = () => {
 
   // Save ticket numbers
   const handleSaveTickets = async () => {
+    setSavingTickets(true)
     try {
       const travelers = passengerDetails?.travelers || []
       const ticketArray = travelers
@@ -161,22 +163,29 @@ const FlightBookingDetail = () => {
       })
 
       if (response.data.success) {
-        setBooking((prev) => ({
-          ...prev,
-          e_ticket_numbers: ticketArray,
-          updated_at: new Date().toISOString(),
-        }))
-        // Update initial state
+        // Use the full updated booking from backend (includes ticketed_at)
+        setBooking(response.data.data)
+
+        // Update initial state for change tracking
         const newTicketMap = {}
-        ticketArray.forEach((ticketNum, index) => {
+        const updatedTickets = response.data.data.e_ticket_numbers || []
+        updatedTickets.forEach((ticketNum, index) => {
           newTicketMap[index] = ticketNum || ''
         })
         setInitialTicketData(newTicketMap)
-        showSuccess('Ticket numbers saved successfully!')
+
+        // Show appropriate success message
+        if (response.data.data.ticketed_at && !booking.ticketed_at) {
+          showSuccess('✅ Ticket numbers saved! Booking marked as TICKETED.')
+        } else {
+          showSuccess('Ticket numbers saved successfully!')
+        }
       }
     } catch (error) {
       console.error('Error saving tickets:', error)
       showError('Failed to save ticket numbers')
+    } finally {
+      setSavingTickets(false)
     }
   }
 
@@ -298,6 +307,22 @@ const FlightBookingDetail = () => {
     }
   }
 
+  // Copy booking reference to clipboard
+  const handleCopyBookingReference = async () => {
+    if (!booking?.booking_reference) {
+      showError('No booking reference to copy')
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(booking.booking_reference)
+      showSuccess('Booking reference copied to clipboard!')
+    } catch (error) {
+      console.error('Error copying booking reference:', error)
+      showError('Failed to copy booking reference')
+    }
+  }
+
   // Copy PNR to clipboard
   const handleCopyPNR = async () => {
     if (!booking?.pnr) {
@@ -320,6 +345,7 @@ const FlightBookingDetail = () => {
     { value: 'PENDING_PAYMENT', label: 'Pending Payment' },
     { value: 'PAID_PENDING_BOOKING', label: 'Paid Pending Booking' },
     { value: 'BOOKED', label: 'Booked' },
+    { value: 'TICKETED', label: 'Ticketed' },
     { value: 'CANCELLED', label: 'Cancelled' },
   ]
 
@@ -429,6 +455,8 @@ const FlightBookingDetail = () => {
       case 'BOOKED':
       case 'PENDING_TICKETING':
         return 'status-confirmed'
+      case 'TICKETED':
+        return 'status-confirmed'
       case 'PENDING':
       case 'PENDING_PAYMENT':
         return 'status-pending'
@@ -442,6 +470,8 @@ const FlightBookingDetail = () => {
   const getStatusIcon = (status) => {
     switch (status) {
       case 'PENDING_TICKETING':
+      case 'TICKETED':
+      case 'BOOKED':
         return <BsCheckCircle className='status-icon' />
       case 'PENDING':
       case 'PENDING_PAYMENT':
@@ -788,7 +818,14 @@ const FlightBookingDetail = () => {
           </div>
           <div className='status-item'>
             <span className='status-label'>Reference:</span>
-            <span className='status-value'>{booking.booking_reference}</span>
+            <span
+              className='status-value pnr-copy'
+              onClick={handleCopyBookingReference}
+              title='Click to copy booking reference'
+            >
+              {booking.booking_reference}
+              <BsClipboard className='copy-icon' />
+            </span>
           </div>
           <div className='status-item'>
             <span className='status-label'>PNR:</span>
@@ -937,7 +974,7 @@ const FlightBookingDetail = () => {
                 </>
               ) : (
                 <>
-                  <BsEnvelope /> Send Update Email
+                  <BsEnvelope /> Send Email
                 </>
               )}
             </button>
@@ -1214,13 +1251,25 @@ const FlightBookingDetail = () => {
                       <button
                         className='btn btn-success'
                         onClick={handleSaveTickets}
-                        disabled={booking.status === 'CANCELLED'}
+                        disabled={
+                          booking.status === 'CANCELLED' || savingTickets
+                        }
                       >
-                        <BsCheckCircle /> Save Ticket Numbers
+                        {savingTickets ? (
+                          <>
+                            <div className='loading-spinner-small'></div>
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <BsCheckCircle /> Save Ticket Numbers
+                          </>
+                        )}
                       </button>
                       <button
                         className='btn btn-secondary'
                         onClick={handleResetTickets}
+                        disabled={savingTickets}
                       >
                         <BsX /> Reset
                       </button>
