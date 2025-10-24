@@ -72,6 +72,9 @@ import {
   deleteInclusionGroupItem,
   updateFeeRules,
 } from '../controllers/admin/inclusionGroupController.js'
+import salesReportRoutes from './salesReportRoutes.js'
+import settingsRoutes from './settingsRoutes.js'
+import visaRequirementsRoutes from './visaRequirementsRoutes.js'
 
 const router = express.Router()
 
@@ -187,5 +190,74 @@ router.put('/visa/inquiries/:id/status', updateVisaInquiryStatus)
 router.post('/visa/inquiries/assign', assignVisaInquiry)
 router.put('/visa/inquiries/assignment-status', updateVisaAssignmentStatus)
 router.get('/visa/inquiries/assigned', getAssignedVisaInquiries)
+
+// Sales Report
+router.use('/sales-report', salesReportRoutes)
+
+// Settings
+router.use('/settings', settingsRoutes)
+
+// Visa Requirements
+router.use('/visa-requirements', visaRequirementsRoutes)
+
+// Manual triggers for rating emails and recycle bin cleanup
+router.post('/send-rating-emails', async (req, res) => {
+  try {
+    const { sendRatingRequests } = await import(
+      '../services/ratingEmailService.js'
+    )
+    await sendRatingRequests(false) // false = actually send emails
+    res.json({
+      success: true,
+      message: 'Rating emails sent successfully',
+    })
+  } catch (error) {
+    console.error('Error sending rating emails:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    })
+  }
+})
+
+// Dry run mode - test without sending emails
+router.post('/send-rating-emails/dry-run', async (req, res) => {
+  try {
+    const { sendRatingRequests } = await import(
+      '../services/ratingEmailService.js'
+    )
+    await sendRatingRequests(true) // true = dry run mode
+    res.json({
+      success: true,
+      message: 'Dry run completed - check server logs for details',
+    })
+  } catch (error) {
+    console.error('Error in dry run:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    })
+  }
+})
+
+// Manual trigger for recycle bin cleanup
+router.post('/cleanup-recycle-bin', async (req, res) => {
+  try {
+    const { autoDeleteExpiredTours } = await import(
+      '../services/recycleBinService.js'
+    )
+    await autoDeleteExpiredTours()
+    res.json({
+      success: true,
+      message: 'Recycle bin cleanup completed successfully',
+    })
+  } catch (error) {
+    console.error('Error cleaning recycle bin:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    })
+  }
+})
 
 export default router

@@ -18,6 +18,7 @@ import metadataRoutes from './src/routes/metadataRoutes.js'
 import imageUploadRoutes from './src/routes/imageUploadRoutes.js'
 import emailVerificationCancellationRoutes from './src/routes/emailVerificationCancellationRoutes.js'
 import adminCancellationRoutes from './src/routes/adminCancellationRoutes.js'
+import ratingsRoutes from './src/routes/ratingsRoutes.js'
 import {
   errorHandler,
   notFoundHandler,
@@ -193,6 +194,7 @@ app.use('/api/v1/admin/cancellation', adminCancellationRoutes)
 // Admin
 app.use('/api/v1/admin', adminRoutes)
 app.use('/api/v1/admin/assignments', assignmentRoutes)
+app.use('/api/v1/ratings', ratingsRoutes)
 
 app.get('/', async (req, res) => {
   try {
