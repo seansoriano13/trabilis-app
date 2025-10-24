@@ -21,7 +21,11 @@ import {
   BsX,
   BsClipboard,
 } from 'react-icons/bs'
+import { FiSave } from 'react-icons/fi'
 import Select from 'react-select'
+import Flatpickr from 'react-flatpickr'
+import 'flatpickr/dist/themes/airbnb.css'
+import { getNationalityOptions } from '../../utils/nationalityMapping'
 import { supabase } from '../../api/supabaseClient'
 import adminClient from '../../api/adminClient'
 import './FlightBookingDetail.css'
@@ -50,7 +54,13 @@ const FlightBookingDetail = () => {
   const [sendingEmail, setSendingEmail] = useState(false)
   const [savingTickets, setSavingTickets] = useState(false)
 
+  // Passenger Edit Mode State
+  const [isEditingPassengers, setIsEditingPassengers] = useState(false)
+  const [editedPassengerDetails, setEditedPassengerDetails] = useState(null)
+  const [savingPassengers, setSavingPassengers] = useState(false)
+
   const jwt = localStorage.getItem('adminToken')
+  const nationalityOptions = getNationalityOptions()
 
   // Set Supabase auth session
   useEffect(() => {
@@ -231,6 +241,95 @@ const FlightBookingDetail = () => {
   // Cancel booking changes
   const handleCancelBookingChanges = () => {
     setEditableBookingData(initialBookingData)
+  }
+
+  // Passenger edit mode handlers
+  const handleTogglePassengerEdit = () => {
+    if (isEditingPassengers) {
+      // Cancel edit mode
+      setIsEditingPassengers(false)
+      setEditedPassengerDetails(null)
+    } else {
+      // Enter edit mode - initialize with current passenger details
+      const currentPassengerDetails = parseJsonField(
+        booking.passenger_details,
+        'passenger_details'
+      )
+      setEditedPassengerDetails(
+        JSON.parse(JSON.stringify(currentPassengerDetails))
+      ) // Deep copy
+      setIsEditingPassengers(true)
+    }
+  }
+
+  const handlePassengerFieldChange = (travelerIndex, field, value) => {
+    setEditedPassengerDetails((prev) => {
+      const updated = JSON.parse(JSON.stringify(prev)) // Deep copy
+      const traveler = updated.travelers[travelerIndex]
+
+      // Handle nested fields (e.g., 'name.firstName', 'documents[0].number')
+      if (field.includes('.')) {
+        const [parent, child] = field.split('.')
+        traveler[parent] = { ...(traveler[parent] || {}), [child]: value }
+      } else if (field.startsWith('documents[0]')) {
+        const docField = field.replace('documents[0].', '')
+        traveler.documents = traveler.documents || [{}]
+        traveler.documents[0] = {
+          ...(traveler.documents[0] || {}),
+          [docField]: value,
+        }
+      } else {
+        traveler[field] = value
+      }
+
+      return updated
+    })
+  }
+
+  const handleSavePassengers = async () => {
+    // Validate required fields
+    for (let i = 0; i < editedPassengerDetails.travelers.length; i++) {
+      const traveler = editedPassengerDetails.travelers[i]
+      if (!traveler.name?.firstName || !traveler.name?.lastName) {
+        showError(`Traveler ${i + 1}: First name and last name are required`)
+        return
+      }
+      if (!traveler.type) {
+        showError(`Traveler ${i + 1}: Traveler type is required`)
+        return
+      }
+      if (!traveler.dateOfBirth) {
+        showError(`Traveler ${i + 1}: Date of birth is required`)
+        return
+      }
+    }
+
+    setSavingPassengers(true)
+    try {
+      const response = await adminClient.put(`/flights/${booking.id}/edit`, {
+        passenger_details: editedPassengerDetails,
+      })
+
+      if (response.data.success) {
+        setBooking((prev) => ({
+          ...prev,
+          passenger_details: editedPassengerDetails,
+          updated_at: new Date().toISOString(),
+        }))
+        setIsEditingPassengers(false)
+        setEditedPassengerDetails(null)
+        showSuccess('Passenger details updated successfully!')
+      } else {
+        showError('Failed to update passenger details')
+      }
+    } catch (error) {
+      console.error('Error updating passenger details:', error)
+      showError(
+        error.response?.data?.error || 'Failed to update passenger details'
+      )
+    } finally {
+      setSavingPassengers(false)
+    }
   }
 
   // Send flight update email
@@ -1162,6 +1261,48 @@ const FlightBookingDetail = () => {
                   <h5>
                     All Passengers ({passengerDetails?.travelers?.length || 0})
                   </h5>
+                  <div className='passenger-edit-actions'>
+                    {!isEditingPassengers ? (
+                      <button
+                        className='btn btn-warning btn-sm'
+                        onClick={handleTogglePassengerEdit}
+                        disabled={booking.status === 'CANCELLED'}
+                        title={
+                          booking.status === 'CANCELLED'
+                            ? 'Cannot edit cancelled booking'
+                            : 'Edit passenger details'
+                        }
+                      >
+                        <BsPencil /> Edit Passengers
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          className='btn btn-success btn-sm'
+                          onClick={handleSavePassengers}
+                          disabled={savingPassengers}
+                        >
+                          {savingPassengers ? (
+                            <>
+                              <div className='loading-spinner-small'></div>
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <FiSave /> Save Changes
+                            </>
+                          )}
+                        </button>
+                        <button
+                          className='btn btn-secondary btn-sm'
+                          onClick={handleTogglePassengerEdit}
+                          disabled={savingPassengers}
+                        >
+                          <BsX /> Cancel
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 <div className='passenger-table-container'>
@@ -1179,60 +1320,226 @@ const FlightBookingDetail = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {passengerDetails?.travelers?.map((traveler, index) => (
-                        <tr key={index}>
-                          <td>{index + 1}</td>
-                          <td>
-                            <div className='passenger-name'>
-                              <strong>
-                                {traveler.name?.firstName}{' '}
-                                {traveler.name?.lastName}
-                              </strong>
-                              {index === 0 && (
-                                <span className='lead-badge'>Lead</span>
-                              )}
-                            </div>
-                          </td>
-                          <td>
-                            <span
-                              className={`passenger-type ${traveler.type?.toLowerCase()}`}
-                            >
-                              {traveler.type}
-                            </span>
-                          </td>
-                          <td>{traveler.gender || '-'}</td>
-                          <td>
-                            {traveler.dateOfBirth
-                              ? new Date(
-                                  traveler.dateOfBirth
-                                ).toLocaleDateString()
-                              : '-'}
-                          </td>
-                          <td>
-                            {traveler.documents?.[0]?.number || (
-                              <span className='no-data'>-</span>
-                            )}
-                          </td>
-                          <td>
-                            {traveler.documents?.[0]?.nationality || (
-                              <span className='no-data'>-</span>
-                            )}
-                          </td>
-                          <td>
-                            <input
-                              type='text'
-                              value={ticketNumbers[index] || ''}
-                              onChange={(e) =>
-                                handleTicketNumberChange(index, e.target.value)
-                              }
-                              placeholder={`Ticket for ${traveler.name?.firstName}`}
-                              className='ticket-input'
-                              maxLength={13}
-                              disabled={booking.status === 'CANCELLED'}
-                            />
-                          </td>
-                        </tr>
-                      ))}
+                      {(() => {
+                        // Use editedPassengerDetails in edit mode, otherwise use booking data
+                        const currentDetails = isEditingPassengers
+                          ? editedPassengerDetails
+                          : passengerDetails
+                        return currentDetails?.travelers?.map(
+                          (traveler, index) => (
+                            <tr key={index}>
+                              <td>{index + 1}</td>
+                              <td>
+                                {isEditingPassengers ? (
+                                  <div className='edit-name-fields'>
+                                    <input
+                                      type='text'
+                                      value={traveler.name?.firstName || ''}
+                                      onChange={(e) =>
+                                        handlePassengerFieldChange(
+                                          index,
+                                          'name.firstName',
+                                          e.target.value
+                                        )
+                                      }
+                                      className='edit-input'
+                                      placeholder='First Name'
+                                    />
+                                    <input
+                                      type='text'
+                                      value={traveler.name?.lastName || ''}
+                                      onChange={(e) =>
+                                        handlePassengerFieldChange(
+                                          index,
+                                          'name.lastName',
+                                          e.target.value
+                                        )
+                                      }
+                                      className='edit-input'
+                                      placeholder='Last Name'
+                                    />
+                                    {index === 0 && (
+                                      <span className='lead-badge'>Lead</span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className='passenger-name'>
+                                    <strong>
+                                      {traveler.name?.firstName}{' '}
+                                      {traveler.name?.lastName}
+                                    </strong>
+                                    {index === 0 && (
+                                      <span className='lead-badge'>Lead</span>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+                              <td>
+                                {isEditingPassengers ? (
+                                  <select
+                                    value={traveler.type || 'ADULT'}
+                                    onChange={(e) =>
+                                      handlePassengerFieldChange(
+                                        index,
+                                        'type',
+                                        e.target.value
+                                      )
+                                    }
+                                    className='edit-select'
+                                  >
+                                    <option value='ADULT'>Adult</option>
+                                    <option value='CHILD'>Child</option>
+                                    <option value='INFANT'>Infant</option>
+                                  </select>
+                                ) : (
+                                  <span
+                                    className={`passenger-type ${traveler.type?.toLowerCase()}`}
+                                  >
+                                    {traveler.type}
+                                  </span>
+                                )}
+                              </td>
+                              <td>
+                                {isEditingPassengers ? (
+                                  <select
+                                    value={traveler.gender || ''}
+                                    onChange={(e) =>
+                                      handlePassengerFieldChange(
+                                        index,
+                                        'gender',
+                                        e.target.value
+                                      )
+                                    }
+                                    className='edit-select'
+                                  >
+                                    <option value=''>Select</option>
+                                    <option value='MALE'>Male</option>
+                                    <option value='FEMALE'>Female</option>
+                                  </select>
+                                ) : (
+                                  traveler.gender || '-'
+                                )}
+                              </td>
+                              <td>
+                                {isEditingPassengers ? (
+                                  <Flatpickr
+                                    value={
+                                      traveler.dateOfBirth
+                                        ? new Date(traveler.dateOfBirth)
+                                        : null
+                                    }
+                                    onChange={([date]) =>
+                                      handlePassengerFieldChange(
+                                        index,
+                                        'dateOfBirth',
+                                        date
+                                          ? date.toISOString().split('T')[0]
+                                          : ''
+                                      )
+                                    }
+                                    options={{
+                                      maxDate: 'today',
+                                      dateFormat: 'Y-m-d',
+                                      disableMobile: true,
+                                      closeOnSelect: true,
+                                    }}
+                                    className='edit-input'
+                                    placeholder='YYYY-MM-DD'
+                                  />
+                                ) : traveler.dateOfBirth ? (
+                                  new Date(
+                                    traveler.dateOfBirth
+                                  ).toLocaleDateString()
+                                ) : (
+                                  '-'
+                                )}
+                              </td>
+                              <td>
+                                {isEditingPassengers ? (
+                                  <input
+                                    type='text'
+                                    value={
+                                      traveler.documents?.[0]?.number || ''
+                                    }
+                                    onChange={(e) =>
+                                      handlePassengerFieldChange(
+                                        index,
+                                        'documents[0].number',
+                                        e.target.value
+                                      )
+                                    }
+                                    className='edit-input'
+                                    placeholder='Document No.'
+                                  />
+                                ) : (
+                                  traveler.documents?.[0]?.number || (
+                                    <span className='no-data'>-</span>
+                                  )
+                                )}
+                              </td>
+                              <td>
+                                {isEditingPassengers ? (
+                                  <Select
+                                    value={
+                                      nationalityOptions.find(
+                                        (opt) =>
+                                          opt.value ===
+                                          traveler.documents?.[0]?.nationality
+                                      ) || null
+                                    }
+                                    onChange={(selected) =>
+                                      handlePassengerFieldChange(
+                                        index,
+                                        'documents[0].nationality',
+                                        selected?.value || ''
+                                      )
+                                    }
+                                    options={nationalityOptions}
+                                    placeholder='Select'
+                                    className='edit-select-nationality'
+                                    classNamePrefix='edit-select'
+                                    isSearchable={true}
+                                    styles={{
+                                      control: (base) => ({
+                                        ...base,
+                                        minHeight: '32px',
+                                        fontSize: '14px',
+                                      }),
+                                      menu: (base) => ({
+                                        ...base,
+                                        zIndex: 9999,
+                                      }),
+                                    }}
+                                  />
+                                ) : (
+                                  traveler.documents?.[0]?.nationality || (
+                                    <span className='no-data'>-</span>
+                                  )
+                                )}
+                              </td>
+                              <td>
+                                <input
+                                  type='text'
+                                  value={ticketNumbers[index] || ''}
+                                  onChange={(e) =>
+                                    handleTicketNumberChange(
+                                      index,
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder={`Ticket for ${traveler.name?.firstName}`}
+                                  className='ticket-input'
+                                  maxLength={13}
+                                  disabled={
+                                    booking.status === 'CANCELLED' ||
+                                    isEditingPassengers
+                                  }
+                                />
+                              </td>
+                            </tr>
+                          )
+                        )
+                      })()}
                     </tbody>
                   </table>
                 </div>

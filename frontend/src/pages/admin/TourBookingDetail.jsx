@@ -22,6 +22,7 @@ import {
   FiFile,
   FiX,
   FiNavigation,
+  FiSave,
 } from 'react-icons/fi'
 import {
   IoAirplaneOutline,
@@ -33,6 +34,9 @@ import {
 import { supabase } from '../../api/supabaseClient'
 import adminClient from '../../api/adminClient'
 import Select from 'react-select'
+import Flatpickr from 'react-flatpickr'
+import 'flatpickr/dist/themes/airbnb.css'
+import { getNationalityOptions } from '../../utils/nationalityMapping'
 import VisaProcessingModal from '../../components/admin/VisaProcessingModal'
 import TourBookingEditModal from '../../components/admin/TourBookingEditModal'
 import './TourBookingDetail.css'
@@ -66,7 +70,13 @@ const TourBookingDetail = () => {
   const [flightData, setFlightData] = useState(null)
   const [flightLoading, setFlightLoading] = useState(false)
 
+  // Passenger Edit Mode State
+  const [isEditingPassengers, setIsEditingPassengers] = useState(false)
+  const [editedPassengers, setEditedPassengers] = useState([])
+  const [savingPassengers, setSavingPassengers] = useState(false)
+
   const jwt = localStorage.getItem('adminToken')
+  const nationalityOptions = getNationalityOptions()
 
   // Set Supabase auth session
   useEffect(() => {
@@ -430,6 +440,106 @@ const TourBookingDetail = () => {
     fetchBooking()
   }
 
+  // Passenger edit mode handlers
+  const handleToggleEditMode = () => {
+    if (isEditingPassengers) {
+      // Cancel edit mode
+      setIsEditingPassengers(false)
+      setEditedPassengers([])
+    } else {
+      // Enter edit mode - initialize with current passengers
+      const passengers =
+        typeof booking.passenger_details === 'string'
+          ? JSON.parse(booking.passenger_details)
+          : booking.passenger_details || []
+      setEditedPassengers(JSON.parse(JSON.stringify(passengers))) // Deep copy
+      setIsEditingPassengers(true)
+    }
+  }
+
+  const handlePassengerFieldChange = (index, field, value) => {
+    setEditedPassengers((prev) => {
+      const updated = [...prev]
+      const passenger = { ...updated[index] }
+
+      // Handle nested fields (e.g., 'name.firstName', 'documents[0].number')
+      if (field.includes('.')) {
+        const [parent, child] = field.split('.')
+        passenger[parent] = { ...(passenger[parent] || {}), [child]: value }
+      } else if (field.startsWith('documents[0]')) {
+        const docField = field.replace('documents[0].', '')
+        passenger.documents = passenger.documents || [{}]
+        passenger.documents[0] = {
+          ...(passenger.documents[0] || {}),
+          [docField]: value,
+        }
+      } else if (field.startsWith('contact.')) {
+        const contactField = field.replace('contact.', '')
+        if (contactField.startsWith('phones[0]')) {
+          const phoneField = contactField.replace('phones[0].', '')
+          passenger.contact = passenger.contact || {}
+          passenger.contact.phones = passenger.contact.phones || [{}]
+          passenger.contact.phones[0] = {
+            ...(passenger.contact.phones[0] || {}),
+            [phoneField]: value,
+          }
+        } else {
+          passenger.contact = {
+            ...(passenger.contact || {}),
+            [contactField]: value,
+          }
+        }
+      } else {
+        passenger[field] = value
+      }
+
+      updated[index] = passenger
+      return updated
+    })
+  }
+
+  const handleSavePassengers = async () => {
+    // Validate required fields
+    for (let i = 0; i < editedPassengers.length; i++) {
+      const passenger = editedPassengers[i]
+      if (!passenger.name?.firstName || !passenger.name?.lastName) {
+        showError(`Passenger ${i + 1}: First name and last name are required`)
+        return
+      }
+      if (!passenger.type) {
+        showError(`Passenger ${i + 1}: Passenger type is required`)
+        return
+      }
+    }
+
+    setSavingPassengers(true)
+    try {
+      const response = await adminClient.put(`/tours/${booking.id}/edit`, {
+        passenger_details: editedPassengers,
+      })
+
+      if (response.data.success) {
+        setBooking((prev) => ({
+          ...prev,
+          passenger_details: editedPassengers,
+          updated_at: new Date().toISOString(),
+        }))
+        setIsEditingPassengers(false)
+        setEditedPassengers([])
+        showSuccess('Passenger details updated successfully!')
+      } else {
+        showError('Failed to update passenger details')
+      }
+    } catch (error) {
+      console.error('Error updating passenger details:', error)
+      showError(
+        error.response?.data?.error || 'Failed to update passenger details'
+      )
+    } finally {
+      setSavingPassengers(false)
+    }
+  }
+
   // Compact select styles for table cells
   const compactSelectStyles = {
     control: (base) => ({
@@ -671,7 +781,9 @@ const TourBookingDetail = () => {
 
       {/* Clean Status Banner */}
       <div
-        className={`booking-detail__status booking-detail__status--tour ${getStatusColor(booking.status)}`}
+        className={`booking-detail__status booking-detail__status--tour ${getStatusColor(
+          booking.status
+        )}`}
       >
         <div className='status-content'>
           {getStatusIcon(booking.status)}
@@ -795,7 +907,9 @@ const TourBookingDetail = () => {
                           <div
                             className='visa-progress-fill'
                             style={{
-                              width: `${(completedCount / needsProcessing) * 100}%`,
+                              width: `${
+                                (completedCount / needsProcessing) * 100
+                              }%`,
                             }}
                           ></div>
                         </div>
@@ -1007,7 +1121,9 @@ const TourBookingDetail = () => {
                   <div className='info-item'>
                     <span className='label'>Status:</span>
                     <span
-                      className={`value status ${getStatusColor(booking.status)}`}
+                      className={`value status ${getStatusColor(
+                        booking.status
+                      )}`}
                     >
                       {booking.status}
                     </span>
@@ -1107,6 +1223,48 @@ const TourBookingDetail = () => {
                 <div className='section-header'>
                   <FiUsers className='section-icon' />
                   <h5>All Passengers ({booking.passenger_count})</h5>
+                  <div className='passenger-edit-actions'>
+                    {!isEditingPassengers ? (
+                      <button
+                        className='btn btn-warning btn-sm'
+                        onClick={handleToggleEditMode}
+                        disabled={booking.status === 'CANCELLED'}
+                        title={
+                          booking.status === 'CANCELLED'
+                            ? 'Cannot edit cancelled booking'
+                            : 'Edit passenger details'
+                        }
+                      >
+                        <FiEdit /> Edit Passengers
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          className='btn btn-success btn-sm'
+                          onClick={handleSavePassengers}
+                          disabled={savingPassengers}
+                        >
+                          {savingPassengers ? (
+                            <>
+                              <div className='loading-spinner-small'></div>
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <FiSave /> Save Changes
+                            </>
+                          )}
+                        </button>
+                        <button
+                          className='btn btn-secondary btn-sm'
+                          onClick={handleToggleEditMode}
+                          disabled={savingPassengers}
+                        >
+                          <FiX /> Cancel
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 <div className='passenger-table-container'>
@@ -1131,20 +1289,25 @@ const TourBookingDetail = () => {
                     </thead>
                     <tbody>
                       {(() => {
+                        // Use editedPassengers in edit mode, otherwise use booking data
                         let passengers = []
-                        try {
-                          if (booking.passenger_details) {
-                            passengers =
-                              typeof booking.passenger_details === 'string'
-                                ? JSON.parse(booking.passenger_details)
-                                : booking.passenger_details
+                        if (isEditingPassengers) {
+                          passengers = editedPassengers
+                        } else {
+                          try {
+                            if (booking.passenger_details) {
+                              passengers =
+                                typeof booking.passenger_details === 'string'
+                                  ? JSON.parse(booking.passenger_details)
+                                  : booking.passenger_details
+                            }
+                          } catch (error) {
+                            console.error(
+                              'Error parsing passenger details:',
+                              error
+                            )
+                            passengers = []
                           }
-                        } catch (error) {
-                          console.error(
-                            'Error parsing passenger details:',
-                            error
-                          )
-                          passengers = []
                         }
 
                         if (passengers && passengers.length > 0) {
@@ -1156,36 +1319,126 @@ const TourBookingDetail = () => {
                                 : null
                             const phoneObj = passenger.contact?.phones?.[0]
                             const phoneStr = phoneObj?.number
-                              ? `${phoneObj.countryCallingCode || ''} ${phoneObj.number}`
+                              ? `${phoneObj.countryCallingCode || ''} ${
+                                  phoneObj.number
+                                }`
                               : null
                             return (
                               <tr key={index}>
                                 <td>{index + 1}</td>
                                 <td>
-                                  <div className='passenger-name'>
-                                    <strong>
-                                      {passenger.name?.firstName || ''}{' '}
-                                      {passenger.name?.lastName || ''}
-                                    </strong>
-                                    {index === 0 && (
-                                      <span className='lead-badge'>Lead</span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td>
-                                  <span
-                                    className={`passenger-type ${passenger.type?.toLowerCase() || 'adult'}`}
-                                  >
-                                    {passenger.type || 'Adult'}
-                                  </span>
-                                </td>
-                                <td>
-                                  {passenger.gender || (
-                                    <span className='no-data'>-</span>
+                                  {isEditingPassengers ? (
+                                    <div className='edit-name-fields'>
+                                      <input
+                                        type='text'
+                                        value={passenger.name?.firstName || ''}
+                                        onChange={(e) =>
+                                          handlePassengerFieldChange(
+                                            index,
+                                            'name.firstName',
+                                            e.target.value
+                                          )
+                                        }
+                                        className='edit-input'
+                                        placeholder='First Name'
+                                      />
+                                      <input
+                                        type='text'
+                                        value={passenger.name?.lastName || ''}
+                                        onChange={(e) =>
+                                          handlePassengerFieldChange(
+                                            index,
+                                            'name.lastName',
+                                            e.target.value
+                                          )
+                                        }
+                                        className='edit-input'
+                                        placeholder='Last Name'
+                                      />
+                                      {index === 0 && (
+                                        <span className='lead-badge'>Lead</span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className='passenger-name'>
+                                      <strong>
+                                        {passenger.name?.firstName || ''}{' '}
+                                        {passenger.name?.lastName || ''}
+                                      </strong>
+                                      {index === 0 && (
+                                        <span className='lead-badge'>Lead</span>
+                                      )}
+                                    </div>
                                   )}
                                 </td>
                                 <td>
-                                  {passenger.contact?.emailAddress ? (
+                                  {isEditingPassengers ? (
+                                    <select
+                                      value={passenger.type || 'Adult'}
+                                      onChange={(e) =>
+                                        handlePassengerFieldChange(
+                                          index,
+                                          'type',
+                                          e.target.value
+                                        )
+                                      }
+                                      className='edit-select'
+                                    >
+                                      <option value='Adult'>Adult</option>
+                                      <option value='Child'>Child</option>
+                                      <option value='Infant'>Infant</option>
+                                    </select>
+                                  ) : (
+                                    <span
+                                      className={`passenger-type ${
+                                        passenger.type?.toLowerCase() || 'adult'
+                                      }`}
+                                    >
+                                      {passenger.type || 'Adult'}
+                                    </span>
+                                  )}
+                                </td>
+                                <td>
+                                  {isEditingPassengers ? (
+                                    <select
+                                      value={passenger.gender || ''}
+                                      onChange={(e) =>
+                                        handlePassengerFieldChange(
+                                          index,
+                                          'gender',
+                                          e.target.value
+                                        )
+                                      }
+                                      className='edit-select'
+                                    >
+                                      <option value=''>Select</option>
+                                      <option value='MALE'>Male</option>
+                                      <option value='FEMALE'>Female</option>
+                                    </select>
+                                  ) : (
+                                    passenger.gender || (
+                                      <span className='no-data'>-</span>
+                                    )
+                                  )}
+                                </td>
+                                <td>
+                                  {isEditingPassengers ? (
+                                    <input
+                                      type='email'
+                                      value={
+                                        passenger.contact?.emailAddress || ''
+                                      }
+                                      onChange={(e) =>
+                                        handlePassengerFieldChange(
+                                          index,
+                                          'contact.emailAddress',
+                                          e.target.value
+                                        )
+                                      }
+                                      className='edit-input'
+                                      placeholder='email@example.com'
+                                    />
+                                  ) : passenger.contact?.emailAddress ? (
                                     <a
                                       href={`mailto:${passenger.contact.emailAddress}`}
                                       className='email-link'
@@ -1198,9 +1451,25 @@ const TourBookingDetail = () => {
                                   )}
                                 </td>
                                 <td>
-                                  {phoneStr ? (
+                                  {isEditingPassengers ? (
+                                    <input
+                                      type='tel'
+                                      value={phoneObj?.number || ''}
+                                      onChange={(e) =>
+                                        handlePassengerFieldChange(
+                                          index,
+                                          'contact.phones[0].number',
+                                          e.target.value
+                                        )
+                                      }
+                                      className='edit-input'
+                                      placeholder='9123456789'
+                                    />
+                                  ) : phoneStr ? (
                                     <a
-                                      href={`tel:${phoneObj?.countryCallingCode || ''}${phoneObj?.number || ''}`}
+                                      href={`tel:${
+                                        phoneObj?.countryCallingCode || ''
+                                      }${phoneObj?.number || ''}`}
                                       className='phone-link'
                                     >
                                       <FiPhone /> {phoneStr}
@@ -1210,7 +1479,32 @@ const TourBookingDetail = () => {
                                   )}
                                 </td>
                                 <td>
-                                  {passenger.dateOfBirth ? (
+                                  {isEditingPassengers ? (
+                                    <Flatpickr
+                                      value={
+                                        passenger.dateOfBirth
+                                          ? new Date(passenger.dateOfBirth)
+                                          : null
+                                      }
+                                      onChange={([date]) =>
+                                        handlePassengerFieldChange(
+                                          index,
+                                          'dateOfBirth',
+                                          date
+                                            ? date.toISOString().split('T')[0]
+                                            : ''
+                                        )
+                                      }
+                                      options={{
+                                        maxDate: 'today',
+                                        dateFormat: 'Y-m-d',
+                                        disableMobile: true,
+                                        closeOnSelect: true,
+                                      }}
+                                      className='edit-input'
+                                      placeholder='YYYY-MM-DD'
+                                    />
+                                  ) : passenger.dateOfBirth ? (
                                     <span className='date-of-birth'>
                                       {new Date(
                                         passenger.dateOfBirth
@@ -1221,17 +1515,92 @@ const TourBookingDetail = () => {
                                   )}
                                 </td>
                                 <td>
-                                  {doc?.number || (
-                                    <span className='no-data'>-</span>
+                                  {isEditingPassengers ? (
+                                    <input
+                                      type='text'
+                                      value={doc?.number || ''}
+                                      onChange={(e) =>
+                                        handlePassengerFieldChange(
+                                          index,
+                                          'documents[0].number',
+                                          e.target.value
+                                        )
+                                      }
+                                      className='edit-input'
+                                      placeholder='Document No.'
+                                    />
+                                  ) : (
+                                    doc?.number || (
+                                      <span className='no-data'>-</span>
+                                    )
                                   )}
                                 </td>
                                 <td>
-                                  {doc?.nationality || (
-                                    <span className='no-data'>-</span>
+                                  {isEditingPassengers ? (
+                                    <Select
+                                      value={
+                                        nationalityOptions.find(
+                                          (opt) =>
+                                            opt.value === doc?.nationality
+                                        ) || null
+                                      }
+                                      onChange={(selected) =>
+                                        handlePassengerFieldChange(
+                                          index,
+                                          'documents[0].nationality',
+                                          selected?.value || ''
+                                        )
+                                      }
+                                      options={nationalityOptions}
+                                      placeholder='Select'
+                                      className='edit-select-nationality'
+                                      classNamePrefix='edit-select'
+                                      isSearchable={true}
+                                      styles={{
+                                        control: (base) => ({
+                                          ...base,
+                                          minHeight: '32px',
+                                          fontSize: '14px',
+                                        }),
+                                        menu: (base) => ({
+                                          ...base,
+                                          zIndex: 9999,
+                                        }),
+                                      }}
+                                    />
+                                  ) : (
+                                    doc?.nationality || (
+                                      <span className='no-data'>-</span>
+                                    )
                                   )}
                                 </td>
                                 <td>
-                                  {doc?.expiryDate ? (
+                                  {isEditingPassengers ? (
+                                    <Flatpickr
+                                      value={
+                                        doc?.expiryDate
+                                          ? new Date(doc.expiryDate)
+                                          : null
+                                      }
+                                      onChange={([date]) =>
+                                        handlePassengerFieldChange(
+                                          index,
+                                          'documents[0].expiryDate',
+                                          date
+                                            ? date.toISOString().split('T')[0]
+                                            : ''
+                                        )
+                                      }
+                                      options={{
+                                        minDate: 'today',
+                                        dateFormat: 'Y-m-d',
+                                        disableMobile: true,
+                                        closeOnSelect: true,
+                                      }}
+                                      className='edit-input'
+                                      placeholder='YYYY-MM-DD'
+                                    />
+                                  ) : doc?.expiryDate ? (
                                     new Date(
                                       doc.expiryDate
                                     ).toLocaleDateString()
@@ -1244,7 +1613,10 @@ const TourBookingDetail = () => {
                                     {tourPackage?.visa_required ? (
                                       <div className='visa-status-container'>
                                         <span
-                                          className={`visa-status-badge visa-status--${passenger.visa_status || 'visa_required'} visa-badge-clickable`}
+                                          className={`visa-status-badge visa-status--${
+                                            passenger.visa_status ||
+                                            'visa_required'
+                                          } visa-badge-clickable`}
                                           onClick={() =>
                                             setEditingVisaField({
                                               passengerIndex: index,
@@ -1257,9 +1629,9 @@ const TourBookingDetail = () => {
                                           'needs_processing'
                                             ? 'Needs Processing'
                                             : passenger.visa_status ===
-                                                'already_has'
-                                              ? 'Has Visa'
-                                              : 'Visa Required'}
+                                              'already_has'
+                                            ? 'Has Visa'
+                                            : 'Visa Required'}
                                         </span>
                                         {passenger.visa_status ===
                                           'already_has' &&
@@ -1274,9 +1646,9 @@ const TourBookingDetail = () => {
                                                   'expired'
                                                     ? 'expired'
                                                     : passenger.existing_visa_status ===
-                                                        'expiring_soon'
-                                                      ? 'expiring-soon'
-                                                      : 'valid'
+                                                      'expiring_soon'
+                                                    ? 'expiring-soon'
+                                                    : 'valid'
                                                 }`}
                                               >
                                                 {new Date(
@@ -1518,7 +1890,9 @@ const TourBookingDetail = () => {
                     <div className='info-item'>
                       <span className='label'>Payment Status:</span>
                       <span
-                        className={`value status ${getStatusColor(booking.status)}`}
+                        className={`value status ${getStatusColor(
+                          booking.status
+                        )}`}
                       >
                         {booking.status}
                       </span>
@@ -1623,17 +1997,19 @@ const TourBookingDetail = () => {
                       </div>
                     </div>
                     <div
-                      className={`flight-card__status ${getStatusColor(flightData.status)}`}
+                      className={`flight-card__status ${getStatusColor(
+                        flightData.status
+                      )}`}
                     >
                       {flightData.status === 'PENDING_TICKETING'
                         ? 'Confirmed'
                         : flightData.status === 'CONFIRMED'
-                          ? 'Confirmed'
-                          : flightData.status === 'PENDING'
-                            ? 'Pending'
-                            : flightData.status === 'CANCELLED'
-                              ? 'Cancelled'
-                              : flightData.status}
+                        ? 'Confirmed'
+                        : flightData.status === 'PENDING'
+                        ? 'Pending'
+                        : flightData.status === 'CANCELLED'
+                        ? 'Cancelled'
+                        : flightData.status}
                     </div>
                   </div>
 
@@ -2086,7 +2462,9 @@ const TourBookingDetail = () => {
                   <div className='info-item'>
                     <span className='label'>Status:</span>
                     <span
-                      className={`value status ${getStatusColor(booking.status)}`}
+                      className={`value status ${getStatusColor(
+                        booking.status
+                      )}`}
                     >
                       {booking.status}
                     </span>
@@ -2195,8 +2573,8 @@ const TourBookingDetail = () => {
                           currentPassenger.visa_status === 'needs_processing'
                             ? 'Needs Processing'
                             : currentPassenger.visa_status === 'already_has'
-                              ? 'Has Visa'
-                              : 'Not Applicable',
+                            ? 'Has Visa'
+                            : 'Not Applicable',
                       }}
                       options={[
                         {
@@ -2289,12 +2667,12 @@ const TourBookingDetail = () => {
                             currentPassenger.existing_visa_status === 'valid'
                               ? 'Valid'
                               : currentPassenger.existing_visa_status ===
-                                  'expiring_soon'
-                                ? 'Expiring Soon'
-                                : currentPassenger.existing_visa_status ===
-                                    'expired'
-                                  ? 'Expired'
-                                  : 'Not Specified',
+                                'expiring_soon'
+                              ? 'Expiring Soon'
+                              : currentPassenger.existing_visa_status ===
+                                'expired'
+                              ? 'Expired'
+                              : 'Not Specified',
                         }}
                         options={[
                           {

@@ -2364,3 +2364,118 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ==================== Edit Mode Styles ==================== */
+
+/* Edit button actions container */
+.passenger-edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Edit mode input fields */
+.edit-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.edit-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.edit-input:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+/* Edit mode select fields */
+.edit-select {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: white;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.edit-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Name fields container */
+.edit-name-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.edit-name-fields .edit-input {
+  min-width: 120px;
+}
+
+/* Nationality select in edit mode */
+.edit-select-nationality {
+  min-width: 150px;
+}
+
+/* Flatpickr in table cells */
+.passenger-table-container .flatpickr-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.passenger-table-container .flatpickr-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Section header with edit actions */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+/* Edit mode table cell adjustments */
+.passenger-table td {
+  vertical-align: middle;
+}
+
+/* Button spacing */
+.passenger-edit-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Loading spinner for small buttons */
+.loading-spinner-small {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1025,7 +1025,7 @@ export const updateTourStatus = async (req, res) => {
 export const editTourBooking = async (req, res) => {
   try {
     const { id } = req.params
-    const { status, assigned_to, assignment_status, flight_booking_reference } =
+    const { status, assigned_to, assignment_status, flight_booking_reference, passenger_details } =
       req.body || {}
 
     // Fetch existing booking for comparison and reference
@@ -1044,6 +1044,33 @@ export const editTourBooking = async (req, res) => {
     if (typeof status !== 'undefined') updateData.status = status
     if (typeof assignment_status !== 'undefined')
       updateData.assignment_status = assignment_status
+
+    // Handle passenger details update
+    if (typeof passenger_details !== 'undefined') {
+      // Validate passenger_details is an array
+      if (!Array.isArray(passenger_details)) {
+        return res.status(400).json({
+          error: 'passenger_details must be an array',
+        })
+      }
+
+      // Basic validation: check required fields for each passenger
+      for (let i = 0; i < passenger_details.length; i++) {
+        const passenger = passenger_details[i]
+        if (!passenger.name?.firstName || !passenger.name?.lastName) {
+          return res.status(400).json({
+            error: `Passenger ${i + 1}: First name and last name are required`,
+          })
+        }
+        if (!passenger.type) {
+          return res.status(400).json({
+            error: `Passenger ${i + 1}: Passenger type is required`,
+          })
+        }
+      }
+
+      updateData.passenger_details = passenger_details
+    }
 
     // Handle flight booking reference
     if (typeof flight_booking_reference !== 'undefined') {

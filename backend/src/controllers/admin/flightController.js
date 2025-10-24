@@ -1078,8 +1078,14 @@ export const generateFlightPDFAdmin = async (req, res) => {
 export const editFlightBooking = async (req, res) => {
   try {
     const { id } = req.params
-    const { status, pnr, assigned_to, assignment_status, e_ticket_numbers } =
-      req.body
+    const {
+      status,
+      pnr,
+      assigned_to,
+      assignment_status,
+      e_ticket_numbers,
+      passenger_details,
+    } = req.body
 
     // Validate required fields
     if (!id) {
@@ -1129,6 +1135,48 @@ export const editFlightBooking = async (req, res) => {
         })
       }
       updateData.assignment_status = assignment_status
+    }
+    if (passenger_details !== undefined) {
+      // Validate passenger_details structure
+      if (!passenger_details || typeof passenger_details !== 'object') {
+        return res.status(400).json({
+          success: false,
+          error: 'passenger_details must be a valid object',
+        })
+      }
+
+      // Validate travelers array
+      if (!Array.isArray(passenger_details.travelers)) {
+        return res.status(400).json({
+          success: false,
+          error: 'passenger_details.travelers must be an array',
+        })
+      }
+
+      // Basic validation: check required fields for each traveler
+      for (let i = 0; i < passenger_details.travelers.length; i++) {
+        const traveler = passenger_details.travelers[i]
+        if (!traveler.name?.firstName || !traveler.name?.lastName) {
+          return res.status(400).json({
+            success: false,
+            error: `Traveler ${i + 1}: First name and last name are required`,
+          })
+        }
+        if (!traveler.type) {
+          return res.status(400).json({
+            success: false,
+            error: `Traveler ${i + 1}: Traveler type is required`,
+          })
+        }
+        if (!traveler.dateOfBirth) {
+          return res.status(400).json({
+            success: false,
+            error: `Traveler ${i + 1}: Date of birth is required`,
+          })
+        }
+      }
+
+      updateData.passenger_details = passenger_details
     }
     if (e_ticket_numbers !== undefined) {
       console.log('[TICKETING] Received e_ticket_numbers:', e_ticket_numbers)
