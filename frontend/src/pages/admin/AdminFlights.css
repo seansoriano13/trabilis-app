@@ -1,892 +1,929 @@
 /* Enhanced Flight Sales Management Styles */
 .flights {
-    padding: 20px;
-    max-width: 1400px;
-    margin: 0 auto;
-    /* background: #f8f9fa; */
-    min-height: 100vh !important;
-    height: 100% !important;
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  /* background: #f8f9fa; */
+  min-height: 100vh !important;
+  height: 100% !important;
 }
 
 /* Header Styles */
 .flights__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: white;
-    padding: 25px 30px;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    margin-bottom: 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 25px 30px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 25px;
 }
 
 .flights__header-content {
-    display: flex;
-    align-items: center;
-    gap: 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
 
 .flights__header-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #f7d100, #e6c200);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: black;
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f7d100, #e6c200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: black;
 }
 
 .flights__header-text h1 {
-    margin: 0 0 5px 0;
-    color: #333;
-    font-size: 28px;
-    font-weight: 700;
+  margin: 0 0 5px 0;
+  color: #333;
+  font-size: 28px;
+  font-weight: 700;
 }
 
 .flights__header-text p {
-    margin: 0;
-    color: #6c757d;
-    font-size: 14px;
+  margin: 0;
+  color: #6c757d;
+  font-size: 14px;
 }
 
 .flights__header-actions {
-    display: flex;
-    gap: 10px;
+  display: flex;
+  gap: 10px;
 }
 
 .flights__action-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
 }
 
 .flights__action-btn--refresh {
-    background: #6c757d;
-    color: white;
+  background: #6c757d;
+  color: white;
 }
 
 .flights__action-btn--refresh:hover {
-    background: #545b62;
-    transform: translateY(-1px);
+  background: #545b62;
+  transform: translateY(-1px);
 }
 
 .flights__action-btn--export {
-    background: #28a745;
-    color: black;
+  background: #28a745;
+  color: black;
 }
 
 .flights__action-btn--export:hover {
-    background: #218838;
-    transform: translateY(-1px);
+  background: #218838;
+  transform: translateY(-1px);
 }
 
 /* Summary Cards */
 .flights__summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 20px;
-    margin-bottom: 25px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 25px;
 }
 
 .flights__summary-card {
-    background: white;
-    border-radius: 12px;
-    padding: 25px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    border: 1px solid #e9ecef;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
+  background: white;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .flights__summary-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .flights__summary-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #f7d100, #e6c200);
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #f7d100, #e6c200);
 }
 
 .flights__summary-card--bookings::before {
-    background: linear-gradient(90deg, #f7d100, #e6c200);
+  background: linear-gradient(90deg, #f7d100, #e6c200);
 }
 
 .flights__summary-card--revenue::before {
-    background: linear-gradient(90deg, #28a745, #1e7e34);
+  background: linear-gradient(90deg, #28a745, #1e7e34);
 }
 
 .flights__summary-card--average::before {
-    background: linear-gradient(90deg, #ffc107, #e0a800);
+  background: linear-gradient(90deg, #ffc107, #e0a800);
 }
 
 .flights__summary-card--popular::before {
-    background: linear-gradient(90deg, #dc3545, #c82333);
+  background: linear-gradient(90deg, #dc3545, #c82333);
 }
 
 .flights__summary-card {
-    display: flex;
-    align-items: center;
-    gap: 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
 
 .flights__summary-icon {
-    width: 50px;
-    height: 50px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: black;
+  width: 50px;
+  height: 50px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: black;
 }
 
 .flights__summary-card--bookings .flights__summary-icon {
-    background: linear-gradient(135deg, #f7d100, #e6c200);
+  background: linear-gradient(135deg, #f7d100, #e6c200);
 }
 
 .flights__summary-card--revenue .flights__summary-icon {
-    background: linear-gradient(135deg, #28a745, #1e7e34);
+  background: linear-gradient(135deg, #28a745, #1e7e34);
 }
 
 .flights__summary-card--average .flights__summary-icon {
-    background: linear-gradient(135deg, #ffc107, #e0a800);
+  background: linear-gradient(135deg, #ffc107, #e0a800);
 }
 
 .flights__summary-card--popular .flights__summary-icon {
-    background: linear-gradient(135deg, #dc3545, #c82333);
+  background: linear-gradient(135deg, #dc3545, #c82333);
 }
 
 .flights__summary-content {
-    flex: 1;
+  flex: 1;
 }
 
 .flights__summary-content h3 {
-    margin: 0 0 8px 0;
-    color: #6c757d;
-    font-size: 14px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+  margin: 0 0 8px 0;
+  color: #6c757d;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .flights__summary-content p {
-    margin: 0 0 5px 0;
-    color: #333;
-    font-size: 24px;
-    font-weight: 700;
+  margin: 0 0 5px 0;
+  color: #333;
+  font-size: 24px;
+  font-weight: 700;
 }
 
 .flights__summary-label {
-    color: #6c757d;
-    font-size: 12px;
-    font-weight: 500;
+  color: #6c757d;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 /* Filter Section */
 .flights__filter {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    margin-bottom: 25px;
-    overflow: hidden;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 25px;
+  overflow: hidden;
 }
 
 .flights__filter-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 24px;
-    background: #f8f9fa;
-    border-bottom: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
 }
 
 .flights__filter-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #495057;
-    font-size: 16px;
-    font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #495057;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .flights__filter-clear {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
-    background: #6c757d;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .flights__filter-clear:hover {
-    background: #545b62;
+  background: #545b62;
 }
 
 .flights__filter-grid {
-    padding: 24px;
+  padding: 24px;
 }
 
 .flights__filter-section {
-    margin-bottom: 24px;
+  margin-bottom: 24px;
 }
 
 .flights__filter-section:last-child {
-    margin-bottom: 0;
+  margin-bottom: 0;
 }
 
 .flights__filter-section-title {
-    color: #6c757d;
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 12px;
+  color: #6c757d;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
 }
 
 .flights__filter-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
 }
 
 .flights__filter-input,
 .flights__filter-select {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid #dee2e6;
-    border-radius: 6px;
-    font-size: 14px;
-    background: white;
-    transition: all 0.2s ease;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  transition: all 0.2s ease;
 }
 
 .flights__filter-input:focus,
 .flights__filter-select:focus {
-    outline: none;
-    border-color: #f7d100;
-    box-shadow: 0 0 0 2px rgba(247, 209, 0, 0.15);
+  outline: none;
+  border-color: #f7d100;
+  box-shadow: 0 0 0 2px rgba(247, 209, 0, 0.15);
 }
 
 .flights__filter-input::placeholder {
-    color: #adb5bd;
-    font-size: 13px;
+  color: #adb5bd;
+  font-size: 13px;
 }
 
 .flights__filter-select {
-    cursor: pointer;
+  cursor: pointer;
 }
 
 .flights__filter-select:hover {
-    border-color: #adb5bd;
+  border-color: #adb5bd;
+}
+
+/* Checkbox Filter Group */
+.flights__filter-group--checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  background: white;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.flights__filter-group--checkbox:hover {
+  border-color: #adb5bd;
+}
+
+.flights__filter-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #f7d100;
+  margin: 0;
+}
+
+.flights__filter-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+  color: #495057;
+  font-weight: 500;
 }
 
 /* Section Styles */
 .flights__section {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    border: 1px solid #e9ecef;
-    overflow: hidden;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+  overflow: hidden;
 }
 
 .flights__section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 25px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-bottom: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 25px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 1px solid #e9ecef;
 }
 
 .flights__section-title {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .flights__section-title h2 {
-    margin: 0;
-    color: #333;
-    font-size: 18px;
-    font-weight: 600;
+  margin: 0;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .flights__section-count {
-    color: #6c757d;
-    font-size: 14px;
-    font-weight: 500;
+  color: #6c757d;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .flights__section-actions {
-    display: flex;
-    gap: 10px;
+  display: flex;
+  gap: 10px;
 }
 
 /* Table Styles */
 .flights__table-container {
-    overflow-x: auto;
+  overflow-x: auto;
 }
 
 .flights__table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .flights__table-header {
-    background: #f8f9fa;
-    padding: 15px 20px;
-    text-align: left;
-    font-weight: 600;
-    color: #333;
-    border-bottom: 2px solid #e9ecef;
-    position: sticky;
-    top: 0;
-    z-index: 10;
+  background: #f8f9fa;
+  padding: 15px 20px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #e9ecef;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .flights__table-header--sortable {
-    cursor: pointer;
-    transition: all 0.3s ease;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
 .flights__table-header--sortable:hover {
-    background: #e9ecef;
+  background: #e9ecef;
 }
 
 .flights__table-header-content {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .flights__sort-indicator {
-    color: black;
-    font-weight: 700;
+  color: black;
+  font-weight: 700;
 }
 
 .flights__table-row {
-    transition: all 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 .flights__table-row:hover {
-    background: #f8f9fa;
+  background: #f8f9fa;
 }
 
 .flights__table-cell {
-    padding: 15px 20px;
-    border-bottom: 1px solid #e9ecef;
-    vertical-align: middle;
+  padding: 15px 20px;
+  border-bottom: 1px solid #e9ecef;
+  vertical-align: middle;
 }
 
 .flights__table-row:last-child .flights__table-cell {
-    border-bottom: none;
+  border-bottom: none;
 }
 
 /* Cell-specific styles */
 .flights__table-cell--reference {
-    font-weight: 600;
-    max-width: 200px;
-    width: 200px;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  font-weight: 600;
+  max-width: 200px;
+  width: 200px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .flights__booking-link {
-    color: black;
-    text-decoration: underline;
-    font-weight: 600;
-    transition: color 0.3s ease;
+  color: black;
+  text-decoration: underline;
+  font-weight: 600;
+  transition: color 0.3s ease;
 }
 
 .flights__booking-link:hover {
-    color: #e6c200;
-    text-decoration: none;
+  color: #e6c200;
+  text-decoration: none;
 }
 
 .flights__status {
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .flights__status--confirmed {
-    background: #d4edda;
-    color: #155724;
+  background: #d4edda;
+  color: #155724;
 }
 
 .flights__status--pending {
-    background: #fff3cd;
-    color: #856404;
+  background: #fff3cd;
+  color: #856404;
 }
 
 .flights__status--cancelled {
-    background: #f8d7da;
-    color: #721c24;
+  background: #f8d7da;
+  color: #721c24;
 }
 
 .flights__status--booked {
-    background: #d1ecf1;
-    color: #0c5460;
+  background: #d1ecf1;
+  color: #0c5460;
 }
 
 .flights__status--paid_pending_booking {
-    background: #e2e3e5;
-    color: #383d41;
+  background: #e2e3e5;
+  color: #383d41;
 }
 
 .flights__status--pending_payment {
-    background: #fff3cd;
-    color: #856404;
+  background: #fff3cd;
+  color: #856404;
 }
 
 .flights__status--ticketed {
-    background: #d4edda;
-    color: #155724;
+  background: #d4edda;
+  color: #155724;
 }
 
 .flights__destination-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .flights__destination-code {
-    font-weight: 600;
-    color: #333;
-    font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  font-size: 16px;
 }
 
 .flights__date-info {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #6c757d;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6c757d;
 }
 
 .flights__flight-details {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .flights__departure,
 .flights__arrival {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    color: #6c757d;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #6c757d;
 }
 
 .flights__passenger-info {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #6c757d;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6c757d;
 }
 
 .flights__airline-info {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #6c757d;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6c757d;
 }
 
 .flights__amount {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
 }
 
 .flights__amount-value {
-    font-weight: 700;
-    color: #28a745;
-    font-size: 16px;
+  font-weight: 700;
+  color: #28a745;
+  font-size: 16px;
 }
 
 .flights__actions {
-    display: flex;
-    gap: 8px;
+  display: flex;
+  gap: 8px;
 }
 
 .flights__action-btn--view {
-    background: #f7d100;
-    color: black;
-    padding: 8px;
-    border-radius: 6px;
-    transition: all 0.3s ease;
+  background: #f7d100;
+  color: black;
+  padding: 8px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
 }
 
 .flights__action-btn--view:hover {
-    background: #e6c200;
-    transform: translateY(-1px);
+  background: #e6c200;
+  transform: translateY(-1px);
 }
 
 .flights__action-btn--edit {
-    background: #ffc107;
-    color: #212529;
-    padding: 8px;
-    border-radius: 6px;
-    transition: all 0.3s ease;
+  background: #ffc107;
+  color: #212529;
+  padding: 8px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
 }
 
 .flights__action-btn--edit:hover {
-    background: #e0a800;
-    transform: translateY(-1px);
+  background: #e0a800;
+  transform: translateY(-1px);
 }
 
 .flights__action-btn--delete {
-    background: #dc3545;
-    color: black;
-    padding: 8px;
-    border-radius: 6px;
-    transition: all 0.3s ease;
+  background: #dc3545;
+  color: black;
+  padding: 8px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
 }
 
 .flights__action-btn--delete:hover {
-    background: #c82333;
-    transform: translateY(-1px);
+  background: #c82333;
+  transform: translateY(-1px);
 }
 
 /* Pagination */
 .flights__pagination-container {
-    padding: 20px 25px;
-    border-top: 1px solid #e9ecef;
-    background: #f8f9fa;
+  padding: 20px 25px;
+  border-top: 1px solid #e9ecef;
+  background: #f8f9fa;
 }
 
 .flights__pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-    list-style: none;
-    margin: 0;
-    padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 .flights__pagination a {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px 16px;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    color: #6c757d;
-    text-decoration: none;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    min-width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  color: #6c757d;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  min-width: 40px;
 }
 
 .flights__pagination a:hover {
-    background: #f7d100;
-    color: black;
-    border-color: #f7d100;
-    transform: translateY(-1px);
+  background: #f7d100;
+  color: black;
+  border-color: #f7d100;
+  transform: translateY(-1px);
 }
 
 .flights__pagination--active a {
-    background: #f7d100;
-    color: black;
-    border-color: #f7d100;
-    font-weight: 600;
+  background: #f7d100;
+  color: black;
+  border-color: #f7d100;
+  font-weight: 600;
 }
 
 /* Loading and Error States */
 .flights__loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 400px;
-    text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
 }
 
 .flights__loading::before {
-    content: '';
-    width: 40px;
-    height: 40px;
-    border: 4px solid #e3e3e3;
-    border-top: 4px solid #f7d100;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 20px;
+  content: '';
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e3e3e3;
+  border-top: 4px solid #f7d100;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
 }
 
 @keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-    100% {
-        transform: rotate(360deg);
-    }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .flights__error {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 400px;
-    text-align: center;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    margin: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin: 20px;
 }
 
 .flights__error p {
-    color: #dc3545;
-    font-size: 18px;
-    margin-bottom: 20px;
+  color: #dc3545;
+  font-size: 18px;
+  margin-bottom: 20px;
 }
 
 .flights__retry {
-    background: #f7d100;
-    color: black;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
+  background: #f7d100;
+  color: black;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
 .flights__retry:hover {
-    background: #e6c200;
-    transform: translateY(-1px);
+  background: #e6c200;
+  transform: translateY(-1px);
 }
 
 /* Assignment Styles */
 .flights__table-cell--assignment {
-    min-width: 140px;
+  min-width: 140px;
 }
 
 .flights__assignment {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .flights__assignment-assigned {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .flights__assignment-staff {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    margin-bottom: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 2px;
 }
 
 .flights__assignment-staff-name {
-    font-size: 12px;
-    font-weight: 600;
-    color: #374151;
-    line-height: 1.2;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  line-height: 1.2;
 }
 
 .flights__assignment-staff-email {
-    font-size: 10px;
-    color: #6b7280;
-    line-height: 1.2;
+  font-size: 10px;
+  color: #6b7280;
+  line-height: 1.2;
 }
 
 .flights__assignment-auto {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 11px;
-    color: #17a2b8;
-    font-weight: 500;
-    margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #17a2b8;
+  font-weight: 500;
+  margin-top: 2px;
 }
 
 .flights__assignment-status {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    padding: 2px 6px;
-    border-radius: 4px;
-    text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-align: center;
 }
 
 .flights__assignment-status--pending {
-    background: #fef3c7;
-    color: #d97706;
+  background: #fef3c7;
+  color: #d97706;
 }
 
 .flights__assignment-status--in_progress {
-    background: #dbeafe;
-    color: #2563eb;
+  background: #dbeafe;
+  color: #2563eb;
 }
 
 .flights__assignment-status--completed {
-    background: #d1fae5;
-    color: #059669;
+  background: #d1fae5;
+  color: #059669;
 }
 
 .flights__assignment-date {
-    font-size: 10px;
-    color: #6b7280;
-    text-align: center;
+  font-size: 10px;
+  color: #6b7280;
+  text-align: center;
 }
 
 .flights__assignment-unassigned {
-    font-size: 11px;
-    color: #9ca3af;
-    font-style: italic;
-    text-align: center;
+  font-size: 11px;
+  color: #9ca3af;
+  font-style: italic;
+  text-align: center;
 }
 
 /* Assignment Action Button */
 .flights__action-btn--assign {
-    background: #3b82f6 !important;
-    color: white !important;
+  background: #3b82f6 !important;
+  color: white !important;
 }
 
 .flights__action-btn--assign:hover {
-    background: #2563eb !important;
-    transform: translateY(-1px);
+  background: #2563eb !important;
+  transform: translateY(-1px);
 }
 
 /* PDF Action Buttons */
 .flights__action-btn--pdf-preview {
-    background: #10b981 !important;
-    color: white !important;
+  background: #10b981 !important;
+  color: white !important;
 }
 
 .flights__action-btn--pdf-preview:hover {
-    background: #059669 !important;
-    transform: translateY(-1px);
+  background: #059669 !important;
+  transform: translateY(-1px);
 }
 
 .flights__action-btn--pdf-download {
-    background: #f59e0b !important;
-    color: white !important;
+  background: #f59e0b !important;
+  color: white !important;
 }
 
 .flights__action-btn--pdf-download:hover {
-    background: #d97706 !important;
-    transform: translateY(-1px);
+  background: #d97706 !important;
+  transform: translateY(-1px);
 }
 
 /* Responsive Design */
 @media (max-width: 1200px) {
-    .flights__filter-row {
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    }
+  .flights__filter-row {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
 }
 
 @media (max-width: 768px) {
-    .flights {
-        padding: 15px;
-    }
+  .flights {
+    padding: 15px;
+  }
 
-    .flights__header {
-        flex-direction: column;
-        gap: 20px;
-        align-items: flex-start;
-    }
+  .flights__header {
+    flex-direction: column;
+    gap: 20px;
+    align-items: flex-start;
+  }
 
-    .flights__header-content {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 15px;
-    }
+  .flights__header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
 
-    .flights__summary {
-        grid-template-columns: 1fr;
-    }
+  .flights__summary {
+    grid-template-columns: 1fr;
+  }
 
-    .flights__section-header {
-        flex-direction: column;
-        gap: 15px;
-        align-items: flex-start;
-    }
+  .flights__section-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+  }
 
-    .flights__table-container {
-        font-size: 14px;
-    }
+  .flights__table-container {
+    font-size: 14px;
+  }
 
-    .flights__table-cell {
-        padding: 12px 15px;
-    }
+  .flights__table-cell {
+    padding: 12px 15px;
+  }
 
-    .flights__actions {
-        flex-direction: column;
-        gap: 4px;
-        flex-wrap: wrap;
-    }
+  .flights__actions {
+    flex-direction: column;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
 
-    .flights__action-btn {
-        min-width: 32px;
-        height: 32px;
-    }
+  .flights__action-btn {
+    min-width: 32px;
+    height: 32px;
+  }
 }
 
 @media (max-width: 480px) {
-    .flights__header-text h1 {
-        font-size: 24px;
-    }
+  .flights__header-text h1 {
+    font-size: 24px;
+  }
 
-    .flights__summary-card {
-        padding: 20px;
-    }
+  .flights__summary-card {
+    padding: 20px;
+  }
 
-    .flights__filter-grid {
-        padding: 20px;
-    }
+  .flights__filter-grid {
+    padding: 20px;
+  }
 
-    .flights__filter-row {
-        grid-template-columns: 1fr;
-        gap: 12px;
-    }
+  .flights__filter-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
 
-    .flights__table-cell {
-        padding: 10px 12px;
-    }
+  .flights__table-cell {
+    padding: 10px 12px;
+  }
 
-    .flights__table-cell--reference {
-        max-width: 150px;
-        width: 150px;
-    }
+  .flights__table-cell--reference {
+    max-width: 150px;
+    width: 150px;
+  }
 
-    .flights__pagination a {
-        padding: 8px 12px;
-        font-size: 14px;
-    }
+  .flights__pagination a {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
 }

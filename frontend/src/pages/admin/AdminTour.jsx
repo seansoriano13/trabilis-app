@@ -595,7 +595,7 @@ const AdminTours = () => {
                   <option value='year'>This Year</option>
                 </select>
               </div>
-              <div className='tours__filter-group' style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className='tours__filter-group tours__filter-group--checkbox'>
                 <input
                   type='checkbox'
                   id='show_my_bookings_tour'
@@ -606,10 +606,13 @@ const AdminTours = () => {
                       show_my_bookings: e.target.checked,
                     }))
                   }
-                  style={{ width: 'auto', cursor: 'pointer' }}
+                  className='tours__filter-checkbox'
                 />
-                <label htmlFor='show_my_bookings_tour' style={{ margin: 0, cursor: 'pointer', userSelect: 'none' }}>
-                  <FiUser style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                <label
+                  htmlFor='show_my_bookings_tour'
+                  className='tours__filter-checkbox-label'
+                >
+                  <FiUser />
                   My Bookings Only
                 </label>
               </div>

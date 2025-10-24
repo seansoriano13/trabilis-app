@@ -292,8 +292,8 @@ const AdminFlights = () => {
           ? 1
           : -1
         : valA < valB
-          ? 1
-          : -1
+        ? 1
+        : -1
     })
   }
 
@@ -552,7 +552,7 @@ const AdminFlights = () => {
                   <option value='year'>This Year</option>
                 </select>
               </div>
-              <div className='flights__filter-group' style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className='flights__filter-group flights__filter-group--checkbox'>
                 <input
                   type='checkbox'
                   id='show_my_bookings'
@@ -563,10 +563,13 @@ const AdminFlights = () => {
                       show_my_bookings: e.target.checked,
                     }))
                   }
-                  style={{ width: 'auto', cursor: 'pointer' }}
+                  className='flights__filter-checkbox'
                 />
-                <label htmlFor='show_my_bookings' style={{ margin: 0, cursor: 'pointer', userSelect: 'none' }}>
-                  <FiUser style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                <label
+                  htmlFor='show_my_bookings'
+                  className='flights__filter-checkbox-label'
+                >
+                  <FiUser />
                   My Bookings Only
                 </label>
               </div>
@@ -778,7 +781,11 @@ const AdminFlights = () => {
                   </td>
                   <td className='flights__table-cell'>
                     <span
-                      className={`flights__status flights__status--${booking.status === 'PENDING_TICKETING' ? 'confirmed' : booking.status.toLowerCase()}`}
+                      className={`flights__status flights__status--${
+                        booking.status === 'PENDING_TICKETING'
+                          ? 'confirmed'
+                          : booking.status.toLowerCase()
+                      }`}
                     >
                       {booking.status === 'PENDING_TICKETING'
                         ? 'Confirmed'
