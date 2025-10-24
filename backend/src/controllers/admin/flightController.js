@@ -551,8 +551,8 @@ export const generateFlightPDFAdmin = async (req, res) => {
                                                 <b><span>${
                                                   arrival.iata
                                                 }</span><span>${
-                                                  arrival.city
-                                                }</span></b>
+                                  arrival.city
+                                }</span></b>
                                             </p>
                                             <p class="pdf-flight-details__airport-code"><span>${
                                               arrival.airport
@@ -1251,6 +1251,44 @@ export const sendFlightUpdate = async (req, res) => {
 
     // Send update email
     await sendFlightUpdateEmail(booking_reference)
+
+    // Create admin notification for email sent
+    const adminEmail = req.user?.email || 'System'
+    let adminName = adminEmail
+    try {
+      if (req.user?.email) {
+        const { data: admin } = await supabase
+          .from('admins')
+          .select('first_name, last_name, email')
+          .eq('email', req.user.email)
+          .single()
+        if (admin) {
+          adminName =
+            `${admin.first_name || ''} ${admin.last_name || ''}`.trim() ||
+            admin.email
+        }
+      }
+    } catch (_) {}
+
+    await supabase.from('admin_notifications').insert({
+      type: 'flight_update_sent',
+      message: `Flight update email sent by ${adminName} for booking ${booking_reference}`,
+      booking_reference: booking_reference,
+      booking_type: 'flight',
+      booking_id: booking.id,
+      category: 'status',
+      priority: 'low',
+      action_url: `/admin/flights/${booking.id}`,
+      created_at: new Date().toISOString(),
+    })
+
+    // Trigger realtime event via Pusher
+    await pusher.trigger('admin-notifications', 'flight-update-sent', {
+      bookingReference: booking_reference,
+      bookingType: 'flight',
+      bookingId: booking.id,
+      sentBy: adminName,
+    })
 
     res.json({
       success: true,

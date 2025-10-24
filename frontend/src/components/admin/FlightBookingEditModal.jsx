@@ -180,7 +180,7 @@ const FlightBookingEditModal = ({ isOpen, booking, onClose, onSubmit }) => {
 
     setSendingEmail(true)
     try {
-      await adminClient.post('/admin/flights/send-update', {
+      await adminClient.post('/flights/send-update', {
         booking_reference: booking.booking_reference,
       })
       showSuccess('Flight update email sent successfully!')

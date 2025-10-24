@@ -10,7 +10,7 @@ import { formatSegment, getStopsLabel } from '../utils/flightutils.js'
 import { getAirlineInfo } from '../utils/airlinesUtils.js'
 import { getAircraftName } from '../utils/aircraftUtils.js'
 import { getAirportFull } from '../utils/airportUtils.js'
-import { generateTourBookingHTML } from '../controllers/admin/tourController.js'
+import { generateTourBookingHTML } from '../utils/tourBookingHtmlGenerator.js'
 import airlines from '../data/airlines.json' with { type: 'json' }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -81,6 +81,37 @@ export const formatToLongDate = (date) => {
   return endDate && isValid(endDate)
     ? [toFormatted(startDate), toFormatted(endDate)]
     : toFormatted(startDate)
+}
+
+/**
+ * Generic email send function
+ */
+export const sendEmail = async ({ to, subject, html }) => {
+  try {
+    const sendSmtpEmail = new brevo.SendSmtpEmail()
+
+    sendSmtpEmail.subject = subject
+    sendSmtpEmail.htmlContent = html
+    sendSmtpEmail.sender = {
+      name: 'Trabilis',
+      email:
+        process.env.BREVO_FROM_EMAIL ||
+        process.env.SUPPORT_EMAIL ||
+        'noreply@trabilis.com',
+    }
+    sendSmtpEmail.to = [
+      {
+        email: to,
+      },
+    ]
+
+    const data = await apiInstance.sendTransacEmail(sendSmtpEmail)
+    console.log(`✅ Email sent to ${to}:`, data.response.statusMessage)
+    return data
+  } catch (err) {
+    console.error(`❌ Error sending email to ${to}:`, err)
+    throw err
+  }
 }
 
 // Reusable HTML -> PDF buffer generator using headless Chromium
