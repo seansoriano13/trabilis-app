@@ -123,3 +123,5 @@ trabilis.sql
 #Cursor
 /.cursor
 /*.md
+
+/docs/*
