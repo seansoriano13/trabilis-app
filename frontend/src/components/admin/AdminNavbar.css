@@ -822,6 +822,10 @@
 
     .admin-nav__nav-link {
         padding: 10px 16px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 180px; /* optional: limit width of links to prevent nav overflow */
     }
 
     .admin-nav__profile-btn {

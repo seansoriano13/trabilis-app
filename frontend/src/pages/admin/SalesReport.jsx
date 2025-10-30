@@ -23,6 +23,8 @@ import {
   FiBarChart2,
   FiAward,
 } from 'react-icons/fi'
+import Flatpickr from 'react-flatpickr'
+import 'flatpickr/dist/themes/material_blue.css'
 
 ChartJS.register(
   CategoryScale,
@@ -48,6 +50,8 @@ const SalesReport = () => {
     flightClass: 'All',
   })
 
+  const [customRange, setCustomRange] = useState([null, null])
+
   const fetchReportData = async () => {
     if (loading) {
       setLoading(true)
@@ -60,7 +64,10 @@ const SalesReport = () => {
       const params = new URLSearchParams()
 
       // Handle date range filter
-      if (filters.date_range && filters.date_range !== 'All') {
+      if (filters.date_range === 'custom' && customRange[0] && customRange[1]) {
+        params.append('startDate', customRange[0].toISOString())
+        params.append('endDate', customRange[1].toISOString())
+      } else if (filters.date_range && filters.date_range !== 'All' && filters.date_range !== 'custom') {
         const now = new Date()
         let startDate, endDate
 
@@ -179,7 +186,20 @@ const SalesReport = () => {
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target
-    setFilters((prev) => ({ ...prev, [name]: value }))
+    setFilters((prev) => {
+      if (name === 'date_range' && value !== 'custom') {
+        setCustomRange([null, null])
+      }
+      return { ...prev, [name]: value }
+    })
+  }
+
+  const handleCustomRangeChange = (dates) => {
+    setCustomRange(dates)
+    // Only update filters if 2 dates are chosen
+    if (dates[0] && dates[1]) {
+      setFilters((prev) => ({ ...prev, date_range: 'custom' }))
+    }
   }
 
   const clearFilters = () => {
@@ -195,7 +215,10 @@ const SalesReport = () => {
       const params = new URLSearchParams()
 
       // Handle date range for export
-      if (filters.date_range && filters.date_range !== 'All') {
+      if (filters.date_range === 'custom' && customRange[0] && customRange[1]) {
+        params.append('startDate', customRange[0].toISOString())
+        params.append('endDate', customRange[1].toISOString())
+      } else if (filters.date_range && filters.date_range !== 'All' && filters.date_range !== 'custom') {
         const now = new Date()
         let startDate, endDate
 
@@ -441,8 +464,18 @@ const SalesReport = () => {
                   <option value='month'>This Month</option>
                   <option value='quarter'>This Quarter</option>
                   <option value='year'>This Year</option>
+                  <option value='custom'>Custom Range</option>
                 </select>
               </div>
+              {filters.date_range === 'custom' && (
+                <Flatpickr
+                  options={{ mode: 'range', dateFormat: 'Y-m-d' }}
+                  value={customRange}
+                  onChange={handleCustomRangeChange}
+                  className='sales-report__filter-input' // Reuse existing input style
+                  placeholder='Select date range'
+                />
+              )}
 
               <div className='sales-report__filter-group'>
                 <label>Flight Class</label>
