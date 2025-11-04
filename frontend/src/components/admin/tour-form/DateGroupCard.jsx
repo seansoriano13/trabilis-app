@@ -107,7 +107,9 @@ const DateGroupCard = ({
                       }
                     : undefined
                 }
-                className={`tour-form__input ${dateGroup.id ? 'tour-form__input--readonly' : ''}`}
+                className={`tour-form__input ${
+                  dateGroup.id ? 'tour-form__input--readonly' : ''
+                }`}
                 readOnly={!!dateGroup.id}
                 disabled={!!dateGroup.id}
                 min='1'
@@ -136,7 +138,10 @@ const DateGroupCard = ({
 
           {index > 0 && (
             <button
-              onClick={() => removeDateGroup(index)}
+              onClick={(e) => {
+                e.stopPropagation()
+                removeDateGroup(index)
+              }}
               className='tour-form__btn tour-form__btn--danger'
             >
               Remove Date Group
@@ -149,4 +154,3 @@ const DateGroupCard = ({
 }
 
 export default DateGroupCard
-

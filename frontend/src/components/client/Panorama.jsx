@@ -4,6 +4,7 @@ function Panorama({ preview, image, aspectRatio = '16/9', id }) {
   const [isVisible, setIsVisible] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const containerRef = useRef(null)
+  const initializedRef = useRef(false)
 
   // Intersection Observer for lazy loading
   useEffect(() => {
@@ -30,6 +31,7 @@ function Panorama({ preview, image, aspectRatio = '16/9', id }) {
   // Load Panellum only when visible
   useEffect(() => {
     if (!isVisible) return
+    if (initializedRef.current) return
 
     const containerId = `panorama-${id}`
     setIsLoading(true)
@@ -65,6 +67,8 @@ function Panorama({ preview, image, aspectRatio = '16/9', id }) {
     function initViewer() {
       if (window.pannellum) {
         try {
+          if (initializedRef.current) return
+          initializedRef.current = true
           const viewer = window.pannellum.viewer(containerId, {
             type: 'equirectangular',
             panorama: proxy(image),
@@ -82,6 +86,8 @@ function Panorama({ preview, image, aspectRatio = '16/9', id }) {
           })
 
           if (viewer) {
+            // Stop showing our loading overlay once the viewer and its load button are ready
+            setIsLoading(false)
             viewer.on('load', () => {
               setIsLoading(false)
             })
@@ -99,6 +105,7 @@ function Panorama({ preview, image, aspectRatio = '16/9', id }) {
     return () => {
       const container = document.getElementById(containerId)
       if (container) container.innerHTML = ''
+      initializedRef.current = false
     }
   }, [isVisible, image, preview, id])
 

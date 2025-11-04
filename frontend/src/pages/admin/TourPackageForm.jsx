@@ -195,7 +195,7 @@ function TourPackageForm({ mode = 'create' }) {
                 inclusion_groups: groupsWithItems,
                 dateIndex: index,
               }
-            } catch (_error) {
+            } catch {
               return { ...d, dateIndex: index }
             }
           })
@@ -360,10 +360,44 @@ function TourPackageForm({ mode = 'create' }) {
   }
 
   const removeDateGroup = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      dates: prev.dates.filter((_, i) => i !== index),
-    }))
+    setFormData((prev) => {
+      // Validate index
+      if (index < 0 || index >= prev.dates.length) {
+        console.warn('Invalid date index for removal:', index)
+        return prev
+      }
+
+      const newDates = prev.dates.filter((_, i) => i !== index)
+
+      // Clean up customFeeRules: remove rules for deleted date, adjust indices for dates after
+      const newCustomFeeRules = (prev.customFeeRules || [])
+        .filter((rule) => {
+          // Remove rules that reference the deleted date
+          return rule.dateIndex !== index
+        })
+        .map((rule) => {
+          // Adjust dateIndex for rules that reference dates after the removed one
+          if (rule.dateIndex !== undefined && rule.dateIndex > index) {
+            return {
+              ...rule,
+              dateIndex: rule.dateIndex - 1,
+            }
+          }
+          return rule
+        })
+
+      console.log('Removing date group at index:', index, {
+        before: prev.dates.length,
+        after: newDates.length,
+        removedDateId: prev.dates[index]?.id,
+      })
+
+      return {
+        ...prev,
+        dates: newDates,
+        customFeeRules: newCustomFeeRules,
+      }
+    })
   }
 
   const addCustomFeeRule = () => {
@@ -734,15 +768,14 @@ function TourPackageForm({ mode = 'create' }) {
     }
   }
 
-  const handleItineraryImageChange = (e, itinIndex) => {
-    const file = e.target.files[0]
-    if (file) {
-      uploadImageToImgBB(file, `itinerary_${itinIndex}`)
-      setItineraryImagePreviews((prev) => ({
-        ...prev,
-        [itinIndex]: URL.createObjectURL(file),
-      }))
-    }
+  const handleItineraryImageChange = (itinIndex, e) => {
+    const file = e?.target?.files?.[0]
+    if (!file) return
+    uploadImageToImgBB(file, `itinerary_${itinIndex}`)
+    setItineraryImagePreviews((prev) => ({
+      ...prev,
+      [itinIndex]: URL.createObjectURL(file),
+    }))
   }
 
   const validateForm = () => {
@@ -884,7 +917,9 @@ function TourPackageForm({ mode = 'create' }) {
                   await adminClient.delete(`/tours/inclusion-groups/${eg.id}`)
                 }
               }
-            } catch (_error) {}
+            } catch (error) {
+              console.warn('Failed to reset inclusion groups:', error)
+            }
           }
 
           const groups = formData.dates[dIdx].inclusion_groups || []

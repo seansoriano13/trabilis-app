@@ -257,41 +257,111 @@ export const updateTour = async (req, res) => {
     if (tourError) return res.status(400).json({ error: tourError.message })
 
     // 2️⃣ Handle dates (delete removed, update existing, insert new)
-    const { data: currentDates } = await supabase
+    const { data: currentDates, error: currentDatesError } = await supabase
       .from('package_dates')
       .select('id')
       .eq('tour_package_id', id)
 
-    const currentDateIds = currentDates.map((d) => d.id)
-    const incomingDateIds = dates.map((d) => d.id).filter(Boolean)
+    if (currentDatesError) {
+      console.error('Error fetching current dates:', currentDatesError)
+      return res.status(500).json({ error: 'Failed to fetch current dates' })
+    }
+
+    // Convert IDs to numbers for consistent comparison
+    const currentDateIds = (currentDates || []).map((d) => Number(d.id))
+    const incomingDateIds = (dates || [])
+      .map((d) => (d.id ? Number(d.id) : null))
+      .filter((id) => id !== null)
+
+    console.log('🗑️ Date deletion check:', {
+      tourId: id,
+      currentDateIds,
+      incomingDateIds,
+      currentCount: currentDateIds.length,
+      incomingCount: incomingDateIds.length,
+    })
+
     const datesToDelete = currentDateIds.filter(
       (id) => !incomingDateIds.includes(id)
     )
 
-    // Delete removed dates
-    for (const dateId of datesToDelete) {
-      // Delete inclusion groups and items first
-      const { data: groups } = await supabase
-        .from('package_inclusion_groups')
-        .select('id')
-        .eq('package_date_id', dateId)
+    console.log('🗑️ Dates to delete:', datesToDelete)
 
-      if (groups) {
-        for (const group of groups) {
-          await supabase
-            .from('package_inclusion_group_items')
-            .delete()
-            .eq('inclusion_group_id', group.id)
+         // Delete removed dates
+     for (const dateId of datesToDelete) {
+       console.log(`🗑️ Deleting date ID: ${dateId}`)
 
-          await supabase
-            .from('package_inclusion_groups')
-            .delete()
-            .eq('id', group.id)
-        }
-      }
+       // Check if there are any tour bookings associated with this date
+       const { data: bookings, error: bookingsCheckError } = await supabase
+         .from('tour_bookings')
+         .select('id, booking_reference')
+         .eq('package_date_id', dateId)
 
-      await supabase.from('package_dates').delete().eq('id', dateId)
-    }
+       if (bookingsCheckError) {
+         console.error(`Error checking bookings for date ${dateId}:`, bookingsCheckError)
+         return res.status(500).json({
+           error: `Failed to check bookings for date ${dateId}: ${bookingsCheckError.message}`,
+         })
+       }
+
+       if (bookings && bookings.length > 0) {
+         const bookingRefs = bookings.map((b) => b.booking_reference).join(', ')
+         console.log(
+           `❌ Cannot delete date ${dateId}: ${bookings.length} booking(s) associated: ${bookingRefs}`
+         )
+         return res.status(400).json({
+           error: `Cannot delete date group because there are ${bookings.length} booking(s) associated with it. Booking reference(s): ${bookingRefs}. Please cancel or delete the bookings first.`,
+         })
+       }
+
+       // Delete inclusion groups and items first
+       const { data: groups, error: groupsError } = await supabase
+         .from('package_inclusion_groups')
+         .select('id')
+         .eq('package_date_id', dateId)
+
+       if (groupsError) {
+         console.error(`Error fetching groups for date ${dateId}:`, groupsError)
+       } else if (groups && groups.length > 0) {
+         console.log(`🗑️ Found ${groups.length} inclusion groups to delete for date ${dateId}`)
+         for (const group of groups) {
+           // Delete items first
+           const { error: itemsError } = await supabase
+             .from('package_inclusion_group_items')
+             .delete()
+             .eq('inclusion_group_id', group.id)
+
+           if (itemsError) {
+             console.error(`Error deleting items for group ${group.id}:`, itemsError)
+           }
+
+           // Delete group
+           const { error: groupError } = await supabase
+             .from('package_inclusion_groups')
+             .delete()
+             .eq('id', group.id)
+
+           if (groupError) {
+             console.error(`Error deleting group ${group.id}:`, groupError)
+           }
+         }
+       }
+
+       // Delete the date
+       const { error: dateDeleteError } = await supabase
+         .from('package_dates')
+         .delete()
+         .eq('id', dateId)
+
+       if (dateDeleteError) {
+         console.error(`Error deleting date ${dateId}:`, dateDeleteError)
+         return res.status(500).json({
+           error: `Failed to delete date ${dateId}: ${dateDeleteError.message}`,
+         })
+       } else {
+         console.log(`✅ Successfully deleted date ID: ${dateId}`)
+       }
+     }
 
     // Update or insert dates
     const createdDateIds = []

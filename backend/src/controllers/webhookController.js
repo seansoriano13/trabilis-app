@@ -178,7 +178,7 @@ export const handleStripeWebhook = async (req, res) => {
       )
       return res.sendStatus(500)
     }
-  } else if (type === 'tour_booking_payment') {
+  } else if (product_type === 'TOUR' || type === 'tour_booking_payment') {
     // ===== TOUR LOGIC =====
     const { data, error } = await supabase
       .from('tour_bookings')
@@ -249,7 +249,7 @@ export const handleStripeWebhook = async (req, res) => {
               booking_type: 'tour',
               category: 'booking',
               priority: 'medium',
-              action_url: `/admin/tours/${bookingDetails.id}`,
+              action_url: `/admin/tours/${data[0].id}`,
               created_at: new Date().toISOString(),
             },
           ])
