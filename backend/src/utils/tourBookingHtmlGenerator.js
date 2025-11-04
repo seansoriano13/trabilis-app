@@ -59,6 +59,13 @@ export const generateTourBookingHTML = async (booking) => {
   const templatePath = path.join(__dirname, '../services/templates/tour.html')
   let html = fs.readFileSync(templatePath, 'utf8')
 
+  // Inject support contact details (replace literal ${process.env...} in template)
+  const supportEmail = process.env.SUPPORT_EMAIL || 'support@trabilis.com'
+  const supportPhone = process.env.SUPPORT_PHONE || '9296106660'
+  html = html
+    .replace(/\$\{process\.env\.SUPPORT_EMAIL\s*\|\|\s*'support@trabilis\.com'\}/g, supportEmail)
+    .replace(/\$\{process\.env\.SUPPORT_PHONE\s*\|\|\s*'9296106660'\}/g, supportPhone)
+
   // Replace BASE_URL placeholder with actual backend URL
   const baseUrl =
     process.env.BACKEND_URL ||

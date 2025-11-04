@@ -1,4 +1,5 @@
 import { supabase } from '../../config/supabaseClient.js'
+import { buildRatingEmailHtml } from '../../services/ratingEmailService.js'
 import { v4 as uuidv4 } from 'uuid'
 import { sendEmail } from '../../services/brevoEmailService.js'
 
@@ -241,6 +242,12 @@ export const resendRatingEmail = async (req, res) => {
         return res.status(500).json({ error: 'Failed to create rating record' })
       }
       ratingRecord = inserted
+    } else {
+      // Update email_sent_at for resend, keep existing token if present
+      await supabase
+        .from('tour_ratings')
+        .update({ email_sent_at: new Date().toISOString() })
+        .eq('id', ratingRecord.id)
     }
 
     // Parse passenger details
@@ -282,11 +289,11 @@ export const resendRatingEmail = async (req, res) => {
     }
 
     const tourName = tour.package_dates?.tour_packages?.title || 'Tour'
-    const ratingUrl = `${
-      process.env.FRONTEND_URL || 'http://localhost:5173'
-    }/submit-rating/${ratingRecord.token}`
-
-    const emailHtml = `Please rate your ${tourName}: <a href="${ratingUrl}">Rate Now</a>`
+    const emailHtml = buildRatingEmailHtml(
+      passengerName,
+      tourName,
+      ratingRecord.token
+    )
 
     await sendEmail({
       to: passengerEmail,

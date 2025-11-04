@@ -14,7 +14,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const passengerName = 'John Doe'
 const tourName = 'Amazing Palawan Adventure Tour'
 const bookingReference = 'TOUR-2024-ABC123'
-const ratingUrl = 'http://localhost:5173/submit-rating/sample-token-preview'
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
+const ratingUrl = `${frontendUrl}/submit-rating/sample-token-preview`
 
 // Email HTML template (same as in ratingEmailService.js)
 const emailHtml = `
@@ -172,7 +173,6 @@ const emailHtml = `
       </div>
       
       <div class="highlight-box">
-        <p><strong>Booking Reference:</strong> ${bookingReference}</p>
         <p><strong>Tour:</strong> ${tourName}</p>
       </div>
       

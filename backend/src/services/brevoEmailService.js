@@ -1482,7 +1482,13 @@ export async function sendCancellationVerificationEmail({
     console.log(`[EMAIL] 🔍 Frontend URL: ${process.env.FRONTEND_URL}`)
 
     // Replace template variables
+    const supportEmail = process.env.SUPPORT_EMAIL || 'support@trabilis.com'
+    const supportPhone = process.env.SUPPORT_PHONE || '9296106660'
+
     htmlTemplate = htmlTemplate
+      // Replace literal ${process.env...} occurrences in the template
+      .replace(/\$\{process\.env\.SUPPORT_EMAIL\s*\|\|\s*'support@trabilis\.com'\}/g, supportEmail)
+      .replace(/\$\{process\.env\.SUPPORT_PHONE\s*\|\|\s*'9296106660'\}/g, supportPhone)
       .replace(/{{firstName}}/g, firstName || 'Valued Customer')
       .replace(/{{lastName}}/g, lastName || '')
       .replace(/{{bookingReference}}/g, bookingReference)

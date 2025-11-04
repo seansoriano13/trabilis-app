@@ -33,6 +33,8 @@ import {
 } from 'react-icons/io5'
 import { supabase } from '../../api/supabaseClient'
 import adminClient from '../../api/adminClient'
+import axios from 'axios'
+import { BACKEND_URL } from '../../config'
 import Select from 'react-select'
 import Flatpickr from 'react-flatpickr'
 import 'flatpickr/dist/themes/airbnb.css'
@@ -206,6 +208,21 @@ const TourBookingDetail = () => {
       fetchBooking()
     }
   }, [id, fetchBooking])
+
+  const handleResendRatingEmail = async () => {
+    try {
+      await axios.post(
+        `${BACKEND_URL}/api/v1/ratings/resend/${id}`,
+        {},
+        { headers: { Authorization: `Bearer ${jwt}` } }
+      )
+      showSuccess('Rating email sent')
+    } catch (error) {
+      console.error('Resend rating email failed:', error)
+      const msg = error.response?.data?.error || 'Failed to resend rating email'
+      showError(msg)
+    }
+  }
 
   const fetchAssignedAdminName = async (adminId) => {
     if (!adminId) return
@@ -768,6 +785,13 @@ const TourBookingDetail = () => {
             }
           >
             <FiEdit /> Edit
+          </button>
+          <button
+            className='btn btn-secondary'
+            onClick={handleResendRatingEmail}
+            title='Send rating email to primary passenger'
+          >
+            <FiMail /> Send rating email
           </button>
           {/* <button 
                         className="btn btn-danger" 
