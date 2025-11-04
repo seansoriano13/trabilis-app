@@ -188,7 +188,7 @@ export default function Destinations() {
                         {currentTours.map((tour) => (
                             <div
                                 key={tour.id}
-                                className='group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-yellow-200 transform hover:-translate-y-2 tour-card-enhanced'
+                                className='group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-yellow-200 transform hover:-translate-y-2 tour-card-enhanced h-full flex flex-col'
                             >
                                         {/* Image Section */}
                                         <div className='relative h-64 overflow-hidden'>
@@ -213,14 +213,14 @@ export default function Destinations() {
                                         </div>
 
                                         {/* Content Section */}
-                                        <div className='p-6'>
+                                        <div className='p-6 flex flex-col flex-1'>
                                             {/* Title */}
-                                            <h3 className='text-xl font-bold text-gray-800 mb-3 line-clamp-2 group-hover:text-yellow-600 transition-colors duration-200'>
+                                            <h3 className='text-xl font-bold text-gray-800 mb-3 line-clamp-2 group-hover:text-yellow-600 transition-colors duration-200 tour-card-title'>
                                                 {tour.title || 'Tour Title'}
                                             </h3>
 
                                             {/* Description */}
-                                            <p className='text-gray-600 text-sm mb-4 line-clamp-2'>
+                                            <p className='text-gray-600 text-sm mb-4 line-clamp-2 tour-card-desc'>
                                                 {tour.description ||
                                                     'Discover amazing destinations with our carefully crafted tour packages.'}
                                             </p>
@@ -310,7 +310,7 @@ export default function Destinations() {
                                                         }
                                                     )
                                                 }
-                                                className='w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center gap-2 group/btn tour-card-button'
+                                                className='w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center gap-2 group/btn tour-card-button mt-auto'
                                             >
                                                 <span>View Details</span>
                                                 <i className='bi-arrow-right group-hover/btn:translate-x-1 transition-transform duration-200'></i>

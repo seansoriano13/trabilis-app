@@ -190,3 +190,14 @@
     color: white;
     margin: 0 0 16px;
 }
+
+/* Uniform card sizing for Destinations */
+.tour-card-enhanced {
+    min-height: 100%;
+}
+.tour-card-title {
+    min-height: 3rem; /* approx 2 lines */
+}
+.tour-card-desc {
+    min-height: 3rem; /* approx 2 lines */
+}

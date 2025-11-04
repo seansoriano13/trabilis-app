@@ -3,6 +3,7 @@ import {
   getRatings,
   updateRatingEmailDelay,
   getRatingEmailDelay,
+  resendRatingEmail,
 } from '../controllers/admin/ratingsController.js'
 import { adminAuthMiddleware } from '../middlewares/adminAuthMiddleware.js'
 import { processRatingSubmission } from '../services/ratingEmailService.js'
@@ -13,6 +14,7 @@ const router = express.Router()
 router.get('/', adminAuthMiddleware, getRatings)
 router.get('/email-delay', adminAuthMiddleware, getRatingEmailDelay)
 router.put('/email-delay', adminAuthMiddleware, updateRatingEmailDelay)
+router.post('/resend/:bookingId', adminAuthMiddleware, resendRatingEmail)
 
 // Public route for rating submission
 router.post('/submit/:token', async (req, res) => {

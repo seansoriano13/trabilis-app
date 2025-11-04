@@ -3,29 +3,57 @@ import ExcelJS from 'exceljs'
 
 /**
  * Get sales report with analytics
- * Query params: startDate, endDate, flightClass
+ * Query params: startDate, endDate, flightClass, dataType (Flights | Tours | Both)
  */
 export const getSalesReport = async (req, res) => {
   try {
-    const { startDate, endDate, flightClass } = req.query
+    const { startDate, endDate, flightClass, dataType = 'Flights' } = req.query
+    const includeFlights = dataType === 'Flights' || dataType === 'Both'
+    const includeTours = dataType === 'Tours' || dataType === 'Both'
 
-    // Build query for flight bookings
-    let query = supabase
-      .from('flight_bookings')
-      .select('*')
-      .in('status', ['BOOKED', 'TICKETED'])
+    let flights = []
+    if (includeFlights) {
+      // Build query for flight bookings
+      let flightQuery = supabase
+        .from('flight_bookings')
+        .select('*')
+        .in('status', ['BOOKED', 'TICKETED'])
 
-    // Apply date filters
-    if (startDate) {
-      query = query.gte('created_at', startDate)
+      // Apply date filters
+      if (startDate) {
+        flightQuery = flightQuery.gte('created_at', startDate)
+      }
+      if (endDate) {
+        flightQuery = flightQuery.lte('created_at', endDate)
+      }
+
+      const { data: flightData, error: flightError } = await flightQuery
+      if (flightError) throw flightError
+      flights = flightData || []
     }
-    if (endDate) {
-      query = query.lte('created_at', endDate)
+
+    let tours = []
+    if (includeTours) {
+      // Build query for tour bookings
+      let tourQuery = supabase
+        .from('tour_bookings')
+        .select('*')
+        .eq('status', 'CONFIRMED')
+
+      if (startDate) {
+        tourQuery = tourQuery.gte('created_at', startDate)
+      }
+      if (endDate) {
+        tourQuery = tourQuery.lte('created_at', endDate)
+      }
+
+      const { data: tourData, error: tourError } = await tourQuery
+      if (tourError) throw tourError
+      tours = tourData || []
     }
 
-    const { data: bookings, error } = await query
-
-    if (error) throw error
+    // Combine datasets according to filter
+    const bookings = [...flights, ...tours]
 
     // Track excluded bookings for error reporting
     let excludedBookings = []
@@ -37,6 +65,10 @@ export const getSalesReport = async (req, res) => {
       const normalizedClass = flightClass.toUpperCase().replace(/_/g, '_')
 
       filteredBookings = bookings.filter((booking) => {
+        // Only flights have cabin classes; include tours unchanged
+        if (booking.amadeus_flight_offer === null || booking.amadeus_flight_offer === undefined) {
+          return includeTours && !includeFlights // when filtering by class, exclude tours if only flights are desired
+        }
         try {
           // Handle both JSON string and already-parsed object
           const offer = typeof booking.amadeus_flight_offer === 'string'
@@ -261,11 +293,63 @@ export const getTopTravelers = async (req, res) => {
 }
 
 /**
+ * Get top 10 tour packages
+ */
+export const getTopTours = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query
+
+    let query = supabase
+      .from('tour_bookings')
+      .select(
+        `*,
+         package_dates (
+           id,
+           tour_package_id,
+           tour_packages (title)
+         )
+        `
+      )
+      .eq('status', 'CONFIRMED')
+
+    if (startDate) query = query.gte('created_at', startDate)
+    if (endDate) query = query.lte('created_at', endDate)
+
+    const { data: bookings, error } = await query
+    if (error) throw error
+
+    const packageMap = new Map()
+    bookings.forEach((b) => {
+      const title =
+        b.package_dates?.tour_packages?.title || 'Untitled Package'
+      const current = packageMap.get(title) || {
+        title,
+        bookingCount: 0,
+        totalRevenue: 0,
+      }
+      current.bookingCount += 1
+      current.totalRevenue += parseFloat(b.total_amount || 0)
+      packageMap.set(title, current)
+    })
+
+    const topTours = Array.from(packageMap.values())
+      .sort((a, b) => b.totalRevenue - a.totalRevenue)
+      .slice(0, 10)
+      .map((t, idx) => ({ rank: idx + 1, ...t }))
+
+    res.json({ topTours })
+  } catch (error) {
+    console.error('Error fetching top tours:', error)
+    res.status(500).json({ error: 'Failed to fetch top tours' })
+  }
+}
+
+/**
  * Export sales report as Excel file
  */
 export const exportSalesReport = async (req, res) => {
   try {
-    const { startDate, endDate, flightClass } = req.query
+    const { startDate, endDate, flightClass, dataType = 'Flights' } = req.query
 
     console.log(
       `Generating Excel export for period: ${startDate || 'all'} to ${
@@ -274,7 +358,7 @@ export const exportSalesReport = async (req, res) => {
     )
 
     // Get sales report data
-    const reportReq = { query: { startDate, endDate, flightClass } }
+    const reportReq = { query: { startDate, endDate, flightClass, dataType } }
     let reportData
     let topTravelersData
 
@@ -308,7 +392,7 @@ export const exportSalesReport = async (req, res) => {
       throw new Error(`Sales report data unavailable: ${reportError.message}`)
     }
 
-    // Fetch top travelers with better error handling
+    // Fetch top travelers with better error handling (flights only)
     try {
       await new Promise((resolve, reject) => {
         const mockRes = {

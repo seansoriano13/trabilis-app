@@ -43,11 +43,13 @@ const SalesReport = () => {
   const [topTravelers, setTopTravelers] = useState([])
   const [error, setError] = useState(null)
   const [selectedTraveler, setSelectedTraveler] = useState(null)
+  const [topTours, setTopTours] = useState([])
 
   // Filters
   const [filters, setFilters] = useState({
     date_range: 'All',
     flightClass: 'All',
+    dataType: 'Both',
   })
 
   const [customRange, setCustomRange] = useState([null, null])
@@ -133,8 +135,9 @@ const SalesReport = () => {
 
       if (filters.flightClass && filters.flightClass !== 'All')
         params.append('flightClass', filters.flightClass)
+      if (filters.dataType) params.append('dataType', filters.dataType)
 
-      const [reportRes, travelersRes] = await Promise.all([
+      const requests = [
         axios.get(
           `${
             import.meta.env.VITE_BACKEND_URL
@@ -151,7 +154,26 @@ const SalesReport = () => {
             headers: { Authorization: `Bearer ${token}` },
           }
         ),
-      ])
+      ]
+
+      // Conditionally fetch top tours when Tours or Both selected
+      if (filters.dataType === 'Tours' || filters.dataType === 'Both') {
+        requests.push(
+          axios.get(
+            `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/v1/admin/sales-report/top-tours?${params}`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          )
+        )
+      }
+
+      const responses = await Promise.all(requests)
+      const reportRes = responses[0]
+      const travelersRes = responses[1]
+      const toursRes = responses[2]
 
       console.log('Report data received:', reportRes.data)
       console.log('Summary:', reportRes.data?.summary)
@@ -160,6 +182,7 @@ const SalesReport = () => {
 
       setReportData(reportRes.data)
       setTopTravelers(travelersRes.data.topTravelers || [])
+      setTopTours(toursRes?.data?.topTours || [])
     } catch (error) {
       console.error('Error fetching sales report:', error)
       const errorMessage =
@@ -206,6 +229,7 @@ const SalesReport = () => {
     setFilters({
       date_range: 'All',
       flightClass: 'All',
+      dataType: 'Both',
     })
   }
 
@@ -284,6 +308,7 @@ const SalesReport = () => {
 
       if (filters.flightClass && filters.flightClass !== 'All')
         params.append('flightClass', filters.flightClass)
+      if (filters.dataType) params.append('dataType', filters.dataType)
 
       const response = await axios.get(
         `${
@@ -492,6 +517,20 @@ const SalesReport = () => {
                   <option value='FIRST'>First Class</option>
                 </select>
               </div>
+
+              <div className='sales-report__filter-group'>
+                <label>Data Type</label>
+                <select
+                  name='dataType'
+                  value={filters.dataType}
+                  onChange={handleFilterChange}
+                  className='sales-report__filter-select'
+                >
+                  <option value='Flights'>Flights</option>
+                  <option value='Tours'>Tours</option>
+                  <option value='Both'>Both</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -621,6 +660,50 @@ const SalesReport = () => {
         references={selectedTraveler?.bookingReferences || []}
         travelerName={selectedTraveler?.name || ''}
       />
+
+      {/* Top Tour Packages Section */}
+      {reportData?.summary && (filters.dataType === 'Tours' || filters.dataType === 'Both') && (
+        <div className='sales-report__section'>
+          <div className='sales-report__section-header'>
+            <div className='sales-report__section-title'>
+              <FiAward size={24} />
+              <h2>Top 10 Tour Packages</h2>
+            </div>
+          </div>
+          <div className='sales-report__table-container'>
+            <table className='sales-report__table'>
+              <thead>
+                <tr>
+                  <th className='sales-report__table-header'>Rank</th>
+                  <th className='sales-report__table-header'>Package</th>
+                  <th className='sales-report__table-header'>Bookings</th>
+                  <th className='sales-report__table-header'>Total Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topTours?.length > 0 ? (
+                  topTours.map((tour) => (
+                    <tr key={tour.rank} className='sales-report__table-row'>
+                      <td className='sales-report__table-cell sales-report__table-cell--rank'>{tour.rank}</td>
+                      <td className='sales-report__table-cell'>{tour.title}</td>
+                      <td className='sales-report__table-cell'>{tour.bookingCount}</td>
+                      <td className='sales-report__table-cell sales-report__table-cell--amount'>
+                        ₱{(tour.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan='4' className='sales-report__table-cell sales-report__table-cell--no-data'>
+                      No tour packages found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

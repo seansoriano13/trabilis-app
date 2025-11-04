@@ -146,6 +146,23 @@ const Ratings = () => {
     )
   }
 
+  const handleResendEmail = async (bookingId) => {
+    try {
+      const token = localStorage.getItem('adminToken')
+      await axios.post(
+        `${BACKEND_URL}/api/v1/ratings/resend/${bookingId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      showSuccess('Rating email sent')
+    } catch (error) {
+      console.error('Error resending rating email:', error)
+      showError(
+        error.response?.data?.error || 'Failed to resend rating email'
+      )
+    }
+  }
+
   return (
     <div className='ratings'>
       <div className='ratings__header'>
@@ -274,6 +291,7 @@ const Ratings = () => {
                   <th className='ratings__table-header'>Date</th>
                   <th className='ratings__table-header'>Assigned Staff</th>
                   <th className='ratings__table-header'>Booking Ref</th>
+                  <th className='ratings__table-header'>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -303,6 +321,16 @@ const Ratings = () => {
                       </td>
                       <td className='ratings__table-cell ratings__table-cell--ref'>
                         {rating.bookingReference}
+                      </td>
+                      <td className='ratings__table-cell'>
+                        <button
+                          className='ratings__action-btn'
+                          onClick={() =>
+                            handleResendEmail(rating.tour_bookings?.id)
+                          }
+                        >
+                          Resend email
+                        </button>
                       </td>
                     </tr>
                   ))
