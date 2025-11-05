@@ -1,10 +1,9 @@
 import express from 'express'
-import { searchFlights } from '../controllers/flightController.js'
-// import { getFlexibleFlightDates } from '../controllers/flightController.js' // Disabled for now
+import { searchFlights, getFlexibleFlightDates } from '../controllers/flightController.js'
 
 const router = express.Router()
 
 router.post('/search', searchFlights)
-// router.post('/flexible-dates', getFlexibleFlightDates) // Disabled for now
+router.post('/flexible-dates', getFlexibleFlightDates)
 
 export default router
