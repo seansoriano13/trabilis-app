@@ -910,18 +910,6 @@ export const generateTourBookingHTML = async (booking) => {
                                 <p class="pdf-tour-details__package-text">
                                     <b>Day ${itinerary.day_number || index + 1}: ${itinerary.title || 'Tour Day'}</b>
                                 </p>
-                            ${
-                              itinerary.image_url
-                                ? `
-                                <div style="margin: 8px 0;">
-                                    <img src="${itinerary.image_url}" 
-                                         alt="Day ${itinerary.day_number || index + 1} - ${itinerary.title || 'Tour Day'}" 
-                                         style="width: 100%; max-width: 400px; height: auto; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);" 
-                                         onerror="this.style.display='none';" />
-                                </div>
-                            `
-                                : ''
-                            }
                             <p class="pdf-tour-details__package-text">
                                 ${itinerary.description || 'No description available'}
                             </p>

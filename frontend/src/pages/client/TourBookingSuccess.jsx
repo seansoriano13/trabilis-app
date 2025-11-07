@@ -19,74 +19,93 @@ function TourBookingSuccess() {
         return params.get('booking_reference')
     }, [search])
 
-    const fetchStatus = async () => {
-        if (!bookingReference) {
-            setError('Booking reference missing')
-            setLoading(false)
-            return
-        }
-        try {
-            const response = await axios.get(
-                `${import.meta.env.VITE_BACKEND_URL}/api/v1/destinations/tour/booking`,
-                { params: { booking_reference: bookingReference } }
-            )
-
-            if (!response.data) {
-                setError('Booking data not found')
-                setLoading(false)
-                return
-            }
-
-            const {
-                status = 'UNKNOWN',
-                start_date = null,
-                end_date = null,
-                title = 'Unknown Tour',
-                passenger_count = 0,
-            } = response.data
-
-            setBookingDetails({
-                status,
-                startDate: start_date,
-                endDate: end_date,
-                tourTitle: title,
-                passengerCount: passenger_count,
-            })
-            setLastUpdated(new Date())
-
-            if (status === 'FAILED') {
-                showError(
-                    'Tour booking failed. A refund has been issued. Please try booking again.'
-                )
-                navigate('/destinations')
-                return
-            }
-        // eslint-disable-next-line no-unused-vars
-        } catch (err) {
-            setError('Failed to verify booking status. Please try again shortly.')
-        } finally {
-            setLoading(false)
-        }
-    }
-
     useEffect(() => {
+        if (!bookingReference) return
+
         let intervalId = null
-        const start = async () => {
-            setPolling(true)
-            await fetchStatus()
-            intervalId = setInterval(async () => {
-                const status = bookingDetails?.status
+        let isMounted = true
+        let consecutiveErrors = 0
+        const MAX_CONSECUTIVE_ERRORS = 3
+
+        const pollStatus = async () => {
+            if (!isMounted) return
+
+            try {
+                const response = await axios.get(
+                    `${import.meta.env.VITE_BACKEND_URL}/api/v1/destinations/tour/booking`,
+                    { params: { booking_reference: bookingReference } }
+                )
+
+                if (!response.data) {
+                    if (consecutiveErrors < MAX_CONSECUTIVE_ERRORS) {
+                        consecutiveErrors++
+                        return // Continue polling
+                    } else {
+                        setError('Booking data not found')
+                        setLoading(false)
+                        if (intervalId) clearInterval(intervalId)
+                        return
+                    }
+                }
+
+                // Reset error counter on success
+                consecutiveErrors = 0
+
+                const {
+                    status = 'UNKNOWN',
+                    start_date = null,
+                    end_date = null,
+                    title = 'Unknown Tour',
+                    passenger_count = 0,
+                } = response.data
+
+                setBookingDetails({
+                    status,
+                    startDate: start_date,
+                    endDate: end_date,
+                    tourTitle: title,
+                    passengerCount: passenger_count,
+                })
+                setLastUpdated(new Date())
+                setLoading(false)
+
+                // Stop polling if booking is confirmed or failed
                 if (status === 'CONFIRMED' || status === 'FAILED') {
-                    clearInterval(intervalId)
+                    if (intervalId) clearInterval(intervalId)
                     setPolling(false)
+                    if (status === 'FAILED') {
+                        showError(
+                            'Tour booking failed. A refund has been issued. Please try booking again.'
+                        )
+                        navigate('/destinations')
+                    }
                     return
                 }
-                await fetchStatus()
-            }, 5000)
-            pollingRef.current = intervalId
+            } catch (err) {
+                consecutiveErrors++
+                console.error('Error fetching booking status:', err)
+
+                // If too many consecutive errors, stop polling
+                if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                    setError('Failed to verify booking status. Please try again shortly.')
+                    setLoading(false)
+                    if (intervalId) clearInterval(intervalId)
+                    setPolling(false)
+                }
+                // Otherwise continue polling (error is transient)
+            }
         }
-        start()
+
+        // Initial fetch
+        setLoading(true)
+        pollStatus()
+
+        // Set up polling interval
+        intervalId = setInterval(pollStatus, 5000)
+        pollingRef.current = intervalId
+
         return () => {
+            isMounted = false
             if (intervalId) clearInterval(intervalId)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps

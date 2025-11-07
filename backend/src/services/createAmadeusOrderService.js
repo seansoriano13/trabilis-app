@@ -7,6 +7,7 @@ import {
 import stripe from '../config/stripe.js'
 import { sendConfirmationEmail, sendFailureEmail } from './brevoEmailService.js'
 import Pusher from 'pusher'
+import { insertAdminNotification } from '../database/supabaseService.js'
 
 const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID,
@@ -40,11 +41,30 @@ export async function createAmadeusOrder(bookingReference) {
 
   try {
     // 1. Atomic status check and update to prevent race conditions
+    // First verify the booking exists and is in the correct status
+    const { data: statusCheck, error: statusError } = await supabase
+      .from('flight_bookings')
+      .select('id, status')
+      .eq('booking_reference', bookingReference)
+      .single()
+
+    if (statusError || !statusCheck) {
+      throw new Error(
+        `Booking ${bookingReference} not found`
+      )
+    }
+
+    if (statusCheck.status !== 'PAID_PENDING_BOOKING') {
+      throw new Error(
+        `Booking ${bookingReference} is not in PAID_PENDING_BOOKING status (current: ${statusCheck.status})`
+      )
+    }
+
+    // Now atomically update to PROCESSING_ORDER
     const { data: booking, error: updateError } = await supabase
       .from('flight_bookings')
       .update({
         status: 'PROCESSING_ORDER',
-        processing_started_at: new Date().toISOString(),
       })
       .eq('booking_reference', bookingReference)
       .eq('status', 'PAID_PENDING_BOOKING') // Only update if still in this status
@@ -305,21 +325,17 @@ export async function createAmadeusOrder(bookingReference) {
 
     // 10. Notify admin
     try {
-      const { error: insertError } = await supabase
-        .from('admin_notifications')
-        .insert([
-          {
-            type: 'new_booking',
-            message: `New flight booking confirmed: ${bookingReference}`,
-            booking_reference: bookingReference,
-            pnr: pnr,
-            booking_type: 'flight',
-            category: 'booking',
-            priority: 'medium',
-            action_url: `/admin/flights/${bookingData.id}`,
-            created_at: new Date().toISOString(),
-          },
-        ])
+      const { error: insertError } = await insertAdminNotification({
+        type: 'new_booking',
+        message: `New flight booking confirmed: ${bookingReference}`,
+        booking_reference: bookingReference,
+        pnr: pnr,
+        booking_type: 'flight',
+        category: 'booking',
+        priority: 'medium',
+        action_url: `/admin/flights/${booking.id}`,
+        created_at: new Date().toISOString(),
+      })
 
       if (insertError) {
         console.error(
@@ -372,7 +388,6 @@ export async function createAmadeusOrder(bookingReference) {
         .from('flight_bookings')
         .update({
           status: 'PAID_PENDING_BOOKING', // Rollback to previous state
-          processing_started_at: null,
         })
         .eq('booking_reference', bookingReference)
         .eq('status', 'PROCESSING_ORDER')
@@ -435,7 +450,7 @@ export async function createAmadeusOrder(bookingReference) {
           )
 
           // Critical: Manual intervention needed
-          await supabase.from('admin_notifications').insert({
+          await insertAdminNotification({
             type: 'refund_failed',
             message: `URGENT: Failed to refund ${bookingReference}. Manual refund required.`,
             booking_reference: bookingReference,

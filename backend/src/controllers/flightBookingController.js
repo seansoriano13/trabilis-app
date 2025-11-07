@@ -264,23 +264,28 @@ export const initiateFlightBooking = async (req, res) => {
         // Generate booking reference
         const bookingReference = `TRB-FLT-${uuidv4().slice(0, 8)}`
 
-        let bookingRequestId
+        // Create flight booking record FIRST with PENDING_PAYMENT status (before Stripe session)
+        // This ensures the booking exists before payment can be processed
+        let bookingData
         try {
-            // Create booking request record (temporary storage until payment)
-            const { data: bookingRequestData, error } = await supabase
-                .from('booking_requests')
+            const { data: insertedBooking, error } = await supabase
+                .from('flight_bookings')
                 .insert({
                     booking_reference: bookingReference,
-                    product_type: 'FLIGHT',
+                    status: 'PENDING_PAYMENT',
                     amadeus_flight_offer: confirmedFlightOffer,
                     passenger_details: passengerDetails,
                     total_amount: totalAmount,
                     currency: currency,
                     search_criteria: searchCriteria,
-                    status: 'PENDING_PAYMENT',
-                    expires_at: new Date(
-                        Date.now() + 24 * 60 * 60 * 1000
-                    ).toISOString(), // 24 hours from now
+                    stripe_checkout_id: null, // Will be updated after Stripe session creation
+                    e_ticket_numbers: null,
+                    amadeus_order_id: null,
+                    ticketing_deadline: null,
+                    ticketed_at: null,
+                    cancelled_at: null,
+                    cancellation_reason: null,
+                    amadeus_cancellation_status: 'NOT_APPLICABLE',
                 })
                 .select()
                 .single()
@@ -289,9 +294,9 @@ export const initiateFlightBooking = async (req, res) => {
                 throw new Error(`Database insert error: ${error.message}`)
             }
 
-            bookingRequestId = bookingRequestData.id
+            bookingData = insertedBooking
             console.log(
-                `✅ Booking request created: ${bookingReference} (ID: ${bookingRequestId})`
+                `✅ Flight booking created: ${bookingReference} (ID: ${bookingData.id})`
             )
         } catch (dbError) {
             console.error('Database insertion failed:', dbError)
@@ -306,7 +311,7 @@ export const initiateFlightBooking = async (req, res) => {
             })
             .join(' / ')
 
-        // Create Stripe checkout session with all booking data in metadata
+        // Create Stripe checkout session AFTER booking is created
         let session
         try {
             session = await stripe.checkout.sessions.create({
@@ -338,24 +343,37 @@ export const initiateFlightBooking = async (req, res) => {
                         passengerDetails.travelers.length.toString(),
                 },
             })
-        } catch (stripeError) {
-            console.error('Stripe session creation failed:', stripeError)
-            throw new Error(`Stripe error: ${stripeError.message}`)
-        }
 
-        // Update booking request with Stripe session ID
-        try {
-            const { error } = await supabase
-                .from('booking_requests')
+            // Update booking with Stripe session ID
+            const { error: updateError } = await supabase
+                .from('flight_bookings')
                 .update({ stripe_checkout_id: session.id })
                 .eq('booking_reference', bookingReference)
 
-            if (error) {
-                throw new Error(`Database update error: ${error.message}`)
+            if (updateError) {
+                console.error(
+                    `⚠️ Failed to update booking with Stripe session ID: ${updateError.message}`
+                )
+                // Don't fail - booking exists, just log the warning
             }
-        } catch (dbError) {
-            console.error('Database update failed:', dbError)
-            throw new Error(`Database error: ${dbError.message}`)
+        } catch (stripeError) {
+            console.error('Stripe session creation failed:', stripeError)
+            // Cleanup: Mark booking as failed since Stripe session creation failed
+            try {
+                await supabase
+                    .from('flight_bookings')
+                    .update({ status: 'BOOKING_FAILED' })
+                    .eq('booking_reference', bookingReference)
+                console.log(
+                    `⚠️ Booking ${bookingReference} marked as BOOKING_FAILED due to Stripe error`
+                )
+            } catch (cleanupError) {
+                console.error(
+                    `❌ Failed to cleanup booking after Stripe error:`,
+                    cleanupError
+                )
+            }
+            throw new Error(`Stripe error: ${stripeError.message}`)
         }
 
         console.log(

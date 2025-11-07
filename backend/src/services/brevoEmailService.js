@@ -664,8 +664,10 @@ export const generateTourSummaryPDF = async (bookingDetails) => {
       status: bookingDetails.status || 'CONFIRMED',
       passenger_details: bookingDetails.passengers || [],
       flight_details: bookingDetails.flight_details || {},
+      flight_booking_reference: bookingDetails.flight_booking_reference || null,
       created_at: bookingDetails.created_at || new Date().toISOString(),
       updated_at: bookingDetails.updated_at || new Date().toISOString(),
+      tour_booking_customizations: bookingDetails.tour_booking_customizations || [],
       package_dates: {
         id: bookingDetails.package_date_id || null,
         start_date: bookingDetails.startDate,
@@ -722,18 +724,47 @@ export const generateTourSummaryPDF = async (bookingDetails) => {
       'items'
     )
 
+    // Validate transformed booking structure
+    if (!transformedBooking.package_dates) {
+      throw new Error('Missing package_dates in transformed booking')
+    }
+    if (!transformedBooking.package_dates.tour_packages) {
+      throw new Error('Missing tour_packages in transformed booking')
+    }
+    if (!transformedBooking.package_dates.tour_packages.title) {
+      console.warn(
+        '⚠️ PDF DEBUG - Tour title missing, using fallback "Tour Package"'
+      )
+      transformedBooking.package_dates.tour_packages.title =
+        transformedBooking.package_dates.tour_packages.title || 'Tour Package'
+    }
+
     // Generate HTML using shared function
     console.log('🔍 PDF DEBUG - Generating HTML from template')
-    const html = await generateTourBookingHTML(transformedBooking)
-
-    console.log(
-      '📧 Email PDF Generation - HTML generated successfully, length:',
-      html.length
-    )
+    let html
+    try {
+      html = await generateTourBookingHTML(transformedBooking)
+      console.log(
+        '📧 Email PDF Generation - HTML generated successfully, length:',
+        html.length
+      )
+    } catch (htmlError) {
+      console.error('❌ PDF DEBUG - Error generating HTML:', htmlError)
+      throw new Error(
+        `Failed to generate tour booking HTML: ${htmlError.message}`
+      )
+    }
 
     // Convert HTML to PDF using existing PDF generation logic
     console.log('🔍 PDF DEBUG - Converting HTML to PDF')
-    return await createPdfFromHtml(html)
+    try {
+      return await createPdfFromHtml(html)
+    } catch (pdfError) {
+      console.error('❌ PDF DEBUG - Error converting HTML to PDF:', pdfError)
+      throw new Error(
+        `Failed to convert HTML to PDF: ${pdfError.message}`
+      )
+    }
   } catch (err) {
     console.error('❌ PDF DEBUG - Error generating Tour PDF:', err)
     console.error(
@@ -745,7 +776,8 @@ export const generateTourSummaryPDF = async (bookingDetails) => {
       stack: err.stack,
       name: err.name,
     })
-    throw new Error('Could not generate the tour summary PDF.')
+    // Preserve the original error message instead of throwing a generic one
+    throw err
   }
 }
 
@@ -764,12 +796,157 @@ export const getBookingByBookingReference = async (bookingReference) => {
   return data
 }
 
+const parseJsonField = (value, fallback) => {
+  if (value == null) return fallback
+  if (Array.isArray(value)) return value
+  if (typeof value === 'object') return value
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return fallback
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (Array.isArray(parsed) || typeof parsed === 'object') {
+        return parsed
+      }
+      return parsed ?? fallback
+    } catch (error) {
+      return Array.isArray(fallback) ? [trimmed] : trimmed
+    }
+  }
+  return fallback
+}
+
+const ensureArray = (value) => {
+  const parsed = parseJsonField(value, [])
+  if (Array.isArray(parsed)) return parsed
+  if (parsed == null) return []
+  return [parsed]
+}
+
+const normalizeInclusionGroup = (group) => ({
+  id: group?.id ?? null,
+  title: group?.title ?? '',
+  removable: group?.removable ?? false,
+  fee_impact_per_group: group?.fee_impact_per_group ?? 0,
+  position: group?.position ?? 0,
+  items: ensureArray(group?.items).map((item) =>
+    typeof item === 'string' ? item : item?.content ?? ''
+  ),
+})
+
+const normalizeTourBookingRecord = (record) => {
+  if (!record) {
+    throw new Error('normalizeTourBookingRecord: booking record is required')
+  }
+
+  const packageDate = record.package_dates || {}
+  const tourPackage = packageDate.tour_packages || {}
+  const itineraries = ensureArray(tourPackage.itineraries)
+    .filter(Boolean)
+    .map((item) => ({
+      ...item,
+      day_number: item?.day_number ?? item?.dayNumber ?? null,
+    }))
+    .sort((a, b) => (a.day_number ?? 0) - (b.day_number ?? 0))
+
+  const passengers = ensureArray(record.passenger_details).map((passenger) =>
+    typeof passenger === 'object' ? passenger : { name: { firstName: passenger } }
+  )
+
+  const inclusionGroups = ensureArray(packageDate.inclusion_groups).map(
+    normalizeInclusionGroup
+  )
+
+  return {
+    bookingId: record.id,
+    bookingReference: record.booking_reference,
+    firstName: record.lead_first_name,
+    lastName: record.lead_last_name,
+    email: record.lead_email,
+    phone: record.lead_phone || 'Not provided',
+    passengerCount: record.passenger_count ?? passengers.length ?? 0,
+    passengers,
+    amount: Number(record.total_amount ?? 0),
+    reservationAmount: Number(record.reservation_amount ?? 0),
+    status: record.status || 'CONFIRMED',
+    paymentType: record.payment_type || 'FULL',
+    created_at: record.created_at,
+    updated_at: record.updated_at,
+    startDate: packageDate.start_date,
+    endDate: packageDate.end_date,
+    totalSlots: packageDate.total_slots ?? null,
+    package_date_id: record.package_date_id,
+    tour_package_id: tourPackage.id,
+    tourTitle: tourPackage.title,
+    tourDescription: tourPackage.description,
+    itinerary: itineraries,
+    inclusions: ensureArray(tourPackage.inclusions),
+    exclusions: ensureArray(tourPackage.exclusions),
+    paymentTerms: ensureArray(tourPackage.payment_terms),
+    requirements: ensureArray(tourPackage.requirements),
+    notes: ensureArray(tourPackage.notes),
+    inclusionGroups,
+    flight_booking_reference: record.flight_booking_reference ?? null,
+    flight_details: record.flight_details || {},
+    tour_booking_customizations: ensureArray(
+      record.tour_booking_customizations
+    ),
+  }
+}
+
 export const getTourBookingByReference = async (bookingReference) => {
   const { data, error } = await supabase
     .from('tour_bookings')
-    .select('*')
+    .select(
+      `
+        *,
+        package_dates (
+          id,
+          start_date,
+          end_date,
+          total_slots,
+          tour_package_id,
+          inclusion_groups:package_inclusion_groups (
+            id,
+            title,
+            removable,
+            fee_impact_per_group,
+            position,
+            items:package_inclusion_group_items (
+              id,
+              content,
+              position
+            )
+          ),
+          tour_packages (
+            id,
+            title,
+            description,
+            inclusions,
+            exclusions,
+            payment_terms,
+            requirements,
+            notes,
+            itineraries:package_itineraries!tour_package_id (
+              id,
+              day_number,
+              title,
+              description,
+              image_url
+            )
+          )
+        ),
+        tour_booking_customizations (
+          id,
+          removed_inclusion_group_ids,
+          rest_day_ids,
+          customization_fee,
+          client_snapshot
+        )
+      `
+    )
     .eq('booking_reference', bookingReference)
-    .single() // get just one record
+    .single()
 
   if (error) {
     throw new Error(`Error fetching tour booking: ${error.message}`)
@@ -779,17 +956,173 @@ export const getTourBookingByReference = async (bookingReference) => {
     throw new Error(`No tour booking found with reference ${bookingReference}`)
   }
 
-  // If your table stores JSON fields (e.g., itinerary), parse them here
-  if (typeof data.itinerary === 'string') {
-    try {
-      data.itinerary = JSON.parse(data.itinerary)
-    } catch (err) {
-      console.warn('Invalid JSON for itinerary:', data.itinerary)
-      data.itinerary = ''
-    }
+  return normalizeTourBookingRecord(data)
+}
+
+const normalizeTourBookingInput = (payload = {}) => {
+  const normalized = { ...payload }
+
+  normalized.bookingReference =
+    payload.bookingReference || payload.booking_reference || null
+
+  normalized.firstName =
+    payload.firstName || payload.lead_first_name || normalized.firstName || null
+
+  normalized.lastName =
+    payload.lastName || payload.lead_last_name || normalized.lastName || null
+
+  normalized.email = payload.email || payload.lead_email || normalized.email || null
+
+  normalized.phone =
+    payload.phone || payload.lead_phone || normalized.phone || 'Not provided'
+
+  const passengers = Array.isArray(payload.passengers)
+    ? payload.passengers
+    : ensureArray(payload.passenger_details)
+  normalized.passengers = passengers
+
+  normalized.passengerCount =
+    payload.passengerCount ??
+    payload.passenger_count ??
+    normalized.passengerCount ??
+    passengers.length ??
+    0
+
+  const totalAmountCandidate =
+    payload.amount ?? payload.total_amount ?? payload.totalAmount
+  normalized.amount = Number(totalAmountCandidate ?? normalized.amount ?? 0)
+
+  const reservationAmountCandidate =
+    payload.reservationAmount ??
+    payload.reservation_amount ??
+    payload.reservationFee
+  normalized.reservationAmount = Number(
+    reservationAmountCandidate ?? normalized.reservationAmount ?? 0
+  )
+
+  normalized.status = payload.status || normalized.status || 'CONFIRMED'
+  normalized.paymentType =
+    payload.paymentType || payload.payment_type || normalized.paymentType || 'FULL'
+
+  normalized.created_at = payload.created_at || normalized.created_at || null
+  normalized.updated_at = payload.updated_at || normalized.updated_at || null
+
+  const packageDate = payload.package_dates || {}
+  const tourPackage = packageDate.tour_packages || {}
+
+  normalized.startDate =
+    payload.startDate || packageDate.start_date || payload.start_date || null
+  normalized.endDate =
+    payload.endDate || packageDate.end_date || payload.end_date || null
+
+  normalized.totalSlots =
+    payload.totalSlots || packageDate.total_slots || normalized.totalSlots || null
+
+  normalized.package_date_id =
+    payload.package_date_id || packageDate.id || normalized.package_date_id || null
+
+  normalized.tour_package_id =
+    payload.tour_package_id || tourPackage.id || normalized.tour_package_id || null
+
+  normalized.tourTitle =
+    payload.tourTitle || tourPackage.title || payload.tour_title || null
+
+  normalized.tourDescription =
+    payload.tourDescription || tourPackage.description || payload.tour_description || null
+
+  const itineraryFromPayload = Array.isArray(payload.itinerary)
+    ? payload.itinerary
+    : null
+  const itineraryFromPackage = Array.isArray(tourPackage.itineraries)
+    ? tourPackage.itineraries
+    : []
+
+  normalized.itinerary =
+    itineraryFromPayload || itineraryFromPackage || normalized.itinerary || []
+
+  normalized.inclusions = ensureArray(
+    payload.inclusions ?? tourPackage.inclusions ?? normalized.inclusions ?? []
+  )
+
+  normalized.exclusions = ensureArray(
+    payload.exclusions ?? tourPackage.exclusions ?? normalized.exclusions ?? []
+  )
+
+  normalized.paymentTerms = ensureArray(
+    payload.paymentTerms ?? tourPackage.payment_terms ?? normalized.paymentTerms ?? []
+  )
+
+  normalized.requirements = ensureArray(
+    payload.requirements ?? tourPackage.requirements ?? normalized.requirements ?? []
+  )
+
+  normalized.notes = ensureArray(
+    payload.notes ?? tourPackage.notes ?? normalized.notes ?? []
+  )
+
+  const inclusionGroups = payload.inclusionGroups || packageDate.inclusion_groups
+  normalized.inclusionGroups = inclusionGroups
+    ? ensureArray(inclusionGroups).map(normalizeInclusionGroup)
+    : normalized.inclusionGroups || []
+
+  normalized.flight_booking_reference =
+    payload.flight_booking_reference ||
+    payload.flightBookingReference ||
+    normalized.flight_booking_reference ||
+    null
+
+  normalized.flight_details =
+    payload.flight_details || payload.flightDetails || normalized.flight_details || {}
+
+  normalized.tour_booking_customizations = ensureArray(
+    payload.tour_booking_customizations ??
+      payload.customizations ??
+      normalized.tour_booking_customizations ??
+      []
+  )
+
+  return normalized
+}
+
+const identifyMissingTourFields = (booking) => {
+  const missing = []
+  if (!booking.email) missing.push('email')
+  if (!booking.tourTitle) missing.push('tourTitle')
+  if (!Array.isArray(booking.itinerary) || booking.itinerary.length === 0)
+    missing.push('itinerary')
+  if (!Array.isArray(booking.passengers) || booking.passengers.length === 0)
+    missing.push('passengers')
+  if (!booking.amount || Number(booking.amount) <= 0) missing.push('amount')
+  return missing
+}
+
+const prepareTourConfirmationBookingDetails = async (bookingInput) => {
+  if (!bookingInput) {
+    throw new Error('Tour booking details are required to send confirmation email.')
   }
 
-  return data
+  if (typeof bookingInput === 'string') {
+    return getTourBookingByReference(bookingInput)
+  }
+
+  const normalized = normalizeTourBookingInput(bookingInput)
+
+  if (
+    normalized.bookingReference &&
+    identifyMissingTourFields(normalized).length > 0
+  ) {
+    const missing = identifyMissingTourFields(normalized)
+    console.warn(
+      '⚠️ EMAIL DEBUG - Provided booking payload missing critical fields, hydrating from database.',
+      {
+        bookingReference: normalized.bookingReference,
+        missing,
+      }
+    )
+    return getTourBookingByReference(normalized.bookingReference)
+  }
+
+  return normalized
 }
 
 export const sendConfirmationEmail = async (bookingReference) => {
@@ -1011,14 +1344,41 @@ export const sendFlightUpdateEmail = async (bookingReference) => {
   }
 }
 
-export const sendTourConfirmationEmail = async (bookingDetails) => {
+export const sendTourConfirmationEmail = async (bookingInput) => {
+  let bookingDetails
   try {
+    bookingDetails = await prepareTourConfirmationBookingDetails(bookingInput)
+
     console.log(
       '🔍 EMAIL DEBUG - Starting tour confirmation email for:',
       bookingDetails.bookingReference
     )
     console.log('🔍 EMAIL DEBUG - Email recipient:', bookingDetails.email)
     console.log('🔍 EMAIL DEBUG - Tour title:', bookingDetails.tourTitle)
+
+    const warningFields = []
+    if (!bookingDetails.tourTitle) warningFields.push('tourTitle')
+    if (!bookingDetails.passengers?.length) warningFields.push('passengers')
+    if (!bookingDetails.itinerary?.length) warningFields.push('itinerary')
+    if (!bookingDetails.phone || bookingDetails.phone === 'Not provided')
+      warningFields.push('lead_phone')
+    if (!bookingDetails.amount || Number(bookingDetails.amount) <= 0)
+      warningFields.push('total_amount')
+
+    if (warningFields.length > 0) {
+      console.warn('⚠️ EMAIL DEBUG - Incomplete tour booking payload detected.', {
+        bookingReference: bookingDetails.bookingReference,
+        warningFields,
+      })
+    }
+
+    const { email, firstName = 'Guest', tourTitle = 'Tour' } = bookingDetails
+
+    if (!email) {
+      throw new Error(
+        `Recipient email not found for booking ${bookingDetails.bookingReference || 'N/A'}.`
+      )
+    }
 
     console.log('🔍 EMAIL DEBUG - Generating PDF buffer')
     const pdfBuffer = await generateTourSummaryPDF(bookingDetails)
@@ -1028,17 +1388,11 @@ export const sendTourConfirmationEmail = async (bookingDetails) => {
       'bytes'
     )
 
-    const {
-      email,
-      firstName = 'Guest',
-      bookingReference = 'N/A',
-      tourTitle = 'Tour',
-    } = bookingDetails
-
-    if (!email) throw new Error('Recipient email not found.')
-
     console.log('🔍 EMAIL DEBUG - Preparing Brevo email')
     const sendSmtpEmail = new brevo.SendSmtpEmail()
+
+    const bookingReference =
+      bookingDetails.bookingReference || bookingDetails.booking_reference || 'N/A'
 
     sendSmtpEmail.subject = `Tour Confirmation - ${tourTitle}`
     sendSmtpEmail.htmlContent = `
@@ -1085,6 +1439,15 @@ export const sendTourConfirmationEmail = async (bookingDetails) => {
       '❌ EMAIL DEBUG - Error sending tour confirmation email:',
       err
     )
+    if (bookingDetails) {
+      console.error('❌ EMAIL DEBUG - Booking payload snapshot:', {
+        bookingReference: bookingDetails.bookingReference,
+        email: bookingDetails.email,
+        tourTitle: bookingDetails.tourTitle,
+      })
+    } else {
+      console.error('❌ EMAIL DEBUG - No booking details were prepared.')
+    }
     console.error('❌ EMAIL DEBUG - Error details:', {
       message: err.message,
       stack: err.stack,

@@ -77,7 +77,9 @@ function TourBooking() {
           ? [
               {
                 documentType: 'PASSPORT',
-                number: `P${String(i + 1).padStart(7, '0')}${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+                number: `P${String(i + 1).padStart(7, '0')}${String(
+                  Math.floor(Math.random() * 1000)
+                ).padStart(3, '0')}`,
                 nationality: 'PH',
                 issuanceCountry: 'PH',
                 expiryDate: '2027-12-31',
@@ -150,14 +152,15 @@ function TourBooking() {
     payment_type: 'FULL',
   }
 
-  // Unsaved changes hook
-  const { resetUnsavedChanges } = useUnsavedChanges(initialFormData, formData, {
-    enabled: true,
-    trackBeforeUnload: true, // Track browser close for client forms
-  })
-
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Unsaved changes hook
+  const { resetUnsavedChanges } = useUnsavedChanges(initialFormData, formData, {
+    enabled: !isSubmitting, // Disable tracking when submitting to prevent browser warning
+    trackBeforeUnload: true, // Track browser close for client forms
+  })
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [showTermsModal, setShowTermsModal] = useState(false)
   const [termsRef, setTermsRef] = useState(null)
@@ -257,11 +260,13 @@ function TourBooking() {
     e.preventDefault()
     setError(null)
     setLoading(true)
+    setIsSubmitting(true) // Disable unsaved changes tracking before redirect
 
     const validationError = validateForm()
     if (validationError) {
       setError(validationError)
       setLoading(false)
+      setIsSubmitting(false) // Re-enable tracking if validation fails
       return
     }
 
@@ -308,6 +313,7 @@ function TourBooking() {
         err.response?.data?.error ||
         'Failed to initiate booking. Please try again.'
       setError(errorMessage)
+      setIsSubmitting(false) // Re-enable tracking if submission fails
     } finally {
       setLoading(false)
     }
@@ -374,7 +380,11 @@ function TourBooking() {
                 <div className='inline-flex rounded-lg border border-gray-300 overflow-hidden shadow-sm'>
                   <button
                     type='button'
-                    className={`px-6 py-3 text-sm font-medium transition-all duration-200 ${formData.payment_type === 'FULL' ? 'bg-[#f7d100] text-black shadow-md' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                    className={`px-6 py-3 text-sm font-medium transition-all duration-200 ${
+                      formData.payment_type === 'FULL'
+                        ? 'bg-[#f7d100] text-black shadow-md'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
                     onClick={() =>
                       setFormData((p) => ({ ...p, payment_type: 'FULL' }))
                     }
@@ -385,7 +395,11 @@ function TourBooking() {
                   </button>
                   <button
                     type='button'
-                    className={`px-6 py-3 text-sm font-medium border-l border-gray-300 transition-all duration-200 ${formData.payment_type === 'RESERVATION' ? 'bg-[#f7d100] text-black shadow-md' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                    className={`px-6 py-3 text-sm font-medium border-l border-gray-300 transition-all duration-200 ${
+                      formData.payment_type === 'RESERVATION'
+                        ? 'bg-[#f7d100] text-black shadow-md'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
                     onClick={() =>
                       setFormData((p) => ({
                         ...p,

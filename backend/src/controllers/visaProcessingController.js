@@ -2,6 +2,7 @@ import { supabase, supabaseAdmin } from '../config/supabaseClient.js'
 import { autoAssignBooking } from '../services/assignmentService.js'
 import { v4 as uuidv4 } from 'uuid'
 import Pusher from 'pusher'
+import { insertAdminNotification } from '../database/supabaseService.js'
 
 const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID,
@@ -459,19 +460,15 @@ export const assignVisaProcessing = async (req, res) => {
     }
 
     // Create notification
-    const { error: notificationError } = await supabase
-      .from('admin_notifications')
-      .insert([
-        {
-          type: 'visa_processing_assigned',
-          message: `Visa processing for ${visaProcessing.passenger_name} (${visaProcessing.country}) has been assigned to you`,
-          booking_reference: `VP-${id}`,
-          assigned_to: assignedTo,
-          assigned_by: assignedById,
-          booking_type: 'visa',
-          created_at: new Date().toISOString(),
-        },
-      ])
+    const { error: notificationError } = await insertAdminNotification({
+      type: 'visa_processing_assigned',
+      message: `Visa processing for ${visaProcessing.passenger_name} (${visaProcessing.country}) has been assigned to you`,
+      booking_reference: `VP-${id}`,
+      assigned_to: assignedTo,
+      assigned_by: assignedById,
+      booking_type: 'visa',
+      created_at: new Date().toISOString(),
+    })
 
     if (notificationError) {
       console.error('Notification insert error:', notificationError)

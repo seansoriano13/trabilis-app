@@ -1,5 +1,6 @@
 import { supabase } from '../../config/supabaseClient.js'
 import Pusher from 'pusher'
+import { insertAdminNotification } from '../../database/supabaseService.js'
 
 const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID,
@@ -119,24 +120,20 @@ export const assignTourBooking = async (req, res) => {
     if (staffError) throw staffError
 
     // Create notification
-    const { error: notificationError } = await supabase
-      .from('admin_notifications')
-      .insert([
-        {
-          type: 'booking_assigned',
-          message: `Tour booking ${booking.booking_reference} has been assigned to you`,
-          booking_reference: booking.booking_reference,
-          assigned_to: assignedTo,
-          assigned_by: assignedById,
-          booking_type: 'tour',
-          booking_id: bookingId,
-          category: 'assignment',
-          priority: 'medium',
-          action_url: `/admin/tours/${bookingId}`,
-          related_user_id: assignedTo,
-          created_at: new Date().toISOString(),
-        },
-      ])
+    const { error: notificationError } = await insertAdminNotification({
+      type: 'booking_assigned',
+      message: `Tour booking ${booking.booking_reference} has been assigned to you`,
+      booking_reference: booking.booking_reference,
+      assigned_to: assignedTo,
+      assigned_by: assignedById,
+      booking_type: 'tour',
+      booking_id: bookingId,
+      category: 'assignment',
+      priority: 'medium',
+      action_url: `/admin/tours/${bookingId}`,
+      related_user_id: assignedTo,
+      created_at: new Date().toISOString(),
+    })
 
     if (notificationError) {
       console.error('Notification insert error:', notificationError)
@@ -212,24 +209,20 @@ export const assignFlightBooking = async (req, res) => {
     if (updateError) throw updateError
 
     // Create notification
-    const { error: notificationError } = await supabase
-      .from('admin_notifications')
-      .insert([
-        {
-          type: 'booking_assigned',
-          message: `Flight booking ${booking.booking_reference} has been assigned to you`,
-          booking_reference: booking.booking_reference,
-          assigned_to: assignedTo,
-          assigned_by: assignedById,
-          booking_type: 'flight',
-          booking_id: bookingId,
-          category: 'assignment',
-          priority: 'medium',
-          action_url: `/admin/flights/${bookingId}`,
-          related_user_id: assignedTo,
-          created_at: new Date().toISOString(),
-        },
-      ])
+    const { error: notificationError } = await insertAdminNotification({
+      type: 'booking_assigned',
+      message: `Flight booking ${booking.booking_reference} has been assigned to you`,
+      booking_reference: booking.booking_reference,
+      assigned_to: assignedTo,
+      assigned_by: assignedById,
+      booking_type: 'flight',
+      booking_id: bookingId,
+      category: 'assignment',
+      priority: 'medium',
+      action_url: `/admin/flights/${bookingId}`,
+      related_user_id: assignedTo,
+      created_at: new Date().toISOString(),
+    })
 
     if (notificationError) {
       console.error('Notification insert error:', notificationError)
@@ -403,20 +396,16 @@ export const reassignBooking = async (req, res) => {
     if (updateError) throw updateError
 
     // Create reassignment notification
-    const { error: notificationError } = await supabase
-      .from('admin_notifications')
-      .insert([
-        {
-          type: 'booking_reassigned',
-          message: `${bookingType.charAt(0).toUpperCase() + bookingType.slice(1)} booking ${booking.booking_reference} has been reassigned to you`,
-          booking_reference: booking.booking_reference,
-          assigned_to: newAssignedTo,
-          assigned_by: reassignedById,
-          booking_type: bookingType,
-          booking_id: bookingId,
-          created_at: new Date().toISOString(),
-        },
-      ])
+    const { error: notificationError } = await insertAdminNotification({
+      type: 'booking_reassigned',
+      message: `${bookingType.charAt(0).toUpperCase() + bookingType.slice(1)} booking ${booking.booking_reference} has been reassigned to you`,
+      booking_reference: booking.booking_reference,
+      assigned_to: newAssignedTo,
+      assigned_by: reassignedById,
+      booking_type: bookingType,
+      booking_id: bookingId,
+      created_at: new Date().toISOString(),
+    })
 
     if (notificationError) {
       console.error('Notification insert error:', notificationError)

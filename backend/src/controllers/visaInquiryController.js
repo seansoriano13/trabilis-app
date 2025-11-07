@@ -7,6 +7,7 @@ import { autoAssignBooking } from '../services/assignmentService.js'
 import { v4 as uuidv4 } from 'uuid'
 import Pusher from 'pusher'
 import Stripe from 'stripe'
+import { insertAdminNotification } from '../database/supabaseService.js'
 
 const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID,
@@ -423,20 +424,16 @@ export const assignVisaInquiry = async (req, res) => {
     }
 
     // Create notification (omit booking_id to avoid UUID mismatch)
-    const { error: notificationError } = await supabase
-      .from('admin_notifications')
-      .insert([
-        {
-          type: 'visa_inquiry_assigned',
-          message: `Visa inquiry ${inquiry.inquiry_reference} has been assigned to you`,
-          booking_reference: inquiry.inquiry_reference,
-          assigned_to: assignedTo,
-          assigned_by: assignedById,
-          booking_type: null,
-          booking_id: null,
-          created_at: new Date().toISOString(),
-        },
-      ])
+    const { error: notificationError } = await insertAdminNotification({
+      type: 'visa_inquiry_assigned',
+      message: `Visa inquiry ${inquiry.inquiry_reference} has been assigned to you`,
+      booking_reference: inquiry.inquiry_reference,
+      assigned_to: assignedTo,
+      assigned_by: assignedById,
+      booking_type: null,
+      booking_id: null,
+      created_at: new Date().toISOString(),
+    })
 
     if (notificationError) {
       console.error('Notification insert error:', notificationError)

@@ -19,6 +19,7 @@ import { fileURLToPath } from 'url'
 import dayjs from 'dayjs'
 import { formatSegment } from '../utils/flightutils.js'
 import { amadeus } from '../config/amadeus.js'
+import { insertAdminNotification } from '../database/supabaseService.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -66,20 +67,16 @@ export const sendTestNotification = async (req, res) => {
     }
 
     // Save to Supabase so it persists after reload
-    const { error: insertError } = await supabase
-      .from('admin_notifications')
-      .insert([
-        {
-          type: 'new_booking',
-          message: `Booking ${bookingReference} finalized with PNR: ${pnr}`,
-          booking_reference: bookingReference,
-          booking_type: 'flight',
-          category: 'booking',
-          priority: 'medium',
-          action_url: '/admin/flights',
-          created_at: new Date().toISOString(),
-        },
-      ])
+    const { error: insertError } = await insertAdminNotification({
+      type: 'new_booking',
+      message: `Booking ${bookingReference} finalized with PNR: ${pnr}`,
+      booking_reference: bookingReference,
+      booking_type: 'flight',
+      category: 'booking',
+      priority: 'medium',
+      action_url: '/admin/flights',
+      created_at: new Date().toISOString(),
+    })
 
     if (insertError) {
       console.error('Supabase insert error:', insertError.message)

@@ -2,6 +2,7 @@ import { cancelFlightBooking } from '../../services/cancellationService.js'
 import { supabase } from '../../config/supabaseClient.js'
 import { sendCancellationConfirmationEmail } from '../../services/brevoEmailService.js'
 import Pusher from 'pusher'
+import { insertAdminNotification } from '../../database/supabaseService.js'
 
 const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID,
@@ -112,19 +113,17 @@ export const adminCancelFlightBooking = async (req, res) => {
 
     // Log admin action
     try {
-      await supabase.from('admin_notifications').insert([
-        {
-          type: 'admin_cancellation',
-          message: `Admin ${adminId} cancelled booking ${booking_reference}`,
-          booking_reference: booking_reference,
-          created_at: new Date().toISOString(),
-          booking_type: 'flight',
-          admin_id: adminId,
-          category: 'status',
-          priority: 'high',
-          action_url: `/admin/flights/${bookingId}`,
-        },
-      ])
+      await insertAdminNotification({
+        type: 'admin_cancellation',
+        message: `Admin ${adminId} cancelled booking ${booking_reference}`,
+        booking_reference: booking_reference,
+        created_at: new Date().toISOString(),
+        booking_type: 'flight',
+        admin_id: adminId,
+        category: 'status',
+        priority: 'high',
+        action_url: `/admin/flights/${bookingId}`,
+      })
     } catch (logError) {
       console.error(
         `[ADMIN CANCELLATION] Failed to log admin action:`,

@@ -120,7 +120,13 @@ function AdminNavbar() {
         setNotifications(response.data.data)
       }
     } catch (error) {
-      console.error('Error fetching notifications:', error)
+      console.error('Error fetching notifications:', {
+        message: error.response?.data?.message || error.message,
+        error: error.response?.data?.error || 'Unknown error',
+        status: error.response?.status
+      })
+      // Optionally show user-friendly error message
+      // You could add a toast notification here if needed
     } finally {
       setNotificationsLoading(false)
     }
@@ -138,7 +144,13 @@ function AdminNavbar() {
         setUnreadCount(response.data.count)
       }
     } catch (error) {
-      console.error('Error fetching unread count:', error)
+      console.error('Error fetching unread count:', {
+        message: error.response?.data?.message || error.message,
+        error: error.response?.data?.error || 'Unknown error',
+        status: error.response?.status
+      })
+      // Set to 0 on error to avoid showing incorrect count
+      setUnreadCount(0)
     }
   }
 
@@ -168,7 +180,12 @@ function AdminNavbar() {
 
       setFilterCounts(counts)
     } catch (error) {
-      console.error('Error fetching filter counts:', error)
+      console.error('Error fetching filter counts:', {
+        message: error.response?.data?.message || error.message,
+        error: error.response?.data?.error || 'Unknown error',
+        status: error.response?.status
+      })
+      // Continue with empty counts on error
     }
   }
 
@@ -244,12 +261,32 @@ function AdminNavbar() {
   useEffect(() => {
     if (!jwt) return
 
-    const pusher = new Pusher('371c6201af1a663a4f58', {
-      cluster: 'ap1',
+    const pusherKey =
+      import.meta.env.VITE_PUSHER_APP_KEY || '371c6201af1a663a4f58'
+    const pusherCluster =
+      import.meta.env.VITE_PUSHER_APP_CLUSTER || 'ap1'
+
+    if (!pusherKey) {
+      console.warn('⚠️ Pusher key not configured. Real-time notifications disabled.')
+      return
+    }
+
+    console.log('🔌 Connecting to Pusher for real-time notifications...')
+
+    const pusher = new Pusher(pusherKey, {
+      cluster: pusherCluster,
       encrypted: true,
     })
 
     const channel = pusher.subscribe('admin-notifications')
+
+    channel.bind('pusher:subscription_succeeded', () => {
+      console.log('✅ Successfully subscribed to admin-notifications channel')
+    })
+
+    channel.bind('pusher:subscription_error', (error) => {
+      console.error('❌ Pusher subscription error:', error)
+    })
 
     // Listen for all notification events
     const eventTypes = [
@@ -263,7 +300,7 @@ function AdminNavbar() {
 
     eventTypes.forEach((eventType) => {
       channel.bind(eventType, (data) => {
-        console.log(`${eventType} notification:`, data)
+        console.log(`🔔 Received ${eventType} notification:`, data)
         // Refresh notifications and counts
         fetchNotifications()
         fetchUnreadCount()
@@ -272,7 +309,9 @@ function AdminNavbar() {
     })
 
     return () => {
+      console.log('🔌 Disconnecting from Pusher...')
       pusher.unsubscribe('admin-notifications')
+      pusher.disconnect()
     }
   }, [jwt])
 

@@ -6,6 +6,7 @@ import {
 } from '../config/amadeus.js'
 import stripe from '../config/stripe.js'
 import Pusher from 'pusher'
+import { insertAdminNotification } from '../database/supabaseService.js'
 
 const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID,
@@ -260,17 +261,13 @@ export async function cancelFlightBooking(
 
     // 7. Send admin notification
     try {
-      const { error: insertError } = await supabase
-        .from('admin_notifications')
-        .insert([
-          {
-            type: 'booking_cancelled',
-            message: `Booking cancelled: ${bookingReference} (${cancelledBy})`,
-            booking_reference: bookingReference,
-            pnr: booking.pnr,
-            created_at: new Date().toISOString(),
-          },
-        ])
+      const { error: insertError } = await insertAdminNotification({
+        type: 'booking_cancelled',
+        message: `Booking cancelled: ${bookingReference} (${cancelledBy})`,
+        booking_reference: bookingReference,
+        pnr: booking.pnr,
+        created_at: new Date().toISOString(),
+      })
 
       if (insertError) {
         console.error(

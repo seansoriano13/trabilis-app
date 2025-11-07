@@ -489,10 +489,15 @@ const TourBookingController = {
             }
 
             // fetch the booking along with package_dates and tour_packages
-            const { data, error } = await supabase
-                .from('tour_bookings')
-                .select(
-                    `
+            // Add retry logic for transient network errors
+            let data, error
+            let retries = 2
+
+            while (retries >= 0) {
+                const result = await supabase
+                    .from('tour_bookings')
+                    .select(
+                        `
     *,
     package_dates (
       start_date,
@@ -504,12 +509,66 @@ const TourBookingController = {
       )
     )
   `
-                )
-                .eq('booking_reference', String(booking_reference))
-                .single()
+                    )
+                    .eq('booking_reference', String(booking_reference))
+                    .single()
 
-            if (error || !data) {
-                console.error('Booking not found or Supabase error:', error)
+                data = result.data
+                error = result.error
+
+                // If no error or error is not a network/connection error, break
+                if (!error || (error.message && !error.message.includes('fetch failed'))) {
+                    break
+                }
+
+                // If it's a network error and we have retries left, wait and retry
+                if (retries > 0 && error.message && error.message.includes('fetch failed')) {
+                    console.warn(
+                        `⚠️ Supabase connection error, retrying... (${retries} retries left)`
+                    )
+                    await new Promise((resolve) => setTimeout(resolve, 1000)) // Wait 1 second
+                    retries--
+                } else {
+                    break
+                }
+            }
+
+            // Handle errors
+            if (error) {
+                // Distinguish between connection errors and "not found" errors
+                if (
+                    error.message &&
+                    (error.message.includes('fetch failed') ||
+                        error.message.includes('TypeError'))
+                ) {
+                    console.error('❌ Supabase connection error:', {
+                        message: error.message,
+                        booking_reference,
+                        details: error.details,
+                    })
+                    return res.status(503).json({
+                        error: 'Database connection error. Please try again shortly.',
+                        retry: true,
+                    })
+                } else if (error.code === 'PGRST116') {
+                    // Supabase "not found" error code
+                    console.log(
+                        `ℹ️ Booking not found: ${booking_reference}`
+                    )
+                    return res.status(404).json({ error: 'Booking not found' })
+                } else {
+                    console.error('❌ Supabase error:', {
+                        message: error.message,
+                        code: error.code,
+                        details: error.details,
+                        booking_reference,
+                    })
+                    return res.status(404).json({ error: 'Booking not found' })
+                }
+            }
+
+            if (!data) {
+                console.log(`ℹ️ Booking not found: ${booking_reference}`)
                 return res.status(404).json({ error: 'Booking not found' })
             }
 

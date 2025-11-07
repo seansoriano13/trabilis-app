@@ -4,6 +4,7 @@ import {
   sendFlightUpdateEmail,
 } from '../../services/brevoEmailService.js'
 import { supabase } from '../../config/supabaseClient.js'
+import { insertAdminNotification } from '../../database/supabaseService.js'
 import Pusher from 'pusher'
 import fs from 'fs'
 import path from 'path'
@@ -1406,7 +1407,7 @@ export const sendFlightUpdate = async (req, res) => {
       }
     } catch (_) {}
 
-    await supabase.from('admin_notifications').insert({
+    await insertAdminNotification({
       type: 'flight_update_sent',
       message: `Flight update email sent by ${adminName} for booking ${booking_reference}`,
       booking_reference: booking_reference,

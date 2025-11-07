@@ -9,9 +9,38 @@ import { supabase } from '../config/supabaseClient.js'
  */
 const autoAssignBooking = async (bookingType, bookingId) => {
     try {
-        // Get appropriate staff role and table name
         const staffRole = getStaffRole(bookingType)
         const tableName = getTableName(bookingType)
+
+        // Fetch current booking to avoid overwriting existing assignments
+        const { data: bookingRecord, error: fetchError } = await supabase
+            .from(tableName)
+            .select('id, assigned_to, assignment_status')
+            .eq('id', bookingId)
+            .single()
+
+        if (fetchError) {
+            console.error(`Error fetching ${bookingType} booking ${bookingId}:`, fetchError)
+            throw new Error(`Failed to fetch ${bookingType} booking`)
+        }
+
+        if (!bookingRecord) {
+            return { success: false, error: `Booking ${bookingId} not found` }
+        }
+
+        if (bookingRecord.assigned_to) {
+            console.info(
+                `[AUTO-ASSIGN] ${bookingType} booking ${bookingId} already assigned to ${bookingRecord.assigned_to}. Skipping auto-assignment.`
+            )
+            return {
+                success: false,
+                error: 'Booking already assigned',
+                alreadyAssigned: true,
+                assignedStaff: {
+                    id: bookingRecord.assigned_to
+                }
+            }
+        }
 
         // Get all active staff for the appropriate role, ordered by last assignment (oldest first)
         const { data: staff, error: staffError } = await supabase
@@ -32,26 +61,39 @@ const autoAssignBooking = async (bookingType, bookingId) => {
 
         // Select the staff member who was assigned least recently (round-robin)
         const assignedStaff = staff[0]
+        const now = new Date().toISOString()
 
-        // Update the booking with assignment
-        const { error: bookingError } = await supabase
+        const { data: updatedRows, error: bookingError } = await supabase
             .from(tableName)
             .update({
                 assigned_to: assignedStaff.id,
-                assigned_at: new Date().toISOString(),
+                assigned_at: now,
                 assignment_status: 'pending'
             })
             .eq('id', bookingId)
+            .is('assigned_to', null)
+            .select('id')
 
         if (bookingError) {
             console.error(`Error updating ${bookingType} booking:`, bookingError)
             throw new Error(`Failed to assign ${bookingType} booking`)
         }
 
+        if (!updatedRows || updatedRows.length === 0) {
+            console.warn(
+                `[AUTO-ASSIGN] ${bookingType} booking ${bookingId} was assigned before update completed. No changes applied.`
+            )
+            return {
+                success: false,
+                error: 'Booking already assigned',
+                alreadyAssigned: true
+            }
+        }
+
         // Update the staff member's last_assigned_at timestamp
         const { error: staffUpdateError } = await supabase
             .from('admins')
-            .update({ last_assigned_at: new Date().toISOString() })
+            .update({ last_assigned_at: now })
             .eq('id', assignedStaff.id)
 
         if (staffUpdateError) {

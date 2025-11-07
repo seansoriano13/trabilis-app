@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabaseClient.js'
 import Pusher from 'pusher'
+import { insertAdminNotification } from '../database/supabaseService.js'
 
 const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID,
@@ -130,22 +131,20 @@ async function sendErrorAlert(error, req, additionalContext = {}) {
     })
 
     // Log admin notification
-    await supabase.from('admin_notifications').insert([
-      {
-        type: 'error_alert',
-        message: alertMessage,
-        created_at: new Date().toISOString(),
-        category: 'error',
-        priority:
-          error.severity === ERROR_SEVERITY.CRITICAL ? 'critical' : 'high',
-        action_url: '/admin/dashboard',
-        metadata: {
-          errorType: error.errorType,
-          severity: error.severity,
-          statusCode: error.statusCode,
-        },
+    await insertAdminNotification({
+      type: 'error_alert',
+      message: alertMessage,
+      created_at: new Date().toISOString(),
+      category: 'error',
+      priority:
+        error.severity === ERROR_SEVERITY.CRITICAL ? 'critical' : 'high',
+      action_url: '/admin/dashboard',
+      metadata: {
+        errorType: error.errorType,
+        severity: error.severity,
+        statusCode: error.statusCode,
       },
-    ])
+    })
 
     console.log(
       `[ERROR ALERT] Alert sent for ${error.severity} error: ${error.errorType}`

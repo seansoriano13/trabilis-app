@@ -9,6 +9,7 @@ import { generateTourBookingHTML } from '../../utils/tourBookingHtmlGenerator.js
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import airlines from '../../data/airlines.json' with { type: 'json' }
+import { insertAdminNotification } from '../../database/supabaseService.js'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
@@ -1183,7 +1184,7 @@ export const editTourBooking = async (req, res) => {
 
     // Notifications
     if (status && status !== existingBooking.status) {
-      await supabase.from('admin_notifications').insert({
+      await insertAdminNotification({
         type: 'booking_status_changed',
         message: `Tour booking ${existingBooking.booking_reference} status changed from ${existingBooking.status} to ${status}`,
         booking_reference: existingBooking.booking_reference,
@@ -1244,7 +1245,7 @@ export const editTourBooking = async (req, res) => {
         ? `Tour booking ${existingBooking.booking_reference} reassigned by ${assignerName} to ${assigneeName}`
         : `Tour booking ${existingBooking.booking_reference} assigned by ${assignerName} to ${assigneeName}`
 
-      await supabase.from('admin_notifications').insert({
+      await insertAdminNotification({
         type: notifType,
         message,
         booking_reference: existingBooking.booking_reference,
@@ -1307,7 +1308,7 @@ export const editTourBooking = async (req, res) => {
       assignment_status &&
       assignment_status !== existingBooking.assignment_status
     ) {
-      await supabase.from('admin_notifications').insert({
+      await insertAdminNotification({
         type: 'assignment_status_updated',
         message: `Tour booking ${existingBooking.booking_reference} assignment status: ${assignment_status}`,
         booking_reference: existingBooking.booking_reference,
