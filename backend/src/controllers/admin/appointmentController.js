@@ -122,6 +122,7 @@ export const assignTourBooking = async (req, res) => {
     // Create notification
     const { error: notificationError } = await insertAdminNotification({
       type: 'booking_assigned',
+      event_type: 'booking_assigned', // Required field for database
       message: `Tour booking ${booking.booking_reference} has been assigned to you`,
       booking_reference: booking.booking_reference,
       assigned_to: assignedTo,
@@ -211,6 +212,7 @@ export const assignFlightBooking = async (req, res) => {
     // Create notification
     const { error: notificationError } = await insertAdminNotification({
       type: 'booking_assigned',
+      event_type: 'booking_assigned', // Required field for database
       message: `Flight booking ${booking.booking_reference} has been assigned to you`,
       booking_reference: booking.booking_reference,
       assigned_to: assignedTo,
@@ -398,12 +400,14 @@ export const reassignBooking = async (req, res) => {
     // Create reassignment notification
     const { error: notificationError } = await insertAdminNotification({
       type: 'booking_reassigned',
+      event_type: 'booking_reassigned', // Required field for database
       message: `${bookingType.charAt(0).toUpperCase() + bookingType.slice(1)} booking ${booking.booking_reference} has been reassigned to you`,
       booking_reference: booking.booking_reference,
       assigned_to: newAssignedTo,
       assigned_by: reassignedById,
       booking_type: bookingType,
       booking_id: bookingId,
+      category: 'assignment',
       created_at: new Date().toISOString(),
     })
 

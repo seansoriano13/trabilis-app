@@ -313,6 +313,9 @@ const TourBookingDetail = () => {
     }
   }
 
+
+  
+
   const handlePrintReceipt = async () => {
     if (!booking) return
 

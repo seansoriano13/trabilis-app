@@ -4,7 +4,11 @@ import Pusher from 'pusher'
 import fs from 'fs'
 import path from 'path'
 import dayjs from 'dayjs'
-import { generateTourSummaryPDF } from '../../services/brevoEmailService.js'
+import {
+  generateTourSummaryPDF,
+  getTourBookingByReference,
+  transformTourBookingForTemplate,
+} from '../../services/brevoEmailService.js'
 import { generateTourBookingHTML } from '../../utils/tourBookingHtmlGenerator.js'
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
@@ -620,50 +624,37 @@ export const viewTourBookingHTML = async (req, res) => {
   try {
     const { id } = req.params
 
-    // Get booking details from database with related package information
-    const { data: booking, error: bookingError } = await supabase
+    const { data: bookingRecord, error: bookingError } = await supabase
       .from('tour_bookings')
-      .select(
-        `
-                *,
-                package_dates (
-                    id,
-                    start_date,
-                    end_date,
-                    total_slots,
-                    tour_package_id,
-                    tour_packages (
-                        id,
-                        title,
-                        description,
-                        exclusions,
-                        payment_terms,
-                        requirements,
-                        notes,
-                        itineraries:package_itineraries!tour_package_id (
-                            id,
-                            day_number,
-                            title,
-                            description,
-                            image_url
-                        )
-                    )
-                )
-            `
-      )
+      .select('booking_reference')
       .eq('id', id)
       .single()
 
-    if (bookingError) {
+    if (bookingError || !bookingRecord?.booking_reference) {
       return res.status(404).json({ error: 'Booking not found' })
     }
 
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' })
+    let normalizedBooking
+    try {
+      normalizedBooking = await getTourBookingByReference(
+        bookingRecord.booking_reference
+      )
+    } catch (fetchError) {
+      if (fetchError?.message?.includes('No tour booking')) {
+        return res.status(404).json({ error: 'Booking not found' })
+      }
+      console.error('Error fetching normalized tour booking:', fetchError)
+      return res.status(500).json({
+        error: 'Failed to load booking details',
+        message: fetchError.message,
+      })
     }
+
+    const transformedBooking =
+      transformTourBookingForTemplate(normalizedBooking)
 
     // Generate HTML using shared function
-    const html = await generateTourBookingHTML(booking)
+    const html = await generateTourBookingHTML(transformedBooking)
 
     res.setHeader('Content-Type', 'text/html')
     res.send(html)
@@ -681,57 +672,37 @@ export const generateTourPDFAdmin = async (req, res) => {
   try {
     const { id } = req.params
 
-    // Get booking details from database with related package information
-    const { data: booking, error: bookingError } = await supabase
+    const { data: bookingRecord, error: bookingError } = await supabase
       .from('tour_bookings')
-      .select(
-        `
-                *,
-                package_dates (
-                    id,
-                    start_date,
-                    end_date,
-                    total_slots,
-                    tour_package_id,
-                    tour_packages (
-                        id,
-                        title,
-                        description,
-                        exclusions,
-                        payment_terms,
-                        requirements,
-                        notes,
-                        itineraries:package_itineraries!tour_package_id (
-                            id,
-                            day_number,
-                            title,
-                            description,
-                            image_url
-                        )
-                    )
-                ),
-                tour_booking_customizations (
-                    id,
-                    removed_inclusion_group_ids,
-                    rest_day_ids,
-                    customization_fee,
-                    client_snapshot
-                )
-            `
-      )
+      .select('booking_reference')
       .eq('id', id)
       .single()
 
-    if (bookingError) {
+    if (bookingError || !bookingRecord?.booking_reference) {
       return res.status(404).json({ error: 'Booking not found' })
     }
 
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' })
+    let normalizedBooking
+    try {
+      normalizedBooking = await getTourBookingByReference(
+        bookingRecord.booking_reference
+      )
+    } catch (fetchError) {
+      if (fetchError?.message?.includes('No tour booking')) {
+        return res.status(404).json({ error: 'Booking not found' })
+      }
+      console.error('Error fetching normalized tour booking:', fetchError)
+      return res.status(500).json({
+        error: 'Failed to load booking details',
+        message: fetchError.message,
+      })
     }
+
+    const transformedBooking =
+      transformTourBookingForTemplate(normalizedBooking)
 
     // Generate HTML using shared function
-    const html = await generateTourBookingHTML(booking)
+    const html = await generateTourBookingHTML(transformedBooking)
 
     // Add comprehensive print optimization and admin styling
     const adminStyles = `
@@ -1034,7 +1005,11 @@ export const generateTourPDFAdmin = async (req, res) => {
     res.setHeader('Content-Type', 'text/html')
     res.setHeader(
       'Content-Disposition',
-      `inline; filename="Tour-Booking-${booking.booking_reference}.html"`
+    `inline; filename="Tour-Booking-${
+      normalizedBooking.bookingReference ||
+      normalizedBooking.booking_reference ||
+      bookingRecord.booking_reference
+    }.html"`
     )
     res.send(finalHtml)
   } catch (error) {
@@ -1186,6 +1161,7 @@ export const editTourBooking = async (req, res) => {
     if (status && status !== existingBooking.status) {
       await insertAdminNotification({
         type: 'booking_status_changed',
+        event_type: 'booking_status_changed', // Required field for database
         message: `Tour booking ${existingBooking.booking_reference} status changed from ${existingBooking.status} to ${status}`,
         booking_reference: existingBooking.booking_reference,
         booking_type: 'tour',
@@ -1247,6 +1223,7 @@ export const editTourBooking = async (req, res) => {
 
       await insertAdminNotification({
         type: notifType,
+        event_type: notifType, // Required field for database
         message,
         booking_reference: existingBooking.booking_reference,
         booking_type: 'tour',
@@ -1310,6 +1287,7 @@ export const editTourBooking = async (req, res) => {
     ) {
       await insertAdminNotification({
         type: 'assignment_status_updated',
+        event_type: 'assignment_status_updated', // Required field for database
         message: `Tour booking ${existingBooking.booking_reference} assignment status: ${assignment_status}`,
         booking_reference: existingBooking.booking_reference,
         booking_type: 'tour',
@@ -1361,6 +1339,20 @@ export const cancelTourBooking = async (req, res) => {
     const { id } = req.params
     const { reason } = req.body || {}
 
+    // Fetch booking details first to know if slots should be restored
+    const { data: bookingData, error: fetchError } = await supabase
+      .from('tour_bookings')
+      .select('package_date_id, passenger_count, status, booking_reference')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !bookingData) {
+      return res.status(404).json({ error: 'Booking not found' })
+    }
+
+    // Only restore slots if booking was already confirmed (i.e., payment completed)
+    const shouldRestoreSlots = bookingData.status === 'CONFIRMED'
+
     const { data, error } = await supabase
       .from('tour_bookings')
       .update({
@@ -1375,6 +1367,47 @@ export const cancelTourBooking = async (req, res) => {
 
     if (error) {
       return res.status(400).json({ error: error.message })
+    }
+
+    // Restore available slots if needed (confirmed bookings only)
+    if (
+      shouldRestoreSlots &&
+      bookingData.package_date_id &&
+      Number.isFinite(bookingData.passenger_count)
+    ) {
+      try {
+        const { data: packageDate, error: slotFetchError } = await supabase
+          .from('package_dates')
+          .select('available_slots')
+          .eq('id', bookingData.package_date_id)
+          .single()
+
+        if (slotFetchError) {
+          console.error(
+            `Error fetching package date for slot restoration: ${slotFetchError.message}`
+          )
+        } else if (packageDate) {
+          const newSlots =
+            (packageDate.available_slots || 0) + bookingData.passenger_count
+          const { error: slotUpdateError } = await supabase
+            .from('package_dates')
+            .update({ available_slots: newSlots })
+            .eq('id', bookingData.package_date_id)
+
+          if (slotUpdateError) {
+            console.error(
+              `Error restoring available slots: ${slotUpdateError.message}`
+            )
+          } else {
+            console.log(
+              `✅ Restored ${bookingData.passenger_count} slots for package_date_id ${bookingData.package_date_id} (Booking ${bookingData.booking_reference}). New available slots: ${newSlots}`
+            )
+          }
+        }
+      } catch (slotError) {
+        console.error('Error in slot restoration process:', slotError)
+        // Do not fail the response due to slot restoration issue
+      }
     }
 
     return res.json({ success: true, data })

@@ -49,32 +49,54 @@ export async function createAmadeusOrder(bookingReference) {
       .single()
 
     if (statusError || !statusCheck) {
+      throw new Error(`Booking ${bookingReference} not found`)
+    }
+
+    // Allow idempotent resume if already PROCESSING_ORDER
+    if (
+      statusCheck.status !== 'PAID_PENDING_BOOKING' &&
+      statusCheck.status !== 'PROCESSING_ORDER'
+    ) {
       throw new Error(
-        `Booking ${bookingReference} not found`
+        `Booking ${bookingReference} is not in PAID_PENDING_BOOKING/PROCESSING_ORDER status (current: ${statusCheck.status})`
       )
     }
 
-    if (statusCheck.status !== 'PAID_PENDING_BOOKING') {
-      throw new Error(
-        `Booking ${bookingReference} is not in PAID_PENDING_BOOKING status (current: ${statusCheck.status})`
+    // If already PROCESSING_ORDER, fetch the booking and continue; else atomically move to PROCESSING_ORDER
+    let booking
+    if (statusCheck.status === 'PROCESSING_ORDER') {
+      const { data: existing, error: fetchErr } = await supabase
+        .from('flight_bookings')
+        .select('*')
+        .eq('booking_reference', bookingReference)
+        .single()
+      if (fetchErr || !existing) {
+        throw new Error(
+          `Booking ${bookingReference} not found while in PROCESSING_ORDER`
+        )
+      }
+      booking = existing
+      console.log(
+        `[AMADEUS ORDER] Resuming existing PROCESSING_ORDER for ${bookingReference}`
       )
-    }
+    } else {
+      const { data: moved, error: updateError } = await supabase
+        .from('flight_bookings')
+        .update({
+          status: 'PROCESSING_ORDER',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('booking_reference', bookingReference)
+        .eq('status', 'PAID_PENDING_BOOKING') // Only update if still in this status
+        .select()
+        .single()
 
-    // Now atomically update to PROCESSING_ORDER
-    const { data: booking, error: updateError } = await supabase
-      .from('flight_bookings')
-      .update({
-        status: 'PROCESSING_ORDER',
-      })
-      .eq('booking_reference', bookingReference)
-      .eq('status', 'PAID_PENDING_BOOKING') // Only update if still in this status
-      .select()
-      .single()
-
-    if (updateError || !booking) {
-      throw new Error(
-        `Booking ${bookingReference} is not in PAID_PENDING_BOOKING status or already being processed`
-      )
+      if (updateError || !moved) {
+        throw new Error(
+          `Booking ${bookingReference} is not in PAID_PENDING_BOOKING status or already being processed`
+        )
+      }
+      booking = moved
     }
 
     // 3. Re-price flight offer (prices may have changed since initial pricing)
@@ -142,7 +164,9 @@ export async function createAmadeusOrder(bookingReference) {
 
     if (missingTypes.length > 0) {
       throw new Error(
-        `Flight offer missing pricing for traveler types: ${missingTypes.join(', ')}`
+        `Flight offer missing pricing for traveler types: ${missingTypes.join(
+          ', '
+        )}`
       )
     }
 
@@ -194,7 +218,7 @@ export async function createAmadeusOrder(bookingReference) {
           }
         }
 
-        // Add documents for adults only
+        // Add documents for adults only when provided (avoid dummy/empty docs)
         if (traveler.type === 'ADULT') {
           if (traveler.documents && traveler.documents.length > 0) {
             const doc = traveler.documents[0]
@@ -212,21 +236,6 @@ export async function createAmadeusOrder(bookingReference) {
                   doc.validityCountry || doc.issuanceCountry || '',
                 nationality: doc.nationality || '',
                 holder: doc.holder !== undefined ? doc.holder : true,
-              },
-            ]
-          } else {
-            amadeusTraveler.documents = [
-              {
-                documentType: 'PASSPORT',
-                birthPlace: '',
-                issuanceLocation: '',
-                issuanceDate: '',
-                number: '',
-                expiryDate: '',
-                issuanceCountry: '',
-                validityCountry: '',
-                nationality: '',
-                holder: true,
               },
             ]
           }
@@ -327,6 +336,7 @@ export async function createAmadeusOrder(bookingReference) {
     try {
       const { error: insertError } = await insertAdminNotification({
         type: 'new_booking',
+        event_type: 'new_booking', // Required field for database
         message: `New flight booking confirmed: ${bookingReference}`,
         booking_reference: bookingReference,
         pnr: pnr,
@@ -392,7 +402,7 @@ export async function createAmadeusOrder(bookingReference) {
         .eq('booking_reference', bookingReference)
         .eq('status', 'PROCESSING_ORDER')
 
-      // Update booking status to failed
+      // Update booking status to failed with guard to avoid overriding concurrent success
       const { error: failedUpdateError } = await supabase
         .from('flight_bookings')
         .update({
@@ -400,6 +410,7 @@ export async function createAmadeusOrder(bookingReference) {
           updated_at: new Date().toISOString(),
         })
         .eq('booking_reference', bookingReference)
+        .in('status', ['PAID_PENDING_BOOKING', 'PROCESSING_ORDER'])
 
       if (failedUpdateError) {
         console.error(
@@ -420,9 +431,24 @@ export async function createAmadeusOrder(bookingReference) {
       // Issue refund with proper error handling
       if (bookingData?.stripe_checkout_id) {
         try {
-          const refund = await stripe.refunds.create({
-            payment_intent: bookingData.stripe_checkout_id,
-            amount: Math.round(bookingData.total_amount * 100),
+          // Retrieve Checkout Session to get the actual Payment Intent id
+          const session = await stripe.checkout.sessions.retrieve(
+            bookingData.stripe_checkout_id
+          )
+          const paymentIntentId =
+            typeof session.payment_intent === 'string'
+              ? session.payment_intent
+              : session.payment_intent?.id
+
+          if (!paymentIntentId) {
+            throw new Error(
+              'Missing payment_intent on Stripe Checkout Session; cannot issue refund automatically'
+            )
+          }
+
+          await stripe.refunds.create({
+            payment_intent: paymentIntentId,
+            amount: Math.round(Number(bookingData.total_amount || 0) * 100),
             reason: 'requested_by_customer',
             metadata: {
               booking_reference: bookingReference,
@@ -430,18 +456,8 @@ export async function createAmadeusOrder(bookingReference) {
             },
           })
 
-          // Update booking with refund information
-          await supabase
-            .from('flight_bookings')
-            .update({
-              refund_id: refund.id,
-              refund_amount: refund.amount / 100,
-              refund_status: 'issued',
-            })
-            .eq('booking_reference', bookingReference)
-
           console.log(
-            `[AMADEUS ORDER] ✅ Refund issued: ${refund.id} for ${bookingReference}`
+            `[AMADEUS ORDER] ✅ Refund issued for ${bookingReference}`
           )
         } catch (stripeError) {
           console.error(
@@ -452,10 +468,12 @@ export async function createAmadeusOrder(bookingReference) {
           // Critical: Manual intervention needed
           await insertAdminNotification({
             type: 'refund_failed',
+            event_type: 'refund_failed', // Required field for database
             message: `URGENT: Failed to refund ${bookingReference}. Manual refund required.`,
             booking_reference: bookingReference,
             created_at: new Date().toISOString(),
             priority: 'critical',
+            category: 'error',
           })
         }
       }

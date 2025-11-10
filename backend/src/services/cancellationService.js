@@ -263,10 +263,12 @@ export async function cancelFlightBooking(
     try {
       const { error: insertError } = await insertAdminNotification({
         type: 'booking_cancelled',
+        event_type: 'booking_cancelled', // Required field for database
         message: `Booking cancelled: ${bookingReference} (${cancelledBy})`,
         booking_reference: bookingReference,
         pnr: booking.pnr,
         created_at: new Date().toISOString(),
+        category: 'booking',
       })
 
       if (insertError) {

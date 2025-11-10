@@ -642,6 +642,270 @@ export const generateFlightItineraryPDF = async (bookingDetails) => {
   }
 }
 
+export const transformTourBookingForTemplate = (bookingDetails) => {
+  if (!bookingDetails) {
+    throw new Error(
+      'transformTourBookingForTemplate: booking details payload is required'
+    )
+  }
+
+  const customization = Array.isArray(bookingDetails.tour_booking_customizations)
+    ? bookingDetails.tour_booking_customizations[0]
+    : null
+
+  const toArray = (value) => {
+    if (value == null) return []
+    try {
+      const parsed = typeof value === 'string' ? JSON.parse(value) : value
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+
+  const toNumberArray = (arr) =>
+    (Array.isArray(arr) ? arr : [])
+      .map((value) => {
+        const num =
+          typeof value === 'string' ? parseInt(value, 10) : Number(value)
+        return Number.isFinite(num) ? num : null
+      })
+      .filter((num) => num != null)
+
+  let removedInclusionGroupIds = []
+  let restDayIds = []
+
+  if (customization) {
+    removedInclusionGroupIds = toNumberArray(
+      toArray(customization.removed_inclusion_group_ids)
+    )
+    restDayIds = toNumberArray(toArray(customization.rest_day_ids))
+
+    if (removedInclusionGroupIds.length === 0 || restDayIds.length === 0) {
+      let snapshot = null
+      try {
+        snapshot = customization.client_snapshot
+          ? typeof customization.client_snapshot === 'string'
+            ? JSON.parse(customization.client_snapshot)
+            : customization.client_snapshot
+          : null
+      } catch {
+        snapshot = null
+      }
+
+      if (snapshot && typeof snapshot === 'object') {
+        if (removedInclusionGroupIds.length === 0) {
+          removedInclusionGroupIds = toNumberArray(
+            toArray(
+              snapshot.removedInclusionGroupIds ||
+                snapshot.removed_inclusion_group_ids
+            )
+          )
+        }
+
+        if (restDayIds.length === 0) {
+          restDayIds = toNumberArray(
+            toArray(snapshot.restDayIds || snapshot.rest_day_ids)
+          )
+        }
+      }
+    }
+  }
+
+  const inclusionGroupsSource = Array.isArray(bookingDetails.inclusionGroups)
+    ? bookingDetails.inclusionGroups
+    : Array.isArray(bookingDetails.package_dates?.inclusion_groups)
+    ? bookingDetails.package_dates.inclusion_groups
+    : []
+
+  const filteredInclusionGroups = inclusionGroupsSource
+    .filter((group) => {
+      const groupId =
+        group && group.id != null
+          ? typeof group.id === 'string'
+            ? parseInt(group.id, 10)
+            : Number(group.id)
+          : null
+      return groupId == null || !removedInclusionGroupIds.includes(groupId)
+    })
+    .map((group) => ({
+      ...group,
+      items: Array.isArray(group.items)
+        ? group.items
+            .map((item) => {
+              if (typeof item === 'string') return item.trim()
+              if (item && typeof item === 'object' && item.content) {
+                return typeof item.content === 'string'
+                  ? item.content.trim()
+                  : String(item.content || '').trim()
+              }
+              return String(item ?? '').trim()
+            })
+            .filter((item) => item.length > 0)
+        : [],
+    }))
+
+  const filteredInclusions = filteredInclusionGroups.reduce((acc, group) => {
+    if (Array.isArray(group.items)) {
+      return [...acc, ...group.items.filter(Boolean)]
+    }
+    return acc
+  }, [])
+
+  const originalInclusions = Array.isArray(bookingDetails.inclusions)
+    ? bookingDetails.inclusions
+    : Array.isArray(bookingDetails.package_dates?.inclusions)
+    ? bookingDetails.package_dates.inclusions
+    : Array.isArray(
+        bookingDetails.package_dates?.tour_packages?.inclusions
+      )
+    ? bookingDetails.package_dates.tour_packages.inclusions
+    : []
+
+  const finalInclusions =
+    filteredInclusions.length > 0 ? filteredInclusions : originalInclusions
+
+  const resolveItineraries = () => {
+    if (Array.isArray(bookingDetails.itinerary)) {
+      return bookingDetails.itinerary
+    }
+
+    if (Array.isArray(bookingDetails.package_dates?.tour_packages?.itineraries)) {
+      return bookingDetails.package_dates.tour_packages.itineraries
+    }
+
+    return []
+  }
+
+  const transformedBooking = {
+    booking_reference:
+      bookingDetails.bookingReference ||
+      bookingDetails.booking_reference ||
+      'N/A',
+    lead_first_name:
+      bookingDetails.firstName ||
+      bookingDetails.lead_first_name ||
+      bookingDetails.leadFirstName ||
+      '',
+    lead_last_name:
+      bookingDetails.lastName ||
+      bookingDetails.lead_last_name ||
+      bookingDetails.leadLastName ||
+      '',
+    lead_email: bookingDetails.email || bookingDetails.lead_email || '',
+    lead_phone:
+      bookingDetails.phone ||
+      bookingDetails.lead_phone ||
+      bookingDetails.leadPhone ||
+      'Not provided',
+    passenger_count:
+      bookingDetails.passengerCount ||
+      bookingDetails.passenger_count ||
+      (Array.isArray(bookingDetails.passengers)
+        ? bookingDetails.passengers.length
+        : 0),
+    payment_type:
+      bookingDetails.paymentType ||
+      bookingDetails.payment_type ||
+      'N/A',
+    total_amount:
+      bookingDetails.amount ??
+      bookingDetails.total_amount ??
+      bookingDetails.totalAmount ??
+      0,
+    reservation_amount:
+      bookingDetails.reservationAmount ??
+      bookingDetails.reservation_amount ??
+      bookingDetails.reservationFee ??
+      0,
+    status: bookingDetails.status || 'CONFIRMED',
+    passenger_details:
+      bookingDetails.passengers || bookingDetails.passenger_details || [],
+    flight_details:
+      bookingDetails.flight_details ||
+      bookingDetails.flightDetails ||
+      {},
+    flight_booking_reference:
+      bookingDetails.flight_booking_reference ||
+      bookingDetails.flightBookingReference ||
+      null,
+    created_at: bookingDetails.created_at || new Date().toISOString(),
+    updated_at: bookingDetails.updated_at || new Date().toISOString(),
+    tour_booking_customizations:
+      bookingDetails.tour_booking_customizations ||
+      bookingDetails.customizations ||
+      [],
+    rest_day_ids: restDayIds,
+    package_dates: {
+      id:
+        bookingDetails.package_date_id ||
+        bookingDetails.package_dates?.id ||
+        null,
+      start_date:
+        bookingDetails.startDate ||
+        bookingDetails.package_dates?.start_date ||
+        null,
+      end_date:
+        bookingDetails.endDate ||
+        bookingDetails.package_dates?.end_date ||
+        null,
+      total_slots:
+        bookingDetails.totalSlots ||
+        bookingDetails.availableSlots ||
+        bookingDetails.package_dates?.total_slots ||
+        0,
+      inclusions: finalInclusions,
+      exclusions:
+        bookingDetails.exclusions ||
+        bookingDetails.package_dates?.exclusions ||
+        bookingDetails.package_dates?.tour_packages?.exclusions ||
+        [],
+      payment_terms:
+        bookingDetails.paymentTerms ||
+        bookingDetails.package_dates?.payment_terms ||
+        bookingDetails.package_dates?.tour_packages?.payment_terms ||
+        [],
+      requirements:
+        bookingDetails.requirements ||
+        bookingDetails.package_dates?.requirements ||
+        bookingDetails.package_dates?.tour_packages?.requirements ||
+        [],
+      notes:
+        bookingDetails.notes ||
+        bookingDetails.package_dates?.notes ||
+        bookingDetails.package_dates?.tour_packages?.notes ||
+        [],
+      inclusion_groups: filteredInclusionGroups,
+      tour_packages: {
+        id:
+          bookingDetails.tour_package_id ||
+          bookingDetails.package_dates?.tour_packages?.id ||
+          null,
+        title:
+          bookingDetails.tourTitle ||
+          bookingDetails.package_dates?.tour_packages?.title ||
+          bookingDetails.packageTitle ||
+          'Tour Package',
+        description:
+          bookingDetails.tourDescription ||
+          bookingDetails.package_dates?.tour_packages?.description ||
+          '',
+        itineraries: resolveItineraries(),
+      },
+    },
+  }
+
+  console.log('🔍 PDF DEBUG - Customization applied:', {
+    removedGroupIds: removedInclusionGroupIds,
+    restDayIds: restDayIds,
+    originalGroupsCount: inclusionGroupsSource.length,
+    filteredGroupsCount: filteredInclusionGroups.length,
+    filteredInclusionsCount: finalInclusions.length,
+  })
+
+  return transformedBooking
+}
+
 export const generateTourSummaryPDF = async (bookingDetails) => {
   try {
     console.log('🔍 PDF DEBUG - Starting tour PDF generation')
@@ -650,69 +914,8 @@ export const generateTourSummaryPDF = async (bookingDetails) => {
       JSON.stringify(bookingDetails, null, 2)
     )
 
-    // Transform flattened bookingDetails back to the structure expected by generateTourBookingHTML
-    const transformedBooking = {
-      booking_reference: bookingDetails.bookingReference,
-      lead_first_name: bookingDetails.firstName,
-      lead_last_name: bookingDetails.lastName,
-      lead_email: bookingDetails.email,
-      lead_phone: bookingDetails.phone || 'Not provided',
-      passenger_count: bookingDetails.passengerCount,
-      payment_type: bookingDetails.paymentType,
-      total_amount: parseFloat(bookingDetails.amount) || 0,
-      reservation_amount: parseFloat(bookingDetails.reservationAmount) || 0,
-      status: bookingDetails.status || 'CONFIRMED',
-      passenger_details: bookingDetails.passengers || [],
-      flight_details: bookingDetails.flight_details || {},
-      flight_booking_reference: bookingDetails.flight_booking_reference || null,
-      created_at: bookingDetails.created_at || new Date().toISOString(),
-      updated_at: bookingDetails.updated_at || new Date().toISOString(),
-      tour_booking_customizations: bookingDetails.tour_booking_customizations || [],
-      package_dates: {
-        id: bookingDetails.package_date_id || null,
-        start_date: bookingDetails.startDate,
-        end_date: bookingDetails.endDate,
-        total_slots:
-          bookingDetails.totalSlots || bookingDetails.availableSlots || 0,
-        inclusions: bookingDetails.inclusions || [],
-        exclusions: bookingDetails.exclusions || [],
-        payment_terms: bookingDetails.paymentTerms || [],
-        requirements: bookingDetails.requirements || [],
-        notes: bookingDetails.notes || [],
-        tour_packages: {
-          id: bookingDetails.tour_package_id || null,
-          title: bookingDetails.tourTitle,
-          description: bookingDetails.tourDescription,
-          itineraries: (() => {
-            // Handle itinerary data - it should be an array from package_itineraries table
-            if (Array.isArray(bookingDetails.itinerary)) {
-              console.log(
-                '✅ Itinerary received as array with',
-                bookingDetails.itinerary.length,
-                'items'
-              )
-              return bookingDetails.itinerary
-            } else if (
-              typeof bookingDetails.itinerary === 'string' &&
-              bookingDetails.itinerary.trim()
-            ) {
-              // If it's a string, something went wrong in the data flow
-              console.log(
-                '⚠️ Warning: Itinerary received as string instead of array!'
-              )
-              console.log(
-                '⚠️ String content preview:',
-                bookingDetails.itinerary.substring(0, 100) + '...'
-              )
-              return []
-            } else {
-              console.log('⚠️ Warning: No itinerary data received')
-              return []
-            }
-          })(),
-        },
-      },
-    }
+    const transformedBooking =
+      transformTourBookingForTemplate(bookingDetails)
 
     console.log(
       '📧 Email PDF Generation - Transformed booking:',

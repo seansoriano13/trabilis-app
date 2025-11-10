@@ -115,6 +115,7 @@ export const adminCancelFlightBooking = async (req, res) => {
     try {
       await insertAdminNotification({
         type: 'admin_cancellation',
+        event_type: 'admin_cancellation', // Required field for database
         message: `Admin ${adminId} cancelled booking ${booking_reference}`,
         booking_reference: booking_reference,
         created_at: new Date().toISOString(),

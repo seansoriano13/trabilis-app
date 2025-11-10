@@ -462,11 +462,13 @@ export const assignVisaProcessing = async (req, res) => {
     // Create notification
     const { error: notificationError } = await insertAdminNotification({
       type: 'visa_processing_assigned',
+      event_type: 'visa_processing_assigned', // Required field for database
       message: `Visa processing for ${visaProcessing.passenger_name} (${visaProcessing.country}) has been assigned to you`,
       booking_reference: `VP-${id}`,
       assigned_to: assignedTo,
       assigned_by: assignedById,
       booking_type: 'visa',
+      category: 'assignment',
       created_at: new Date().toISOString(),
     })
 

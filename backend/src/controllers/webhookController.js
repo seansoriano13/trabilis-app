@@ -446,9 +446,10 @@ export const handleStripeWebhook = async (req, res) => {
       bookingData = fullBooking
     } else if (existingBooking.status === 'PROCESSING_ORDER') {
       console.log(
-        `ℹ️ Webhook received for flight booking ${booking_reference}, but booking is already PROCESSING_ORDER. Skipping (idempotency).`
+        `ℹ️ Webhook received for flight booking ${booking_reference}, booking is already PROCESSING_ORDER. Resuming Amadeus order creation...`
       )
-      return res.sendStatus(200)
+      // Proceed by treating as ready for order creation
+      bookingData = existingBooking
     } else if (
       ['TICKETED', 'BOOKING_FAILED', 'TICKETING_FAILED', 'CANCELLED'].includes(
         existingBooking.status
@@ -460,23 +461,49 @@ export const handleStripeWebhook = async (req, res) => {
       return res.sendStatus(200)
     } else if (existingBooking.status === 'PENDING_PAYMENT') {
       // Update from PENDING_PAYMENT to PAID_PENDING_BOOKING
-      const { data: updatedBooking, error: updateError } = await supabase
+      const { data: updatedRows, error: updateError } = await supabase
         .from('flight_bookings')
         .update({
           status: 'PAID_PENDING_BOOKING',
           stripe_checkout_id: session.id,
+          updated_at: new Date().toISOString(),
         })
         .eq('booking_reference', booking_reference)
         .eq('status', 'PENDING_PAYMENT') // Only update if still pending payment
         .select()
-        .single()
+        .order('updated_at', { ascending: false })
+        .limit(1)
+
+      let updatedBooking =
+        Array.isArray(updatedRows) && updatedRows.length > 0
+          ? updatedRows[0]
+          : null
 
       if (updateError || !updatedBooking) {
-        console.error(
-          `❌ Failed to update flight booking ${booking_reference} to PAID_PENDING_BOOKING:`,
-          updateError?.message || 'No data returned'
-        )
-        return res.sendStatus(500)
+        // If no row was updated, re-fetch to support idempotency/race safety
+        const { data: refetched, error: refetchError } = await supabase
+          .from('flight_bookings')
+          .select('id, status, booking_reference, stripe_checkout_id, updated_at')
+          .eq('booking_reference', booking_reference)
+          .single()
+
+        if (
+          !refetchError &&
+          refetched &&
+          (refetched.status === 'PAID_PENDING_BOOKING' ||
+            refetched.status === 'PROCESSING_ORDER')
+        ) {
+          console.warn(
+            `ℹ️ No rows updated for ${booking_reference}, but current status is ${refetched.status}. Treating as idempotent success.`
+          )
+          updatedBooking = refetched
+        } else {
+          console.error(
+            `❌ Failed to update flight booking ${booking_reference} to PAID_PENDING_BOOKING:`,
+            updateError?.message || refetchError?.message || 'No data returned'
+          )
+          return res.sendStatus(500)
+        }
       }
 
       console.log(
@@ -567,9 +594,12 @@ export const handleStripeWebhook = async (req, res) => {
         return res.sendStatus(500)
       }
 
-      if (statusVerify.status !== 'PAID_PENDING_BOOKING') {
+      if (
+        statusVerify.status !== 'PAID_PENDING_BOOKING' &&
+        statusVerify.status !== 'PROCESSING_ORDER'
+      ) {
         console.warn(
-          `⚠️ Booking ${booking_reference} status is ${statusVerify.status}, not PAID_PENDING_BOOKING. Skipping Amadeus order creation.`
+          `⚠️ Booking ${booking_reference} status is ${statusVerify.status}, not PAID_PENDING_BOOKING/PROCESSING_ORDER. Skipping Amadeus order creation.`
         )
         return res.sendStatus(200)
       }

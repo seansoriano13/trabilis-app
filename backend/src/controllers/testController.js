@@ -69,6 +69,7 @@ export const sendTestNotification = async (req, res) => {
     // Save to Supabase so it persists after reload
     const { error: insertError } = await insertAdminNotification({
       type: 'new_booking',
+      event_type: 'new_booking', // Required field for database
       message: `Booking ${bookingReference} finalized with PNR: ${pnr}`,
       booking_reference: bookingReference,
       booking_type: 'flight',

@@ -133,6 +133,7 @@ async function sendErrorAlert(error, req, additionalContext = {}) {
     // Log admin notification
     await insertAdminNotification({
       type: 'error_alert',
+      event_type: 'error_alert', // Required field for database
       message: alertMessage,
       created_at: new Date().toISOString(),
       category: 'error',

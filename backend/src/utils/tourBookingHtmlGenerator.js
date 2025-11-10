@@ -63,8 +63,14 @@ export const generateTourBookingHTML = async (booking) => {
   const supportEmail = process.env.SUPPORT_EMAIL || 'support@trabilis.com'
   const supportPhone = process.env.SUPPORT_PHONE || '9296106660'
   html = html
-    .replace(/\$\{process\.env\.SUPPORT_EMAIL\s*\|\|\s*'support@trabilis\.com'\}/g, supportEmail)
-    .replace(/\$\{process\.env\.SUPPORT_PHONE\s*\|\|\s*'9296106660'\}/g, supportPhone)
+    .replace(
+      /\$\{process\.env\.SUPPORT_EMAIL\s*\|\|\s*'support@trabilis\.com'\}/g,
+      supportEmail
+    )
+    .replace(
+      /\$\{process\.env\.SUPPORT_PHONE\s*\|\|\s*'9296106660'\}/g,
+      supportPhone
+    )
 
   // Replace BASE_URL placeholder with actual backend URL
   const baseUrl =
@@ -110,7 +116,9 @@ export const generateTourBookingHTML = async (booking) => {
                     <i class="fa-solid fa-map pdf-tour-details__package-icon"></i>
                     <div class="pdf-tour-details__package-name">
                         <p class="pdf-tour-details__package-text">
-                            <b>${tourPackage?.title || 'Unknown Tour Package'}</b>
+                            <b>${
+                              tourPackage?.title || 'Unknown Tour Package'
+                            }</b>
                         </p>
                     </div>
                 </div>
@@ -134,7 +142,11 @@ export const generateTourBookingHTML = async (booking) => {
                     <p class="pdf-tour-details__duration">
                         ${
                           packageDate?.start_date && packageDate?.end_date
-                            ? `${new Date(packageDate.start_date).toLocaleDateString()} - ${new Date(packageDate.end_date).toLocaleDateString()}`
+                            ? `${new Date(
+                                packageDate.start_date
+                              ).toLocaleDateString()} - ${new Date(
+                                packageDate.end_date
+                              ).toLocaleDateString()}`
                             : 'N/A'
                         }
                     </p>
@@ -201,7 +213,9 @@ export const generateTourBookingHTML = async (booking) => {
                                 <span>${email}</span>
                                 <span>${phone}</span>
                             </div>
-                            <p class="pdf-passenger-details__data-status">${status || 'N/A'}</p>
+                            <p class="pdf-passenger-details__data-status">${
+                              status || 'N/A'
+                            }</p>
                             <div>${type}</div>
                             <div>${flightPnr}</div>
                             <div>${dateOfBirth}</div>
@@ -644,33 +658,75 @@ export const generateTourBookingHTML = async (booking) => {
                 (segment, segIndex) => `
                             <div class="pdf-flight-details__airline">
                                 <div class="pdf-flight-details__airline-logo">
-                                    ${segment.airline.logo ? `<img src="${segment.airline.logo}" alt="${segment.airline.name}" style="height: 2rem; width: auto;" />` : ''}
+                                    ${
+                                      segment.airline.logo
+                                        ? `<img src="${segment.airline.logo}" alt="${segment.airline.name}" style="height: 2rem; width: auto;" />`
+                                        : ''
+                                    }
                                 </div>
                                 <div class="pdf-flight-details__airline-name">
-                                    <p class="pdf-flight-details__airline-text"><b>${segment.airline.name}</b></p>
-                                    <p class="pdf-flight-details__airline-text">${segment.aircraft.name || segment.aircraft}</p>
+                                    <p class="pdf-flight-details__airline-text"><b>${
+                                      segment.airline.name
+                                    }</b></p>
+                                    <p class="pdf-flight-details__airline-text">${
+                                      segment.aircraft.name || segment.aircraft
+                                    }</p>
                                 </div>
                             </div>
                             <div class="pdf-flight-details__departure">
                                 <p class="pdf-flight-details__airport-code">
-                                    <b><span>${segment.departure.iata}</span></b>
-                                    <span>${segment.departure.city === 'TBA' ? '' : segment.departure.city}</span>
+                                    <b><span>${
+                                      segment.departure.iata
+                                    }</span></b>
+                                    <span>${
+                                      segment.departure.city === 'TBA'
+                                        ? ''
+                                        : segment.departure.city
+                                    }</span>
                                 </p>
-                                <p class="pdf-flight-details__airport-name"><span>${segment.departure.airport === 'TBA' ? '' : segment.departure.airport}</span></p>
-                                <p class="pdf-flight-details__terminal"><span>${segment.departure.terminal === 'TBA' ? '' : `Terminal ${segment.departure.terminal}`}</span></p>
-                                <p class="pdf-flight-details__time"><b><span>${segment.departure.time}</span></b></p>
+                                <p class="pdf-flight-details__airport-name"><span>${
+                                  segment.departure.airport === 'TBA'
+                                    ? ''
+                                    : segment.departure.airport
+                                }</span></p>
+                                <p class="pdf-flight-details__terminal"><span>${
+                                  segment.departure.terminal === 'TBA'
+                                    ? ''
+                                    : `Terminal ${segment.departure.terminal}`
+                                }</span></p>
+                                <p class="pdf-flight-details__time"><b><span>${
+                                  segment.departure.time
+                                }</span></b></p>
                             </div>
                             <div class="pdf-flight-details__arrival">
                                 <p class="pdf-flight-details__airport-code">
-                                    <b><span>${segment.arrival.iata}</span><span>${segment.arrival.city === 'TBA' ? '' : segment.arrival.city}</span></b>
+                                    <b><span>${
+                                      segment.arrival.iata
+                                    }</span><span>${
+                  segment.arrival.city === 'TBA' ? '' : segment.arrival.city
+                }</span></b>
                                 </p>
-                                <p class="pdf-flight-details__airport-code"><span>${segment.arrival.airport === 'TBA' ? '' : segment.arrival.airport}</span></p>
-                                <p class="pdf-flight-details__terminal"><span>${segment.arrival.terminal === 'TBA' ? '' : `Terminal ${segment.arrival.terminal}`}</span></p>
-                                <p class="pdf-flight-details__time"><b><span>${segment.arrival.time}</span></b></p>
+                                <p class="pdf-flight-details__airport-code"><span>${
+                                  segment.arrival.airport === 'TBA'
+                                    ? ''
+                                    : segment.arrival.airport
+                                }</span></p>
+                                <p class="pdf-flight-details__terminal"><span>${
+                                  segment.arrival.terminal === 'TBA'
+                                    ? ''
+                                    : `Terminal ${segment.arrival.terminal}`
+                                }</span></p>
+                                <p class="pdf-flight-details__time"><b><span>${
+                                  segment.arrival.time
+                                }</span></b></p>
                             </div>
                             <div class="pdf-flight-details__leg">
-                                <p class="pdf-flight-details__stops">${getStopsLabel(segment.stops)}</p>
-                                <p class="pdf-flight-details__durations">${segment.duration}</p>
+                                <p class="pdf-flight-details__stops">${getStopsLabel(
+                                  segment.stops
+                                )}</p>
+                                <p class="pdf-flight-details__durations">${
+                                  segment.duration
+                                }</p>
                             </div>
                         `
               )
@@ -719,33 +775,75 @@ export const generateTourBookingHTML = async (booking) => {
                 (segment, segIndex) => `
                             <div class="pdf-flight-details__airline">
                                 <div class="pdf-flight-details__airline-logo">
-                                    ${segment.airline.logo ? `<img src="${segment.airline.logo}" alt="${segment.airline.name}" style="height: 2rem; width: auto;" />` : ''}
+                                    ${
+                                      segment.airline.logo
+                                        ? `<img src="${segment.airline.logo}" alt="${segment.airline.name}" style="height: 2rem; width: auto;" />`
+                                        : ''
+                                    }
                                 </div>
                                 <div class="pdf-flight-details__airline-name">
-                                    <p class="pdf-flight-details__airline-text"><b>${segment.airline.name}</b></p>
-                                    <p class="pdf-flight-details__airline-text">${segment.aircraft.name || segment.aircraft}</p>
+                                    <p class="pdf-flight-details__airline-text"><b>${
+                                      segment.airline.name
+                                    }</b></p>
+                                    <p class="pdf-flight-details__airline-text">${
+                                      segment.aircraft.name || segment.aircraft
+                                    }</p>
                                 </div>
                             </div>
                             <div class="pdf-flight-details__departure">
                                 <p class="pdf-flight-details__airport-code">
-                                    <b><span>${segment.departure.iata}</span></b>
-                                    <span>${segment.departure.city === 'TBA' ? '' : segment.departure.city}</span>
+                                    <b><span>${
+                                      segment.departure.iata
+                                    }</span></b>
+                                    <span>${
+                                      segment.departure.city === 'TBA'
+                                        ? ''
+                                        : segment.departure.city
+                                    }</span>
                                 </p>
-                                <p class="pdf-flight-details__airport-name"><span>${segment.departure.airport === 'TBA' ? '' : segment.departure.airport}</span></p>
-                                <p class="pdf-flight-details__terminal"><span>${segment.departure.terminal === 'TBA' ? '' : `Terminal ${segment.departure.terminal}`}</span></p>
-                                <p class="pdf-flight-details__time"><b><span>${segment.departure.time}</span></b></p>
+                                <p class="pdf-flight-details__airport-name"><span>${
+                                  segment.departure.airport === 'TBA'
+                                    ? ''
+                                    : segment.departure.airport
+                                }</span></p>
+                                <p class="pdf-flight-details__terminal"><span>${
+                                  segment.departure.terminal === 'TBA'
+                                    ? ''
+                                    : `Terminal ${segment.departure.terminal}`
+                                }</span></p>
+                                <p class="pdf-flight-details__time"><b><span>${
+                                  segment.departure.time
+                                }</span></b></p>
                             </div>
                             <div class="pdf-flight-details__arrival">
                                 <p class="pdf-flight-details__airport-code">
-                                    <b><span>${segment.arrival.iata}</span><span>${segment.arrival.city === 'TBA' ? '' : segment.arrival.city}</span></b>
+                                    <b><span>${
+                                      segment.arrival.iata
+                                    }</span><span>${
+                  segment.arrival.city === 'TBA' ? '' : segment.arrival.city
+                }</span></b>
                                 </p>
-                                <p class="pdf-flight-details__airport-code"><span>${segment.arrival.airport === 'TBA' ? '' : segment.arrival.airport}</span></p>
-                                <p class="pdf-flight-details__terminal"><span>${segment.arrival.terminal === 'TBA' ? '' : `Terminal ${segment.arrival.terminal}`}</span></p>
-                                <p class="pdf-flight-details__time"><b><span>${segment.arrival.time}</span></b></p>
+                                <p class="pdf-flight-details__airport-code"><span>${
+                                  segment.arrival.airport === 'TBA'
+                                    ? ''
+                                    : segment.arrival.airport
+                                }</span></p>
+                                <p class="pdf-flight-details__terminal"><span>${
+                                  segment.arrival.terminal === 'TBA'
+                                    ? ''
+                                    : `Terminal ${segment.arrival.terminal}`
+                                }</span></p>
+                                <p class="pdf-flight-details__time"><b><span>${
+                                  segment.arrival.time
+                                }</span></b></p>
                             </div>
                             <div class="pdf-flight-details__leg">
-                                <p class="pdf-flight-details__stops">${getStopsLabel(segment.stops)}</p>
-                                <p class="pdf-flight-details__durations">${segment.duration}</p>
+                                <p class="pdf-flight-details__stops">${getStopsLabel(
+                                  segment.stops
+                                )}</p>
+                                <p class="pdf-flight-details__durations">${
+                                  segment.duration
+                                }</p>
                             </div>
                         `
               )
@@ -883,6 +981,11 @@ export const generateTourBookingHTML = async (booking) => {
         `
   }
 
+  // Get rest_day_ids from booking (passed from generateTourSummaryPDF)
+  const restDayIds = Array.isArray(booking.rest_day_ids)
+    ? booking.rest_day_ids.map((id) => parseInt(id)).filter((id) => !isNaN(id))
+    : []
+
   // Generate itinerary details from tour-level itineraries - consolidated under single header, sorted by day_number
   const sortedItineraries = (tourPackage?.itineraries || []).sort((a, b) => {
     const dayA = parseInt(a.day_number) || 0
@@ -900,32 +1003,81 @@ export const generateTourBookingHTML = async (booking) => {
             </div>
             <div class="pdf-tour-details__data pdf-tour-details__data--itinerary">
                 ${sortedItineraries
-                  .map(
-                    (itinerary, index) => `
+                  .map((itinerary, index) => {
+                    const dayNumber =
+                      parseInt(itinerary.day_number) || index + 1
+                    const isRestDay = restDayIds.includes(dayNumber)
+                    const dayTitle = isRestDay
+                      ? `${itinerary.title || 'Tour Day'} (Rest Day)`
+                      : itinerary.title || 'Tour Day'
+                    const dayDescription = isRestDay
+                      ? 'Free day for rest and relaxation. No scheduled activities.'
+                      : itinerary.description || 'No description available'
+
+                    return `
                         <div class="pdf-tour-details__package">
                             <div class="pdf-tour-details__package-icon">
                                 <i class="fa-solid fa-calendar"></i>
                             </div>
                             <div class="pdf-tour-details__package-name">
                                 <p class="pdf-tour-details__package-text">
-                                    <b>Day ${itinerary.day_number || index + 1}: ${itinerary.title || 'Tour Day'}</b>
+                                    <b>Day ${dayNumber}: ${dayTitle}</b>
                                 </p>
                             <p class="pdf-tour-details__package-text">
-                                ${itinerary.description || 'No description available'}
+                                ${dayDescription}
                             </p>
                         </div>
                     </div>
                 `
-                  )
+                  })
                   .join('')}
             </div>
         </div>
     `
 
-  // Generate inclusions list items
-  const inclusionsList = Array.isArray(packageDate?.inclusions)
-    ? packageDate.inclusions.map((item) => `<li>${item}</li>`).join('')
-    : '<li>As per package</li>'
+  // Generate inclusions list items from filtered inclusions (already filtered in generateTourSummaryPDF)
+  // Also check if we have inclusion_groups available as a fallback
+  let inclusionsList = ''
+
+  if (
+    Array.isArray(packageDate?.inclusions) &&
+    packageDate.inclusions.length > 0
+  ) {
+    // Use filtered inclusions from packageDate.inclusions (already filtered)
+    inclusionsList = packageDate.inclusions
+      .map((item) => `<li>${item}</li>`)
+      .join('')
+  } else if (
+    Array.isArray(packageDate?.inclusion_groups) &&
+    packageDate.inclusion_groups.length > 0
+  ) {
+    // Fallback: build from inclusion_groups if inclusions array is empty
+    const allInclusions = packageDate.inclusion_groups.reduce((acc, group) => {
+      if (Array.isArray(group.items)) {
+        const groupItems = group.items
+          .map((item) => {
+            // Handle both string items and object items with content property
+            if (typeof item === 'string') {
+              return item.trim()
+            } else if (item && typeof item === 'object' && item.content) {
+              return typeof item.content === 'string'
+                ? item.content.trim()
+                : String(item.content || '').trim()
+            }
+            return String(item || '').trim()
+          })
+          .filter((item) => item.length > 0)
+        return [...acc, ...groupItems]
+      }
+      return acc
+    }, [])
+    inclusionsList =
+      allInclusions.length > 0
+        ? allInclusions.map((item) => `<li>${item}</li>`).join('')
+        : '<li>As per package</li>'
+  } else {
+    inclusionsList = '<li>As per package</li>'
+  }
 
   // Generate exclusions list items
   const exclusionsList = Array.isArray(packageDate?.exclusions)
@@ -938,7 +1090,12 @@ export const generateTourBookingHTML = async (booking) => {
       ? `<div style="margin-bottom: 15px;">
             <h5 style="margin: 0 0 8px 0; font-size: 12px; font-weight: 600; color: #2c3e50; text-transform: uppercase; letter-spacing: 0.5px;">Additional Notes:</h5>
             <ul style="margin: 0; padding-left: 20px;">
-                ${packageDate.notes.map((note) => `<li style="margin-bottom: 5px; line-height: 1.4; font-size: 11px; color: #495057;">${note}</li>`).join('')}
+                ${packageDate.notes
+                  .map(
+                    (note) =>
+                      `<li style="margin-bottom: 5px; line-height: 1.4; font-size: 11px; color: #495057;">${note}</li>`
+                  )
+                  .join('')}
             </ul>
            </div>`
       : `<div style="margin-bottom: 15px;">
@@ -953,7 +1110,12 @@ export const generateTourBookingHTML = async (booking) => {
       ? `<div style="margin-bottom: 15px;">
             <h5 style="margin: 0 0 8px 0; font-size: 12px; font-weight: 600; color: #2c3e50; text-transform: uppercase; letter-spacing: 0.5px;">Payment Terms:</h5>
             <ul style="margin: 0; padding-left: 20px;">
-                ${packageDate.payment_terms.map((term) => `<li style="margin-bottom: 5px; line-height: 1.4; font-size: 11px; color: #495057;">${term}</li>`).join('')}
+                ${packageDate.payment_terms
+                  .map(
+                    (term) =>
+                      `<li style="margin-bottom: 5px; line-height: 1.4; font-size: 11px; color: #495057;">${term}</li>`
+                  )
+                  .join('')}
             </ul>
            </div>`
       : `<div style="margin-bottom: 15px;">
@@ -968,7 +1130,12 @@ export const generateTourBookingHTML = async (booking) => {
       ? `<div style="margin-bottom: 15px;">
             <h5 style="margin: 0 0 8px 0; font-size: 12px; font-weight: 600; color: #2c3e50; text-transform: uppercase; letter-spacing: 0.5px;">Requirements:</h5>
             <ul style="margin: 0; padding-left: 20px;">
-                ${packageDate.requirements.map((req) => `<li style="margin-bottom: 5px; line-height: 1.4; font-size: 11px; color: #495057;">${req}</li>`).join('')}
+                ${packageDate.requirements
+                  .map(
+                    (req) =>
+                      `<li style="margin-bottom: 5px; line-height: 1.4; font-size: 11px; color: #495057;">${req}</li>`
+                  )
+                  .join('')}
             </ul>
            </div>`
       : `<div style="margin-bottom: 15px;">
@@ -993,38 +1160,52 @@ export const generateTourBookingHTML = async (booking) => {
                 <div class="pdf-payment-details__body">
                     <div class="pdf-payment-details__row">
                         <div class="pdf-payment-details__label">Base Price per Person</div>
-                        <div class="pdf-payment-details__value">${formatAmount(pricePerPerson)}</div>
+                        <div class="pdf-payment-details__value">${formatAmount(
+                          pricePerPerson
+                        )}</div>
                     </div>
                     <div class="pdf-payment-details__row">
                         <div class="pdf-payment-details__label">Number of Passengers</div>
-                        <div class="pdf-payment-details__value">${booking.passenger_count || 0}</div>
+                        <div class="pdf-payment-details__value">${
+                          booking.passenger_count || 0
+                        }</div>
                     </div>
                     <div class="pdf-payment-details__row">
                         <div class="pdf-payment-details__label">Base Total</div>
-                        <div class="pdf-payment-details__value">${formatAmount(baseAmount)}</div>
+                        <div class="pdf-payment-details__value">${formatAmount(
+                          baseAmount
+                        )}</div>
                     </div>
                     ${
                       customizationFee > 0
                         ? `
                     <div class="pdf-payment-details__row">
                         <div class="pdf-payment-details__label">Customization Fee</div>
-                        <div class="pdf-payment-details__value">${formatAmount(customizationFee)}</div>
+                        <div class="pdf-payment-details__value">${formatAmount(
+                          customizationFee
+                        )}</div>
                     </div>
                     `
                         : ''
                     }
                     <div class="pdf-payment-details__row">
                         <div class="pdf-payment-details__label">Payment Type</div>
-                        <div class="pdf-payment-details__value">${booking.payment_type || 'N/A'}</div>
+                        <div class="pdf-payment-details__value">${
+                          booking.payment_type || 'N/A'
+                        }</div>
                     </div>
                     <div class="pdf-payment-details__row">
                         <div class="pdf-payment-details__label">Reservation Amount</div>
-                        <div class="pdf-payment-details__value">${formatAmount(reservationAmount)}</div>
+                        <div class="pdf-payment-details__value">${formatAmount(
+                          reservationAmount
+                        )}</div>
                     </div>
                 </div>
                 <div class="pdf-payment-details__footer">
                     <div class="pdf-payment-details__total-label">Total Amount</div>
-                    <div class="pdf-payment-details__total-value">${formatAmount(totalAmount)}</div>
+                    <div class="pdf-payment-details__total-value">${formatAmount(
+                      totalAmount
+                    )}</div>
                 </div>
             </div>
         </div>
@@ -1056,52 +1237,11 @@ export const generateTourBookingHTML = async (booking) => {
         </div>
     `
 
-  // Generate customization details if applicable
-  let customizationDetails = ''
-  if (customization && customizationFee > 0) {
-    const removedGroupIds = customization.removed_inclusion_group_ids
-      ? JSON.parse(customization.removed_inclusion_group_ids)
-      : []
-    const restDayIds = customization.rest_day_ids
-      ? JSON.parse(customization.rest_day_ids)
-      : []
-
-    let customizationItems = []
-
-    if (removedGroupIds.length > 0) {
-      customizationItems.push(
-        `<li><strong>Removed Inclusion Groups:</strong> ${removedGroupIds.join(', ')}</li>`
-      )
-    }
-
-    if (restDayIds.length > 0) {
-      customizationItems.push(
-        `<li><strong>Rest Days:</strong> Day ${restDayIds.join(', ')}</li>`
-      )
-    }
-
-    if (customizationItems.length > 0) {
-      customizationDetails = `
-                <div class="pdf-customization">
-                    <div class="pdf-table-header pdf-table-header--customization">
-                        <div class="pdf-table-header__title">
-                            <i class="fa-solid fa-cogs"></i>
-                            <p>Package Customizations</p>
-                        </div>
-                    </div>
-                    <div class="pdf-customization__data">
-                        <div class="pdf-customization__list">
-                            <h5>Applied Customizations:</h5>
-                            <ul>
-                                ${customizationItems.join('')}
-                            </ul>
-                            <p><strong>Customization Fee:</strong> PHP ${formatAmount(customizationFee)}</p>
-                        </div>
-                    </div>
-                </div>
-            `
-    }
-  }
+  // Customization details section removed - customizations are now applied directly:
+  // - Removed inclusion groups are filtered out from inclusions list
+  // - Rest days are marked in the itinerary section
+  // - Customization fee is shown in payment details
+  const customizationDetails = ''
 
   // Inject values into template
   html = html.replace(/{{baseUrl}}/g, baseUrl)

@@ -1409,6 +1409,7 @@ export const sendFlightUpdate = async (req, res) => {
 
     await insertAdminNotification({
       type: 'flight_update_sent',
+      event_type: 'flight_update_sent', // Required field for database
       message: `Flight update email sent by ${adminName} for booking ${booking_reference}`,
       booking_reference: booking_reference,
       booking_type: 'flight',

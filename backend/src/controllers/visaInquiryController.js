@@ -426,12 +426,14 @@ export const assignVisaInquiry = async (req, res) => {
     // Create notification (omit booking_id to avoid UUID mismatch)
     const { error: notificationError } = await insertAdminNotification({
       type: 'visa_inquiry_assigned',
+      event_type: 'visa_inquiry_assigned', // Required field for database
       message: `Visa inquiry ${inquiry.inquiry_reference} has been assigned to you`,
       booking_reference: inquiry.inquiry_reference,
       assigned_to: assignedTo,
       assigned_by: assignedById,
       booking_type: null,
       booking_id: null,
+      category: 'assignment',
       created_at: new Date().toISOString(),
     })
 
