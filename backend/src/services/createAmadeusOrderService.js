@@ -386,10 +386,61 @@ export async function createAmadeusOrder(bookingReference) {
       ticketingDeadline: ticketingDeadline.toISOString(),
     }
   } catch (error) {
+    // Enhanced error logging to handle different error structures
+    // Amadeus errors can come in various formats, so we need to check multiple places
+    const errorMessage =
+      error?.message ||
+      error?.response?.data?.errors?.[0]?.detail ||
+      error?.response?.data?.errors?.[0]?.title ||
+      error?.response?.data?.description ||
+      error?.description ||
+      (error?.response?.data ? JSON.stringify(error.response.data) : null) ||
+      (typeof error === 'string' ? error : JSON.stringify(error)) ||
+      'Unknown error'
+
+    const errorCode =
+      error?.code ||
+      error?.response?.data?.errors?.[0]?.code ||
+      error?.response?.status ||
+      error?.statusCode ||
+      'N/A'
+
+    const httpStatus = error?.response?.status || error?.status || null
+    const errorSource = error?.response?.data?.errors?.[0]?.source || null
+
     console.error(
       `[AMADEUS ORDER] ❌ CRITICAL FAILURE for ${bookingReference}:`,
-      error.message
+      errorMessage
     )
+    console.error(`[AMADEUS ORDER] Error details:`, {
+      message: errorMessage,
+      code: errorCode,
+      httpStatus: httpStatus,
+      source: errorSource,
+      errorType: error?.constructor?.name || typeof error,
+      hasResponse: !!error?.response,
+      responseData: error?.response?.data || null,
+      fullError:
+        error?.response?.data?.errors ||
+        error?.response?.data ||
+        (error?.stack ? error.stack : error),
+    })
+
+    // Log specific Amadeus error structure if available
+    if (
+      error?.response?.data?.errors &&
+      Array.isArray(error.response.data.errors)
+    ) {
+      error.response.data.errors.forEach((err, index) => {
+        console.error(`[AMADEUS ORDER] Error ${index + 1}:`, {
+          code: err.code,
+          title: err.title,
+          detail: err.detail,
+          source: err.source,
+          status: err.status,
+        })
+      })
+    }
 
     // Handle failure: Issue refund and update status
     try {
