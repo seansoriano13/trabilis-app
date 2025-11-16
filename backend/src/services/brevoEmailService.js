@@ -1591,7 +1591,25 @@ export const sendTourConfirmationEmail = async (bookingInput) => {
       'bytes'
     )
 
+    // Validate API key before sending
+    if (!process.env.BREVO_API_KEY) {
+      throw new Error(
+        'BREVO_API_KEY is not configured. Please set BREVO_API_KEY in your environment variables.'
+      )
+    }
+
+    // Re-initialize API instance with current API key to ensure it's fresh
+    const emailApiInstance = new brevo.TransactionalEmailsApi()
+    emailApiInstance.setApiKey(
+      brevo.TransactionalEmailsApiApiKeys.apiKey,
+      process.env.BREVO_API_KEY
+    )
+
     console.log('🔍 EMAIL DEBUG - Preparing Brevo email')
+    console.log('🔍 EMAIL DEBUG - API Key configured:', !!process.env.BREVO_API_KEY)
+    console.log('🔍 EMAIL DEBUG - API Key length:', process.env.BREVO_API_KEY?.length || 0)
+    console.log('🔍 EMAIL DEBUG - From email:', process.env.BREVO_FROM_EMAIL || process.env.SUPPORT_EMAIL || 'noreply@trabilis.com')
+
     const sendSmtpEmail = new brevo.SendSmtpEmail()
 
     const bookingReference =
@@ -1629,7 +1647,8 @@ export const sendTourConfirmationEmail = async (bookingInput) => {
     ]
 
     console.log('🔍 EMAIL DEBUG - Sending email via Brevo API')
-    const data = await apiInstance.sendTransacEmail(sendSmtpEmail)
+    console.log('🔍 EMAIL DEBUG - Attachment size:', pdfBuffer.length, 'bytes')
+    const data = await emailApiInstance.sendTransacEmail(sendSmtpEmail)
     console.log(
       `✅ EMAIL DEBUG - Tour confirmation email sent to ${email} (Ref: ${bookingReference})`
     )
@@ -1642,6 +1661,26 @@ export const sendTourConfirmationEmail = async (bookingInput) => {
       '❌ EMAIL DEBUG - Error sending tour confirmation email:',
       err
     )
+    
+    // Enhanced error handling for 401 Unauthorized errors
+    const is401Error = err.response?.status === 401 || 
+                       (err.message?.includes('401') || err.message?.includes('status code 401'))
+    
+    if (is401Error) {
+      console.error('❌ EMAIL DEBUG - 401 Unauthorized Error Detected')
+      console.error('❌ EMAIL DEBUG - Possible causes:')
+      console.error('   1. Invalid or expired BREVO_API_KEY')
+      console.error('   2. API key not authorized for your IP address')
+      console.error('   3. Domain authentication issues (DKIM/DMARC not configured)')
+      console.error('   4. API key format is incorrect')
+      console.error('❌ EMAIL DEBUG - Troubleshooting steps:')
+      console.error('   1. Verify BREVO_API_KEY in environment variables')
+      console.error('   2. Check Brevo dashboard for API key status')
+      console.error('   3. Ensure your server IP is whitelisted in Brevo')
+      console.error('   4. Verify domain authentication in Brevo account')
+      console.error('   5. Test API key using: POST /api/test/email/brevo-test')
+    }
+    
     if (bookingDetails) {
       console.error('❌ EMAIL DEBUG - Booking payload snapshot:', {
         bookingReference: bookingDetails.bookingReference,
@@ -1653,9 +1692,17 @@ export const sendTourConfirmationEmail = async (bookingInput) => {
     }
     console.error('❌ EMAIL DEBUG - Error details:', {
       message: err.message,
-      stack: err.stack,
+      status: err.response?.status,
+      statusText: err.response?.statusText,
+      code: err.code,
       name: err.name,
     })
+    
+    // Include response data if available
+    if (err.response?.data) {
+      console.error('❌ EMAIL DEBUG - Brevo API error response:', err.response.data)
+    }
+    
     throw err
   }
 }
@@ -1670,27 +1717,131 @@ export const sendFailureEmail = async ({
   if (!email) throw new Error('Recipient email is required.')
 
   try {
+    // Format search criteria for display
+    const formatSearchCriteria = (criteria) => {
+      if (!criteria) return ''
+
+      const originAirport = criteria.origin
+        ? getAirportFull(criteria.origin)
+        : null
+      const destinationAirport = criteria.destination
+        ? getAirportFull(criteria.destination)
+        : null
+
+      const tripTypeLabel =
+        criteria.tripType === 'oneWay'
+          ? 'One Way'
+          : criteria.tripType === 'roundTrip'
+          ? 'Round Trip'
+          : criteria.tripType || 'N/A'
+
+      const formatDate = (dateStr) => {
+        if (!dateStr) return 'N/A'
+        try {
+          const date = new Date(dateStr)
+          if (isNaN(date.getTime())) return dateStr
+          return date.toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          })
+        } catch {
+          return dateStr
+        }
+      }
+
+      const adults = criteria.travelerCount?.adults || 0
+      const children = criteria.travelerCount?.children || 0
+      const totalTravelers = adults + children
+      const travelerText =
+        totalTravelers === 1
+          ? '1 Traveler'
+          : `${totalTravelers} Travelers (${adults} Adult${adults !== 1 ? 's' : ''}${children > 0 ? `, ${children} Child${children !== 1 ? 'ren' : ''}` : ''})`
+
+      return `
+        <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #dc3545;">
+          <h3 style="margin-top: 0; color: #333; font-size: 18px;">Search Details</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold; width: 140px;">Route:</td>
+              <td style="padding: 8px 0; color: #333;">
+                ${originAirport ? `${originAirport.city} (${originAirport.iata})` : criteria.origin || 'N/A'} 
+                → 
+                ${destinationAirport ? `${destinationAirport.city} (${destinationAirport.iata})` : criteria.destination || 'N/A'}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Trip Type:</td>
+              <td style="padding: 8px 0; color: #333;">${tripTypeLabel}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Departure Date:</td>
+              <td style="padding: 8px 0; color: #333;">${formatDate(criteria.outboundDeparture)}</td>
+            </tr>
+            ${criteria.inboundDeparture
+              ? `
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Return Date:</td>
+              <td style="padding: 8px 0; color: #333;">${formatDate(criteria.inboundDeparture)}</td>
+            </tr>
+            `
+              : ''}
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Travelers:</td>
+              <td style="padding: 8px 0; color: #333;">${travelerText}</td>
+            </tr>
+          </table>
+        </div>
+      `
+    }
+
     const sendSmtpEmail = new brevo.SendSmtpEmail()
 
     sendSmtpEmail.subject = 'Booking Failure Notification'
     sendSmtpEmail.htmlContent = `
+          <!DOCTYPE html>
           <html>
-            <body style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px;">
-              <div style="max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
-                <h2 style="color: #d9534f;">Booking Failed</h2>
-                <p>Dear ${firstName} ${lastName},</p>
-                <p>We regret to inform you that your booking with reference <strong>${bookingReference}</strong> has failed.</p>
-                <p>Please review your search criteria and try again:</p>
-                <pre style="background:#eee; padding:10px; border-radius:4px;">${JSON.stringify(
-                  searchCriteria,
-                  null,
-                  2
-                )}</pre>
-                <p>If you have any questions, please contact our support team at 
-                  <a href="mailto:${process.env.SUPPORT_EMAIL || 'support@trabilis.com'}">${process.env.SUPPORT_EMAIL || 'support@trabilis.com'}</a>.
+            <head>
+              <meta charset="utf-8">
+            </head>
+            <body style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px; margin: 0;">
+              <div style="max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="background: linear-gradient(135deg, #dc3545, #c82333); color: white; padding: 20px; border-radius: 8px 8px 0 0; margin: -30px -30px 30px -30px;">
+                  <h2 style="margin: 0; color: white; font-size: 24px;">❌ Booking Failed</h2>
+                </div>
+                
+                <p style="color: #333; font-size: 16px; line-height: 1.6;">Dear ${firstName} ${lastName},</p>
+                
+                <p style="color: #333; font-size: 16px; line-height: 1.6;">
+                  We regret to inform you that your booking with reference <strong style="color: #dc3545;">${bookingReference}</strong> has failed.
                 </p>
-                <p>Thank you for your understanding.</p>
-                <p>Best regards,<br/>Trabilis Team</p>
+                
+                <p style="color: #333; font-size: 16px; line-height: 1.6;">
+                  Please review your search criteria below and try again:
+                </p>
+                
+                ${formatSearchCriteria(searchCriteria)}
+                
+                <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                  <p style="margin: 0; color: #856404; font-size: 14px;">
+                    <strong>💡 Tip:</strong> If you continue to experience issues, please try adjusting your travel dates or contact our support team for assistance.
+                  </p>
+                </div>
+                
+                <p style="color: #333; font-size: 16px; line-height: 1.6;">
+                  If you have any questions, please contact our support team at 
+                  <a href="mailto:${process.env.SUPPORT_EMAIL || 'lindelatravelctws@gmail.com'}" style="color: #007bff; text-decoration: none;">
+                    ${process.env.SUPPORT_EMAIL || 'lindelatravelctws@gmail.com'}
+                  </a>.
+                </p>
+                
+                <p style="color: #333; font-size: 16px; line-height: 1.6;">Thank you for your understanding.</p>
+                
+                <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 30px;">
+                  Best regards,<br/>
+                  <strong style="color: #333;">Trabilis Team</strong>
+                </p>
               </div>
             </body>
           </html>

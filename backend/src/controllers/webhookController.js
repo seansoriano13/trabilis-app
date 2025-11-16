@@ -7,6 +7,7 @@ import { sendVisaProcessingStartedEmail } from '../services/brevoEmailService.js
 import Pusher from 'pusher'
 import {
   sendTourConfirmationEmail,
+  sendConfirmationEmail,
   generateFlightItineraryPDF,
 } from '../services/brevoEmailService.js'
 import { v4 as uuidv4 } from 'uuid'
@@ -199,450 +200,195 @@ export const handleStripeWebhook = async (req, res) => {
     }
   } else if (product_type === 'TOUR' || type === 'tour_booking_payment') {
     // ===== TOUR LOGIC =====
-    const { data, error } = await supabase
+    // Get booking details first
+    const { data: bookingData, error: fetchError } = await supabase
       .from('tour_bookings')
-      .update({ status: 'CONFIRMED' })
-      .eq('booking_reference', booking_reference)
-      .eq('status', 'PENDING_PAYMENT')
       .select('id, status, package_date_id, passenger_count')
-
-    if (error) {
-      throw new Error(`Database update error: ${error.message}`)
-    }
-
-    if (data && data.length > 0) {
-      console.log(
-        `✅ Database updated for tour booking ${booking_reference}. Status is now CONFIRMED.`
-      )
-
-      // Decrement available slots when payment is confirmed
-      try {
-        const booking = data[0]
-        if (booking.package_date_id && booking.passenger_count) {
-          // Use atomic decrement to prevent race conditions
-          const { data: packageDate, error: fetchError } = await supabase
-            .from('package_dates')
-            .select('available_slots')
-            .eq('id', booking.package_date_id)
-            .single()
-
-          if (fetchError) {
-            console.error(
-              `Error fetching package date for slot decrement: ${fetchError.message}`
-            )
-          } else if (packageDate) {
-            const newSlots = Math.max(
-              0,
-              packageDate.available_slots - booking.passenger_count
-            )
-            const { error: updateError } = await supabase
-              .from('package_dates')
-              .update({ available_slots: newSlots })
-              .eq('id', booking.package_date_id)
-
-            if (updateError) {
-              console.error(
-                `Error decrementing available slots: ${updateError.message}`
-              )
-            } else {
-              console.log(
-                `✅ Decremented ${booking.passenger_count} slots for package_date_id ${booking.package_date_id}. New available slots: ${newSlots}`
-              )
-            }
-          }
-        }
-      } catch (slotError) {
-        console.error('Error in slot decrement process:', slotError)
-        // Don't fail the webhook - slot management error is logged but doesn't block payment confirmation
-      }
-
-      // Auto-assign booking to accounting staff
-      try {
-        const assignmentResult = await autoAssignBooking('tour', data[0].id)
-        if (assignmentResult.success) {
-          console.log(
-            `Tour booking ${data[0].id} auto-assigned to ${assignmentResult.assignedStaff.name}`
-          )
-        } else {
-          console.warn(
-            `Failed to auto-assign tour booking ${data[0].id}:`,
-            assignmentResult.error
-          )
-        }
-      } catch (assignmentError) {
-        console.error('Auto-assignment error:', assignmentError)
-        // Don't fail the booking creation if auto-assignment fails
-      }
-
-      // Send confirmation email (non-blocking with enhanced error handling)
-      sendTourConfirmationEmail(booking_reference)
-        .then(() =>
-          console.log(
-            `✅ Tour confirmation email sent for ${booking_reference}`
-          )
-        )
-        .catch((emailError) => {
-          console.error(
-            `❌ Failed to send tour confirmation email for ${booking_reference}:`,
-            emailError
-          )
-          console.error('Email error details:', {
-            message: emailError.message,
-            stack: emailError.stack,
-            booking_reference,
-            timestamp: new Date().toISOString(),
-          })
-          // TODO: Consider adding to retry queue or notification system
-          // For now, error is logged but doesn't block webhook success
-        })
-
-      // Send real-time notification (non-blocking)
-      try {
-        console.log(
-          `🔔 Creating admin notification for tour booking ${booking_reference}`
-        )
-
-        const pusher = new Pusher({
-          appId: process.env.PUSHER_APP_ID,
-          key: process.env.PUSHER_APP_KEY,
-          secret: process.env.PUSHER_APP_SECRET,
-          cluster: process.env.PUSHER_APP_CLUSTER,
-          useTLS: true,
-        })
-
-        const { error: insertError } = await insertAdminNotification({
-          type: 'new_tour_booking',
-          event_type: 'new_tour_booking', // Required field for database
-          message: `Tour booking confirmed: ${booking_reference}`,
-          booking_reference: booking_reference,
-          pnr: null,
-          booking_type: 'tour',
-          category: 'booking',
-          priority: 'medium',
-          action_url: `/admin/tours/${data[0].id}`,
-          created_at: new Date().toISOString(),
-        })
-
-        if (insertError) {
-          console.error(
-            '❌ Supabase insert error (tour booking):',
-            insertError.message
-          )
-          console.error('Notification payload:', {
-            type: 'new_tour_booking',
-            booking_reference,
-            booking_id: data[0].id,
-          })
-        } else {
-          console.log(
-            `✅ Admin notification created for tour booking ${booking_reference}`
-          )
-        }
-
-        try {
-          await pusher.trigger('admin-notifications', 'new-booking', {
-            bookingReference: booking_reference,
-            pnr: null,
-          })
-          console.log(
-            '✅ Pusher notification sent successfully for tour booking:',
-            booking_reference
-          )
-        } catch (pusherError) {
-          console.error(
-            '❌ Failed to send Pusher notification for tour booking:',
-            pusherError.message
-          )
-        }
-      } catch (notifyErr) {
-        console.error('❌ Failed to send tour booking notification:', notifyErr)
-        // Don't fail the webhook - email is not critical for payment processing
-      }
-    } else {
-      // Check if booking exists to determine the reason
-      const { data: existingBooking, error: checkError } = await supabase
-        .from('tour_bookings')
-        .select('id, status, booking_reference')
-        .eq('booking_reference', booking_reference)
-        .single()
-
-      if (checkError || !existingBooking) {
-        console.error(
-          `❌ Webhook received for tour booking ${booking_reference}, but booking does not exist in database!`
-        )
-      } else if (existingBooking.status === 'CONFIRMED') {
-        console.log(
-          `ℹ️ Webhook received for tour booking ${booking_reference}, but booking is already CONFIRMED (idempotency - safe to ignore).`
-        )
-      } else {
-        console.warn(
-          `⚠️ Webhook received for tour booking ${booking_reference}, but booking status is ${existingBooking.status} (expected PENDING_PAYMENT). Update was skipped.`
-        )
-      }
-    }
-  } else {
-    // ===== FLIGHT LOGIC (SIMPLIFIED - NO BOOKING_REQUESTS) =====
-    // First, check current booking status
-    const { data: existingBooking, error: checkError } = await supabase
-      .from('flight_bookings')
-      .select('id, status, booking_reference, stripe_checkout_id')
       .eq('booking_reference', booking_reference)
       .single()
 
-    if (checkError || !existingBooking) {
-      console.error(`❌ No flight booking found for ${booking_reference}`)
-      console.error(`🔍 DEBUG - Check error:`, checkError?.message)
-      console.error(`🔍 DEBUG - Session ID: ${session.id}`)
+    if (fetchError || !bookingData) {
       console.error(
-        `🔍 DEBUG - Session metadata:`,
-        JSON.stringify(session.metadata, null, 2)
-      )
-      console.error(`🔍 DEBUG - Payment status: ${session.payment_status}`)
-      console.error(
-        `🔍 DEBUG - Session created: ${new Date(
-          session.created * 1000
-        ).toISOString()}`
-      )
-
-      // Try to find any booking with similar reference pattern
-      const { data: similarBookings, error: searchError } = await supabase
-        .from('flight_bookings')
-        .select('booking_reference, status, created_at, stripe_checkout_id')
-        .ilike('booking_reference', `%${booking_reference.slice(-8)}%`)
-        .limit(5)
-
-      if (!searchError && similarBookings && similarBookings.length > 0) {
-        console.error(`🔍 DEBUG - Found similar bookings:`, similarBookings)
-      } else {
-        console.error(`🔍 DEBUG - No similar bookings found`)
-      }
-
-      return res.sendStatus(200) // Acknowledge to prevent retries
-    }
-
-    // Handle different booking states
-    let bookingData
-
-    if (existingBooking.status === 'PAID_PENDING_BOOKING') {
-      // Already paid - trigger Amadeus order creation if not already processing
-      // Check if already processing by looking at status (PROCESSING_ORDER would be caught above)
-      console.log(
-        `ℹ️ Webhook received for flight booking ${booking_reference}, booking is already PAID_PENDING_BOOKING. Triggering Amadeus order creation...`
-      )
-      // Fetch full booking data
-      const { data: fullBooking, error: fetchError } = await supabase
-        .from('flight_bookings')
-        .select('*')
-        .eq('booking_reference', booking_reference)
-        .single()
-
-      if (fetchError || !fullBooking) {
-        console.error(
-          `❌ Failed to fetch booking data for ${booking_reference}:`,
-          fetchError?.message
-        )
-        return res.sendStatus(500)
-      }
-      bookingData = fullBooking
-    } else if (existingBooking.status === 'PROCESSING_ORDER') {
-      console.log(
-        `ℹ️ Webhook received for flight booking ${booking_reference}, booking is already PROCESSING_ORDER. Resuming Amadeus order creation...`
-      )
-      // Proceed by treating as ready for order creation
-      bookingData = existingBooking
-    } else if (
-      ['TICKETED', 'BOOKING_FAILED', 'TICKETING_FAILED', 'CANCELLED'].includes(
-        existingBooking.status
-      )
-    ) {
-      console.log(
-        `ℹ️ Webhook received for flight booking ${booking_reference}, but booking is already in terminal state: ${existingBooking.status}. Skipping (idempotency).`
+        `❌ Tour booking ${booking_reference} not found in database!`
       )
       return res.sendStatus(200)
-    } else if (existingBooking.status === 'PENDING_PAYMENT') {
-      // Update from PENDING_PAYMENT to PAID_PENDING_BOOKING
-      const { data: updatedRows, error: updateError } = await supabase
-        .from('flight_bookings')
-        .update({
-          status: 'PAID_PENDING_BOOKING',
-          stripe_checkout_id: session.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('booking_reference', booking_reference)
-        .eq('status', 'PENDING_PAYMENT') // Only update if still pending payment
-        .select()
-        .order('updated_at', { ascending: false })
-        .limit(1)
+    }
 
-      let updatedBooking =
-        Array.isArray(updatedRows) && updatedRows.length > 0
-          ? updatedRows[0]
-          : null
+    // Update status to CONFIRMED (simple - no idempotency checks)
+    const { error: updateError } = await supabase
+      .from('tour_bookings')
+      .update({ status: 'CONFIRMED' })
+      .eq('booking_reference', booking_reference)
 
-      if (updateError || !updatedBooking) {
-        // If no row was updated, re-fetch to support idempotency/race safety
-        const { data: refetched, error: refetchError } = await supabase
-          .from('flight_bookings')
-          .select('id, status, booking_reference, stripe_checkout_id, updated_at')
-          .eq('booking_reference', booking_reference)
+    if (updateError) {
+      console.error(
+        `❌ Failed to update tour booking status: ${updateError.message}`
+      )
+      return res.sendStatus(500)
+    }
+
+    console.log(`✅ Tour booking ${booking_reference} updated to CONFIRMED`)
+
+    // Decrement available slots
+    if (bookingData.package_date_id && bookingData.passenger_count) {
+      try {
+        const { data: packageDate, error: fetchError } = await supabase
+          .from('package_dates')
+          .select('available_slots')
+          .eq('id', bookingData.package_date_id)
           .single()
 
-        if (
-          !refetchError &&
-          refetched &&
-          (refetched.status === 'PAID_PENDING_BOOKING' ||
-            refetched.status === 'PROCESSING_ORDER')
-        ) {
-          console.warn(
-            `ℹ️ No rows updated for ${booking_reference}, but current status is ${refetched.status}. Treating as idempotent success.`
+        if (!fetchError && packageDate) {
+          const newSlots = Math.max(
+            0,
+            packageDate.available_slots - bookingData.passenger_count
           )
-          updatedBooking = refetched
-        } else {
-          console.error(
-            `❌ Failed to update flight booking ${booking_reference} to PAID_PENDING_BOOKING:`,
-            updateError?.message || refetchError?.message || 'No data returned'
+          await supabase
+            .from('package_dates')
+            .update({ available_slots: newSlots })
+            .eq('id', bookingData.package_date_id)
+          console.log(
+            `✅ Decremented slots for package_date_id ${bookingData.package_date_id}`
           )
-          return res.sendStatus(500)
         }
+      } catch (slotError) {
+        console.error('Error decrementing slots:', slotError)
       }
+    }
 
-      console.log(
-        `✅ Flight booking ${booking_reference} updated from PENDING_PAYMENT to PAID_PENDING_BOOKING.`
+    // Auto-assign booking
+    try {
+      const assignmentResult = await autoAssignBooking('tour', bookingData.id)
+      if (assignmentResult.success) {
+        console.log(
+          `Tour booking ${bookingData.id} auto-assigned to ${assignmentResult.assignedStaff.name}`
+        )
+      }
+    } catch (assignmentError) {
+      console.error('Auto-assignment error:', assignmentError)
+    }
+
+    // Send confirmation email
+    sendTourConfirmationEmail(booking_reference)
+      .then(() =>
+        console.log(`✅ Tour confirmation email sent for ${booking_reference}`)
       )
-      bookingData = updatedBooking
-    } else {
-      console.warn(
-        `⚠️ Webhook received for flight booking ${booking_reference}, but booking exists with unexpected status: ${existingBooking.status}. Skipping.`
-      )
+      .catch((emailError) => {
+        console.error(
+          `❌ Failed to send tour confirmation email:`,
+          emailError.message
+        )
+      })
+
+    // Send admin notification
+    try {
+      const pusher = new Pusher({
+        appId: process.env.PUSHER_APP_ID,
+        key: process.env.PUSHER_APP_KEY,
+        secret: process.env.PUSHER_APP_SECRET,
+        cluster: process.env.PUSHER_APP_CLUSTER,
+        useTLS: true,
+      })
+
+      await insertAdminNotification({
+        type: 'new_tour_booking',
+        event_type: 'new_tour_booking',
+        message: `Tour booking confirmed: ${booking_reference}`,
+        booking_reference: booking_reference,
+        pnr: null,
+        booking_type: 'tour',
+        category: 'booking',
+        priority: 'medium',
+        action_url: `/admin/tours/${bookingData.id}`,
+        created_at: new Date().toISOString(),
+      })
+
+      await pusher.trigger('admin-notifications', 'new-booking', {
+        bookingReference: booking_reference,
+        pnr: null,
+      })
+    } catch (notifyErr) {
+      console.error('Failed to send notification:', notifyErr)
+    }
+  } else {
+    // ===== FLIGHT LOGIC =====
+    // Get booking details
+    const { data: bookingData, error: fetchError } = await supabase
+      .from('flight_bookings')
+      .select('id, status')
+      .eq('booking_reference', booking_reference)
+      .single()
+
+    if (fetchError || !bookingData) {
+      console.error(`❌ Flight booking ${booking_reference} not found!`)
       return res.sendStatus(200)
     }
 
-    if (bookingData) {
-      console.log(
-        `✅ Flight booking ${booking_reference} ready for Amadeus order creation (status: ${bookingData.status}).`
+    // Update status to PAID_PENDING_BOOKING (simple - no idempotency checks)
+    const { data: updatedBooking, error: updateError } = await supabase
+      .from('flight_bookings')
+      .update({
+        status: 'PAID_PENDING_BOOKING',
+        stripe_checkout_id: session.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('booking_reference', booking_reference)
+      .select('status')
+      .single()
+
+    if (updateError || !updatedBooking) {
+      console.error(
+        `❌ Failed to update flight booking status: ${
+          updateError?.message || 'No data returned'
+        }`
       )
+      return res.sendStatus(500)
+    }
 
-      // Immediately notify admin that payment succeeded (before Amadeus order creation)
-      try {
-        const pusher = new Pusher({
-          appId: process.env.PUSHER_APP_ID,
-          key: process.env.PUSHER_APP_KEY,
-          secret: process.env.PUSHER_APP_SECRET,
-          cluster: process.env.PUSHER_APP_CLUSTER,
-          useTLS: true,
-        })
+    console.log(
+      `✅ Flight booking ${booking_reference} updated to ${updatedBooking.status}`
+    )
 
-        const { error: insertError } = await insertAdminNotification({
-          type: 'payment_confirmed',
-          event_type: 'payment_confirmed', // Required field for database
-          message: `Payment confirmed for booking ${booking_reference}. Creating Amadeus order...`,
-          booking_reference: booking_reference,
-          created_at: new Date().toISOString(),
-        })
+    // Send admin notification
+    try {
+      const pusher = new Pusher({
+        appId: process.env.PUSHER_APP_ID,
+        key: process.env.PUSHER_APP_KEY,
+        secret: process.env.PUSHER_APP_SECRET,
+        cluster: process.env.PUSHER_APP_CLUSTER,
+        useTLS: true,
+      })
 
-        if (insertError) {
-          console.error(
-            'Supabase insert error (payment_confirmed):',
-            insertError.message
-          )
-        }
+      await insertAdminNotification({
+        type: 'payment_confirmed',
+        event_type: 'payment_confirmed',
+        message: `Payment confirmed for booking ${booking_reference}. Creating Amadeus order...`,
+        booking_reference: booking_reference,
+        created_at: new Date().toISOString(),
+      })
 
-        try {
-          await pusher.trigger('admin-notifications', 'payment-confirmed', {
-            bookingReference: booking_reference,
-            status: 'PAID_PENDING_BOOKING',
-            nextStep: 'Creating Amadeus order...',
-          })
-          console.log(
-            '✅ Pusher notification sent successfully for flight booking payment:',
-            booking_reference
-          )
-        } catch (pusherError) {
-          console.warn(
-            '⚠️ Pusher notification failed (non-critical):',
-            pusherError.message
-          )
-          // Continue processing - this is not a critical failure
-        }
-      } catch (notifyErr) {
-        console.error(
-          '❌ Failed to send immediate payment notification:',
-          notifyErr
-        )
-      }
+      await pusher.trigger('admin-notifications', 'payment-confirmed', {
+        bookingReference: booking_reference,
+        status: 'PAID_PENDING_BOOKING',
+        nextStep: 'Creating Amadeus order...',
+      })
+    } catch (notifyErr) {
+      console.error('Failed to send notification:', notifyErr)
+    }
 
-      // 🚀 Create Amadeus order asynchronously
-      // Store booking ID for tracking
-      const bookingId = bookingData.id
-
-      // Verify booking status is correct before calling createAmadeusOrder
-      // Add a small delay to ensure database transaction is committed
-      await new Promise((resolve) => setTimeout(resolve, 100))
-
-      // Double-check status before proceeding
-      const { data: statusVerify, error: verifyError } = await supabase
-        .from('flight_bookings')
-        .select('status')
-        .eq('booking_reference', booking_reference)
-        .single()
-
-      if (verifyError || !statusVerify) {
-        console.error(
-          `❌ Failed to verify booking status before Amadeus order creation:`,
-          verifyError?.message
-        )
-        return res.sendStatus(500)
-      }
-
-      if (
-        statusVerify.status !== 'PAID_PENDING_BOOKING' &&
-        statusVerify.status !== 'PROCESSING_ORDER'
-      ) {
-        console.warn(
-          `⚠️ Booking ${booking_reference} status is ${statusVerify.status}, not PAID_PENDING_BOOKING/PROCESSING_ORDER. Skipping Amadeus order creation.`
-        )
-        return res.sendStatus(200)
-      }
-
-      // Create Amadeus order asynchronously with proper error tracking
+    // Create Amadeus order (this will send email when done)
+    // Use the updatedBooking status we already have - no need to verify again
+    if (updatedBooking.status === 'PAID_PENDING_BOOKING') {
       createAmadeusOrder(booking_reference)
-        .then((result) => {
-          console.log(
-            `[WEBHOOK] ✅ Order creation completed for ${booking_reference}`
-          )
+        .then(() => {
+          console.log(`✅ Amadeus order created for ${booking_reference}`)
         })
-        .catch(async (err) => {
-          console.error(
-            `[WEBHOOK] ❌ CRITICAL ERROR during Amadeus order creation for ${booking_reference}:`,
-            err
-          )
-
-          // Notify admin of the failure via Pusher
-          try {
-            const pusher = new Pusher({
-              appId: process.env.PUSHER_APP_ID,
-              key: process.env.PUSHER_APP_KEY,
-              secret: process.env.PUSHER_APP_SECRET,
-              cluster: process.env.PUSHER_APP_CLUSTER,
-              useTLS: true,
-            })
-
-            await pusher.trigger('admin-alerts', 'booking-failed', {
-              bookingReference: booking_reference,
-              bookingId: bookingId,
-              error: err.message,
-              needsManualIntervention: true,
-            })
-          } catch (notifyError) {
-            console.error(
-              '[WEBHOOK] Failed to send failure notification:',
-              notifyError
-            )
-          }
+        .catch((err) => {
+          console.error(`❌ Failed to create Amadeus order:`, err.message)
         })
     } else {
-      console.log(
-        `⚠️ Webhook received for flight booking ${booking_reference}, but no update was made (already processed or not found).`
+      console.warn(
+        `⚠️ Booking ${booking_reference} status is ${updatedBooking.status}, not PAID_PENDING_BOOKING. Skipping Amadeus order creation.`
       )
     }
   }

@@ -1263,7 +1263,7 @@ function TourPackageForm({ mode = 'create' }) {
             className='tour-form__section'
             id='fee-rules'
           >
-            <h2 className='tour-form__section-title'>Cancellation Fee Rules</h2>
+            <h2 className='tour-form__section-title'>Fee Rules</h2>
             <FeeRulesSection
               formData={formData}
               updateFormData={updateFormData}
