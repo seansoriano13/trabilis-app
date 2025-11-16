@@ -408,38 +408,57 @@ export async function createAmadeusOrder(bookingReference) {
     const httpStatus = error?.response?.status || error?.status || null
     const errorSource = error?.response?.data?.errors?.[0]?.source || null
 
-    console.error(
-      `[AMADEUS ORDER] ❌ CRITICAL FAILURE for ${bookingReference}:`,
-      errorMessage
+    // Check for specific Amadeus error codes
+    const amadeusErrors = error?.response?.data?.errors || []
+    const segmentSellFailure = amadeusErrors.find(
+      (err) => err.code === 34651 || err.title === 'SEGMENT SELL FAILURE'
     )
-    console.error(`[AMADEUS ORDER] Error details:`, {
-      message: errorMessage,
-      code: errorCode,
-      httpStatus: httpStatus,
-      source: errorSource,
-      errorType: error?.constructor?.name || typeof error,
-      hasResponse: !!error?.response,
-      responseData: error?.response?.data || null,
-      fullError:
-        error?.response?.data?.errors ||
-        error?.response?.data ||
-        (error?.stack ? error.stack : error),
-    })
+    const isFlightUnavailable = !!segmentSellFailure
 
-    // Log specific Amadeus error structure if available
-    if (
-      error?.response?.data?.errors &&
-      Array.isArray(error.response.data.errors)
-    ) {
-      error.response.data.errors.forEach((err, index) => {
-        console.error(`[AMADEUS ORDER] Error ${index + 1}:`, {
-          code: err.code,
-          title: err.title,
-          detail: err.detail,
-          source: err.source,
-          status: err.status,
-        })
+    if (isFlightUnavailable) {
+      console.error(
+        `[AMADEUS ORDER] ❌ FLIGHT NO LONGER AVAILABLE for ${bookingReference}:`,
+        segmentSellFailure.detail || 'Segment sell failure'
+      )
+      console.error(`[AMADEUS ORDER] Flight availability error:`, {
+        code: segmentSellFailure.code,
+        title: segmentSellFailure.title,
+        detail: segmentSellFailure.detail,
+        source: segmentSellFailure.source,
+        reason:
+          'Flight segment was sold out or price changed between pricing and booking',
       })
+    } else {
+      console.error(
+        `[AMADEUS ORDER] ❌ CRITICAL FAILURE for ${bookingReference}:`,
+        errorMessage
+      )
+      console.error(`[AMADEUS ORDER] Error details:`, {
+        message: errorMessage,
+        code: errorCode,
+        httpStatus: httpStatus,
+        source: errorSource,
+        errorType: error?.constructor?.name || typeof error,
+        hasResponse: !!error?.response,
+        responseData: error?.response?.data || null,
+        fullError:
+          error?.response?.data?.errors ||
+          error?.response?.data ||
+          (error?.stack ? error.stack : error),
+      })
+
+      // Log specific Amadeus error structure if available
+      if (Array.isArray(amadeusErrors) && amadeusErrors.length > 0) {
+        amadeusErrors.forEach((err, index) => {
+          console.error(`[AMADEUS ORDER] Error ${index + 1}:`, {
+            code: err.code,
+            title: err.title,
+            detail: err.detail,
+            source: err.source,
+            status: err.status,
+          })
+        })
+      }
     }
 
     // Handle failure: Issue refund and update status
@@ -529,29 +548,58 @@ export async function createAmadeusOrder(bookingReference) {
         }
       }
 
-      // Send failure email
+      // Send failure email with specific message for flight unavailability
       try {
         const passengerDetails = bookingData?.passenger_details
         const searchCriteria = bookingData?.search_criteria
         const primaryTraveler = passengerDetails?.travelers?.[0]
 
-        if (primaryTraveler) {
+        if (primaryTraveler && primaryTraveler.contact?.emailAddress) {
+          // Customize email message based on error type
+          const failureReason = isFlightUnavailable
+            ? {
+                title: 'Flight No Longer Available',
+                message:
+                  'Unfortunately, the flight you selected is no longer available for booking. This can happen when flights sell out quickly or prices change between when you selected the flight and completed payment.',
+                suggestion:
+                  'We have issued a full refund to your original payment method. Please search for new flights and try booking again.',
+              }
+            : {
+                title: 'Booking Failed',
+                message:
+                  'We encountered an issue while processing your flight booking.',
+                suggestion:
+                  'We have issued a full refund to your original payment method. Please contact our support team if you need assistance.',
+              }
+
           await sendFailureEmail({
             email: primaryTraveler.contact?.emailAddress,
             firstName: primaryTraveler.name?.firstName,
             lastName: primaryTraveler.name?.lastName,
             bookingReference,
             searchCriteria,
+            failureReason: failureReason, // Pass custom failure reason if sendFailureEmail supports it
           })
           console.log(
             `[AMADEUS ORDER] ✅ Failure email sent for ${bookingReference}`
           )
+        } else {
+          console.warn(
+            `[AMADEUS ORDER] ⚠️ Cannot send failure email: missing email address for ${bookingReference}`
+          )
         }
       } catch (emailError) {
         console.error(
-          `[AMADEUS ORDER] Failed to send failure email for ${bookingReference}:`,
-          emailError
+          `[AMADEUS ORDER] ❌ Failed to send failure email for ${bookingReference}:`,
+          emailError.message || emailError
         )
+        // Log specific 401 error details
+        if (emailError.response?.status === 401) {
+          console.error(
+            `[AMADEUS ORDER] ⚠️ BREVO_API_KEY authentication failed. Please check your API key configuration.`
+          )
+        }
+        // Don't throw - we've already handled the refund, email failure is secondary
       }
     } catch (rollbackError) {
       console.error(
@@ -563,7 +611,12 @@ export async function createAmadeusOrder(bookingReference) {
     // Remove from processing set
     processingBookings.delete(bookingReference)
 
-    throw new Error(`Failed to create Amadeus order: ${error.message}`)
+    // Throw with more specific error message
+    const finalErrorMessage = isFlightUnavailable
+      ? `Flight no longer available: ${segmentSellFailure.detail}`
+      : `Failed to create Amadeus order: ${errorMessage}`
+
+    throw new Error(finalErrorMessage)
   }
 }
 
