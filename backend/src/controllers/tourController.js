@@ -1,5 +1,42 @@
 import { supabase } from '../config/supabaseClient.js'
 
+// Helper function to normalize itinerary images
+const normalizeItineraryImages = async (itineraries) => {
+    if (!Array.isArray(itineraries)) return []
+    
+    return Promise.all(itineraries.map(async (itinerary) => {
+        let images = []
+        
+        // Check if image_metadata exists and has data
+        if (itinerary.image_metadata && Array.isArray(itinerary.image_metadata) && itinerary.image_metadata.length > 0) {
+            images = itinerary.image_metadata
+        } else if (itinerary.image_url) {
+            // Auto-convert: migrate single image_url to image_metadata array
+            images = [itinerary.image_url]
+            
+            // Update database to store in image_metadata
+            if (itinerary.id) {
+                try {
+                    await supabase
+                        .from('package_itineraries')
+                        .update({
+                            image_metadata: images,
+                            image_url: null, // Clear old field
+                        })
+                        .eq('id', itinerary.id)
+                } catch (err) {
+                    console.error(`Error migrating image for itinerary ${itinerary.id}:`, err)
+                }
+            }
+        }
+        
+        return {
+            ...itinerary,
+            images: images,
+        }
+    }))
+}
+
 // Get all tours
 export const getAllTours = async (req, res) => {
     try {
@@ -16,7 +53,14 @@ export const getAllTours = async (req, res) => {
             `)
 
         if (error) return res.status(400).json({ error: error.message })
-        res.json(data)
+        
+        // Normalize images for all tours
+        const normalizedData = await Promise.all(data.map(async (tour) => ({
+            ...tour,
+            itineraries: await normalizeItineraryImages(tour.itineraries || [])
+        })))
+        
+        res.json(normalizedData)
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch tours' })
     }
@@ -57,10 +101,13 @@ export const getTour = async (req, res) => {
         ? { ...DEFAULT_FEE_RULES, ...data.fee_rules }
         : { ...DEFAULT_FEE_RULES }
 
+    // Normalize itinerary images: convert image_url to images array
+    const normalizedItineraries = await normalizeItineraryImages(data.itineraries || [])
+
     const transformed = {
         ...data,
         fee_rules: tourFeeRules,
-        itineraries: (data.itineraries || []).sort((a, b) => a.day_number - b.day_number),
+        itineraries: normalizedItineraries.sort((a, b) => a.day_number - b.day_number),
         dates: (data.dates || []).map((d) => {
             const fee_rules = d.fee_rules && typeof d.fee_rules === 'object'
                 ? { ...tourFeeRules, ...d.fee_rules }

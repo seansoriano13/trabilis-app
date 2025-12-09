@@ -86,6 +86,15 @@ export const createTour = async (req, res) => {
 
     // 3️⃣ Insert itineraries at TOUR level (once, not per date!)
     for (const i of itineraries) {
+      // Handle images: accept either images array or image_url (for backward compatibility)
+      let imageMetadata = null
+      if (i.images && Array.isArray(i.images) && i.images.length > 0) {
+        imageMetadata = i.images
+      } else if (i.image_url) {
+        // Backward compatibility: convert single image_url to array
+        imageMetadata = [i.image_url]
+      }
+      
       const { error: itineraryError } = await supabase
         .from('package_itineraries')
         .insert([
@@ -93,7 +102,8 @@ export const createTour = async (req, res) => {
             ...i,
             tour_package_id: tour.id, // ✅ Link to tour, not date
             package_date_id: null, // ✅ Not date-specific
-            image_url: i.image_url || null,
+            image_metadata: imageMetadata,
+            image_url: null,
           },
         ])
 
@@ -106,6 +116,43 @@ export const createTour = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
+}
+
+// Helper function to normalize itinerary images
+const normalizeItineraryImages = async (itineraries) => {
+    if (!Array.isArray(itineraries)) return []
+    
+    return Promise.all(itineraries.map(async (itinerary) => {
+        let images = []
+        
+        // Check if image_metadata exists and has data
+        if (itinerary.image_metadata && Array.isArray(itinerary.image_metadata) && itinerary.image_metadata.length > 0) {
+            images = itinerary.image_metadata
+        } else if (itinerary.image_url) {
+            // Auto-convert: migrate single image_url to image_metadata array
+            images = [itinerary.image_url]
+            
+            // Update database to store in image_metadata
+            if (itinerary.id) {
+                try {
+                    await supabase
+                        .from('package_itineraries')
+                        .update({
+                            image_metadata: images,
+                            image_url: null, // Clear old field
+                        })
+                        .eq('id', itinerary.id)
+                } catch (err) {
+                    console.error(`Error migrating image for itinerary ${itinerary.id}:`, err)
+                }
+            }
+        }
+        
+        return {
+            ...itinerary,
+            images: images,
+        }
+    }))
 }
 
 // Get all tours
@@ -137,7 +184,14 @@ export const getAllTours = async (req, res) => {
       .is('deleted_at', null) // Exclude soft-deleted tours
 
     if (error) return res.status(400).json({ error: error.message })
-    res.json(data)
+    
+    // Normalize images for all tours
+    const normalizedData = await Promise.all(data.map(async (tour) => ({
+        ...tour,
+        itineraries: await normalizeItineraryImages(tour.itineraries || [])
+    })))
+    
+    res.json(normalizedData)
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch tours' })
   }
@@ -180,10 +234,13 @@ export const getTour = async (req, res) => {
       ? { ...DEFAULT_FEE_RULES, ...data.fee_rules }
       : { ...DEFAULT_FEE_RULES }
 
+  // Normalize itinerary images: convert image_url to images array
+  const normalizedItineraries = await normalizeItineraryImages(data.itineraries || [])
+
   const transformed = {
     ...data,
     fee_rules: tourFeeRules,
-    itineraries: (data.itineraries || []).sort(
+    itineraries: normalizedItineraries.sort(
       (a, b) => a.day_number - b.day_number
     ),
     dates: (data.dates || []).map((d) => {
@@ -482,16 +539,28 @@ export const updateTour = async (req, res) => {
 
     // Update or insert itineraries
     for (const i of itineraries) {
+      // Handle images: accept either images array or image_url (for backward compatibility)
+      let imageMetadata = null
+      if (i.images && Array.isArray(i.images) && i.images.length > 0) {
+        imageMetadata = i.images
+      } else if (i.image_url) {
+        // Backward compatibility: convert single image_url to array
+        imageMetadata = [i.image_url]
+      }
+      
+      const updateData = {
+        title: i.title,
+        description: i.description,
+        day_number: i.day_number,
+        image_metadata: imageMetadata,
+        image_url: null, // Clear old field when using new format
+      }
+      
       if (i.id) {
         // Update existing
         await supabase
           .from('package_itineraries')
-          .update({
-            title: i.title,
-            description: i.description,
-            day_number: i.day_number,
-            image_url: i.image_url || null,
-          })
+          .update(updateData)
           .eq('id', i.id)
       } else {
         // Insert new
@@ -500,7 +569,8 @@ export const updateTour = async (req, res) => {
             ...i,
             tour_package_id: id,
             package_date_id: null,
-            image_url: i.image_url || null,
+            image_metadata: imageMetadata,
+            image_url: null,
           },
         ])
       }

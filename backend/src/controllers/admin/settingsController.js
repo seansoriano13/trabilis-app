@@ -106,3 +106,66 @@ export const permanentlyDeleteTour = async (req, res) => {
     res.status(500).json({ error: 'Failed to permanently delete tour' })
   }
 }
+
+/**
+ * Get itinerary image limit setting
+ */
+export const getItineraryImageLimit = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'itinerary_max_images')
+      .single()
+
+    if (error) {
+      // Return default if not found
+      return res.json({ success: true, max: 10 })
+    }
+
+    // Handle both old format (direct number) and new format (object with max)
+    const value = data.value
+    const max = typeof value === 'number' ? value : (value?.max || 10)
+
+    res.json({
+      success: true,
+      max: parseInt(max),
+    })
+  } catch (error) {
+    console.error('Error fetching itinerary image limit:', error)
+    res.status(500).json({ error: 'Failed to fetch itinerary image limit' })
+  }
+}
+
+/**
+ * Update itinerary image limit setting
+ */
+export const updateItineraryImageLimit = async (req, res) => {
+  try {
+    const { max } = req.body
+
+    // Validate input
+    const maxNum = parseInt(max)
+    if (isNaN(maxNum) || maxNum < 1 || maxNum > 50) {
+      return res.status(400).json({
+        error: 'Invalid max value (must be between 1 and 50)',
+      })
+    }
+
+    const { error } = await supabase.from('system_settings').upsert({
+      key: 'itinerary_max_images',
+      value: { max: maxNum },
+    })
+
+    if (error) throw error
+
+    res.json({
+      success: true,
+      message: 'Itinerary image limit updated successfully',
+      max: maxNum,
+    })
+  } catch (error) {
+    console.error('Error updating itinerary image limit:', error)
+    res.status(500).json({ error: 'Failed to update itinerary image limit' })
+  }
+}

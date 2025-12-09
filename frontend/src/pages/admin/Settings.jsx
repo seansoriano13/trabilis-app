@@ -21,6 +21,11 @@ const Settings = () => {
   const [newEmailDelay, setNewEmailDelay] = useState(1)
   const [updating, setUpdating] = useState(false)
 
+  // Itinerary settings state
+  const [itineraryImageLimit, setItineraryImageLimit] = useState(10)
+  const [newItineraryImageLimit, setNewItineraryImageLimit] = useState(10)
+  const [updatingItineraryLimit, setUpdatingItineraryLimit] = useState(false)
+
   const fetchDeletedTours = async () => {
     setLoading(true)
     try {
@@ -165,11 +170,52 @@ const Settings = () => {
     }
   }
 
+  const fetchItineraryImageLimit = async () => {
+    try {
+      const token = localStorage.getItem('adminToken')
+      const response = await axios.get(
+        `${BACKEND_URL}/api/v1/admin/settings/itinerary-image-limit`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      )
+
+      setItineraryImageLimit(response.data.max)
+      setNewItineraryImageLimit(response.data.max)
+    } catch (error) {
+      console.error('Error fetching itinerary image limit:', error)
+    }
+  }
+
+  const handleUpdateItineraryImageLimit = async () => {
+    setUpdatingItineraryLimit(true)
+    try {
+      const token = localStorage.getItem('adminToken')
+      await axios.put(
+        `${BACKEND_URL}/api/v1/admin/settings/itinerary-image-limit`,
+        { max: newItineraryImageLimit },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      )
+
+      setItineraryImageLimit(newItineraryImageLimit)
+      showSuccess('Itinerary image limit updated successfully')
+    } catch (error) {
+      console.error('Error updating itinerary image limit:', error)
+      showError(error.response?.data?.error || 'Failed to update itinerary image limit')
+    } finally {
+      setUpdatingItineraryLimit(false)
+    }
+  }
+
   useEffect(() => {
     if (activeTab === 'recycle-bin') {
       fetchDeletedTours()
     } else if (activeTab === 'email-settings') {
       fetchEmailDelay()
+    } else if (activeTab === 'general') {
+      fetchItineraryImageLimit()
     }
   }, [activeTab])
 
@@ -441,8 +487,45 @@ const Settings = () => {
 
         {activeTab === 'general' && (
           <div className='general-settings-section'>
-            <h2>General Settings</h2>
-            <p className='coming-soon'>Coming soon...</p>
+            <div className='section-header'>
+              <h2>Itinerary Settings</h2>
+              <p className='section-description'>
+                Configure settings for tour itinerary management
+              </p>
+            </div>
+
+            <div className='setting-item'>
+              <label className='setting-label'>
+                Maximum images per itinerary day:
+              </label>
+              <div className='setting-controls'>
+                <input
+                  type='number'
+                  min='1'
+                  max='50'
+                  value={newItineraryImageLimit}
+                  onChange={(e) =>
+                    setNewItineraryImageLimit(parseInt(e.target.value) || 10)
+                  }
+                  className='setting-input'
+                />
+                <AdminPrimaryButton
+                  buttonText={
+                    updatingItineraryLimit ? 'Updating...' : 'Update'
+                  }
+                  onClick={handleUpdateItineraryImageLimit}
+                  disabled={
+                    updatingItineraryLimit ||
+                    newItineraryImageLimit === itineraryImageLimit
+                  }
+                  loading={updatingItineraryLimit}
+                />
+              </div>
+              <p className='setting-help-text'>
+                Current setting: Maximum <strong>{itineraryImageLimit}</strong>{' '}
+                image(s) per itinerary day (range: 1-50)
+              </p>
+            </div>
           </div>
         )}
       </div>

@@ -1,6 +1,42 @@
 .tour-container {
 }
 
+/* Swiper styles for itinerary images */
+.tour-container .swiper {
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+
+.tour-container .swiper-button-next,
+.tour-container .swiper-button-prev {
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(0, 0, 0, 0.3);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.tour-container .swiper-button-next:hover,
+.tour-container .swiper-button-prev:hover {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.tour-container .swiper-button-next::after,
+.tour-container .swiper-button-prev::after {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.tour-container .swiper-pagination-bullet {
+    background: rgba(255, 255, 255, 0.5);
+    opacity: 1;
+}
+
+.tour-container .swiper-pagination-bullet-active {
+    background: rgba(255, 255, 255, 0.9);
+}
+
 .tour-card--destinations {
     background: #ffffff;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);

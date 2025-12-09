@@ -31,6 +31,94 @@ console.log(
   `[BREVO] 🔍 API Key length: ${process.env.BREVO_API_KEY?.length || 0}`
 )
 
+/**
+ * Helper function to handle Brevo API errors with detailed logging
+ * Specifically handles IP authorization errors
+ */
+const handleBrevoError = (err, context = 'sending email') => {
+  const is401Error = err.response?.status === 401 || 
+                     err.status === 401 ||
+                     (err.message?.includes('401') || err.message?.includes('status code 401'))
+  
+  const errorData = err.response?.data || err.data || {}
+  const errorMessage = errorData.message || err.message || 'Unknown error'
+  const errorCode = errorData.code || err.code || 'unknown'
+  
+  // Check for IP authorization error
+  const isIpAuthError = is401Error && (
+    errorMessage.toLowerCase().includes('unrecognised ip') ||
+    errorMessage.toLowerCase().includes('unrecognized ip') ||
+    errorMessage.toLowerCase().includes('ip address') ||
+    errorCode === 'unauthorized'
+  )
+  
+  if (isIpAuthError) {
+    // Extract IP address from error message if available
+    const ipMatch = errorMessage.match(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/)
+    const detectedIp = ipMatch ? ipMatch[0] : 'unknown'
+    
+    console.error('❌ BREVO IP AUTHORIZATION ERROR')
+    console.error('='.repeat(60))
+    console.error(`Context: ${context}`)
+    console.error(`Detected IP: ${detectedIp}`)
+    console.error(`Error Code: ${errorCode}`)
+    console.error(`Error Message: ${errorMessage}`)
+    console.error('')
+    console.error('🔧 RESOLUTION STEPS:')
+    console.error('1. Log in to your Brevo account: https://app.brevo.com')
+    console.error('2. Navigate to: Settings → Security → Authorized IPs')
+    console.error('   Direct link: https://app.brevo.com/security/authorised_ips')
+    console.error(`3. Add the following IP address: ${detectedIp}`)
+    console.error('4. If using a cloud service (Render, Heroku, etc.), you may need to:')
+    console.error('   - Add the current server IP address')
+    console.error('   - Or disable IP restrictions (less secure)')
+    console.error('   - Or use a static IP/VPN service')
+    console.error('')
+    console.error('⚠️  NOTE: If your server uses dynamic IPs, consider:')
+    console.error('   - Using a static IP service')
+    console.error('   - Disabling IP restrictions in Brevo (if acceptable)')
+    console.error('   - Using a proxy/VPN with a static IP')
+    console.error('='.repeat(60))
+    
+    // Create a more helpful error message
+    const helpfulError = new Error(
+      `Brevo IP Authorization Error: Server IP ${detectedIp} is not authorized. ` +
+      `Please add this IP to your Brevo authorized IPs list at ` +
+      `https://app.brevo.com/security/authorised_ips`
+    )
+    helpfulError.code = 'BREVO_IP_UNAUTHORIZED'
+    helpfulError.status = 401
+    helpfulError.originalError = err
+    helpfulError.detectedIp = detectedIp
+    return helpfulError
+  }
+  
+  // Handle other 401 errors
+  if (is401Error) {
+    console.error('❌ BREVO AUTHENTICATION ERROR')
+    console.error('='.repeat(60))
+    console.error(`Context: ${context}`)
+    console.error(`Error Code: ${errorCode}`)
+    console.error(`Error Message: ${errorMessage}`)
+    console.error('')
+    console.error('🔧 POSSIBLE CAUSES:')
+    console.error('1. Invalid or expired BREVO_API_KEY')
+    console.error('2. API key not authorized for your IP address')
+    console.error('3. Domain authentication issues (DKIM/DMARC not configured)')
+    console.error('4. API key format is incorrect')
+    console.error('')
+    console.error('🔧 TROUBLESHOOTING:')
+    console.error('1. Verify BREVO_API_KEY in environment variables')
+    console.error('2. Check Brevo dashboard for API key status')
+    console.error('3. Ensure your server IP is whitelisted in Brevo')
+    console.error('4. Verify domain authentication in Brevo account')
+    console.error('='.repeat(60))
+  }
+  
+  // Return original error if not IP auth error
+  return err
+}
+
 const formatDate = (date) => {
   if (!date) return 'N/A'
   const d = new Date(date)
@@ -110,7 +198,8 @@ export const sendEmail = async ({ to, subject, html }) => {
     return data
   } catch (err) {
     console.error(`❌ Error sending email to ${to}:`, err)
-    throw err
+    const handledError = handleBrevoError(err, `sending email to ${to}`)
+    throw handledError
   }
 }
 
@@ -1398,7 +1487,8 @@ export const sendConfirmationEmail = async (bookingReference) => {
     )
   } catch (err) {
     console.error('❌ Error sending flight confirmation email:', err)
-    throw err
+    const handledError = handleBrevoError(err, `sending flight confirmation email to ${customerEmail}`)
+    throw handledError
   }
 }
 
@@ -1543,7 +1633,8 @@ export const sendFlightUpdateEmail = async (bookingReference) => {
     return { success: true }
   } catch (err) {
     console.error('❌ Error sending flight update email:', err)
-    throw err
+    const handledError = handleBrevoError(err, `sending flight update email to ${customerEmail}`)
+    throw handledError
   }
 }
 
@@ -1662,24 +1753,11 @@ export const sendTourConfirmationEmail = async (bookingInput) => {
       err
     )
     
-    // Enhanced error handling for 401 Unauthorized errors
-    const is401Error = err.response?.status === 401 || 
-                       (err.message?.includes('401') || err.message?.includes('status code 401'))
-    
-    if (is401Error) {
-      console.error('❌ EMAIL DEBUG - 401 Unauthorized Error Detected')
-      console.error('❌ EMAIL DEBUG - Possible causes:')
-      console.error('   1. Invalid or expired BREVO_API_KEY')
-      console.error('   2. API key not authorized for your IP address')
-      console.error('   3. Domain authentication issues (DKIM/DMARC not configured)')
-      console.error('   4. API key format is incorrect')
-      console.error('❌ EMAIL DEBUG - Troubleshooting steps:')
-      console.error('   1. Verify BREVO_API_KEY in environment variables')
-      console.error('   2. Check Brevo dashboard for API key status')
-      console.error('   3. Ensure your server IP is whitelisted in Brevo')
-      console.error('   4. Verify domain authentication in Brevo account')
-      console.error('   5. Test API key using: POST /api/test/email/brevo-test')
-    }
+    // Use the centralized error handler
+    const handledError = handleBrevoError(
+      err, 
+      `sending tour confirmation email to ${bookingDetails?.email || 'unknown'}`
+    )
     
     if (bookingDetails) {
       console.error('❌ EMAIL DEBUG - Booking payload snapshot:', {
@@ -1690,20 +1768,13 @@ export const sendTourConfirmationEmail = async (bookingInput) => {
     } else {
       console.error('❌ EMAIL DEBUG - No booking details were prepared.')
     }
-    console.error('❌ EMAIL DEBUG - Error details:', {
-      message: err.message,
-      status: err.response?.status,
-      statusText: err.response?.statusText,
-      code: err.code,
-      name: err.name,
-    })
     
     // Include response data if available
     if (err.response?.data) {
       console.error('❌ EMAIL DEBUG - Brevo API error response:', err.response.data)
     }
     
-    throw err
+    throw handledError
   }
 }
 
@@ -1865,7 +1936,8 @@ export const sendFailureEmail = async ({
     console.log('✅ Failure email sent via Brevo API:', data)
   } catch (err) {
     console.error('❌ Error sending failure email:', err)
-    throw err
+    const handledError = handleBrevoError(err, `sending failure email to ${email}`)
+    throw handledError
   }
 }
 
@@ -1918,7 +1990,8 @@ export const sendTourFailureEmail = async ({
     console.log('✅ Tour failure email sent via Brevo API:', data)
   } catch (err) {
     console.error('❌ Error sending tour failure email:', err)
-    throw err
+    const handledError = handleBrevoError(err, `sending tour failure email to ${email}`)
+    throw handledError
   }
 }
 

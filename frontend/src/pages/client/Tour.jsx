@@ -4,6 +4,11 @@ import { IoIosArrowUp } from 'react-icons/io'
 import { IoIosArrowDown } from 'react-icons/io'
 import { FaCheck, FaCircleXmark, FaRegFileLines, FaCreditCard, FaCircleCheck } from 'react-icons/fa6'
 import axios from 'axios'
+import { Swiper, SwiperSlide } from 'swiper/react'
+import { Navigation, Pagination } from 'swiper/modules'
+import 'swiper/css'
+import 'swiper/css/navigation'
+import 'swiper/css/pagination'
 import './Tour.css'
 import PrimaryButton from '../../components/client/PrimaryButton'
 import { formatToLongDate } from '../../utils/flightUtils.js'
@@ -210,27 +215,14 @@ function Tour() {
                             </div>
                         ) : (
                             <div className='space-y-4'>
-                                {itinerary.image_url ? (
-                                    <div className='flex flex-col md:flex-row gap-4 md:gap-6'>
-                                        {/* Image on the left */}
-                                        <div className='flex-shrink-0 w-full md:w-80 lg:w-96'>
-                                            <div className='relative group overflow-hidden rounded-xl shadow-lg'>
-                                                <img
-                                                    src={itinerary.image_url}
-                                                    alt={`Day ${itinerary.day_number} - ${itinerary.title}`}
-                                                    className='w-full h-48 md:h-64 lg:h-72 object-cover transition-transform duration-300 group-hover:scale-105'
-                                                    loading='lazy'
-                                                    onError={(e) => {
-                                                        e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzZjNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIFVuYXZhaWxhYmxlPC90ZXh0Pjwvc3ZnPg=='
-                                                        e.target.alt = 'Image unavailable'
-                                                    }}
-                                                />
-                                                <div className='absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300'></div>
-                                            </div>
-                                        </div>
-                                        
-                                        {/* Description on the right */}
-                                        <div className='flex-1 min-w-0'>
+                                {(() => {
+                                    // Get images array (support both images array and image_url for backward compatibility)
+                                    const images = itinerary.images || (itinerary.image_url ? [itinerary.image_url] : [])
+                                    const hasImages = images.length > 0
+                                    
+                                    if (!hasImages) {
+                                        // No images, just show description
+                                        return (
                                             <div className='prose prose-sm max-w-none'>
                                                 <div 
                                                     id={`desc-${itinerary.id}`}
@@ -238,49 +230,130 @@ function Tour() {
                                                 >
                                                     {itinerary.description || 'No description available for this day.'}
                                                 </div>
+                                                {itinerary.description && itinerary.description.length > 200 && (
+                                                    <button
+                                                        className='text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200 flex items-center gap-1 mt-2'
+                                                        onClick={() => {
+                                                            const element = document.getElementById(`desc-${itinerary.id}`)
+                                                            if (element) {
+                                                                element.classList.toggle('line-clamp-3')
+                                                            }
+                                                        }}
+                                                    >
+                                                        <span>Read more</span>
+                                                        <IoIosArrowDown className='text-xs' />
+                                                    </button>
+                                                )}
                                             </div>
-                                            {itinerary.description && itinerary.description.length > 200 && (
-                                                <button
-                                                    className='text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200 flex items-center gap-1 mt-2'
-                                                    onClick={() => {
-                                                        // Add expand/collapse functionality for long descriptions
-                                                        const element = document.getElementById(`desc-${itinerary.id}`)
-                                                        if (element) {
-                                                            element.classList.toggle('line-clamp-3')
-                                                        }
-                                                    }}
-                                                >
-                                                    <span>Read more</span>
-                                                    <IoIosArrowDown className='text-xs' />
-                                                </button>
-                                            )}
+                                        )
+                                    }
+                                    
+                                    // Has images - show with Swiper if multiple, single image if one
+                                    if (images.length === 1) {
+                                        // Single image - no Swiper needed
+                                        return (
+                                            <div className='flex flex-col md:flex-row gap-4 md:gap-6'>
+                                                <div className='flex-shrink-0 w-full md:w-80 lg:w-96'>
+                                                    <div className='relative group overflow-hidden rounded-xl shadow-lg'>
+                                                        <img
+                                                            src={images[0]}
+                                                            alt={`Day ${itinerary.day_number} - ${itinerary.title}`}
+                                                            className='w-full h-48 md:h-64 lg:h-72 object-cover transition-transform duration-300 group-hover:scale-105'
+                                                            loading='lazy'
+                                                            onError={(e) => {
+                                                                e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzZjNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIFVuYXZhaWxhYmxlPC90ZXh0Pjwvc3ZnPg=='
+                                                                e.target.alt = 'Image unavailable'
+                                                            }}
+                                                        />
+                                                        <div className='absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300'></div>
+                                                    </div>
+                                                </div>
+                                                <div className='flex-1 min-w-0'>
+                                                    <div className='prose prose-sm max-w-none'>
+                                                        <div 
+                                                            id={`desc-${itinerary.id}`}
+                                                            className='text-gray-700 leading-relaxed whitespace-pre-line line-clamp-3'
+                                                        >
+                                                            {itinerary.description || 'No description available for this day.'}
+                                                        </div>
+                                                    </div>
+                                                    {itinerary.description && itinerary.description.length > 200 && (
+                                                        <button
+                                                            className='text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200 flex items-center gap-1 mt-2'
+                                                            onClick={() => {
+                                                                const element = document.getElementById(`desc-${itinerary.id}`)
+                                                                if (element) {
+                                                                    element.classList.toggle('line-clamp-3')
+                                                                }
+                                                            }}
+                                                        >
+                                                            <span>Read more</span>
+                                                            <IoIosArrowDown className='text-xs' />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )
+                                    }
+                                    
+                                    // Multiple images - use Swiper
+                                    return (
+                                        <div className='flex flex-col md:flex-row gap-4 md:gap-6'>
+                                            <div className='flex-shrink-0 w-full md:w-80 lg:w-96'>
+                                                <div className='relative group overflow-hidden rounded-xl shadow-lg'>
+                                                    <Swiper
+                                                        modules={[Navigation, Pagination]}
+                                                        navigation
+                                                        pagination={{ clickable: true }}
+                                                        spaceBetween={0}
+                                                        slidesPerView={1}
+                                                        className='w-full h-48 md:h-64 lg:h-72'
+                                                    >
+                                                        {images.map((imageUrl, imgIndex) => (
+                                                            <SwiperSlide key={imgIndex}>
+                                                                <img
+                                                                    src={imageUrl}
+                                                                    alt={`Day ${itinerary.day_number} - ${itinerary.title} - Image ${imgIndex + 1}`}
+                                                                    className='w-full h-full object-cover'
+                                                                    loading='lazy'
+                                                                    onError={(e) => {
+                                                                        e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzZjNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIFVuYXZhaWxhYmxlPC90ZXh0Pjwvc3ZnPg=='
+                                                                        e.target.alt = 'Image unavailable'
+                                                                    }}
+                                                                />
+                                                            </SwiperSlide>
+                                                        ))}
+                                                    </Swiper>
+                                                    <div className='absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none'></div>
+                                                </div>
+                                            </div>
+                                            <div className='flex-1 min-w-0'>
+                                                <div className='prose prose-sm max-w-none'>
+                                                    <div 
+                                                        id={`desc-${itinerary.id}`}
+                                                        className='text-gray-700 leading-relaxed whitespace-pre-line line-clamp-3'
+                                                    >
+                                                        {itinerary.description || 'No description available for this day.'}
+                                                    </div>
+                                                </div>
+                                                {itinerary.description && itinerary.description.length > 200 && (
+                                                    <button
+                                                        className='text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200 flex items-center gap-1 mt-2'
+                                                        onClick={() => {
+                                                            const element = document.getElementById(`desc-${itinerary.id}`)
+                                                            if (element) {
+                                                                element.classList.toggle('line-clamp-3')
+                                                            }
+                                                        }}
+                                                    >
+                                                        <span>Read more</span>
+                                                        <IoIosArrowDown className='text-xs' />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                ) : (
-                                    <div className='prose prose-sm max-w-none'>
-                                        <div 
-                                            id={`desc-${itinerary.id}`}
-                                            className='text-gray-700 leading-relaxed whitespace-pre-line line-clamp-3'
-                                        >
-                                            {itinerary.description || 'No description available for this day.'}
-                                        </div>
-                                        {itinerary.description && itinerary.description.length > 200 && (
-                                            <button
-                                                className='text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200 flex items-center gap-1 mt-2'
-                                                onClick={() => {
-                                                    // Add expand/collapse functionality for long descriptions
-                                                    const element = document.getElementById(`desc-${itinerary.id}`)
-                                                    if (element) {
-                                                        element.classList.toggle('line-clamp-3')
-                                                    }
-                                                }}
-                                            >
-                                                <span>Read more</span>
-                                                <IoIosArrowDown className='text-xs' />
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
+                                    )
+                                })()}
                             </div>
                         )}
                     </div>

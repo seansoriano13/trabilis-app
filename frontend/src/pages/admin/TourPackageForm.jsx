@@ -69,7 +69,7 @@ function TourPackageForm({ mode = 'create' }) {
         inclusion_groups: [],
       },
     ],
-    itineraries: [{ day_number: 1, title: '', description: '', image_url: '' }],
+    itineraries: [{ day_number: 1, title: '', description: '', images: [] }],
     exclusions: [''],
     payment_terms: [''],
     requirements: [''],
@@ -79,12 +79,13 @@ function TourPackageForm({ mode = 'create' }) {
   const [originalFormData, setOriginalFormData] = useState(null)
   const [mainImagePreview, setMainImagePreview] = useState(null)
   const [panellumImagePreview, setPanellumImagePreview] = useState(null)
-  const [itineraryImagePreviews, setItineraryImagePreviews] = useState({})
+  const [itineraryImagePreviews, setItineraryImagePreviews] = useState({}) // { [itinIndex]: { [imageIndex]: previewUrl } }
   const [isLoading, setIsLoading] = useState(isEditMode)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [showUnsavedModal, setShowUnsavedModal] = useState(false)
   const [activeSection, setActiveSection] = useState('general')
+  const [maxItineraryImages, setMaxItineraryImages] = useState(10) // Default, will be fetched from settings
 
   // Section refs for scroll spy
   const sectionRefs = useRef({})
@@ -224,9 +225,22 @@ function TourPackageForm({ mode = 'create' }) {
             day_number: it.day_number || 0,
             title: it.title || '',
             description: it.description || '',
-            image_url: it.image_url || '',
+            images: it.images || (it.image_url ? [it.image_url] : []),
+            image_url: it.image_url || '', // Keep for backward compatibility
           }))
           .sort((a, b) => a.day_number - b.day_number)
+        
+        // Set previews for existing images
+        const previews = {}
+        allItineraries.forEach((it, idx) => {
+          if (it.images && it.images.length > 0) {
+            previews[idx] = {}
+            it.images.forEach((imgUrl, imgIdx) => {
+              previews[idx][imgIdx] = imgUrl // Use actual URL as preview for existing images
+            })
+          }
+        })
+        setItineraryImagePreviews(previews)
 
         const customFeeRules = []
         const tourFeeRules = tour.fee_rules || {
@@ -727,12 +741,12 @@ function TourPackageForm({ mode = 'create' }) {
       return
     }
 
-    const formData = new FormData()
-    formData.append('image', file)
+    const uploadFormData = new FormData()
+    uploadFormData.append('image', file)
     try {
       const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/v1/images/upload-image`,
-        formData,
+        uploadFormData,
         {
           headers: {
             'Content-Type': 'multipart/form-data',
@@ -742,7 +756,34 @@ function TourPackageForm({ mode = 'create' }) {
       const imageUrl = response.data.data.url
       if (field.startsWith('itinerary_')) {
         const itinIndex = parseInt(field.split('_')[1])
-        updateItinerary(itinIndex, 'image_url', imageUrl)
+        // Append new image to images array - use functional update to get current state
+        setFormData((prev) => {
+          const currentItinerary = prev.itineraries[itinIndex]
+          const currentImages = currentItinerary?.images || (currentItinerary?.image_url ? [currentItinerary.image_url] : [])
+          const newImages = [...currentImages, imageUrl]
+          const imageIndex = newImages.length - 1 // Index of the newly added image
+          
+          // Update the itinerary with new images array
+          const updatedItineraries = [...prev.itineraries]
+          updatedItineraries[itinIndex] = {
+            ...updatedItineraries[itinIndex],
+            images: newImages,
+          }
+          
+          // Update preview for the new image
+          setItineraryImagePreviews((prevPreviews) => ({
+            ...prevPreviews,
+            [itinIndex]: {
+              ...(prevPreviews[itinIndex] || {}),
+              [imageIndex]: URL.createObjectURL(file),
+            },
+          }))
+          
+          return {
+            ...prev,
+            itineraries: updatedItineraries,
+          }
+        })
       } else {
         updateFormData(field, imageUrl)
         if (field === 'main_image_url') {
@@ -771,11 +812,47 @@ function TourPackageForm({ mode = 'create' }) {
   const handleItineraryImageChange = (itinIndex, e) => {
     const file = e?.target?.files?.[0]
     if (!file) return
+    
+    // Check max images limit from settings
+    const currentItinerary = formData.itineraries[itinIndex]
+    const currentImages = currentItinerary.images || (currentItinerary.image_url ? [currentItinerary.image_url] : [])
+    
+    if (currentImages.length >= maxItineraryImages) {
+      showError(`Maximum ${maxItineraryImages} images per itinerary day`)
+      return
+    }
+    
     uploadImageToImgBB(file, `itinerary_${itinIndex}`)
-    setItineraryImagePreviews((prev) => ({
-      ...prev,
-      [itinIndex]: URL.createObjectURL(file),
-    }))
+    // Preview will be set in uploadImageToImgBB callback
+  }
+
+  const handleRemoveItineraryImage = (itinIndex, imageIndex) => {
+    const currentItinerary = formData.itineraries[itinIndex]
+    const currentImages = currentItinerary.images || (currentItinerary.image_url ? [currentItinerary.image_url] : [])
+    const newImages = currentImages.filter((_, idx) => idx !== imageIndex)
+    
+    updateItinerary(itinIndex, 'images', newImages)
+    
+    // Remove preview
+    setItineraryImagePreviews((prev) => {
+      const newPreviews = { ...prev }
+      if (newPreviews[itinIndex]) {
+        const itinPreviews = { ...newPreviews[itinIndex] }
+        delete itinPreviews[imageIndex]
+        // Reindex remaining previews
+        const reindexed = {}
+        Object.keys(itinPreviews).forEach((key) => {
+          const oldIdx = parseInt(key)
+          if (oldIdx < imageIndex) {
+            reindexed[oldIdx] = itinPreviews[key]
+          } else if (oldIdx > imageIndex) {
+            reindexed[oldIdx - 1] = itinPreviews[key]
+          }
+        })
+        newPreviews[itinIndex] = reindexed
+      }
+      return newPreviews
+    })
   }
 
   const validateForm = () => {
@@ -864,7 +941,7 @@ function TourPackageForm({ mode = 'create' }) {
           day_number: Number(it.day_number) || 0,
           title: it.title || '',
           description: it.description || '',
-          image_url: it.image_url || '',
+          images: it.images || (it.image_url ? [it.image_url] : []),
         })),
         exclusions: formData.exclusions.filter(Boolean),
         payment_terms: formData.payment_terms.filter(Boolean),
@@ -1359,7 +1436,9 @@ function TourPackageForm({ mode = 'create' }) {
                   updateItinerary={updateItinerary}
                   removeItinerary={removeItinerary}
                   handleItineraryImageChange={handleItineraryImageChange}
+                  handleRemoveItineraryImage={handleRemoveItineraryImage}
                   itineraryImagePreviews={itineraryImagePreviews}
+                  maxImages={maxItineraryImages}
                   canRemove={formData.itineraries.length > 1}
                 />
               ))}
