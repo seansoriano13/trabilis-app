@@ -135,6 +135,19 @@
 .sales-report__summary-card--average::before {
   background: linear-gradient(90deg, #ffc107, #e0a800);
 }
+.sales-report__summary-card--confirmed::before {
+  background: linear-gradient(90deg, #28a745, #1e7e34);
+}
+.sales-report__summary-card--pending::before {
+  background: linear-gradient(90deg, #ffc107, #e0a800);
+}
+.sales-report__summary-card--cancelled::before {
+  background: linear-gradient(90deg, #dc3545, #c82333);
+}
+
+.sales-report__summary-card--perday::before {
+  background: linear-gradient(90deg, #17a2b8, #138496);
+}
 
 .sales-report__summary-icon {
   width: 50px;
@@ -162,6 +175,24 @@
 .sales-report__summary-card--average .sales-report__summary-icon {
   background: linear-gradient(135deg, #ffc107, #e0a800);
   color: black;
+}
+
+.sales-report__summary-card--confirmed .sales-report__summary-icon {
+  background: linear-gradient(135deg, #28a745, #1e7e34);
+  color: white;
+}
+.sales-report__summary-card--pending .sales-report__summary-icon {
+  background: linear-gradient(135deg, #ffc107, #e0a800);
+  color: black;
+}
+.sales-report__summary-card--cancelled .sales-report__summary-icon {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  color: white;
+}
+
+.sales-report__summary-card--perday .sales-report__summary-icon {
+  background: linear-gradient(135deg, #17a2b8, #138496);
+  color: white;
 }
 
 .sales-report__summary-content {
@@ -363,6 +394,27 @@
   border-bottom: 2px solid #dee2e6;
 }
 
+.sales-report__table-header--sortable {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.sales-report__table-header--sortable:hover {
+  background: #e9ecef;
+}
+
+.sales-report__table-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sales-report__sort-indicator {
+  color: black;
+  font-weight: 700;
+}
+
 .sales-report__table-row {
   border-bottom: 1px solid #e9ecef;
   transition: background-color 0.2s ease;
@@ -423,6 +475,102 @@
   padding: 40px;
   color: #6c757d;
   font-style: italic;
+}
+
+/* Agent section */
+.sales-report__agent-section {
+  scroll-margin-top: 90px;
+}
+
+.sales-report__tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.sales-report__tab {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #ced4da;
+  background: #f8f9fa;
+  color: #495057;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sales-report__tab--active {
+  background: #f7d100;
+  border-color: #e6c200;
+  color: #111;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.sales-report__status-badges {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sales-report__status-badge {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sales-report__status-badge--confirmed {
+  background: #e6ffed;
+  color: #2e8b57;
+  border: 1px solid #c3f5d1;
+}
+
+.sales-report__status-badge--pending {
+  background: #fff8e1;
+  color: #b38900;
+  border: 1px solid #ffe199;
+}
+
+.sales-report__status-badge--cancelled {
+  background: #fdecea;
+  color: #c0392b;
+  border: 1px solid #f5c6cb;
+}
+
+.sales-report__agent-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.sales-report__pagination {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.sales-report__pagination-container {
+  display: flex;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  align-items: center;
+}
+
+.sales-report__pagination-container li a {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  color: #495057;
+  cursor: pointer;
+  background: #fff;
+}
+
+.sales-report__pagination--active a {
+  background: #f7d100;
+  border-color: #e6c200;
+  color: #111;
 }
 
 /* Loading & Error States */

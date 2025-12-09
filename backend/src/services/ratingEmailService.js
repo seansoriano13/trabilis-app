@@ -449,7 +449,7 @@ export const sendRatingRequests = async (dryRun = false) => {
 /**
  * Process rating submission from public endpoint
  */
-export const processRatingSubmission = async (token, rating) => {
+export const processRatingSubmission = async (token, rating, comment = null) => {
   try {
     // Validate rating
     if (!rating || rating < 1 || rating > 5) {
@@ -472,13 +472,22 @@ export const processRatingSubmission = async (token, rating) => {
       throw new Error('Rating already submitted')
     }
 
+    // Prepare update data
+    const updateData = {
+      rating: rating,
+      created_at: new Date().toISOString(),
+    }
+
+    // Add comment if provided (trim and set to null if empty)
+    if (comment !== null && comment !== undefined) {
+      const trimmedComment = comment.trim()
+      updateData.comment = trimmedComment || null
+    }
+
     // Update rating
     const { error: updateError } = await supabase
       .from('tour_ratings')
-      .update({
-        rating: rating,
-        created_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', ratingRecord.id)
 
     if (updateError) throw updateError

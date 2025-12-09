@@ -157,9 +157,7 @@ const Ratings = () => {
       showSuccess('Rating email sent')
     } catch (error) {
       console.error('Error resending rating email:', error)
-      showError(
-        error.response?.data?.error || 'Failed to resend rating email'
-      )
+      showError(error.response?.data?.error || 'Failed to resend rating email')
     }
   }
 
@@ -288,6 +286,7 @@ const Ratings = () => {
                   <th className='ratings__table-header'>Tour Name</th>
                   <th className='ratings__table-header'>Passenger</th>
                   <th className='ratings__table-header'>Rating</th>
+                  <th className='ratings__table-header'>Comment</th>
                   <th className='ratings__table-header'>Date</th>
                   <th className='ratings__table-header'>Assigned Staff</th>
                   <th className='ratings__table-header'>Booking Ref</th>
@@ -312,6 +311,9 @@ const Ratings = () => {
                       </td>
                       <td className='ratings__table-cell'>
                         {renderStars(rating.rating)}
+                      </td>
+                      <td className='ratings__table-cell'>
+                        {rating.comment || '—'}
                       </td>
                       <td className='ratings__table-cell'>
                         {new Date(rating.created_at).toLocaleDateString()}

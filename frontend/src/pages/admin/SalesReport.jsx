@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Line } from 'react-chartjs-2'
 import {
   Chart as ChartJS,
@@ -13,6 +13,7 @@ import {
 import './SalesReport.css'
 import axios from 'axios'
 import BookingReferencesModal from '../../components/admin/BookingReferencesModal'
+import ReactPaginate from 'react-paginate'
 import {
   FiDollarSign,
   FiShoppingCart,
@@ -22,6 +23,11 @@ import {
   FiRefreshCw,
   FiBarChart2,
   FiAward,
+  FiCalendar,
+  FiUsers,
+  FiCheckCircle,
+  FiClock,
+  FiXCircle,
 } from 'react-icons/fi'
 import Flatpickr from 'react-flatpickr'
 import 'flatpickr/dist/themes/material_blue.css'
@@ -41,9 +47,83 @@ const SalesReport = () => {
   const [searchLoading, setSearchLoading] = useState(false)
   const [reportData, setReportData] = useState(null)
   const [topTravelers, setTopTravelers] = useState([])
+  const [agentStats, setAgentStats] = useState({ flights: [], tours: [] })
+  const [statusCounts, setStatusCounts] = useState({
+    cancelled: 0,
+    pendingPayment: 0,
+    confirmed: 0,
+  })
+  const [activeAgentTab, setActiveAgentTab] = useState('Flights')
+  const [agentFilter, setAgentFilter] = useState('All')
+  const [minAmount, setMinAmount] = useState('')
+  const [maxAmount, setMaxAmount] = useState('')
+  const [agentPage, setAgentPage] = useState({ Flights: 0, Tours: 0 })
+  const agentPageSize = 10
   const [error, setError] = useState(null)
   const [selectedTraveler, setSelectedTraveler] = useState(null)
   const [topTours, setTopTours] = useState([])
+  const agentSectionRef = useRef(null)
+  const [travelerSearch, setTravelerSearch] = useState('')
+  const [tourSearch, setTourSearch] = useState('')
+
+  const [travelerSort, setTravelerSort] = useState({
+    key: 'rank',
+    direction: 'asc',
+  })
+  const [tourSort, setTourSort] = useState({ key: 'rank', direction: 'asc' })
+  const [agentSort, setAgentSort] = useState({
+    key: 'agentName',
+    direction: 'asc',
+  })
+
+  const normalizeTripType = (tripType) => {
+    if (!tripType) return 'N/A'
+    const lowerCaseTripType = tripType.toLowerCase()
+    if (lowerCaseTripType.includes('round')) {
+      return 'Round Trip'
+    }
+    if (lowerCaseTripType.includes('one')) {
+      return 'One Way'
+    }
+    return tripType // Fallback for any other values
+  }
+
+  const handleSort = (key, sortState, setSortState) => {
+    setSortState({
+      key,
+      direction:
+        sortState.key === key && sortState.direction === 'asc' ? 'desc' : 'asc',
+    })
+  }
+
+  const sortData = (data, sort) => {
+    if (!data) return []
+    return [...data].sort((a, b) => {
+      const valA = a[sort.key]
+      const valB = b[sort.key]
+
+      if (valA < valB) {
+        return sort.direction === 'asc' ? -1 : 1
+      }
+      if (valA > valB) {
+        return sort.direction === 'asc' ? 1 : -1
+      }
+      return 0
+    })
+  }
+
+  const agentOptions = useMemo(
+    () =>
+      (activeAgentTab === 'Flights'
+        ? agentStats.flights
+        : agentStats.tours
+      ).map((a) => (
+        <option key={a.agentId} value={a.agentId}>
+          {a.agentName}
+        </option>
+      )),
+    [activeAgentTab, agentStats]
+  )
 
   // Filters
   const [filters, setFilters] = useState({
@@ -53,6 +133,76 @@ const SalesReport = () => {
   })
 
   const [customRange, setCustomRange] = useState([null, null])
+
+  useEffect(() => {
+    if (filters.dataType === 'Flights') {
+      setActiveAgentTab('Flights')
+      setAgentPage({ Flights: 0, Tours: 0 })
+    } else if (filters.dataType === 'Tours') {
+      setActiveAgentTab('Tours')
+      setAgentPage({ Flights: 0, Tours: 0 })
+    } else {
+      setActiveAgentTab('Flights')
+      setAgentPage({ Flights: 0, Tours: 0 })
+    }
+  }, [filters.dataType])
+
+  const scrollToAgentSection = () => {
+    if (agentSectionRef.current) {
+      agentSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
+  const currentAgentData = activeAgentTab === 'Flights' ? agentStats.flights : agentStats.tours
+
+  const filteredAgentBookings = useMemo(() => {
+    const min = minAmount ? parseFloat(minAmount) : null
+    const max = maxAmount ? parseFloat(maxAmount) : null
+    const bookings = currentAgentData
+      .filter((agent) => agentFilter === 'All' || agent.agentId === agentFilter)
+      .flatMap((agent) =>
+        agent.bookings.map((booking, idx) => ({
+          ...booking,
+          agentName: agent.agentName,
+          agentId: agent.agentId,
+          key: `${agent.agentId}-${idx}-${booking.bookingReference}`,
+        }))
+      )
+      .filter((b) => {
+        const amount = parseFloat(b.amount || 0)
+        if (min !== null && amount < min) return false
+        if (max !== null && amount > max) return false
+        return true
+      })
+
+    const sortedBookings = sortData(bookings, agentSort)
+
+    const start = agentPage[activeAgentTab] * agentPageSize
+    return sortedBookings.slice(start, start + agentPageSize)
+  }, [
+    activeAgentTab,
+    agentFilter,
+    agentPage,
+    agentPageSize,
+    currentAgentData,
+    maxAmount,
+    minAmount,
+    agentSort,
+  ])
+
+  const filteredTotal = useMemo(() => {
+    const min = minAmount ? parseFloat(minAmount) : null
+    const max = maxAmount ? parseFloat(maxAmount) : null
+    return currentAgentData
+      .filter((agent) => agentFilter === 'All' || agent.agentId === agentFilter)
+      .flatMap((agent) => agent.bookings)
+      .filter((b) => {
+        const amount = parseFloat(b.amount || 0)
+        if (min !== null && amount < min) return false
+        if (max !== null && amount > max) return false
+        return true
+      }).length
+  }, [activeAgentTab, agentFilter, currentAgentData, maxAmount, minAmount])
 
   const fetchReportData = async () => {
     if (loading) {
@@ -154,6 +304,14 @@ const SalesReport = () => {
             headers: { Authorization: `Bearer ${token}` },
           }
         ),
+        axios.get(
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/v1/admin/sales-report/agent-stats?${params}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        ),
       ]
 
       // Conditionally fetch top tours when Tours or Both selected
@@ -173,7 +331,8 @@ const SalesReport = () => {
       const responses = await Promise.all(requests)
       const reportRes = responses[0]
       const travelersRes = responses[1]
-      const toursRes = responses[2]
+      const agentStatsRes = responses[2]
+      const toursRes = responses[3]
 
       console.log('Report data received:', reportRes.data)
       console.log('Summary:', reportRes.data?.summary)
@@ -182,6 +341,14 @@ const SalesReport = () => {
 
       setReportData(reportRes.data)
       setTopTravelers(travelersRes.data.topTravelers || [])
+      setAgentStats(agentStatsRes.data?.agentStats || { flights: [], tours: [] })
+      setStatusCounts(
+        agentStatsRes.data?.statusCounts || {
+          cancelled: 0,
+          pendingPayment: 0,
+          confirmed: 0,
+        }
+      )
       setTopTours(toursRes?.data?.topTours || [])
     } catch (error) {
       console.error('Error fetching sales report:', error)
@@ -197,6 +364,8 @@ const SalesReport = () => {
       setError(errorMessage)
       setReportData(null)
       setTopTravelers([])
+      setAgentStats({ flights: [], tours: [] })
+      setStatusCounts({ cancelled: 0, pendingPayment: 0, confirmed: 0 })
     } finally {
       setLoading(false)
       setSearchLoading(false)
@@ -372,6 +541,26 @@ const SalesReport = () => {
     },
   }
 
+  const sortedAndFilteredTravelers = useMemo(() => {
+    return sortData(
+      topTravelers.filter(
+        (t) =>
+          t.name.toLowerCase().includes(travelerSearch.toLowerCase()) ||
+          t.email?.toLowerCase().includes(travelerSearch.toLowerCase())
+      ),
+      travelerSort
+    )
+  }, [topTravelers, travelerSearch, travelerSort])
+
+  const sortedAndFilteredTours = useMemo(() => {
+    return sortData(
+      topTours.filter((t) =>
+        t.title.toLowerCase().includes(tourSearch.toLowerCase())
+      ),
+      tourSort
+    )
+  }, [topTours, tourSearch, tourSort])
+
   return (
     <div className='sales-report'>
       <div className='sales-report__header'>
@@ -414,16 +603,19 @@ const SalesReport = () => {
                 <FiDollarSign size={24} />
               </div>
               <div className='sales-report__summary-content'>
-                <h3>Total Revenue</h3>
+                <h3>Sales Today</h3>
                 <p>
                   ₱
-                  {reportData.summary.totalRevenue.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
+                  {(reportData.summary.salesTodayAmount || 0).toLocaleString(
+                    undefined,
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }
+                  )}
                 </p>
                 <span className='sales-report__summary-label'>
-                  All bookings
+                  Total sales amount today
                 </span>
               </div>
             </div>
@@ -435,27 +627,48 @@ const SalesReport = () => {
               <div className='sales-report__summary-content'>
                 <h3>Total Bookings</h3>
                 <p>{reportData.summary.bookingCount}</p>
-                <span className='sales-report__summary-label'>Completed</span>
+                <span className='sales-report__summary-label'>
+                  Completed in period
+                </span>
               </div>
             </div>
 
-            <div className='sales-report__summary-card sales-report__summary-card--average'>
+            <div className='sales-report__summary-card sales-report__summary-card--confirmed'>
               <div className='sales-report__summary-icon'>
-                <FiTrendingUp size={24} />
+                <FiCheckCircle size={24} />
               </div>
               <div className='sales-report__summary-content'>
-                <h3>Average Booking Value</h3>
-                <p>
-                  ₱
-                  {reportData.summary.averageBookingValue.toLocaleString(
-                    undefined,
-                    {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    }
-                  )}
-                </p>
-                <span className='sales-report__summary-label'>Per booking</span>
+                <h3>Confirmed Bookings</h3>
+                <p>{statusCounts.confirmed}</p>
+                <span className='sales-report__summary-label'>
+                  Across all agents
+                </span>
+              </div>
+            </div>
+
+            <div className='sales-report__summary-card sales-report__summary-card--pending'>
+              <div className='sales-report__summary-icon'>
+                <FiClock size={24} />
+              </div>
+              <div className='sales-report__summary-content'>
+                <h3>Pending Payment</h3>
+                <p>{statusCounts.pendingPayment}</p>
+                <span className='sales-report__summary-label'>
+                  Across all agents
+                </span>
+              </div>
+            </div>
+
+            <div className='sales-report__summary-card sales-report__summary-card--cancelled'>
+              <div className='sales-report__summary-icon'>
+                <FiXCircle size={24} />
+              </div>
+              <div className='sales-report__summary-content'>
+                <h3>Cancelled Bookings</h3>
+                <p>{statusCounts.cancelled}</p>
+                <span className='sales-report__summary-label'>
+                  Across all agents
+                </span>
               </div>
             </div>
           </div>
@@ -578,15 +791,90 @@ const SalesReport = () => {
                   </div>
                 </div>
                 <div className='sales-report__table-container'>
+                  <div className='sales-report__filter-group'>
+                    <input
+                      type='text'
+                      placeholder='Search travelers...'
+                      value={travelerSearch}
+                      onChange={(e) => setTravelerSearch(e.target.value)}
+                      className='sales-report__filter-input'
+                    />
+                  </div>
                   <table className='sales-report__table'>
                     <thead>
                       <tr>
-                        <th className='sales-report__table-header'>Rank</th>
-                        <th className='sales-report__table-header'>Name</th>
-                        <th className='sales-report__table-header'>Email</th>
-                        <th className='sales-report__table-header'>Bookings</th>
-                        <th className='sales-report__table-header'>
+                        <th
+                          className='sales-report__table-header sales-report__table-header--sortable'
+                          onClick={() =>
+                            handleSort('rank', travelerSort, setTravelerSort)
+                          }
+                        >
+                          Rank
+                          {travelerSort.key === 'rank' && (
+                            <span className='sales-report__sort-indicator'>
+                              {travelerSort.direction === 'asc' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </th>
+                        <th
+                          className='sales-report__table-header sales-report__table-header--sortable'
+                          onClick={() =>
+                            handleSort('name', travelerSort, setTravelerSort)
+                          }
+                        >
+                          Name
+                          {travelerSort.key === 'name' && (
+                            <span className='sales-report__sort-indicator'>
+                              {travelerSort.direction === 'asc' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </th>
+                        <th
+                          className='sales-report__table-header sales-report__table-header--sortable'
+                          onClick={() =>
+                            handleSort('email', travelerSort, setTravelerSort)
+                          }
+                        >
+                          Email
+                          {travelerSort.key === 'email' && (
+                            <span className='sales-report__sort-indicator'>
+                              {travelerSort.direction === 'asc' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </th>
+                        <th
+                          className='sales-report__table-header sales-report__table-header--sortable'
+                          onClick={() =>
+                            handleSort(
+                              'bookingCount',
+                              travelerSort,
+                              setTravelerSort
+                            )
+                          }
+                        >
+                          Bookings
+                          {travelerSort.key === 'bookingCount' && (
+                            <span className='sales-report__sort-indicator'>
+                              {travelerSort.direction === 'asc' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </th>
+                        <th
+                          className='sales-report__table-header sales-report__table-header--sortable'
+                          onClick={() =>
+                            handleSort(
+                              'totalRevenue',
+                              travelerSort,
+                              setTravelerSort
+                            )
+                          }
+                        >
                           Total Revenue
+                          {travelerSort.key === 'totalRevenue' && (
+                            <span className='sales-report__sort-indicator'>
+                              {travelerSort.direction === 'asc' ? '↑' : '↓'}
+                            </span>
+                          )}
                         </th>
                         <th className='sales-report__table-header'>
                           Booking References
@@ -594,8 +882,8 @@ const SalesReport = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {topTravelers.length > 0 ? (
-                        topTravelers.map((traveler) => (
+                      {sortedAndFilteredTravelers.length > 0 ? (
+                        sortedAndFilteredTravelers.map((traveler) => (
                           <tr
                             key={traveler.rank}
                             className='sales-report__table-row'
@@ -671,36 +959,328 @@ const SalesReport = () => {
             </div>
           </div>
           <div className='sales-report__table-container'>
+            <div className='sales-report__filter-group'>
+              <input
+                type='text'
+                placeholder='Search tours...'
+                value={tourSearch}
+                onChange={(e) => setTourSearch(e.target.value)}
+                className='sales-report__filter-input'
+              />
+            </div>
             <table className='sales-report__table'>
               <thead>
                 <tr>
-                  <th className='sales-report__table-header'>Rank</th>
-                  <th className='sales-report__table-header'>Package</th>
-                  <th className='sales-report__table-header'>Bookings</th>
-                  <th className='sales-report__table-header'>Total Revenue</th>
+                  <th
+                    className='sales-report__table-header sales-report__table-header--sortable'
+                    onClick={() => handleSort('rank', tourSort, setTourSort)}
+                  >
+                    Rank
+                    {tourSort.key === 'rank' && (
+                      <span className='sales-report__sort-indicator'>
+                        {tourSort.direction === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </th>
+                  <th
+                    className='sales-report__table-header sales-report__table-header--sortable'
+                    onClick={() => handleSort('title', tourSort, setTourSort)}
+                  >
+                    Package
+                    {tourSort.key === 'title' && (
+                      <span className='sales-report__sort-indicator'>
+                        {tourSort.direction === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </th>
+                  <th
+                    className='sales-report__table-header sales-report__table-header--sortable'
+                    onClick={() =>
+                      handleSort('bookingCount', tourSort, setTourSort)
+                    }
+                  >
+                    Bookings
+                    {tourSort.key === 'bookingCount' && (
+                      <span className='sales-report__sort-indicator'>
+                        {tourSort.direction === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </th>
+                  <th
+                    className='sales-report__table-header sales-report__table-header--sortable'
+                    onClick={() =>
+                      handleSort('totalRevenue', tourSort, setTourSort)
+                    }
+                  >
+                    Total Revenue
+                    {tourSort.key === 'totalRevenue' && (
+                      <span className='sales-report__sort-indicator'>
+                        {tourSort.direction === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {topTours?.length > 0 ? (
-                  topTours.map((tour) => (
+                {sortedAndFilteredTours?.length > 0 ? (
+                  sortedAndFilteredTours.map((tour) => (
                     <tr key={tour.rank} className='sales-report__table-row'>
-                      <td className='sales-report__table-cell sales-report__table-cell--rank'>{tour.rank}</td>
+                      <td className='sales-report__table-cell sales-report__table-cell--rank'>
+                        {tour.rank}
+                      </td>
                       <td className='sales-report__table-cell'>{tour.title}</td>
-                      <td className='sales-report__table-cell'>{tour.bookingCount}</td>
+                      <td className='sales-report__table-cell'>
+                        {tour.bookingCount}
+                      </td>
                       <td className='sales-report__table-cell sales-report__table-cell--amount'>
-                        ₱{(tour.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ₱
+                        {(tour.totalRevenue || 0).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan='4' className='sales-report__table-cell sales-report__table-cell--no-data'>
+                    <td
+                      colSpan='4'
+                      className='sales-report__table-cell sales-report__table-cell--no-data'
+                    >
                       No tour packages found
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Sales per Agent Section */}
+      {reportData?.summary && (
+        <div className='sales-report__section sales-report__agent-section' ref={agentSectionRef}>
+          <div className='sales-report__section-header'>
+            <div className='sales-report__section-title'>
+              <FiUsers size={24} />
+              <h2>Sales per Agent</h2>
+            </div>
+            <div className='sales-report__status-badges'>
+              <span className='sales-report__status-badge sales-report__status-badge--confirmed'>
+                Confirmed: {statusCounts.confirmed}
+              </span>
+              <span className='sales-report__status-badge sales-report__status-badge--pending'>
+                Pending Payment: {statusCounts.pendingPayment}
+              </span>
+              <span className='sales-report__status-badge sales-report__status-badge--cancelled'>
+                Cancelled: {statusCounts.cancelled}
+              </span>
+            </div>
+          </div>
+
+          <div className='sales-report__agent-filters'>
+            <div className='sales-report__filter-group'>
+              <label>Agent</label>
+              <select
+                value={agentFilter}
+                onChange={(e) => {
+                  setAgentFilter(e.target.value)
+                  setAgentPage((prev) => ({ ...prev, [activeAgentTab]: 0 }))
+                }}
+                className='sales-report__filter-select'
+              >
+                <option value='All'>All Agents</option>
+                {agentOptions}
+              </select>
+            </div>
+            <div className='sales-report__filter-group'>
+              <label>Min Amount</label>
+              <input
+                type='number'
+                value={minAmount}
+                onChange={(e) => {
+                  setMinAmount(e.target.value)
+                  setAgentPage((prev) => ({ ...prev, [activeAgentTab]: 0 }))
+                }}
+                className='sales-report__filter-input'
+                placeholder='₱0'
+              />
+            </div>
+            <div className='sales-report__filter-group'>
+              <label>Max Amount</label>
+              <input
+                type='number'
+                value={maxAmount}
+                onChange={(e) => {
+                  setMaxAmount(e.target.value)
+                  setAgentPage((prev) => ({ ...prev, [activeAgentTab]: 0 }))
+                }}
+                className='sales-report__filter-input'
+                placeholder='₱100,000'
+              />
+            </div>
+          </div>
+
+          <div className='sales-report__tabs'>
+            {(filters.dataType === 'Flights' || filters.dataType === 'Both') && (
+              <button
+                className={`sales-report__tab ${activeAgentTab === 'Flights' ? 'sales-report__tab--active' : ''}`}
+                onClick={() => setActiveAgentTab('Flights')}
+              >
+                Flights
+              </button>
+            )}
+            {(filters.dataType === 'Tours' || filters.dataType === 'Both') && (
+              <button
+                className={`sales-report__tab ${activeAgentTab === 'Tours' ? 'sales-report__tab--active' : ''}`}
+                onClick={() => setActiveAgentTab('Tours')}
+              >
+                Tours
+              </button>
+            )}
+          </div>
+
+          <div className='sales-report__table-container'>
+            <table className='sales-report__table'>
+              <thead>
+                <tr>
+                  <th
+                    className='sales-report__table-header sales-report__table-header--sortable'
+                    onClick={() =>
+                      handleSort('agentName', agentSort, setAgentSort)
+                    }
+                  >
+                    Agent
+                    {agentSort.key === 'agentName' && (
+                      <span className='sales-report__sort-indicator'>
+                        {agentSort.direction === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </th>
+                  <th
+                    className='sales-report__table-header sales-report__table-header--sortable'
+                    onClick={() =>
+                      handleSort(
+                        'destinationCountry',
+                        agentSort,
+                        setAgentSort
+                      )
+                    }
+                  >
+                    {activeAgentTab === 'Tours' ? 'Country' : 'Destination'}
+                    {agentSort.key === 'destinationCountry' && (
+                      <span className='sales-report__sort-indicator'>
+                        {agentSort.direction === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </th>
+                  <th
+                    className='sales-report__table-header sales-report__table-header--sortable'
+                    onClick={() => handleSort('title', agentSort, setAgentSort)}
+                  >
+                    {activeAgentTab === 'Tours' ? 'Title' : 'Trip Type'}
+                    {agentSort.key === 'title' && (
+                      <span className='sales-report__sort-indicator'>
+                        {agentSort.direction === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </th>
+                  <th
+                    className='sales-report__table-header sales-report__table-header--sortable'
+                    onClick={() =>
+                      handleSort('bookingReference', agentSort, setAgentSort)
+                    }
+                  >
+                    Booking Ref
+                    {agentSort.key === 'bookingReference' && (
+                      <span className='sales-report__sort-indicator'>
+                        {agentSort.direction === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </th>
+                  <th
+                    className='sales-report__table-header sales-report__table-header--sortable'
+                    onClick={() => handleSort('amount', agentSort, setAgentSort)}
+                  >
+                    Amount
+                    {agentSort.key === 'amount' && (
+                      <span className='sales-report__sort-indicator'>
+                        {agentSort.direction === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </th>
+                  <th
+                    className='sales-report__table-header sales-report__table-header--sortable'
+                    onClick={() => handleSort('status', agentSort, setAgentSort)}
+                  >
+                    Status
+                    {agentSort.key === 'status' && (
+                      <span className='sales-report__sort-indicator'>
+                        {agentSort.direction === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAgentBookings.map((booking) => (
+                  <tr className='sales-report__table-row' key={booking.key}>
+                    <td className='sales-report__table-cell'>
+                      {booking.agentName}
+                    </td>
+                    <td className='sales-report__table-cell'>
+                      {activeAgentTab === 'Tours'
+                        ? booking.destinationCountry
+                        : booking.destinationCountry}
+                    </td>
+                                        <td className='sales-report__table-cell'>
+                                          {activeAgentTab === 'Tours'
+                                            ? booking.title || 'N/A'
+                                            : normalizeTripType(booking.tripType)}
+                                        </td>
+                    <td className='sales-report__table-cell'>
+                      {booking.bookingReference}
+                    </td>
+                    <td className='sales-report__table-cell sales-report__table-cell--amount'>
+                      ₱
+                      {(booking.amount || 0).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </td>
+                    <td className='sales-report__table-cell'>{booking.status}</td>
+                  </tr>
+                ))}
+
+                {filteredTotal === 0 && (
+                  <tr>
+                    <td
+                      className='sales-report__table-cell sales-report__table-cell--no-data'
+                      colSpan='6'
+                    >
+                      No data found for {activeAgentTab.toLowerCase()}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className='sales-report__pagination'>
+            <ReactPaginate
+              previousLabel={'← Previous'}
+              nextLabel={'Next →'}
+              breakLabel={'...'}
+              pageCount={Math.ceil(filteredTotal / agentPageSize) || 1}
+              forcePage={agentPage[activeAgentTab]}
+              onPageChange={({ selected }) =>
+                setAgentPage((prev) => ({ ...prev, [activeAgentTab]: selected }))
+              }
+              containerClassName={'sales-report__pagination-container'}
+              activeClassName={'sales-report__pagination--active'}
+              pageRangeDisplayed={3}
+              marginPagesDisplayed={1}
+            />
           </div>
         </div>
       )}

@@ -1,6 +1,13 @@
 import { supabase } from '../../config/supabaseClient.js'
 import ExcelJS from 'exceljs'
 
+const FLIGHT_CONFIRMED_STATUSES = ['BOOKED', 'TICKETED']
+const FLIGHT_PENDING_STATUSES = ['PENDING_PAYMENT', 'PAID_PENDING_BOOKING']
+const FLIGHT_CANCELLED_STATUSES = ['CANCELLED']
+const TOUR_CONFIRMED_STATUSES = ['CONFIRMED']
+const TOUR_PENDING_STATUSES = ['PENDING_PAYMENT']
+const TOUR_CANCELLED_STATUSES = ['CANCELLED']
+
 /**
  * Get sales report with analytics
  * Query params: startDate, endDate, flightClass, dataType (Flights | Tours | Both)
@@ -94,14 +101,14 @@ export const getSalesReport = async (req, res) => {
       })
     }
 
-    // Calculate summary statistics
-    const totalRevenue = filteredBookings.reduce(
-      (sum, b) => sum + parseFloat(b.total_amount || 0),
-      0
-    )
-    const bookingCount = filteredBookings.length
-    const averageBookingValue =
-      bookingCount > 0 ? totalRevenue / bookingCount : 0
+  // Calculate summary statistics
+  const totalRevenue = filteredBookings.reduce(
+    (sum, b) => sum + parseFloat(b.total_amount || 0),
+    0
+  )
+  const bookingCount = filteredBookings.length
+  const averageBookingValue =
+    bookingCount > 0 ? totalRevenue / bookingCount : 0
 
     // Calculate revenue trends (grouped by date)
     const trendMap = new Map()
@@ -133,9 +140,19 @@ export const getSalesReport = async (req, res) => {
       trendMap.set(date, current)
     })
 
-    const revenueTrends = Array.from(trendMap.values()).sort(
-      (a, b) => new Date(a.date) - new Date(b.date)
-    )
+  const revenueTrends = Array.from(trendMap.values()).sort(
+    (a, b) => new Date(a.date) - new Date(b.date)
+  )
+
+  // Sales today (literal sales amount today)
+  const todayISO = new Date().toISOString().split('T')[0]
+  const salesTodayAmount = filteredBookings.reduce((sum, b) => {
+    const dateStr = (b.created_at || b.updated_at || '').toString().split('T')[0]
+    if (dateStr === todayISO) {
+      return sum + parseFloat(b.total_amount || 0)
+    }
+    return sum
+  }, 0)
 
     console.log(
       `Sales Report: Found ${bookingCount} bookings, ${revenueTrends.length} date points`
@@ -160,6 +177,7 @@ export const getSalesReport = async (req, res) => {
         totalRevenue,
         bookingCount,
         averageBookingValue,
+        salesTodayAmount,
         excludedBookingCount: excludedBookings.length,
         excludedRevenue,
       },
@@ -341,6 +359,230 @@ export const getTopTours = async (req, res) => {
   } catch (error) {
     console.error('Error fetching top tours:', error)
     res.status(500).json({ error: 'Failed to fetch top tours' })
+  }
+}
+
+/**
+ * Get sales grouped by agent with status counters for flights and tours
+ * Query params: startDate, endDate, flightClass, dataType (Flights | Tours | Both)
+ */
+export const getAgentSalesStats = async (req, res) => {
+  try {
+    const { startDate, endDate, flightClass, dataType = 'Both' } = req.query
+    const includeFlights = dataType === 'Flights' || dataType === 'Both'
+    const includeTours = dataType === 'Tours' || dataType === 'Both'
+
+    const statusCounts = {
+      cancelled: 0,
+      pendingPayment: 0,
+      confirmed: 0,
+    }
+
+    // Preload admin names for display
+    const { data: adminData, error: adminError } = await supabase
+      .from('admins')
+      .select('id, email, first_name, last_name')
+    if (adminError) throw adminError
+
+    const adminMap = new Map(
+      (adminData || []).map((a) => [
+        a.id,
+        a.first_name || a.last_name
+          ? `${a.first_name || ''} ${a.last_name || ''}`.trim()
+          : a.email,
+      ])
+    )
+
+    const agentFlightMap = new Map()
+    const agentTourMap = new Map()
+
+    const normalizeAgent = (agentId) => ({
+      id: agentId || 'unassigned',
+      name: adminMap.get(agentId) || 'Unassigned',
+    })
+
+    // Flights
+    if (includeFlights) {
+      let flightQuery = supabase
+        .from('flight_bookings')
+        .select('*')
+        .in('status', [
+          ...FLIGHT_CONFIRMED_STATUSES,
+          ...FLIGHT_PENDING_STATUSES,
+          ...FLIGHT_CANCELLED_STATUSES,
+        ])
+
+      if (startDate) flightQuery = flightQuery.gte('created_at', startDate)
+      if (endDate) flightQuery = flightQuery.lte('created_at', endDate)
+
+      const { data: flightData, error: flightError } = await flightQuery
+      if (flightError) throw flightError
+
+      let filteredFlights = flightData || []
+      if (flightClass && flightClass !== 'All') {
+        const normalizedClass = flightClass.toUpperCase().replace(/_/g, '_')
+        filteredFlights = filteredFlights.filter((booking) => {
+          try {
+            const offer =
+              typeof booking.amadeus_flight_offer === 'string'
+                ? JSON.parse(booking.amadeus_flight_offer)
+                : booking.amadeus_flight_offer || {}
+            const travelerPricings = offer.travelerPricings || []
+            return travelerPricings.some((tp) =>
+              tp.fareDetailsBySegment?.some(
+                (fd) => fd.cabin === normalizedClass
+              )
+            )
+          } catch (err) {
+            console.warn(
+              `Skipping flight booking ${booking.booking_reference} due to parse error`,
+              err.message
+            )
+            return false
+          }
+        })
+      }
+
+      filteredFlights.forEach((booking) => {
+        const amount = parseFloat(booking.total_amount || 0)
+        const agent = normalizeAgent(booking.assigned_to)
+
+        // Status counters
+        if (FLIGHT_CANCELLED_STATUSES.includes(booking.status)) {
+          statusCounts.cancelled += 1
+        } else if (FLIGHT_PENDING_STATUSES.includes(booking.status)) {
+          statusCounts.pendingPayment += 1
+        } else if (FLIGHT_CONFIRMED_STATUSES.includes(booking.status)) {
+          statusCounts.confirmed += 1
+        }
+
+        let offer = booking.amadeus_flight_offer || {}
+        try {
+          offer =
+            typeof booking.amadeus_flight_offer === 'string'
+              ? JSON.parse(booking.amadeus_flight_offer)
+              : booking.amadeus_flight_offer || {}
+        } catch (parseError) {
+          console.warn(
+            `Failed to parse amadeus_flight_offer for ${booking.booking_reference}: ${parseError.message}`
+          )
+          offer = {}
+        }
+        const itineraries = offer?.itineraries || []
+        const firstItinerary = itineraries[0]
+        const lastSegment =
+          firstItinerary?.segments?.[firstItinerary.segments.length - 1]
+        const destinationCountry =
+          booking.search_criteria?.destination ||
+          lastSegment?.arrival?.iataCode ||
+          'N/A'
+        const tripType =
+          booking.search_criteria?.tripType ||
+          (itineraries.length > 1 ? 'ROUND_TRIP' : 'ONE_WAY')
+
+        const existing = agentFlightMap.get(agent.id) || {
+          agentId: agent.id,
+          agentName: agent.name,
+          bookingCount: 0,
+          totalRevenue: 0,
+          bookings: [],
+        }
+
+        existing.bookingCount += 1
+        existing.totalRevenue += amount
+        existing.bookings.push({
+          bookingReference: booking.booking_reference,
+          destinationCountry,
+          tripType,
+          amount,
+          status: booking.status,
+          created_at: booking.created_at,
+        })
+
+        agentFlightMap.set(agent.id, existing)
+      })
+    }
+
+    // Tours
+    if (includeTours) {
+      let tourQuery = supabase
+        .from('tour_bookings')
+        .select(
+          `*,
+           package_dates (
+             id,
+             tour_packages (title, destination_country)
+           )
+          `
+        )
+        .in('status', [
+          ...TOUR_CONFIRMED_STATUSES,
+          ...TOUR_PENDING_STATUSES,
+          ...TOUR_CANCELLED_STATUSES,
+        ])
+
+      if (startDate) tourQuery = tourQuery.gte('created_at', startDate)
+      if (endDate) tourQuery = tourQuery.lte('created_at', endDate)
+
+      const { data: tourData, error: tourError } = await tourQuery
+      if (tourError) throw tourError
+
+      tourData.forEach((booking) => {
+        const amount = parseFloat(booking.total_amount || 0)
+        const agent = normalizeAgent(booking.assigned_to)
+
+        if (TOUR_CANCELLED_STATUSES.includes(booking.status)) {
+          statusCounts.cancelled += 1
+        } else if (TOUR_PENDING_STATUSES.includes(booking.status)) {
+          statusCounts.pendingPayment += 1
+        } else if (TOUR_CONFIRMED_STATUSES.includes(booking.status)) {
+          statusCounts.confirmed += 1
+        }
+
+        const destinationCountry =
+          booking.package_dates?.tour_packages?.destination_country || 'N/A'
+        const title = booking.package_dates?.tour_packages?.title || 'Untitled'
+
+        const existing = agentTourMap.get(agent.id) || {
+          agentId: agent.id,
+          agentName: agent.name,
+          bookingCount: 0,
+          totalRevenue: 0,
+          bookings: [],
+        }
+
+        existing.bookingCount += 1
+        existing.totalRevenue += amount
+        existing.bookings.push({
+          bookingReference: booking.booking_reference,
+          destinationCountry,
+          title,
+          amount,
+          status: booking.status,
+          created_at: booking.created_at,
+        })
+
+        agentTourMap.set(agent.id, existing)
+      })
+    }
+
+    const flights = Array.from(agentFlightMap.values()).sort(
+      (a, b) => b.totalRevenue - a.totalRevenue
+    )
+    const tours = Array.from(agentTourMap.values()).sort(
+      (a, b) => b.totalRevenue - a.totalRevenue
+    )
+
+    res.json({
+      agentStats: {
+        flights,
+        tours,
+      },
+      statusCounts,
+    })
+  } catch (error) {
+    console.error('Error fetching agent sales stats:', error)
+    res.status(500).json({ error: 'Failed to fetch agent sales stats' })
   }
 }
 

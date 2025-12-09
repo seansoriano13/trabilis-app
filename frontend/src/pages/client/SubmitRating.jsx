@@ -9,10 +9,40 @@ const SubmitRating = () => {
   const { token } = useParams()
   const [rating, setRating] = useState(0)
   const [hoveredRating, setHoveredRating] = useState(0)
+  const [comment, setComment] = useState('')
+  const [commentEdited, setCommentEdited] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
   const [bookingReference, setBookingReference] = useState('')
+
+  const getDefaultComment = (ratingValue) => {
+    const defaults = {
+      1: 'Poor',
+      2: 'Fair',
+      3: 'Good',
+      4: 'Very good',
+      5: 'Excellent',
+    }
+    return defaults[ratingValue] || ''
+  }
+
+  const handleRatingClick = (star) => {
+    setRating(star)
+    const defaultForStar = getDefaultComment(star)
+
+    // If the user has not edited the comment or it's still at a default/empty state,
+    // update it to match the selected star's default text.
+    const isAtDefaultOrEmpty =
+      !commentEdited ||
+      comment.trim() === '' ||
+      comment.trim() === getDefaultComment(rating)
+
+    if (isAtDefaultOrEmpty) {
+      setComment(defaultForStar)
+      setCommentEdited(false)
+    }
+  }
 
   const handleSubmit = async () => {
     if (rating === 0) {
@@ -26,7 +56,7 @@ const SubmitRating = () => {
     try {
       const response = await axios.post(
         `${BACKEND_URL}/api/v1/ratings/submit/${token}`,
-        { rating }
+        { rating, comment: comment.trim() || null }
       )
 
       setBookingReference(response.data.bookingReference)
@@ -77,7 +107,7 @@ const SubmitRating = () => {
                   ? 'star-active'
                   : 'star-inactive'
               }`}
-              onClick={() => setRating(star)}
+              onClick={() => handleRatingClick(star)}
               onMouseEnter={() => setHoveredRating(star)}
               onMouseLeave={() => setHoveredRating(0)}
             />
@@ -93,6 +123,29 @@ const SubmitRating = () => {
           {rating === 3 && <span className='rating-label'>Good</span>}
           {rating === 4 && <span className='rating-label'>Very Good</span>}
           {rating === 5 && <span className='rating-label'>Excellent</span>}
+        </div>
+
+        <div className='comment-section'>
+          <label
+            htmlFor='comment'
+            className='comment-label'
+          >
+            Comment (optional)
+          </label>
+          <textarea
+            id='comment'
+            className='comment-textarea'
+            value={comment}
+            onChange={(e) => {
+              const value = e.target.value
+              setComment(value)
+              // Mark as edited if user deviates from the default text for the current rating
+              const currentDefault = getDefaultComment(rating)
+              setCommentEdited(value.trim() !== currentDefault)
+            }}
+            placeholder='Share your thoughts about your experience...'
+            rows={4}
+          />
         </div>
 
         {error && <div className='error-message'>{error}</div>}

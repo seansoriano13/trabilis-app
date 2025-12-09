@@ -20,9 +20,9 @@ router.post('/resend/:bookingId', adminAuthMiddleware, resendRatingEmail)
 router.post('/submit/:token', async (req, res) => {
   try {
     const { token } = req.params
-    const { rating } = req.body
+    const { rating, comment } = req.body
 
-    const result = await processRatingSubmission(token, rating)
+    const result = await processRatingSubmission(token, rating, comment)
     res.json(result)
   } catch (error) {
     res.status(400).json({
