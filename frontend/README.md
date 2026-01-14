@@ -4,14 +4,14 @@ React-based frontend for the Trabilis travel management platform.
 
 ## 🏗️ Tech Stack
 
-- **React 19** - UI library
-- **Vite** - Build tool and dev server
-- **React Router** - Client-side routing
-- **Tailwind CSS** - Utility-first CSS framework
-- **Axios** - HTTP client
-- **Chart.js** - Data visualization
-- **Supabase** - Database client
-- **React Icons** - Icon library
+-   **React 19** - UI library
+-   **Vite** - Build tool and dev server
+-   **React Router** - Client-side routing
+-   **Tailwind CSS** - Utility-first CSS framework
+-   **Axios** - HTTP client
+-   **Chart.js** - Data visualization
+-   **Supabase** - Database client
+-   **React Icons** - Icon library
 
 ## 📁 Project Structure
 
@@ -66,8 +66,8 @@ frontend/
 
 ### Prerequisites
 
-- Node.js 18+
-- npm or yarn
+-   Node.js 18+
+-   npm or yarn
 
 ### Installation
 
@@ -114,89 +114,89 @@ The app will be available at `http://localhost:5173`.
 
 #### Home Page
 
-- Hero section with call-to-action
-- Featured destinations
-- Service highlights
-- Testimonials
+-   Hero section with call-to-action
+-   Featured destinations
+-   Service highlights
+-   Testimonials
 
 #### Flights
 
-- Flight search with filters
-- Real-time availability
-- Multi-city and round-trip options
-- Passenger details form
-- Stripe payment integration
+-   Flight search with filters
+-   Real-time availability
+-   Multi-city and round-trip options
+-   Passenger details form
+-   Stripe payment integration
 
 #### Tours
 
-- Browse tour packages
-- View detailed itineraries
-- Check availability
-- Book with multiple passengers
-- Customizable packages
+-   Browse tour packages
+-   View detailed itineraries
+-   Check availability
+-   Book with multiple passengers
+-   Customizable packages
 
 #### Visa Consultation
 
-- Submit visa inquiries
-- Multiple visa types
-- Document upload
-- Track application status
+-   Submit visa inquiries
+-   Multiple visa types
+-   Document upload
+-   Track application status
 
 ### Admin Panel
 
 #### Dashboard
 
-- Booking statistics
-- Revenue charts
-- Recent bookings
-- Quick actions
+-   Booking statistics
+-   Revenue charts
+-   Recent bookings
+-   Quick actions
 
 #### Bookings Management
 
-- View all flight/tour bookings
-- Update booking status
-- Send confirmation emails
-- Generate invoices/PDFs
+-   View all flight/tour bookings
+-   Update booking status
+-   Send confirmation emails
+-   Generate invoices/PDFs
 
 #### Tours Management
 
-- Create/edit tour packages
-- Manage dates and availability
-- Upload images
-- Set pricing and inclusions
+-   Create/edit tour packages
+-   Manage dates and availability
+-   Upload images
+-   Set pricing and inclusions
 
 #### Visa Management
 
-- View visa inquiries
-- Track processing status
-- Assign to consultants
-- Update application progress
+-   View visa inquiries
+-   Track processing status
+-   Assign to consultants
+-   Update application progress
 
 ## 🎨 Styling
 
 The app uses Tailwind CSS with custom configurations:
 
-- Custom color palette
-- Responsive breakpoints
-- Custom utility classes
-- Component-specific styles in CSS modules
+-   Custom color palette
+-   Responsive breakpoints
+-   Custom utility classes
+-   Component-specific styles in CSS modules
 
 ## 🔐 Authentication
 
 Admin routes are protected with JWT authentication:
 
-- Login via admin panel
-- Token stored in localStorage
-- Automatic redirect on session expiry
-- Token included in API requests
+-   Login via admin panel
+-   Token stored in localStorage
+-   Automatic redirect on session expiry
+-   Token included in API requests
 
 ## 🌐 API Integration
 
 API calls are made through:
 
-- `adminClient.js` - Admin API calls with auth
-- `supabaseClient.js` - Direct database queries
-- Axios interceptors for auth and error handling
+-   `adminClient.js` - Admin API calls with auth
+-   `supabaseClient.js` - Direct database queries
+-   Axios interceptors for auth and error handling
 
 ## 📦 Building for Production
 
@@ -206,10 +206,10 @@ npm run build
 
 This creates an optimized build in the `dist/` directory with:
 
-- Minified JavaScript
-- Optimized CSS
-- Code splitting
-- Asset optimization
+-   Minified JavaScript
+-   Optimized CSS
+-   Code splitting
+-   Asset optimization
 
 ## 🚀 Deployment
 
@@ -218,12 +218,12 @@ This creates an optimized build in the `dist/` directory with:
 1. Push code to GitHub
 2. Import project in Vercel
 3. Set environment variables in Vercel dashboard:
-   ```env
-   VITE_BACKEND_URL=https://your-render-backend-url.onrender.com
-   VITE_SUPABASE_URL=your-supabase-url
-   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-   VITE_OPEN_WEATHER_API_KEY=your-weather-api-key
-   ```
+    ```env
+    VITE_BACKEND_URL=https://your-render-backend-url.onrender.com
+    VITE_SUPABASE_URL=your-supabase-url
+    VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+    VITE_OPEN_WEATHER_API_KEY=your-weather-api-key
+    ```
 4. Deploy
 
 **Important**: The `VITE_BACKEND_URL` must point to your deployed Render backend URL, not localhost.
@@ -246,60 +246,60 @@ npm run lint  # Run ESLint
 
 ### Client Components
 
-- `FlightSearch` - Flight search form
-- `FlightResults` - Display search results
-- `TourCard` - Tour package card
-- `PassengerForm` - Passenger details input
-- `VisaForm` - Visa inquiry form
+-   `FlightSearch` - Flight search form
+-   `FlightResults` - Display search results
+-   `TourCard` - Tour package card
+-   `PassengerForm` - Passenger details input
+-   `VisaForm` - Visa inquiry form
 
 ### Admin Components
 
-- `BookingTable` - Bookings data table
-- `TourEditor` - Tour package editor
-- `DashboardStats` - Statistics widgets
-- `AssignmentModal` - Task assignment
+-   `BookingTable` - Bookings data table
+-   `TourEditor` - Tour package editor
+-   `DashboardStats` - Statistics widgets
+-   `AssignmentModal` - Task assignment
 
 ## 🔧 Configuration Files
 
-- `vite.config.js` - Vite configuration
-- `tailwind.config.cjs` - Tailwind CSS config
-- `eslint.config.js` - ESLint rules
-- `vercel.json` - Vercel deployment config
+-   `vite.config.js` - Vite configuration
+-   `tailwind.config.cjs` - Tailwind CSS config
+-   `eslint.config.js` - ESLint rules
+-   `vercel.json` - Vercel deployment config
 
 ## 📱 Responsive Design
 
 The app is fully responsive with breakpoints:
 
-- Mobile: < 768px
-- Tablet: 768px - 1024px
-- Desktop: > 1024px
+-   Mobile: < 768px
+-   Tablet: 768px - 1024px
+-   Desktop: > 1024px
 
 ## ♿ Accessibility
 
-- Semantic HTML
-- ARIA labels where needed
-- Keyboard navigation
-- Screen reader friendly
+-   Semantic HTML
+-   ARIA labels where needed
+-   Keyboard navigation
+-   Screen reader friendly
 
 ## 🐛 Common Issues
 
 ### Build Fails
 
-- Clear node_modules and reinstall
-- Check Node.js version (18+)
-- Verify all env variables are set
+-   Clear node_modules and reinstall
+-   Check Node.js version (18+)
+-   Verify all env variables are set
 
 ### API Calls Fail
 
-- Check `VITE_BACKEND_URL` is correct
-- Ensure backend is running
-- Check browser console for CORS errors
+-   Check `VITE_BACKEND_URL` is correct
+-   Ensure backend is running
+-   Check browser console for CORS errors
 
 ### Images Not Loading
 
-- Verify image paths
-- Check public folder structure
-- Ensure images are in `public/` directory
+-   Verify image paths
+-   Check public folder structure
+-   Ensure images are in `public/` directory
 
 ## 🤝 Contributing
 
