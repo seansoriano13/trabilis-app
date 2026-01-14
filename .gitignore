@@ -121,7 +121,7 @@ trabilis.sql
 /backend/logs/
 
 #Cursor
-/.cursor
+.cursor
 /*.md
 
 /docs/*
